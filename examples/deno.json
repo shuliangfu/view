@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@dreamer/view",
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
+  },
+  "imports": {
+    "@dreamer/view": "../src/mod.ts",
+    "@dreamer/view/jsx-runtime": "../src/jsx-runtime.ts",
+    "@dreamer/view/store": "../src/store.ts",
+    "@dreamer/view/boundary": "../src/boundary.ts",
+    "@dreamer/view/directive": "../src/directive.ts",
+    "@dreamer/view/reactive": "../src/reactive.ts",
+    "@dreamer/view/resource": "../src/resource.ts",
+    "@dreamer/view/context": "../src/context.ts",
+    "@dreamer/view/router": "../src/router.ts"
+  },
+  "tasks": {
+    "bundle": "deno run -A npm:esbuild src/main.tsx --bundle --format=esm --outfile=dist/main.js --jsx=automatic --jsx-import-source=@dreamer/view --alias:@dreamer/view=../src/mod.ts --alias:@dreamer/view/jsx-runtime=../src/jsx-runtime.ts --alias:@dreamer/view/store=../src/store.ts --alias:@dreamer/view/boundary=../src/boundary.ts --alias:@dreamer/view/directive=../src/directive.ts --alias:@dreamer/view/resource=../src/resource.ts --alias:@dreamer/view/context=../src/context.ts --alias:@dreamer/view/router=../src/router.ts  --alias:@dreamer/view/reactive=../src/reactive.ts",
+    "serve": "deno run -A server.ts",
+    "dev": "deno task bundle && deno task serve"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "@dreamer/view",
+  "version": "1.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./store": "./src/store.ts",
+    "./reactive": "./src/reactive.ts",
+    "./boundary": "./src/boundary.ts",
+    "./directive": "./src/directive.ts",
+    "./resource": "./src/resource.ts",
+    "./compiler": "./src/compiler.ts",
+    "./context": "./src/context.ts",
+    "./stream": "./src/stream.ts",
+    "./router": "./src/router.ts",
+    
+    "./dist": "./dist/index.js",
+    "./dist/jsx-runtime": "./dist/jsx-runtime.js",
+    "./dist/store": "./dist/store.js",
+    "./dist/reactive": "./dist/reactive.js",
+    "./dist/boundary": "./dist/boundary.js",
+    "./dist/directive": "./dist/directive.js",
+    "./dist/resource": "./dist/resource.js",
+    "./dist/compiler": "./dist/compiler.js",
+    "./dist/context": "./dist/context.js",
+    "./dist/stream": "./dist/stream.js",
+    "./dist/router": "./dist/router.js"
+  },
+  "imports": {
+    "@dreamer/view": "./src/mod.ts",
+    "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
+    "@dreamer/view/store": "./src/store.ts",
+    "@dreamer/view/reactive": "./src/reactive.ts",
+    "@dreamer/view/router": "./src/router.ts",
+    "@dreamer/test": "jsr:@dreamer/test@^1.0.5",
+    "happy-dom": "npm:happy-dom@20.4.0"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@dreamer/view",
+    "lib": ["deno.window", "dom"]
+  },
+  "lint": {
+    "include": ["src/"],
+    "rules": { "tags": ["recommended"] }
+  },
+  "tasks": {
+    "test": "deno test -A tests/",
+    "build": "deno run -A build.ts"
+  }
+}

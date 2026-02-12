@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>@dreamer/view 完整示例</title>
+    <!-- 尽早应用 dark 类，避免首屏闪烁（兼容 store 持久化 JSON 与旧字符串格式） -->
+    <script>
+      try {
+        var v = localStorage.getItem("view-theme");
+        var isDark = v === "dark" ||
+          (v && JSON.parse(v).theme === "dark");
+        if (isDark) document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
+      } catch (_) {}
+    </script>
+    <!-- Tailwind CSS v4 Play CDN；dark 由 .dark 类控制（非系统偏好） -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @custom-variant dark (&:where(.dark, .dark *));
+    </style>
+    <style>
+      [data-view-cloak] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body
+    class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200"
+  >
+    <div id="root" data-view-cloak></div>
+    <script type="module" src="./dist/main.js"></script>
+  </body>
+</html>
