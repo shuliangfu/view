@@ -14,7 +14,7 @@
     "./context": "./src/context.ts",
     "./stream": "./src/stream.ts",
     "./router": "./src/router.ts",
-    
+
     "./dist": "./dist/index.js",
     "./dist/jsx-runtime": "./dist/jsx-runtime.js",
     "./dist/store": "./dist/store.js",
@@ -45,6 +45,7 @@
     "include": ["src/"],
     "rules": { "tags": ["recommended"] }
   },
+  "exclude": ["dist/*", "examples/*", "tests/data/"],
   "tasks": {
     "test": "deno test -A tests/",
     "build": "deno run -A build.ts"
