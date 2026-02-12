@@ -10,7 +10,7 @@ function removeCloak(container: Element): void {
   if (container.hasAttribute("data-view-cloak")) {
     container.removeAttribute("data-view-cloak");
   }
-  for (const el of container.querySelectorAll("[data-view-cloak]")) {
+  for (const el of Array.from(container.querySelectorAll("[data-view-cloak]"))) {
     el.removeAttribute("data-view-cloak");
   }
 }
