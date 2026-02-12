@@ -373,8 +373,7 @@ export function createElement(
     const binding = getContextBinding(type, props);
     if (binding) pushContext(binding.id, binding.value);
     try {
-      let result: VNode | VNode[] | null;
-      result = type(props);
+      const result: VNode | VNode[] | null = type(props);
       if (result == null) return doc.createTextNode("");
       const nodes = Array.isArray(result) ? result : [result];
       if (nodes.length === 0) return doc.createTextNode("");
