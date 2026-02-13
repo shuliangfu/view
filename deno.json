@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/mod.ts",
     "./cli": "./src/cli.ts",
+    "./setup": "./src/setup.ts",
     "./csr": "./src/mod-csr.ts",
     "./hybrid": "./src/mod-hybrid.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
