@@ -1,14 +1,28 @@
 /**
- * View 模板引擎 — Resource（异步数据源）
+ * @module @dreamer/view/resource
+ * @description
+ * 异步数据源（Resource）：基于 Promise 的 getter，在 effect/组件中调用返回 { data, loading, error, refetch }，Promise 完成时自动触发依赖更新。
  *
- * createResource 提供基于 Promise 的异步数据，在 effect/组件中作为 getter 使用，
- * 返回 { data, loading, error, refetch }，Promise 完成时自动触发依赖更新。
+ * **本模块导出：**
+ * - `createResource(fetcher)`：无 source，单次或手动 refetch
+ * - `createResource(source, fetcher)`：source 变化时自动重新请求
+ * - 类型：`ResourceResult<T>`（data、loading、error、refetch）
+ *
+ * **与 Suspense：** resource().loading 时可用 Suspense 的 fallback 显示加载态；有 data 时显示内容。
+ *
+ * @example
+ * import { createResource } from "jsr:@dreamer/view/resource";
+ * const [id, setId] = createSignal(1);
+ * const user = createResource(id, (id) => fetch(`/api/user/${id}`).then((r) => r.json()));
+ * createEffect(() => { const { data, loading } = user(); if (data) console.log(data); });
  */
 
 import { createEffect } from "./effect.ts";
 import { createSignal, markSignalGetter } from "./signal.ts";
 
-/** Resource 的只读状态，由 getter 返回 */
+/**
+ * Resource 的只读状态，由 createResource 返回的 getter() 得到。
+ */
 export type ResourceResult<T> = {
   /** 最近一次请求成功时的数据，未完成或失败时为 undefined */
   data: T | undefined;

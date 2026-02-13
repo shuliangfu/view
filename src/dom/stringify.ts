@@ -11,17 +11,15 @@ import {
   getVElseIfValue,
   getVElseShow,
   getVForListAndFactory,
-  getVHtmlValue,
   getVIfValue,
   getVShowValue,
-  getVTextValue,
   hasDirective,
   hasStructuralDirective,
   isDirectiveProp,
 } from "../directive.ts";
 import { getContextBinding, popContext, pushContext } from "../context.ts";
 import type { IfContext, SSROptions } from "./shared.ts";
-import { isFragment, isVNodeLike } from "./shared.ts";
+import { createTextVNode, isFragment, isVNodeLike } from "./shared.ts";
 
 /** 自闭合标签，不生成闭合标签 */
 const voidElements = new Set([
@@ -70,14 +68,8 @@ function normalizeChildrenForSSR(children: unknown): VNode[] {
     }
     return out;
   }
-  if (isVNodeLike(children)) {
-    return [children as VNode];
-  }
-  return [{
-    type: "#text",
-    props: { nodeValue: String(children) },
-    children: [],
-  }];
+  if (isVNodeLike(children)) return [children as VNode];
+  return [createTextVNode(children)];
 }
 
 /**
@@ -128,10 +120,14 @@ function stringifyAttributes(props: Record<string, unknown>): string {
 }
 
 /**
- * 将 VNode 转为 HTML 字符串（SSR，无浏览器 API）
- * SSR 时 getter 只求值一次；vIf/vElse/vFor 与 createElement 逻辑一致
- * options.allowRawHtml 为 false 时 v-html 输出转义文本（安全场景）。
- * 默认 v-html 在服务端同样不转义，与客户端一致。
+ * 将 VNode 转为 HTML 字符串（SSR，无浏览器 API）。
+ * SSR 时 getter 只求值一次；vIf/vElse/vFor 与 createElement 逻辑一致。
+ * options.allowRawHtml 为 false 时 v-html 输出转义文本（安全场景）；默认与客户端一致不转义。
+ *
+ * @param vnode - 要序列化的根 VNode
+ * @param ifContext - 可选，v-else / v-else-if 的上下文
+ * @param options - 可选，SSR 选项（如 allowRawHtml）
+ * @returns 对应的 HTML 字符串
  */
 export function createElementToString(
   vnode: VNode,
@@ -242,14 +238,9 @@ export function createElementToString(
     attrs += ` data-key="${escapeAttr(String(vnode.key))}"`;
   }
   const ctx = ifContext ?? { lastVIf: true };
+  const children = normalizeChildrenForSSR(props.children ?? vnode.children);
   let inner: string;
-  if (hasDirective(props, "vText")) {
-    inner = escapeText(getVTextValue(props));
-  } else if (hasDirective(props, "vHtml")) {
-    const html = getVHtmlValue(props);
-    inner = options?.allowRawHtml === false ? escapeText(html) : html;
-  } else {
-    const children = normalizeChildrenForSSR(props.children ?? vnode.children);
+  {
     const hasKeyedChildren = children.some(
       (c) => (c as VNode).key != null && (c as VNode).key !== undefined,
     );
@@ -274,8 +265,13 @@ export function createElementToString(
 }
 
 /**
- * 流式 SSR：将 VNode 转为逐块输出的字符串生成器，与 createElementToString 结构一致
- * options.allowRawHtml 为 false 时 v-html 输出转义文本；默认 v-html 在服务端同样不转义
+ * 流式 SSR：将 VNode 转为逐块输出的字符串生成器，与 createElementToString 结构一致。
+ * options.allowRawHtml 为 false 时 dangerouslySetInnerHTML 输出转义文本；默认与客户端一致不转义。
+ *
+ * @param vnode - 要序列化的根 VNode
+ * @param ifContext - 可选，v-else / v-else-if 的上下文
+ * @param options - 可选，SSR 选项（如 allowRawHtml）
+ * @yields 逐块 HTML 字符串
  */
 export function* createElementToStream(
   vnode: VNode,
@@ -391,31 +387,24 @@ export function* createElementToStream(
   const ctx = ifContext ?? { lastVIf: true };
   yield `<${tag}${attrs}>`;
   if (!voidElements.has(tag.toLowerCase())) {
-    if (hasDirective(props, "vText")) {
-      yield escapeText(getVTextValue(props));
-    } else if (hasDirective(props, "vHtml")) {
-      const html = getVHtmlValue(props);
-      yield options?.allowRawHtml === false ? escapeText(html) : html;
-    } else {
-      const children = normalizeChildrenForSSR(
-        props.children ?? vnode.children,
-      );
-      const hasKeyedChildren = children.some(
-        (c) => (c as VNode).key != null && (c as VNode).key !== undefined,
-      );
-      if (hasKeyedChildren) {
-        for (let i = 0; i < children.length; i++) {
-          const v = children[i] as VNode;
-          const key = v.key != null && v.key !== undefined
-            ? String(v.key)
-            : `@${i}`;
-          yield `<span data-view-keyed data-key="${escapeAttr(key)}">`;
-          yield* createElementToStream(children[i], ctx, options);
-          yield `</span>`;
-        }
-      } else {
-        for (const c of children) yield* createElementToStream(c, ctx, options);
+    const children = normalizeChildrenForSSR(
+      props.children ?? vnode.children,
+    );
+    const hasKeyedChildren = children.some(
+      (c) => (c as VNode).key != null && (c as VNode).key !== undefined,
+    );
+    if (hasKeyedChildren) {
+      for (let i = 0; i < children.length; i++) {
+        const v = children[i] as VNode;
+        const key = v.key != null && v.key !== undefined
+          ? String(v.key)
+          : `@${i}`;
+        yield `<span data-view-keyed data-key="${escapeAttr(key)}">`;
+        yield* createElementToStream(children[i], ctx, options);
+        yield `</span>`;
       }
+    } else {
+      for (const c of children) yield* createElementToStream(c, ctx, options);
     }
     yield `</${tag}>`;
   }

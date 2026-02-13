@@ -1,10 +1,19 @@
 /**
- * View 模板引擎 — 编译优化
+ * @module @dreamer/view/compiler
+ * @description
+ * 编译优化：对 JSX/TS 源码做静态提升（static hoisting）与常量折叠（constant folding），减少运行时创建静态节点的开销。依赖 TypeScript 编译器 API（npm:typescript），仅在使用本模块时加载。
  *
- * 提供静态提升（static hoisting）与常量折叠（constant folding），
- * 用于构建时优化 JSX/TS 源码，减少运行时创建静态节点的开销。
+ * **本模块导出：**
+ * - `optimize(code, fileName?)`：对源码执行优化，返回优化后的代码字符串
+ * - `createOptimizePlugin(filter?, readFile?)`：返回可在 esbuild 中使用的 onLoad 插件，对匹配文件执行 optimize
+ * - 类型：`OnLoadArgs`（esbuild onLoad 回调参数）
  *
- * 依赖 TypeScript 编译器 API（npm:typescript），仅在使用 compiler 时加载。
+ * **使用场景：** 构建时对 View 组件源码做优化，或通过 esbuild 插件在打包时自动优化。
+ *
+ * @example
+ * import { optimize, createOptimizePlugin } from "jsr:@dreamer/view/compiler";
+ * const out = optimize(sourceCode, "App.tsx");
+ * // 或 esbuild: plugins: [createOptimizePlugin(/\.tsx$/)]
  */
 
 import * as ts from "npm:typescript@5.9";
@@ -211,7 +220,9 @@ export function optimize(code: string, fileName = "source.tsx"): string {
   return printer.printFile(out);
 }
 
-/** esbuild onLoad 回调参数（path 等） */
+/**
+ * esbuild onLoad 回调的参数（createOptimizePlugin 内部使用）。
+ */
 export type OnLoadArgs = { path: string; namespace?: string };
 
 /** 兼容 esbuild Plugin 的 setup 入参（onLoad 为两参：options + callback） */
@@ -223,11 +234,12 @@ type EsbuildPluginBuild = {
 };
 
 /**
- * 创建可在 esbuild 中使用的 transform 插件：对匹配的文件执行 optimize
- * 需在 Deno 环境下使用（依赖 Deno.readTextFile）；Node 环境可传入自定义 readFile。
+ * 创建可在 esbuild 中使用的 transform 插件：对匹配的文件执行 optimize（常量折叠与静态提升）。
+ * 默认在 Deno 下使用 Deno.readTextFile；Node 等环境可传入自定义 readFile。
  *
- * @param filter 正则，匹配需要优化的文件路径，默认 /\.(tsx?|jsx?)$/
- * @param readFile 可选，自定义读文件函数；(path) => Promise<string>
+ * @param filter - 正则，匹配需要优化的文件路径，默认 /\.(tsx?|jsx?)$/
+ * @param readFile - 可选，自定义读文件函数 (path) => Promise<string>
+ * @returns esbuild 插件对象 { name, setup }
  */
 export function createOptimizePlugin(
   filter: RegExp = /\.(tsx?|jsx?)$/,

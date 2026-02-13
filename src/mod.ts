@@ -1,11 +1,21 @@
 /**
- * @dreamer/view — 轻量响应式模板引擎（主入口仅核心，按需导入减小体积）
+ * @module @dreamer/view
+ * @description
+ * 轻量响应式模板引擎主入口，仅导出核心 API，按需从子路径导入以减小主包体积。
  *
- * 主入口仅导出核心 API，保证只做 CSR/SSR/SSG/Hybrid 时主包体积最小。
- * - 核心：createSignal、createEffect、createRoot、render、renderToString、hydrate
- * - JSX：view/jsx-runtime（jsx、jsxs、Fragment），jsxImportSource: "view"
- * - 按需从子路径导入：view/store、view/boundary（Suspense/ErrorBoundary）、view/directive、view/resource、view/context、view/compiler、view/stream
- * - Hybrid 注入脚本：generateHydrationScript（主入口导出，与 hydrate 配套）
+ * **本模块导出：**
+ * - 响应式：`createSignal`、`createEffect`、`createMemo`、`onCleanup`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`
+ * - 渲染：`createRoot`、`render`、`renderToString`、`hydrate`、`generateHydrationScript`
+ * - 类型：`HydrationScriptOptions`、`EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`isDOMEnvironment`
+ *
+ * **JSX：** 在 deno.json / tsconfig 中设置 `jsxImportSource: "@dreamer/view"`，并从 `@dreamer/view/jsx-runtime` 解析 jsx/jsxs/Fragment。
+ *
+ * **按需子路径：** `@dreamer/view/store`、`@dreamer/view/reactive`、`@dreamer/view/boundary`、`@dreamer/view/directive`、`@dreamer/view/resource`、`@dreamer/view/context`、`@dreamer/view/compiler`、`@dreamer/view/stream`、`@dreamer/view/router`
+ *
+ * @example
+ * import { createSignal, createEffect, render } from "jsr:@dreamer/view";
+ * const [count, setCount] = createSignal(0);
+ * render(() => <div>{count()}</div>, document.getElementById("root")!);
  */
 
 export {

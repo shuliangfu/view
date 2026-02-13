@@ -14,7 +14,7 @@ import {
   hasStructuralDirective,
 } from "../directive.ts";
 import type { IfContext } from "./shared.ts";
-import { isFragment } from "./shared.ts";
+import { createDynamicSpan, isFragment } from "./shared.ts";
 import { appendDynamicChild, normalizeChildren } from "./element.ts";
 import { applyProps } from "./props.ts";
 import { runDirectiveUnmountOnChildren } from "./unmount.ts";
@@ -56,9 +56,9 @@ function hydrateFromList(
     let i = index;
     for (const c of children) {
       if (isSignalGetter(c)) {
-        const wrap = (globalThis as { document: Document }).document
-          .createElement("span");
-        wrap.setAttribute("data-view-dynamic", "");
+        const wrap = createDynamicSpan(
+          (globalThis as { document: Document }).document,
+        );
         if (nodes[i]) {
           (nodes[i] as Element).replaceWith?.(wrap) ??
             (nodes[i].parentNode?.appendChild(wrap));
@@ -110,9 +110,9 @@ function hydrateFromList(
   let next = 0;
   for (const item of childItems) {
     if (isSignalGetter(item)) {
-      const wrap = (globalThis as { document: Document }).document
-        .createElement("span");
-      wrap.setAttribute("data-view-dynamic", "");
+      const wrap = createDynamicSpan(
+        (globalThis as { document: Document }).document,
+      );
       if (childList[next]) {
         (childList[next] as Node).parentNode?.replaceChild(
           wrap,
@@ -135,7 +135,12 @@ function hydrateFromList(
 }
 
 /**
- * 在已有 DOM 容器上完整 hydrate：复用 container 内子节点，与 fn() 的 vnode 树一一对应
+ * 在已有 DOM 容器上执行完整 hydrate。
+ * 复用 container 内已有子节点，与 vnode 树一一对应，并挂上 props、指令与响应式绑定。
+ * 通常由 runtime 的 hydrate() 在检测到容器已有服务端渲染内容时调用。
+ *
+ * @param container - 已有 SSR 子节点的 DOM 容器
+ * @param vnode - 与 SSR 输出对应的根 VNode（与服务端 renderToString 使用同一组件树）
  */
 export function hydrateElement(container: Element, vnode: VNode): void {
   const nodes = Array.from(container.childNodes);

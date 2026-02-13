@@ -1,14 +1,16 @@
 /**
  * View 模板引擎 — 将 VNode 转为浏览器 DOM 节点
  *
- * 支持 v-if / v-else / v-for / v-show / v-text / v-html / v-once、Fragment、keyed 列表、动态子节点
+ * 支持 v-if / v-else / v-for / v-show / v-once、Fragment、keyed 列表、动态子节点
  */
 
-import { createEffect } from "../effect.ts";
-import { isSignalGetter } from "../signal.ts";
-import { isDOMEnvironment } from "../types.ts";
-import type { VNode } from "../types.ts";
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";
+import {
+  CONTEXT_SCOPE_TYPE,
+  getContextBinding,
+  popContext,
+  pushContext,
+} from "../context.ts";
 import {
   getDirectiveValue,
   getVElseIfValue,
@@ -19,11 +21,20 @@ import {
   hasStructuralDirective,
   resolveVForFactory,
 } from "../directive.ts";
-import { getContextBinding, popContext, pushContext } from "../context.ts";
-import type { IfContext } from "./shared.ts";
-import { isFragment as checkFragment } from "./shared.ts";
+import { createEffect } from "../effect.ts";
+import { isSignalGetter } from "../signal.ts";
+import type { VNode } from "../types.ts";
+import { isDOMEnvironment } from "../types.ts";
 import { applyProps } from "./props.ts";
+import type { IfContext } from "./shared.ts";
 import {
+  createDynamicSpan,
+  createTextVNode,
+  isFragment as checkFragment,
+  isVNodeLike,
+} from "./shared.ts";
+import {
+  registerDirectiveUnmount,
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
@@ -31,7 +42,27 @@ import {
 /** SVG 命名空间，用于 createElementNS */
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/** 规范化 children 的返回项：VNode 或 signal getter（用于动态子节点） */
+/**
+ * vIf/vElseIf/vElse 切换时 replaceChildren/appendChild 可能触发浏览器滚动锚定或焦点移动导致页面滚动。
+ * 在更新 placeholder 前后保存并恢复滚动位置，避免用户感知到滚动。
+ */
+function preserveScrollAroundUpdate(update: () => void): void {
+  const win = globalThis as {
+    scrollX?: number;
+    scrollY?: number;
+    scrollTo?: (x: number, y: number) => void;
+  };
+  const x = typeof win.scrollX === "number" ? win.scrollX : 0;
+  const y = typeof win.scrollY === "number" ? win.scrollY : 0;
+  update();
+  if (typeof win.scrollTo === "function") {
+    requestAnimationFrame(() => win.scrollTo!(x, y));
+  }
+}
+
+/**
+ * 规范化后的子项类型：静态 VNode 或动态 getter（signal / 函数，在 effect 中求值并订阅）。
+ */
 export type ChildItem = VNode | (() => unknown);
 
 const KEYED_WRAPPER_ATTR = "data-view-keyed";
@@ -78,8 +109,11 @@ function resolveNamespace(
 }
 
 /**
- * 规范化 children：可能是单个 VNode、数组、signal getter、普通函数（动态子节点）、或原始值（转成文本 VNode）
- * 返回项为 VNode 或 getter/函数，供 createElement 区分静态子与动态子；单次遍历收集减少 flatMap 中间数组
+ * 规范化 children：支持单个 VNode、数组、signal getter、普通函数（动态子节点）或原始值（转为文本 VNode）。
+ * 返回 ChildItem 数组，供 createElement 区分静态子节点与动态子节点。
+ *
+ * @param children - props.children 或 vnode.children（可能为任意合法子节点形式）
+ * @returns 规范化后的子项数组（VNode 或 getter）
  */
 export function normalizeChildren(children: unknown): ChildItem[] {
   if (children == null) return [];
@@ -98,17 +132,8 @@ export function normalizeChildren(children: unknown): ChildItem[] {
     }
     return out;
   }
-  if (
-    typeof children === "object" && children !== null && "type" in children &&
-    "props" in children
-  ) {
-    return [children as VNode];
-  }
-  return [{
-    type: "#text",
-    props: { nodeValue: String(children) },
-    children: [],
-  }];
+  if (isVNodeLike(children)) return [children as VNode];
+  return [createTextVNode(children)];
 }
 
 /** 判断 ChildItem 列表是否包含任意带 key 的 VNode */
@@ -139,8 +164,7 @@ function reconcileKeyedChildren(
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (isSignalGetter(item)) {
-      const wrap = doc.createElement("span");
-      wrap.setAttribute("data-view-dynamic", "");
+      const wrap = createDynamicSpan(doc);
       appendDynamicChild(wrap, item as () => unknown, parentNamespace, ctx);
       resultNodes.push(wrap);
       continue;
@@ -166,8 +190,13 @@ function reconcileKeyedChildren(
 }
 
 /**
- * 挂载“动态子节点”：用 createEffect 根据 getter 的当前值创建并替换子内容
- * 若子项带 key 则做 keyed 协调以复用 DOM
+ * 挂载动态子节点：用 createEffect 根据 getter 的当前值创建并替换子内容。
+ * 若子项带 key 则做 keyed 协调以复用 DOM。
+ *
+ * @param parent - 挂载目标（Element 或 DocumentFragment）
+ * @param getter - 返回子节点内容的 signal getter 或函数
+ * @param parentNamespace - 父级命名空间（如 SVG），用于创建子元素
+ * @param ifContext - 可选，v-else / v-else-if 的上下文
  */
 export function appendDynamicChild(
   parent: Element | DocumentFragment,
@@ -176,11 +205,10 @@ export function appendDynamicChild(
   ifContext?: IfContext,
 ): void {
   const doc = (globalThis as { document: Document }).document;
-  const placeholder = doc.createElement("span");
-  placeholder.setAttribute("data-view-dynamic", "");
+  const placeholder = createDynamicSpan(doc);
   parent.appendChild(placeholder);
 
-  createEffect(() => {
+  const dispose = createEffect(() => {
     const value = getter();
     const items = normalizeChildren(value);
     const ctx = ifContext ?? { lastVIf: true };
@@ -196,8 +224,7 @@ export function appendDynamicChild(
     const frag = doc.createDocumentFragment();
     for (const v of items) {
       if (isSignalGetter(v)) {
-        const inner = doc.createElement("span");
-        inner.setAttribute("data-view-dynamic", "");
+        const inner = createDynamicSpan(doc);
         frag.appendChild(inner);
         appendDynamicChild(inner, v as () => unknown, parentNamespace, ctx);
       } else {
@@ -207,6 +234,8 @@ export function appendDynamicChild(
     runDirectiveUnmountOnChildren(placeholder);
     placeholder.replaceChildren(frag);
   });
+  // 占位节点被 replaceChild/移除时 dispose effect，避免旧 effect 继续更新已脱离文档的节点
+  registerDirectiveUnmount(placeholder as Element, dispose);
 }
 
 /**
@@ -270,24 +299,26 @@ function createVIfGroupPlaceholder(
         }
       }
     }
-    runDirectiveUnmountOnChildren(placeholder);
-    placeholder.replaceChildren();
-    if (showIndex >= 0) {
-      const chosen = group[showIndex];
-      const stripProps = { ...chosen.props };
-      delete stripProps.vIf;
-      delete stripProps["v-if"];
-      delete stripProps.vElseIf;
-      delete stripProps["v-else-if"];
-      delete stripProps.vElse;
-      delete stripProps["v-else"];
-      const next = createElement(
-        { ...chosen, props: stripProps },
-        parentNamespace,
-        ifContext,
-      );
-      placeholder.appendChild(next);
-    }
+    preserveScrollAroundUpdate(() => {
+      runDirectiveUnmountOnChildren(placeholder);
+      placeholder.replaceChildren();
+      if (showIndex >= 0) {
+        const chosen = group[showIndex];
+        const stripProps = { ...chosen.props };
+        delete stripProps.vIf;
+        delete stripProps["v-if"];
+        delete stripProps.vElseIf;
+        delete stripProps["v-else-if"];
+        delete stripProps.vElse;
+        delete stripProps["v-else"];
+        const next = createElement(
+          { ...chosen, props: stripProps },
+          parentNamespace,
+          ifContext,
+        );
+        placeholder.appendChild(next);
+      }
+    });
   });
 
   return placeholder;
@@ -345,13 +376,16 @@ function appendChildren(
 }
 
 /**
- * 将 VNode 转为浏览器 DOM 节点（或 DocumentFragment）
+ * 将 VNode 转为浏览器 DOM 节点（或 DocumentFragment）。
+ * 支持原生标签、组件、Fragment、指令（v-if/v-else/v-for/v-once 等）与动态子节点。
  *
  * 错误处理：组件执行时若抛出错误，被 ErrorBoundary 包裹的会捕获并渲染 fallback；
  * 其余错误会冒泡，调用方需自行 try/catch 或保证组件不抛错。
  *
- * @param parentNamespace 父级命名空间（如 SVG_NS），用于正确创建 svg 内子元素
- * @param ifContext 可选，用于 v-else：同一批兄弟中上一个 v-if 的结果
+ * @param vnode - 要渲染的 VNode
+ * @param parentNamespace - 父级命名空间（如 SVG_NS），用于正确创建 svg 内子元素
+ * @param ifContext - 可选，用于 v-else：同一批兄弟中上一个 v-if 的结果
+ * @returns 创建出的 DOM 节点或 DocumentFragment
  */
 export function createElement(
   vnode: VNode,
@@ -359,6 +393,32 @@ export function createElement(
   ifContext?: IfContext,
 ): Node {
   const doc = (globalThis as { document: Document }).document;
+
+  // ContextScope：在渲染 children 前后 pushContext/popContext，保证子组件 useContext 时栈有效
+  if (vnode.type === CONTEXT_SCOPE_TYPE) {
+    const scopeProps = vnode.props as {
+      id: symbol;
+      value: unknown;
+      children: VNode | VNode[] | null;
+    };
+    pushContext(scopeProps.id, scopeProps.value);
+    try {
+      const ch = scopeProps.children;
+      if (ch == null) return doc.createTextNode("");
+      const nodes = Array.isArray(ch) ? ch : [ch];
+      if (nodes.length === 0) return doc.createTextNode("");
+      if (nodes.length === 1) {
+        return createElement(nodes[0], parentNamespace, ifContext);
+      }
+      const frag = doc.createDocumentFragment();
+      for (const n of nodes) {
+        frag.appendChild(createElement(n, parentNamespace, ifContext));
+      }
+      return frag;
+    } finally {
+      popContext(scopeProps.id);
+    }
+  }
 
   if (checkFragment(vnode)) {
     const frag = doc.createDocumentFragment();
@@ -454,19 +514,21 @@ export function createElement(
       placeholder.setAttribute("data-view-v-if", "");
       createEffect(() => {
         const show = getVIfValue(props);
-        runDirectiveUnmountOnChildren(placeholder);
-        placeholder.replaceChildren();
-        if (show) {
-          const next = createElement(
-            {
-              ...vnode,
-              props: { ...props, vIf: undefined, "v-if": undefined },
-            },
-            parentNamespace,
-            ifContext,
-          );
-          placeholder.appendChild(next);
-        }
+        preserveScrollAroundUpdate(() => {
+          runDirectiveUnmountOnChildren(placeholder);
+          placeholder.replaceChildren();
+          if (show) {
+            const next = createElement(
+              {
+                ...vnode,
+                props: { ...props, vIf: undefined, "v-if": undefined },
+              },
+              parentNamespace,
+              ifContext,
+            );
+            placeholder.appendChild(next);
+          }
+        });
         if (ifContext) ifContext.lastVIf = show;
       });
       return placeholder;
@@ -495,10 +557,13 @@ export function createElement(
           ? (rawList as () => unknown)()
           : (rawList as () => unknown)();
         const list = Array.isArray(resolved) ? (resolved as unknown[]) : [];
+        const len = Number.isFinite(Number(list.length))
+          ? Math.max(0, Math.floor(Number(list.length)))
+          : 0;
         // 支持 children 为工厂函数，或 expand 后的单元素数组 [factory]
         const factory = resolveVForFactory(rawChildren);
         const frag = doc.createDocumentFragment();
-        for (let i = 0; i < list.length; i++) {
+        for (let i = 0; i < len; i++) {
           const item = list[i];
           const childResult = factory(item, i);
           const childNodes = Array.isArray(childResult)
@@ -554,25 +619,28 @@ export function createElement(
     el.setAttribute("data-key", String(vnode.key));
   }
   applyProps(el as Element, props);
-  // v-text / v-html 时仅显示文本或 HTML，不挂载 children
-  if (!hasDirective(props, "vText") && !hasDirective(props, "vHtml")) {
-    const rawChildren = props.children ?? vnode.children;
-    appendChildren(
-      el as Element,
-      rawChildren,
-      ns ?? (tag === "svg" ? SVG_NS : null),
-      ifContext,
-    );
-  }
+  const rawChildren = props.children ?? vnode.children;
+  appendChildren(
+    el as Element,
+    rawChildren,
+    ns ?? (tag === "svg" ? SVG_NS : null),
+    ifContext,
+  );
   return el;
 }
 
-/** 展开后的根：单节点或片段子项列表（用于根协调，避免整树替换） */
+/**
+ * 展开后的根：单个 VNode 或 Fragment 的子项数组（ChildItem[]）。
+ * 用于 createRoot 的根协调，避免整树替换以保持表单等状态。
+ */
 export type ExpandedRoot = VNode | ChildItem[];
 
 /**
- * 仅展开组件为子节点，不求值 getter；用于根协调时得到可 diff 的树。
- * 返回单节点或片段子项数组（ChildItem[]）。
+ * 将 VNode 展开为「可 diff 的树」：仅展开组件与 Fragment，不求值 signal getter。
+ * 用于根协调时与上次展开结果做 patch，得到最小 DOM 更新。
+ *
+ * @param vnode - 根 VNode
+ * @returns 单个 VNode 或 ChildItem 数组（Fragment 子项）
  */
 export function expandVNode(vnode: VNode): ExpandedRoot {
   if (checkFragment(vnode)) {
@@ -602,11 +670,11 @@ export function expandVNode(vnode: VNode): ExpandedRoot {
     try {
       const result: VNode | VNode[] | null = type(props);
       if (result == null) {
-        return { type: "#text", props: { nodeValue: "" }, children: [] };
+        return createTextVNode("");
       }
       const nodes = Array.isArray(result) ? result : [result];
       if (nodes.length === 0) {
-        return { type: "#text", props: { nodeValue: "" }, children: [] };
+        return createTextVNode("");
       }
       if (isErrorBoundary(type)) {
         try {
@@ -623,7 +691,7 @@ export function expandVNode(vnode: VNode): ExpandedRoot {
           return fallbackVNode && typeof fallbackVNode === "object" &&
               "type" in fallbackVNode
             ? expandVNode(fallbackVNode as VNode)
-            : { type: "#text", props: { nodeValue: "" }, children: [] };
+            : createTextVNode("");
         }
       }
       if (nodes.length === 1) return expandVNode(nodes[0] as VNode);
@@ -663,7 +731,11 @@ export function expandVNode(vnode: VNode): ExpandedRoot {
 }
 
 /**
- * 根据展开根创建 DOM（单节点用 createElement，片段用 appendChildren）；供 createRoot 首次挂载使用
+ * 根据展开根创建 DOM：单节点调用 createElement，片段则用 appendChildren 填充 DocumentFragment。
+ * 供 createRoot 首次挂载时使用。
+ *
+ * @param expanded - expandVNode 的返回值（单 VNode 或 ChildItem[]）
+ * @returns 创建出的 DOM 节点或 DocumentFragment
  */
 export function createNodeFromExpanded(expanded: ExpandedRoot): Node {
   const doc = (globalThis as { document: Document }).document;
@@ -702,8 +774,7 @@ function reconcileChildren(
     if (i >= oldItems.length || !existing) {
       const node = isSignalGetter(newItem) || typeof newItem === "function"
         ? (() => {
-          const span = doc.createElement("span");
-          span.setAttribute("data-view-dynamic", "");
+          const span = createDynamicSpan(doc);
           appendDynamicChild(
             span,
             newItem as () => unknown,
@@ -730,8 +801,7 @@ function reconcileChildren(
       parent.replaceChild(
         newIsGetter
           ? (() => {
-            const span = doc.createElement("span");
-            span.setAttribute("data-view-dynamic", "");
+            const span = createDynamicSpan(doc);
             appendDynamicChild(
               span,
               newItem as () => unknown,
@@ -784,11 +854,27 @@ function patchNode(
   }
 
   if (typeof newV.type === "string" && newV.type !== "#text") {
+    // 只有 Element / DocumentFragment 才支持 appendChild；若 dom 实为 Text 等节点（与 VNode 不同步），走替换避免 HierarchyRequestError
+    const nodeType = dom.nodeType;
+    const isElementOrFragment = nodeType === 1 || nodeType === 11; // ELEMENT_NODE | DOCUMENT_FRAGMENT_NODE
+    if (!isElementOrFragment) {
+      const parent = dom.parentNode;
+      if (!parent) return;
+      const next = createElement(newV, parentNamespace, ifContext);
+      parent.replaceChild(next, dom);
+      runDirectiveUnmount(dom);
+      return;
+    }
     const el = dom as Element;
     applyProps(el, newV.props);
+    // vFor/vIf 占位符的子节点由各自 effect 管理，patch 时不得用 VNode.children 协调，否则会清空 vFor 列表等
     if (
-      hasDirective(newV.props, "vText") || hasDirective(newV.props, "vHtml")
-    ) return;
+      el.hasAttribute?.("data-view-v-for") ||
+      el.hasAttribute?.("data-view-v-if") ||
+      el.hasAttribute?.("data-view-v-if-group")
+    ) {
+      return;
+    }
     const oldChildren = normalizeChildren(
       oldV.props?.children ?? oldV.children ?? [],
     );
@@ -809,7 +895,12 @@ function patchNode(
 const defaultIfContext: IfContext = { lastVIf: true };
 
 /**
- * 根协调：用新展开树 patch 已有 DOM，不整树替换，保证表单等不重挂、不丢焦点
+ * 根协调：用新展开树对已有 DOM 做增量 patch，不整树替换，保证表单等不重挂、不丢焦点。
+ *
+ * @param container - 根容器元素
+ * @param mounted - 当前已挂载的根节点（可能是单个节点或 DocumentFragment）
+ * @param lastExpanded - 上次 expandVNode 的结果
+ * @param newExpanded - 本次 expandVNode 的结果
  */
 export function patchRoot(
   container: Element,
@@ -836,8 +927,7 @@ export function patchRoot(
       if (i >= oldItems.length || !existing) {
         const node = isSignalGetter(newItem) || typeof newItem === "function"
           ? (() => {
-            const span = doc.createElement("span");
-            span.setAttribute("data-view-dynamic", "");
+            const span = createDynamicSpan(doc);
             appendDynamicChild(
               span,
               newItem as () => unknown,
@@ -863,8 +953,7 @@ export function patchRoot(
         frag.replaceChild(
           newIsGetter
             ? (() => {
-              const span = doc.createElement("span");
-              span.setAttribute("data-view-dynamic", "");
+              const span = createDynamicSpan(doc);
               appendDynamicChild(
                 span,
                 newItem as () => unknown,

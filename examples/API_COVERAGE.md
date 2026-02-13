@@ -57,21 +57,21 @@ API**，说明示例项目（examples）中哪些已有示例、哪些尚未覆�
 
 ## 四、指令（@dreamer/view/directive）
 
-| 能力                                                             | 说明                                 | 示例覆盖 | 所在页                                   |
-| ---------------------------------------------------------------- | ------------------------------------ | -------- | ---------------------------------------- |
-| `registerDirective`                                              | 注册自定义指令                       | ✅       | Directive 页（v-focus）                  |
-| `vIf` / `v-if`                                                   | 条件渲染                             | ✅       | Directive 页（A/B/C 切换）               |
-| `vElseIf` / `v-else-if`                                          | 多分支                               | ✅       | Directive 页                             |
-| `vElse` / `v-else`                                               | 否则分支                             | ✅       | Directive 页                             |
-| `vFor` / `v-for`                                                 | 列表渲染                             | ✅       | Directive 页（列表 + 追加一项）          |
-| `vShow` / `v-show`                                               | 显隐（display）                      | ✅       | Directive 页                             |
-| `vText` / `v-text`                                               | 文本绑定                             | ✅       | Directive 页                             |
-| `vHtml` / `v-html`                                               | 原始 HTML                            | ✅       | Directive 页（含输入 + 生成 HTML）       |
-| `vModel` / `v-model`                                             | 双向绑定（input/textarea/select）    | ✅       | Directive 页（文本 + 复选框）            |
-| `getModelFromProps`                                              | 自定义组件内取 v-model 的 [get, set] | ✅       | Directive 页（DropdownList、RadioGroup） |
-| 其它：directiveNameToCamel/Kebab、getDirective、createBinding 等 | 工具/内部                            | -        | 一般不单独示例                           |
+| 能力                                                             | 说明                                                    | 示例覆盖 | 所在页                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------- | -------- | ------------------------------------------ |
+| `registerDirective`                                              | 注册自定义指令                                          | ✅       | Directive 页（v-focus）                    |
+| `vIf` / `v-if`                                                   | 条件渲染                                                | ✅       | Directive 页（A/B/C 切换）                 |
+| `vElseIf` / `v-else-if`                                          | 多分支                                                  | ✅       | Directive 页                               |
+| `vElse` / `v-else`                                               | 否则分支                                                | ✅       | Directive 页                               |
+| `vFor` / `v-for`                                                 | 列表渲染                                                | ✅       | Directive 页（列表 + 追加一项）            |
+| `vShow` / `v-show`                                               | 显隐（display）                                         | ✅       | Directive 页                               |
+| `vOnce` / `v-once`                                               | 只渲染一次，不随 signal 更新                            | ✅       | Directive 页                               |
+| `vCloak` / `v-cloak`                                             | 挂载前隐藏，hydrate 后移除，减 FOUC                     | ✅       | Directive 页                               |
+| 表单双向绑定                                                     | value + onInput/onChange 与 createSignal/createReactive | ✅       | Directive 页（文本 + 复选框）、Reactive 页 |
+| 其它：directiveNameToCamel/Kebab、getDirective、createBinding 等 | 工具/内部                                               | -        | 一般不单独示例                             |
 
-**结论**：常用指令（含 v-model）及自定义指令注册均有示例。
+**结论**：常用指令及自定义指令注册均有示例；表单使用响应式数据 + value/onInput
+即可双向绑定。
 
 ---
 
@@ -157,7 +157,7 @@ API**，说明示例项目（examples）中哪些已有示例、哪些尚未覆�
 | 主入口（signal/effect/memo/root/render） | createSignal、createEffect、createMemo、onCleanup、createRoot、render、renderToString                                                      | hydrate 仅说明（需完整 SSR 环境）   |
 | Store                                    | createStore、state、getters、actions、persist                                                                                              | -                                   |
 | Boundary                                 | ErrorBoundary、Suspense                                                                                                                    | -                                   |
-| Directive                                | registerDirective、vIf/vElse/vElseIf/vFor/vShow/vText/vHtml、自定义指令                                                                    | -                                   |
+| Directive                                | registerDirective、vIf/vElse/vElseIf/vFor/vShow/vOnce/vCloak、自定义指令                                                                   | -                                   |
 | Resource                                 | createResource(无/有 source)、与 Suspense 配合                                                                                             | -                                   |
 | Context                                  | createContext、Provider、useContext                                                                                                        | -                                   |
 | Router                                   | createRouter、start、getCurrentRoute、subscribe、navigate、replace、back/forward/go、href、beforeRoute、afterRoute、动态 :param（User 页） | router.stop() 未示例                |

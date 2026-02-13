@@ -6,24 +6,67 @@
 
 import type { VNode } from "../types.ts";
 
-/** Fragment 的 type 标记，不创建真实节点，仅用于包裹子节点 */
+/**
+ * Fragment 的 type 标记 Symbol。
+ * 用于表示「不创建真实 DOM 节点、仅包裹子节点」的虚拟节点。
+ */
 export const FragmentType = Symbol.for("view.fragment");
 
-/** 判断是否为 Fragment 节点 */
+/**
+ * 判断给定 VNode 是否为 Fragment 节点（type 为 FragmentType 或字符串 "Fragment"）。
+ *
+ * @param vnode - 待检测的 VNode
+ * @returns 若为 Fragment 则为 true
+ */
 export function isFragment(vnode: VNode): boolean {
   return vnode.type === FragmentType || (vnode.type as unknown) === "Fragment";
 }
 
-/** v-if / v-else 兄弟链的上下文，用于 vElse 判断“上一个 vIf 是否为 false” */
+/**
+ * v-if / v-else / v-else-if 兄弟链的上下文。
+ * 用于 vElse 判断「上一个 vIf 是否为 false」以决定是否渲染。
+ */
 export type IfContext = { lastVIf: boolean };
 
 /**
- * SSR 选项：allowRawHtml 为 false 时 v-html / dangerouslySetInnerHTML 输出转义文本（安全场景）
- * 默认服务端 v-html 同样不转义，与客户端一致；若需禁止原始 HTML 可传 allowRawHtml: false
+ * SSR 渲染选项。
+ * allowRawHtml 为 false 时，dangerouslySetInnerHTML 将输出转义文本（更安全）。
+ * 默认服务端与客户端一致，允许原始 HTML；若需禁止可传 allowRawHtml: false。
  */
 export type SSROptions = { allowRawHtml?: boolean };
 
-/** 判断是否形如 VNode（含 type、props） */
+/**
+ * 判断给定值是否形如 VNode（对象且含 type、props 属性）。
+ *
+ * @param x - 待检测的值
+ * @returns 若形如 VNode 则为 true
+ */
 export function isVNodeLike(x: unknown): boolean {
   return typeof x === "object" && x !== null && "type" in x && "props" in x;
+}
+
+/**
+ * 创建文本类型的 VNode（type 为 "#text"，props.nodeValue 为字符串化后的 value）。
+ *
+ * @param value - 文本内容（会被转为字符串）
+ * @returns 文本 VNode
+ */
+export function createTextVNode(value: unknown): VNode {
+  return {
+    type: "#text",
+    props: { nodeValue: String(value) },
+    children: [],
+  };
+}
+
+/**
+ * 创建带 data-view-dynamic 属性的 span 占位元素，用于动态子节点（如 signal getter）的挂载容器。
+ *
+ * @param doc - Document 实例
+ * @returns 新创建的 span 元素
+ */
+export function createDynamicSpan(doc: Document): Element {
+  const el = doc.createElement("span");
+  el.setAttribute("data-view-dynamic", "");
+  return el;
 }

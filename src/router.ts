@@ -1,26 +1,43 @@
 /**
- * @dreamer/view — 内置 SPA 路由（不依赖 @dreamer/router/client）
+ * @module @dreamer/view/router
+ * @description
+ * 内置 SPA 路由：基于 History API 的客户端路由，不依赖 @dreamer/router/client。支持无刷新跳转、路由订阅、同源 <a> 点击拦截、前置/后置守卫、404 兜底、back/forward/go、路由 meta；仅 history 模式。
  *
- * 基于 History API 的客户端路由，支持无刷新跳转、路由订阅、链接拦截、
- * 路由守卫（前置/后置）、404 兜底、back/forward/go、路由 meta。仅 history 模式。
+ * **本模块导出：**
+ * - `createRouter(options)`：创建路由器，返回 Router 实例；需调用 start() 后才会监听 popstate 与拦截链接
+ * - 类型：`RouteGuardResult`、`RouteGuard`、`RouteGuardAfter`、`RouteConfig`、`RouteMatch`、`CreateRouterOptions`、`Router`
+ *
+ * **Router 方法：** getCurrentRoute、href、navigate、replace、back、forward、go、subscribe、start、stop
+ *
+ * @example
+ * import { createRouter } from "jsr:@dreamer/view/router";
+ * const router = createRouter({ routes: [{ path: "/", component: () => <Home /> }] });
+ * router.start();
+ * router.subscribe(() => setMatch(router.getCurrentRoute()));
  */
 
 import type { VNode } from "./types.ts";
 
-/** 前置守卫返回值：false 取消导航，string 重定向到该路径，true/void 放行 */
+/**
+ * 前置守卫返回值：false 取消导航，string 重定向到该路径，true/void 放行；支持 Promise。
+ */
 export type RouteGuardResult =
   | boolean
   | string
   | void
   | Promise<boolean | string | void>;
 
-/** 前置守卫：(to, from) => 放行/取消/重定向 */
+/**
+ * 前置守卫：导航前执行，(to, from) => 放行/取消/重定向。
+ */
 export type RouteGuard = (
   to: RouteMatch | null,
   from: RouteMatch | null,
 ) => RouteGuardResult;
 
-/** 后置守卫：导航完成后执行，用于埋点、改 title 等 */
+/**
+ * 后置守卫：导航完成后执行，用于埋点、改 title 等；支持异步。
+ */
 export type RouteGuardAfter = (
   to: RouteMatch | null,
   from: RouteMatch | null,
@@ -138,6 +155,9 @@ function getCurrentPathAndQuery(options: { basePath: string }): {
   return { path, search };
 }
 
+/**
+ * 路由器实例：由 createRouter 返回，提供导航、订阅、启动/停止等能力。
+ */
 export interface Router {
   /** 获取当前路由匹配结果，无匹配且未配置 notFound 时返回 null */
   getCurrentRoute(): RouteMatch | null;
@@ -162,7 +182,10 @@ export interface Router {
 }
 
 /**
- * 创建 SPA 路由器实例（不依赖 @dreamer/router/client）
+ * 创建 SPA 路由器实例（基于 History API，不依赖 @dreamer/router/client）。
+ *
+ * @param options - 路由表、basePath、守卫、notFound、拦截链接等配置
+ * @returns Router 实例，需调用 start() 后才会监听 popstate 与拦截 <a> 点击
  *
  * @example
  * const router = createRouter({
@@ -416,3 +439,12 @@ export function createRouter(options: CreateRouterOptions): Router {
     stop,
   };
 }
+
+/** 懒加载路由页组件（按 path 缓存 resource，支持动态 import）及可选文案/样式类型；从本模块直接导出使用 */
+export {
+  RoutePage,
+  type RoutePageClasses,
+  type RoutePageLabels,
+  type RoutePageStyle,
+  type RoutePageStyles,
+} from "./route-page.tsx";

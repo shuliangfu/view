@@ -1,9 +1,12 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
+    "./cli": "./src/cli.ts",
+    "./csr": "./src/mod-csr.ts",
+    "./hybrid": "./src/mod-hybrid.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./store": "./src/store.ts",
     "./reactive": "./src/reactive.ts",
@@ -13,39 +16,50 @@
     "./compiler": "./src/compiler.ts",
     "./context": "./src/context.ts",
     "./stream": "./src/stream.ts",
-    "./router": "./src/router.ts",
-
-    "./dist": "./dist/index.js",
-    "./dist/jsx-runtime": "./dist/jsx-runtime.js",
-    "./dist/store": "./dist/store.js",
-    "./dist/reactive": "./dist/reactive.js",
-    "./dist/boundary": "./dist/boundary.js",
-    "./dist/directive": "./dist/directive.js",
-    "./dist/resource": "./dist/resource.js",
-    "./dist/compiler": "./dist/compiler.js",
-    "./dist/context": "./dist/context.js",
-    "./dist/stream": "./dist/stream.js",
-    "./dist/router": "./dist/router.js"
+    "./router": "./src/router.ts"
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",
+    "@dreamer/view/dev": "./src/dev.ts",
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/store": "./src/store.ts",
     "@dreamer/view/reactive": "./src/reactive.ts",
     "@dreamer/view/router": "./src/router.ts",
     "@dreamer/test": "jsr:@dreamer/test@^1.0.5",
-    "happy-dom": "npm:happy-dom@20.4.0"
+    "happy-dom": "npm:happy-dom@20.4.0",
+    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.5",
+    "@dreamer/console": "jsr:@dreamer/console@^1.0.6",
+    "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.0.9",
+    "@dreamer/server": "../server/src/mod.ts",
+    "@dreamer/middleware": "jsr:@dreamer/middleware@^1.0.0",
+    "@dreamer/router": "jsr:@dreamer/router@^1.0.8",
+    "@dreamer/logger": "jsr:@dreamer/logger@^1.0.0",
+    "@dreamer/render": "jsr:@dreamer/render@^1.0.12"
   },
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "@dreamer/view",
-    "lib": ["deno.window", "dom"]
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
   },
   "lint": {
-    "include": ["src/"],
-    "rules": { "tags": ["recommended"] }
+    "include": [
+      "src/"
+    ],
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
   },
-  "exclude": ["dist/*", "examples/*", "tests/data/"],
+  "exclude": [
+    "dist/*",
+    "examples/*",
+    "tests/data/"
+  ],
+  "nodeModulesDir": "auto",
   "tasks": {
     "test": "deno test -A tests/",
     "build": "deno run -A build.ts"
