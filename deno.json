@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.19",
+  "version": "1.0.0-beta.20",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -12,6 +12,8 @@
     "./csr": "./src/mod-csr.ts",
     "./hybrid": "./src/mod-hybrid.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./signal": "./src/signal.ts",
+    "./effect": "./src/effect.ts",
     "./reactive": "./src/reactive.ts",
     "./boundary": "./src/boundary.ts",
     "./directive": "./src/directive.ts",
@@ -22,8 +24,10 @@
     "./router": "./src/router.ts",
     "./store": "./src/store.ts",
     "./types": "./src/types.ts",
-    "./signal": "./src/signal.ts",
-    "./effect": "./src/effect.ts"
+    "./meta": "./src/meta.ts",
+    "./scheduler": "./src/scheduler.ts",
+    "./route-page": "./src/route-page.tsx",
+    "./proxy": "./src/proxy.ts"
   },
   "imports": {
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
