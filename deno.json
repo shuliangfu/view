@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.25",
+  "version": "1.0.0-beta.26",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -35,7 +35,7 @@
     "@dreamer/test": "jsr:@dreamer/test@^1.0.5",
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.5",
     "@dreamer/console": "jsr:@dreamer/console@^1.0.6",
-    "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.0.12",
+    "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.0.13",
     "@dreamer/server": "jsr:@dreamer/server@^1.0.5",
     "@dreamer/middleware": "jsr:@dreamer/middleware@^1.0.0",
     "@dreamer/router": "jsr:@dreamer/router@^1.0.8",
