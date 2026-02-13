@@ -155,7 +155,9 @@ export function toRequestPath(
     .replace(/\\/g, "/");
   const strip = options?.stripOutDir?.replace(/\/+$/, "");
   if (strip && (relative === strip || relative.startsWith(strip + "/"))) {
-    relative = relative.slice(relative.startsWith(strip + "/") ? strip.length + 1 : strip.length);
+    relative = relative.slice(
+      relative.startsWith(strip + "/") ? strip.length + 1 : strip.length,
+    );
   }
   return "/" + relative;
 }

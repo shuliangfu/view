@@ -7,15 +7,11 @@
  * 通过 options.mode 区分 dev/prod，使用 view.config 中的 server.dev / server.prod；dev 下可配置 HMR。
  */
 
-import {
-  existsSync,
-  readFile,
-  resolve,
-} from "@dreamer/runtime-adapter";
+import { existsSync, readFile, resolve } from "@dreamer/runtime-adapter";
 import {
   HttpContext,
-  Server as HttpServer,
   type PathHandler,
+  Server as HttpServer,
   type ServerOptions,
 } from "@dreamer/server";
 
@@ -102,7 +98,10 @@ export async function run(
         ? raw
         : new TextDecoder().decode(raw as Uint8Array);
       const out = initialOutputs.length > 0
-        ? str.replace(/(["'])\.\/dist\//g, "$1./").replace(/(["'])\/dist\//g, "$1/")
+        ? str.replace(/(["'])\.\/dist\//g, "$1./").replace(
+          /(["'])\/dist\//g,
+          "$1/",
+        )
         : str;
       return new Response(out, {
         headers: { "content-type": "text/html; charset=utf-8" },
@@ -140,14 +139,18 @@ export async function run(
     if (!relative) return null;
     const normalizedBase = resolve(base).replace(/\/+$/, "") || "/";
     const filePath = resolve(base, relative);
-    if (filePath !== normalizedBase && !filePath.startsWith(normalizedBase + "/")) {
+    if (
+      filePath !== normalizedBase && !filePath.startsWith(normalizedBase + "/")
+    ) {
       return null;
     }
     if (!existsSync(filePath)) return null;
     try {
       const raw = await readFile(filePath);
       const body = typeof raw === "string" ? raw : (raw as Uint8Array);
-      const ext = pathname.includes(".") ? pathname.slice(pathname.lastIndexOf(".")) : "";
+      const ext = pathname.includes(".")
+        ? pathname.slice(pathname.lastIndexOf("."))
+        : "";
       const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
       return new Response(body as BodyInit, {
         status: 200,

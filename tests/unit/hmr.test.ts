@@ -16,7 +16,8 @@ describe("hmr (getHmrVersionGetter / __VIEW_HMR_BUMP__)", () => {
   it("调用 __VIEW_HMR_BUMP__ 后 getter 返回值递增", () => {
     const getter = getHmrVersionGetter();
     const before = getter();
-    const bump = (globalThis as unknown as { __VIEW_HMR_BUMP__?: () => void }).__VIEW_HMR_BUMP__;
+    const bump = (globalThis as unknown as { __VIEW_HMR_BUMP__?: () => void })
+      .__VIEW_HMR_BUMP__;
     expect(typeof bump).toBe("function");
     bump!();
     expect(getter()).toBe(before + 1);

@@ -5,8 +5,4 @@
  * JSR 发布时模块图构建会请求 .../src/jsx-runtime（无扩展名），
  * 通过本 index 可解析到实际实现 ../jsx-runtime.ts。
  */
-export {
-  Fragment,
-  jsx,
-  jsxs,
-} from "../jsx-runtime.ts";
+export { Fragment, jsx, jsxs } from "../jsx-runtime.ts";

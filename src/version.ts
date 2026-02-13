@@ -98,8 +98,8 @@ const VERSION_CACHE_FILENAME = "version.json";
  * 版本缓存目录：Unix ~/.dreamer/view，Windows %USERPROFILE%\.dreamer\view
  */
 function getVersionCacheDir(): string {
-  const home =
-    getEnv("HOME") ?? getEnv("USERPROFILE") ?? getEnv("LOCALAPPDATA") ?? "";
+  const home = getEnv("HOME") ?? getEnv("USERPROFILE") ??
+    getEnv("LOCALAPPDATA") ?? "";
   if (!home) return "";
   return join(home, ".dreamer", "view");
 }
@@ -155,7 +155,10 @@ export async function loadViewDenoJson(): Promise<ViewDenoConfig | null> {
       const res = await fetch(denoJsonUrl);
       if (!res.ok) return null;
       const content = await res.text();
-      const parsed = JSON.parse(content) as { version?: string; imports?: Record<string, string> };
+      const parsed = JSON.parse(content) as {
+        version?: string;
+        imports?: Record<string, string>;
+      };
       return {
         version: parsed.version ?? FALLBACK_VIEW_VERSION,
         imports: parsed.imports ?? {},
@@ -165,7 +168,10 @@ export async function loadViewDenoJson(): Promise<ViewDenoConfig | null> {
     const denoJsonPath = join(root, "deno.json");
     if (!(await exists(denoJsonPath))) return null;
     const content = await readTextFile(denoJsonPath);
-    const parsed = JSON.parse(content) as { version?: string; imports?: Record<string, string> };
+    const parsed = JSON.parse(content) as {
+      version?: string;
+      imports?: Record<string, string>;
+    };
     return {
       version: parsed.version ?? FALLBACK_VIEW_VERSION,
       imports: parsed.imports ?? {},
@@ -187,7 +193,7 @@ function isStableVersion(v: string): boolean {
 
 /** 解析版本号为 [major, minor, patch] */
 function parseVersionParts(v: string): number[] {
-  const base = (v.replace(/^v/, "").split("-")[0] ?? "");
+  const base = v.replace(/^v/, "").split("-")[0] ?? "";
   const parts = base.split(".").map((s) => parseInt(s, 10) || 0);
   return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
 }
@@ -236,10 +242,9 @@ async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
     if (available.length === 0) return FALLBACK_VIEW_VERSION;
 
     const stableList = available.filter(isStableVersion);
-    const latestStable =
-      stableList.length > 0
-        ? stableList.sort((a, b) => -compareVersions(a, b))[0]
-        : null;
+    const latestStable = stableList.length > 0
+      ? stableList.sort((a, b) => -compareVersions(a, b))[0]
+      : null;
 
     if (!useBeta) {
       return latestStable ?? FALLBACK_VIEW_VERSION;

@@ -1,3 +1,4 @@
+// @ts-nocheck — JSX 类型需 declare global，JSR 禁止；详见 src/jsx.d.ts（publish.exclude）
 /**
  * 懒加载路由页组件：按 path 缓存 createResource，避免每次渲染新建导致死循环；
  * 支持 component 为 () => import(...) 动态导入，加载中/错误/内容三态 UI 内聚在此。
@@ -10,7 +11,7 @@
  */
 /** @jsx jsx */
 import { jsx as runtimeJsx } from "./jsx-runtime.ts";
-import { getHmrVersionGetter } from "./hmr.ts"
+import { getHmrVersionGetter } from "./hmr.ts";
 
 /** classic 转换 (type, props, ...children) 适配为 view 运行时 jsx(type, propsWithChildren, key) */
 function jsx(
@@ -18,15 +19,14 @@ function jsx(
   props: Record<string, unknown> | null,
   ...children: unknown[]
 ): import("./types.ts").VNode {
-  const merged =
-    props && typeof props === "object" && !Array.isArray(props)
-      ? { ...props, children }
-      : { children: props != null ? [props, ...children] : children };
+  const merged = props && typeof props === "object" && !Array.isArray(props)
+    ? { ...props, children }
+    : { children: props != null ? [props, ...children] : children };
   return runtimeJsx(type, merged, null);
 }
-import { createResource } from "./resource.ts"
-import type { RouteMatch, Router } from "./router.ts"
-import type { VNode } from "./types.ts"
+import { createResource } from "./resource.ts";
+import type { RouteMatch, Router } from "./router.ts";
+import type { VNode } from "./types.ts";
 
 /** Resource getter 返回类型（与 createResource 一致） */
 type ResourceGetter = () => {
@@ -41,7 +41,9 @@ const resourceCache = new Map<string, ResourceGetter>();
 
 /** HMR 无感刷新前由 __HMR_REFRESH__ 置为 true，本模块执行时清空缓存以便拉新 chunk */
 if (typeof globalThis !== "undefined") {
-  const g = globalThis as unknown as { __VIEW_HMR_CLEAR_ROUTE_CACHE__?: boolean };
+  const g = globalThis as unknown as {
+    __VIEW_HMR_CLEAR_ROUTE_CACHE__?: boolean;
+  };
   if (g.__VIEW_HMR_CLEAR_ROUTE_CACHE__) {
     resourceCache.clear();
     g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = false;
@@ -180,7 +182,9 @@ export function RoutePage(props: {
 
   getHmrVersionGetter()();
   if (typeof globalThis !== "undefined") {
-    const g = globalThis as unknown as { __VIEW_HMR_CLEAR_ROUTE_CACHE__?: boolean };
+    const g = globalThis as unknown as {
+      __VIEW_HMR_CLEAR_ROUTE_CACHE__?: boolean;
+    };
     if (g.__VIEW_HMR_CLEAR_ROUTE_CACHE__) {
       resourceCache.clear();
       g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = false;
@@ -193,11 +197,17 @@ export function RoutePage(props: {
     resourceGetter = createResource(
       () => path,
       (_path) => {
-        const g = typeof globalThis !== "undefined" ? globalThis as unknown as { __VIEW_HMR_CHUNK_FOR_PATH__?: Record<string, string> } : null;
+        const g = typeof globalThis !== "undefined"
+          ? globalThis as unknown as {
+            __VIEW_HMR_CHUNK_FOR_PATH__?: Record<string, string>;
+          }
+          : null;
         const overrideUrl = g?.__VIEW_HMR_CHUNK_FOR_PATH__?.[path];
         if (overrideUrl) {
           delete g.__VIEW_HMR_CHUNK_FOR_PATH__![path];
-          return import(/* @vite-ignore */ overrideUrl) as Promise<{ default: (m?: unknown) => VNode }>;
+          return import(/* @vite-ignore */ overrideUrl) as Promise<
+            { default: (m?: unknown) => VNode }
+          >;
         }
         const result = match.component(matchWithRouter) as unknown;
         if (result && typeof (result as Promise<unknown>).then === "function") {

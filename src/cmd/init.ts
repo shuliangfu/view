@@ -27,12 +27,11 @@ export async function main(
   const root = cwd();
   const targetDirRaw = (options?.dir as string | undefined)?.trim() ?? ".";
   // 已是绝对路径时直接使用，避免 resolve(root, absPath) 在部分实现里被错误拼接
-  const targetDir =
-    targetDirRaw === "."
-      ? root
-      : targetDirRaw.startsWith("/") || /^[A-Za-z]:[\\/]/.test(targetDirRaw)
-        ? targetDirRaw
-        : resolve(root, targetDirRaw);
+  const targetDir = targetDirRaw === "."
+    ? root
+    : targetDirRaw.startsWith("/") || /^[A-Za-z]:[\\/]/.test(targetDirRaw)
+    ? targetDirRaw
+    : resolve(root, targetDirRaw);
 
   await ensureDir(targetDir);
   await ensureDir(join(targetDir, "src"));
@@ -85,7 +84,8 @@ export default config;
     },
     imports: {
       "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
-      "@dreamer/view/jsx-runtime": `jsr:@dreamer/view@^${VIEW_VERSION}/jsx-runtime`,
+      "@dreamer/view/jsx-runtime":
+        `jsr:@dreamer/view@^${VIEW_VERSION}/jsx-runtime`,
       "@dreamer/view/store": `jsr:@dreamer/view@^${VIEW_VERSION}/store`,
       "@dreamer/view/context": `jsr:@dreamer/view@^${VIEW_VERSION}/context`,
       "@dreamer/view/router": `jsr:@dreamer/view@^${VIEW_VERSION}/router`,
@@ -289,7 +289,10 @@ export function Layout(props: LayoutProps): VNode {
   );
 }
 `;
-  await writeTextFile(join(targetDir, "src", "routes", "layout.tsx"), layoutTsx);
+  await writeTextFile(
+    join(targetDir, "src", "routes", "layout.tsx"),
+    layoutTsx,
+  );
 
   // ---------------------------------------------------------------------------
   // src/routes/home.tsx（首页：Hero + 简介，美化）
@@ -480,7 +483,8 @@ export const notFoundRoute: RouteConfig = {
   // ---------------------------------------------------------------------------
   // src/stores/theme.ts
   // ---------------------------------------------------------------------------
-  const themeTs = `import { createStore, withActions } from "@dreamer/view/store";
+  const themeTs =
+    `import { createStore, withActions } from "@dreamer/view/store";
 
 export type Theme = "light" | "dark";
 type ThemeState = Record<string, unknown> & { theme: Theme };

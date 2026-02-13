@@ -14,6 +14,6 @@ export function getHmrVersionGetter(): () => number {
 }
 
 if (typeof globalThis !== "undefined") {
-  (globalThis as unknown as { __VIEW_HMR_BUMP__?: () => void }).__VIEW_HMR_BUMP__ =
-    () => setHmrVersion((v) => v + 1);
+  (globalThis as unknown as { __VIEW_HMR_BUMP__?: () => void })
+    .__VIEW_HMR_BUMP__ = () => setHmrVersion((v) => v + 1);
 }

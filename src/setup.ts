@@ -14,8 +14,8 @@
 import {
   createCommand,
   dirname,
-  exit,
   execPath,
+  exit,
   join,
   makeTempFile,
   readTextFile,
@@ -57,10 +57,16 @@ function isLocalRun(): boolean {
  * 从 import.meta.url 解析当前文件所在目录的文件系统路径（兼容 Windows）
  */
 function getCurrentDir(): string {
-  if (typeof import.meta.url === "undefined" || !import.meta.url.startsWith("file:")) {
+  if (
+    typeof import.meta.url === "undefined" ||
+    !import.meta.url.startsWith("file:")
+  ) {
     return ".";
   }
-  const pathname = new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  const pathname = new URL(import.meta.url).pathname.replace(
+    /^\/([A-Za-z]:)/,
+    "$1",
+  );
   return dirname(pathname);
 }
 
@@ -165,8 +171,12 @@ async function installGlobalCli(): Promise<void> {
         await writeVersionCacheOnInstall();
         printUsage();
       } else {
-        const stderr = child.stderr ? await new Response(child.stderr).text() : "";
-        console.error(`Install failed (exit code ${status.code ?? ""}). ${stderr}`);
+        const stderr = child.stderr
+          ? await new Response(child.stderr).text()
+          : "";
+        console.error(
+          `Install failed (exit code ${status.code ?? ""}). ${stderr}`,
+        );
         exit(status.code ?? 1);
       }
     } finally {
@@ -188,8 +198,12 @@ async function installGlobalCli(): Promise<void> {
       await writeVersionCacheOnInstall();
       printUsage();
     } else {
-      const stderr = child.stderr ? await new Response(child.stderr).text() : "";
-      console.error(`Install failed (exit code ${status.code ?? ""}). ${stderr}`);
+      const stderr = child.stderr
+        ? await new Response(child.stderr).text()
+        : "";
+      console.error(
+        `Install failed (exit code ${status.code ?? ""}). ${stderr}`,
+      );
       exit(status.code ?? 1);
     }
   }
@@ -198,10 +212,16 @@ async function installGlobalCli(): Promise<void> {
 /** 打印 view-cli 使用说明 */
 function printUsage(): void {
   console.log("Usage:");
-  console.log(`  ${CLI_NAME} init [dir]   # Initialize project from example structure`);
-  console.log(`  ${CLI_NAME} dev         # Build then start static server (dev)`);
+  console.log(
+    `  ${CLI_NAME} init [dir]   # Initialize project from example structure`,
+  );
+  console.log(
+    `  ${CLI_NAME} dev         # Build then start static server (dev)`,
+  );
   console.log(`  ${CLI_NAME} build       # Build only (output to dist/)`);
-  console.log(`  ${CLI_NAME} start       # Start static server only (requires prior build)`);
+  console.log(
+    `  ${CLI_NAME} start       # Start static server only (requires prior build)`,
+  );
   console.log(`  ${CLI_NAME} --help      # Show help`);
   console.log("");
 }
