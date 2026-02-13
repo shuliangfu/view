@@ -41,10 +41,9 @@ const _testDir = dirname(
 );
 const VIEW_ROOT = normalizeAbsolutePath(join(_testDir, "..", ".."));
 
-/** Windows 下 bundler 需 file:// URL 才能解析盘符路径；Unix 用路径即可 */
+/** 浏览器 entryPoint：用固定存在的 stub，避免依赖 examples/dist/main.js（Windows CI 上路径/构建时序导致 Could not resolve） */
 function entryPointForBrowser(): string {
-  const p = join(VIEW_ROOT, "examples", "dist", "main.js");
-  return /^[A-Za-z]:[\\/]/.test(p) ? "file:///" + p.replace(/\\/g, "/") : p;
+  return join(VIEW_ROOT, "tests", "e2e", "browser-stub.js");
 }
 
 /** 示例服务进程，beforeAll 启动、afterAll 关闭 */
