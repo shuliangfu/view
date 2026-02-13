@@ -72,6 +72,8 @@ export interface ViewBuildConfig {
   /** 是否启用代码分割，默认 true */
   /** 代码分割配置，默认 { enabled: true, byRoute: true, byComponent: true, bySize: 50000 } */
   splitting?: boolean | SplittingStrategy;
+  /** 是否开启 BuilderClient 调试日志（resolver / onLoad 等），便于排查构建问题 */
+  debug?: boolean;
   // @dreamer/esbuild ClientPlugin
   plugins: BuildPlugin[];
   //

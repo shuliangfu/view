@@ -5,6 +5,7 @@
  */
 
 import { BuilderClient, type ClientConfig } from "@dreamer/esbuild";
+import { createLogger } from "@dreamer/logger";
 import {
   basename,
   cwd,
@@ -267,6 +268,7 @@ export function toClientConfig(
     output: outputDir,
     engine: "view",
     plugins: buildConfig?.plugins ?? [],
+    debug: buildConfig?.debug,
     bundle: {
       minify: buildConfig?.minify ?? true,
       sourcemap: buildConfig?.sourcemap ?? true,
@@ -335,6 +337,15 @@ export async function prepareDevBuild(
       clientConfig.bundle.alias["@dreamer/view"] = "jsr:@dreamer/view/dev";
     }
   }
+  // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
+  if (config.build?.debug !== undefined) {
+    clientConfig.debug = config.build.debug;
+  }
+  clientConfig.logger = createLogger({
+    level: config.build?.debug ? "debug" : "info",
+    format: "text",
+    output: { console: true },
+  });
 
   const builder = new BuilderClient(clientConfig);
   const result = await builder.build({ mode: "dev", write: false });
@@ -446,6 +457,15 @@ export async function run(): Promise<number> {
     outFile,
     config.build,
   );
+  // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
+  if (config.build?.debug !== undefined) {
+    clientConfig.debug = config.build.debug;
+  }
+  clientConfig.logger = createLogger({
+    level: config.build?.debug ? "debug" : "info",
+    format: "text",
+    output: { console: true },
+  });
 
   // 复制 index.html 到 outDir（若存在）；先确保 outDir 存在再写入
   const outputDir = resolve(root, outDir);
