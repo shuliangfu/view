@@ -107,7 +107,7 @@ describe("CLI：build", () => {
   });
 });
 
-/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1 */
+/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径以兼容 Windows */
 const startBrowserConfig = {
   sanitizeOps: false,
   sanitizeResources: false,
@@ -116,7 +116,7 @@ const startBrowserConfig = {
     enabled: true,
     headless: true,
     browserSource: "test" as const,
-    entryPoint: "examples/dist/main.js",
+    entryPoint: join(VIEW_ROOT, "examples", "dist", "main.js"),
     bodyContent: '<div id="root"></div>',
     browserMode: true,
     moduleLoadTimeout: 20_000,
