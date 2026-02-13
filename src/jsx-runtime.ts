@@ -80,10 +80,3 @@ export function jsxs(
 ): VNode {
   return createVNode(type, props, maybeKey);
 }
-
-/**
- * JSX 固有元素类型说明（JSR 不允许包内 declare global，故不在此处声明）：
- * 使用本运行时写 JSX 时，可在项目内自行添加：
- *   /// <reference path="node_modules/jsr/@dreamer/view/jsx-runtime.d.ts" />
- * 或在任意 .d.ts 中：declare global { namespace JSX { interface IntrinsicElements { [tag: string]: Record<string, unknown>; } } }
- */

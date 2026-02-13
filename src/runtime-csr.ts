@@ -4,16 +4,16 @@
  * 不包含 renderToString、hydrate、generateHydrationScript，打主包时可从 @dreamer/view/csr 引入以减小体积。
  */
 
-import { createEffect, setCurrentScope } from "@dreamer/view/effect";
+import { createEffect, setCurrentScope } from "./effect.ts";
 import {
   createNodeFromExpanded,
   type ExpandedRoot,
   expandVNode,
   patchRoot,
-} from "@dreamer/view/dom/element";
-import { runDirectiveUnmount } from "@dreamer/view/dom/unmount";
-import { isDOMEnvironment } from "@dreamer/view/types";
-import type { Root, VNode } from "@dreamer/view/types";
+} from "./dom/element.ts";
+import { runDirectiveUnmount } from "./dom/unmount.ts";
+import { isDOMEnvironment } from "./types.ts";
+import type { Root, VNode } from "./types.ts";
 
 /**
  * 创建根实例并挂载到容器（浏览器）
