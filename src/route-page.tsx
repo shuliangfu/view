@@ -1,4 +1,3 @@
-// @ts-nocheck — JSX 类型需 declare global，JSR 禁止；详见 src/jsx.d.ts（publish.exclude）
 /**
  * 懒加载路由页组件：按 path 缓存 createResource，避免每次渲染新建导致死循环；
  * 支持 component 为 () => import(...) 动态导入，加载中/错误/内容三态 UI 内聚在此。
