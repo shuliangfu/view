@@ -228,6 +228,11 @@ export function createRouter(options: CreateRouterOptions): Router {
     maxRedirects = 5,
   } = options;
 
+  /** 若 meta 子路径未正确解析（如 JSR 打包时），避免 (void 0) is not a function */
+  const safeApplyMeta = typeof applyMetaToHead === "function"
+    ? applyMetaToHead
+    : (_meta: unknown, _suffix: string, _path: string) => {};
+
   const notFoundConfig = notFoundOption ?? null;
   const beforeGuards = beforeRouteOption == null
     ? []
@@ -345,7 +350,7 @@ export function createRouter(options: CreateRouterOptions): Router {
         await Promise.resolve(guard(toAfter, from));
       }
       if (typeof globalThis.document !== "undefined" && toAfter) {
-        applyMetaToHead(
+        safeApplyMeta(
           toAfter.meta,
           documentTitleSuffix,
           toAfter.path,
@@ -397,7 +402,7 @@ export function createRouter(options: CreateRouterOptions): Router {
     if (typeof globalThis.document !== "undefined") {
       const current = getCurrentRoute();
       if (current) {
-        applyMetaToHead(current.meta, documentTitleSuffix, current.path);
+        safeApplyMeta(current.meta, documentTitleSuffix, current.path);
       }
     }
 
