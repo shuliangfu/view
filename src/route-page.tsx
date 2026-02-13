@@ -6,7 +6,6 @@
  * @module @dreamer/view/route-page
  * 由 @dreamer/view/router 统一导出，使用方式：import { RoutePage } from "jsr:@dreamer/view/router"
  */
-
 import { getHmrVersionGetter } from "./hmr.ts"
 import { createResource } from "./resource.ts"
 import type { RouteMatch, Router } from "./router.ts"
