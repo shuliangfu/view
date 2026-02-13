@@ -5,6 +5,7 @@
  * 对每个示例页执行主要交互（点击、输入等）并断言 DOM 效果。
  */
 
+import { dirname, join } from "@dreamer/runtime-adapter";
 import {
   afterAll,
   beforeAll,
@@ -17,10 +18,30 @@ import {
 const SERVER_PORT = 8787;
 const BASE_URL = `http://127.0.0.1:${SERVER_PORT}`;
 
+/** 规整路径：消除 .. 与 .，保证绝对路径一致（与 cli.test.ts 一致，便于 Windows 解析 entryPoint） */
+function normalizeAbsolutePath(p: string): string {
+  const isAbsolute = p.startsWith("/") || /^[A-Za-z]:[\\/]/.test(p);
+  const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
+  const out: string[] = [];
+  for (const part of parts) {
+    if (part === "..") out.pop();
+    else if (part !== ".") out.push(part);
+  }
+  return isAbsolute ? (p.startsWith("/") ? "/" : "") + out.join("/") : out.join("/");
+}
+
+/** 项目根目录（绝对路径），供 entryPoint 在 Windows 上正确解析 */
+const _testDir = dirname(
+  typeof import.meta.url !== "undefined" && import.meta.url.startsWith("file:")
+    ? new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")
+    : join(".", "tests", "e2e", "view-example-browser.test.ts"),
+);
+const VIEW_ROOT = normalizeAbsolutePath(join(_testDir, "..", ".."));
+
 /** 示例服务进程，beforeAll 启动、afterAll 关闭 */
 let serverProcess: Deno.ChildProcess | null = null;
 
-/** 浏览器配置：beforeAll 启动 dev 服务后由 goto 打开 BASE_URL 加载页面 */
+/** 浏览器配置：beforeAll 启动 dev 服务后由 goto 打开 BASE_URL 加载页面；entryPoint 用绝对路径以兼容 Windows */
 const exampleBrowserConfig = {
   sanitizeOps: false,
   sanitizeResources: false,
@@ -29,7 +50,7 @@ const exampleBrowserConfig = {
     enabled: true,
     headless: true,
     browserSource: "test" as const,
-    entryPoint: "examples/dist/main.js",
+    entryPoint: join(VIEW_ROOT, "examples", "dist", "main.js"),
     bodyContent: '<div id="root"></div>',
     browserMode: true,
     moduleLoadTimeout: 20_000,
