@@ -5,8 +5,25 @@
  *
  * @module @dreamer/view/route-page
  * 由 @dreamer/view/router 统一导出，使用方式：import { RoutePage } from "jsr:@dreamer/view/router"
+ *
+ * 使用 classic JSX + 适配器，避免 JSR 发布时对 jsxImportSource/jsx-runtime 的错误解析（mod.ts/jsx-runtime 等）。
  */
+/** @jsx jsx */
+import { jsx as runtimeJsx, Fragment } from "./jsx-runtime.ts";
 import { getHmrVersionGetter } from "./hmr.ts"
+
+/** classic 转换 (type, props, ...children) 适配为 view 运行时 jsx(type, propsWithChildren, key) */
+function jsx(
+  type: import("./types.ts").VNode["type"],
+  props: Record<string, unknown> | null,
+  ...children: unknown[]
+): import("./types.ts").VNode {
+  const merged =
+    props && typeof props === "object" && !Array.isArray(props)
+      ? { ...props, children }
+      : { children: props != null ? [props, ...children] : children };
+  return runtimeJsx(type, merged, null);
+}
 import { createResource } from "./resource.ts"
 import type { RouteMatch, Router } from "./router.ts"
 import type { VNode } from "./types.ts"
