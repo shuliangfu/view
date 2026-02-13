@@ -49,8 +49,9 @@ export async function main(
   await ensureDir(join(targetDir, "src", "utils"));
 
   /** Display path: always relative to cwd (e.g. "app-test" or ".") */
-  const displayDir =
-    targetDir === root ? "." : relative(root, targetDir) || ".";
+  const displayDir = targetDir === root
+    ? "."
+    : relative(root, targetDir) || ".";
   /** Paths of all created files (relative to project), for final listing */
   const createdFiles: string[] = [];
   const addFile = (relPath: string) => createdFiles.push(relPath);
@@ -189,7 +190,7 @@ import { notFoundRoute, routes } from "./router/routers.tsx";
 const container = document.getElementById("root");
 if (container) {
   const router = createAppRouter({ routes, notFound: notFoundRoute });
-  createRoot(() => <App router={router} routes={routes} />, container);
+  createRoot(() => <App router={router} />, container);
   container.removeAttribute("data-view-cloak");
 }
 `;
@@ -200,18 +201,15 @@ if (container) {
   // src/routes/app.tsx（根组件：订阅路由 + Layout + RoutePage）
   // ---------------------------------------------------------------------------
   const appTsx = `/**
- * 根组件：订阅路由，根据当前匹配渲染 Layout + 当前页
+ * 根组件：订阅路由，根据当前匹配渲染 Layout + 当前页（与 examples 一致：从 routers 导入 routes，使用 @dreamer/view/router 的 RoutePage）
  */
 import { createEffect, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
-import type { RouteConfig, RouteMatch, Router } from "@dreamer/view/router";
+import { RoutePage, type Router } from "@dreamer/view/router";
+import { routes } from "../router/routers.tsx";
 import { Layout } from "./layout.tsx";
 
-function RoutePage(props: { match: RouteMatch }): VNode {
-  return props.match.component(props.match);
-}
-
-export function App(props: { router: Router; routes: RouteConfig[] }): VNode {
+export function App(props: { router: Router }): VNode {
   const [match, setMatch] = createSignal(props.router.getCurrentRoute());
   createEffect(() => {
     setMatch(props.router.getCurrentRoute());
@@ -223,7 +221,7 @@ export function App(props: { router: Router; routes: RouteConfig[] }): VNode {
   const current = match();
   if (!current) {
     return (
-      <Layout routes={props.routes} currentPath="">
+      <Layout routes={routes} currentPath="">
         <section class="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
           <p class="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
             加载中…
@@ -237,8 +235,8 @@ export function App(props: { router: Router; routes: RouteConfig[] }): VNode {
     globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
   }
   return (
-    <Layout routes={props.routes} currentPath={current.path}>
-      <RoutePage match={current} />
+    <Layout routes={routes} currentPath={current.path}>
+      <RoutePage match={current} router={props.router} labels={{ errorTitle: "Load failed", retryText: "Retry", loadingText: "Loading…" }} />
     </Layout>
   );
 }
@@ -600,15 +598,18 @@ export const toggleTheme = themeStore.toggleTheme;
   const prefix = displayDir === "." ? "" : displayDir + "/";
   createdFiles.sort();
   for (const f of createdFiles) {
-    console.log("  " + prefix + f);
+    console.log(prefix + f);
   }
   console.log(
     `${GREEN}Project created successfully at ${displayDir}.${RESET}`,
   );
+
+  console.log("");
   if (displayDir !== ".") {
     console.log(`cd ${displayDir}`);
   }
   console.log("dev: view-cli dev");
   console.log("build: view-cli build");
   console.log("prod: view-cli start");
+  console.log("");
 }

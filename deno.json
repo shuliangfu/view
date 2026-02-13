@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0-beta.11",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -37,7 +37,7 @@
     "@dreamer/middleware": "jsr:@dreamer/middleware@^1.0.0",
     "@dreamer/router": "jsr:@dreamer/router@^1.0.8",
     "@dreamer/logger": "jsr:@dreamer/logger@^1.0.0",
-    "@dreamer/render": "jsr:@dreamer/render@^1.0.12",
+    "@dreamer/render": "jsr:@dreamer/render@^1.0.13",
     "happy-dom": "npm:happy-dom@20.4.0"
   },
   "compilerOptions": {
