@@ -181,38 +181,51 @@ export async function loadViewDenoJson(): Promise<ViewDenoConfig | null> {
   }
 }
 
-// ---------- JSR meta.json 版本解析（供 getViewVersion 使用） ----------
+// ---------- JSR meta.json 版本解析（与 @dreamer/dweb jsr-versions 对齐） ----------
 
 const JSR_VIEW_META_URL = "https://jsr.io/@dreamer/view/meta.json";
 
-/** 是否为正则的稳定版（无 prerelease 后缀） */
-function isStableVersion(v: string): boolean {
-  const normalized = v.replace(/^v/, "");
-  return /^\d+\.\d+\.\d+$/.test(normalized) || !normalized.includes("-");
+/** 是否为预发布版（含 -beta、-alpha、-rc 等） */
+function isPrereleaseVersion(v: string): boolean {
+  const normalized = v.replace(/^v/, "").trim();
+  return /-\w+\.?\d*$/.test(normalized);
 }
 
-/** 解析版本号为 [major, minor, patch] */
-function parseVersionParts(v: string): number[] {
-  const base = v.replace(/^v/, "").split("-")[0] ?? "";
-  const parts = base.split(".").map((s) => parseInt(s, 10) || 0);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+/** 解析 prerelease 标识中的数值（如 beta.17 -> 17），用于正确排序 */
+function parsePrereleaseNum(pre: string): number {
+  const m = pre.match(/(\d+)$/);
+  return m ? parseInt(m[1], 10) : 0;
 }
 
 /**
- * 版本比较：>0 表示 a>b，<0 表示 a<b，0 表示相等
- * 若 major.minor.patch 相同，稳定版视为大于 prerelease
+ * 简单 semver 比较：返回 a > b 则正数，a < b 则负数，相等则 0
+ * 与 dweb 的 compareVersions 一致：major.minor.patch 先比，再比 prerelease 数值，稳定版视为大于 prerelease
  */
 export function compareVersions(a: string, b: string): number {
-  const pa = parseVersionParts(a);
-  const pb = parseVersionParts(b);
-  for (let i = 0; i < 3; i++) {
-    if (pa[i] !== pb[i]) return pa[i] - pb[i];
-  }
-  const aStable = isStableVersion(a);
-  const bStable = isStableVersion(b);
+  const parse = (v: string): [number, number, number, string] => {
+    const normalized = v.replace(/^v/, "").trim();
+    const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+    if (!match) return [0, 0, 0, ""];
+    return [
+      parseInt(match[1], 10),
+      parseInt(match[2], 10),
+      parseInt(match[3], 10),
+      (match[4] ?? "") as string,
+    ];
+  };
+  const [ma, na, pa, preA] = parse(a);
+  const [mb, nb, pb, preB] = parse(b);
+  if (ma !== mb) return ma - mb;
+  if (na !== nb) return na - nb;
+  if (pa !== pb) return pa - pb;
+  const aStable = preA === "";
+  const bStable = preB === "";
   if (aStable && !bStable) return 1;
   if (!aStable && bStable) return -1;
-  return 0;
+  const preNumA = parsePrereleaseNum(preA);
+  const preNumB = parsePrereleaseNum(preB);
+  if (preNumA !== preNumB) return preNumA - preNumB;
+  return String(preA).localeCompare(String(preB));
 }
 
 /**
@@ -238,35 +251,46 @@ async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
  * 成功时返回版本号，失败或无可用版本时返回 null
  * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
  */
+/** 请求 JSR 时使用的 User-Agent，避免被当作浏览器返回 HTML */
+const JSR_FETCH_UA = "view-cli/1.0 (jsr:@dreamer/view)";
+
 export async function fetchLatestViewVersionFromJsr(
   useBeta: boolean,
 ): Promise<string | null> {
   try {
-    // JSR 要求：Accept 不能含 text/html，否则会返回 HTML 页面
+    // JSR 要求：Accept 不能含 text/html，且建议带 User-Agent 标识为 CLI
     const res = await fetch(JSR_VIEW_META_URL, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        "User-Agent": JSR_FETCH_UA,
+      },
     });
     if (!res.ok) return null;
+    const ct = res.headers.get("Content-Type") ?? "";
+    if (ct.includes("text/html")) return null;
     const meta = (await res.json()) as {
+      latest?: string;
       versions?: Record<string, { yanked?: boolean }>;
     };
     const versions = meta.versions ?? {};
-    const available = Object.entries(versions)
+    const candidates = Object.entries(versions)
       .filter(([, m]) => !m.yanked)
       .map(([v]) => v);
-    if (available.length === 0) return null;
-
-    const stableList = available.filter(isStableVersion);
-    const latestStable = stableList.length > 0
-      ? stableList.sort((a, b) => -compareVersions(a, b))[0]
-      : null;
+    if (candidates.length === 0) return meta.latest ?? null;
 
     if (!useBeta) {
-      return latestStable ?? null;
+      if (meta.latest && candidates.includes(meta.latest)) return meta.latest;
+      const stableList = candidates.filter((v) => !isPrereleaseVersion(v));
+      if (stableList.length === 0) return null;
+      stableList.sort((a, b) => compareVersions(b, a));
+      return stableList[0] ?? null;
     }
 
-    const latestAny = available.sort((a, b) => -compareVersions(a, b))[0];
-    if (!latestStable) return latestAny ?? null;
+    const latestStable = candidates
+      .filter((v) => !isPrereleaseVersion(v))
+      .sort((a, b) => compareVersions(b, a))[0] ?? null;
+    const latestAny = candidates.sort((a, b) => compareVersions(b, a))[0] ??
+      null;
     return pickNewer(latestStable, latestAny) ?? null;
   } catch {
     return null;
