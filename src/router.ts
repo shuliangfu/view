@@ -59,22 +59,34 @@ function hasHistory(): boolean {
 }
 
 /**
- * 单条路由配置：path 支持动态参数 :param，可选 meta 供守卫或布局使用
+ * 懒加载路由模块：动态 import 返回的模块形状，RoutePage 会取 default 并传入 match 渲染
+ */
+export type RouteComponentModule = { default: (match?: RouteMatch) => VNode };
+
+/**
+ * 单条路由配置：path 支持动态参数 :param，可选 meta 供守卫或布局使用。
+ * component 支持同步（返回 VNode）或懒加载（返回 Promise<{ default: (match?) => VNode }>）。
  * @example
  * { path: "/", component: () => <Home />, meta: { title: "首页" } }
  * { path: "/user/:id", component: (match) => <User id={match.params.id} /> }
+ * { path: "/lazy", component: () => import("./LazyPage.tsx"), meta: { title: "懒加载" } }
  */
 export interface RouteConfig {
   /** 路径模式，支持 :param（如 /user/:id） */
   path: string;
-  /** 渲染该路由的组件，接收当前匹配结果 */
-  component: (match: RouteMatch) => VNode;
+  /**
+   * 渲染该路由的组件：同步时返回 VNode，懒加载时返回 Promise<{ default: (match?) => VNode }>（如 () => import("./Page.tsx")）
+   */
+  component:
+    | ((match: RouteMatch) => VNode)
+    | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 路由元信息，如 title、requiresAuth，供守卫或布局读取 */
   meta?: Record<string, unknown>;
 }
 
 /**
- * 当前路由匹配结果，供 component 与守卫使用
+ * 当前路由匹配结果，供 component 与守卫使用。
+ * component 与 RouteConfig 一致，可为同步或懒加载（RoutePage 内会统一处理）。
  */
 export interface RouteMatch {
   /** 匹配到的路由 path 模式（如 "/user/:id"） */
@@ -85,8 +97,10 @@ export interface RouteMatch {
   query: Record<string, string>;
   /** 当前完整路径（pathname） */
   fullPath: string;
-  /** 渲染该路由的组件 */
-  component: (match: RouteMatch) => VNode;
+  /** 渲染该路由的组件（同步返回 VNode 或懒加载返回 Promise<RouteComponentModule>） */
+  component:
+    | ((match: RouteMatch) => VNode)
+    | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 该路由的 meta（若配置了） */
   meta?: Record<string, unknown>;
 }
