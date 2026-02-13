@@ -792,11 +792,11 @@ describe("浏览器测试（examples 入口）", () => {
     expect(text).toContain("ErrorBoundary");
   }, exampleBrowserConfig);
 
-  it("顶部导航：点击「指令」进入指令页", async (t) => {
+  it("顶部导航：点击「Directive」进入指令页", async (t) => {
     if (!t?.browser) return;
     await navigate(t, "/");
     await new Promise((r) => setTimeout(r, 150));
-    const ok = await clickNavLinkByText(t, "指令");
+    const ok = await clickNavLinkByText(t, "Directive");
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);
