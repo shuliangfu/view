@@ -23,36 +23,75 @@ CSR, SSR, streaming SSR, and hydration.
 
 ## 📦 Installation
 
-### Deno
+### Install view-cli globally
+
+To use `view-cli` commands (e.g. `view-cli init`, `view-cli dev`) from any
+directory, run the setup script:
+
+```bash
+deno run -A jsr:@dreamer/view/setup
+```
+
+After installation, run `view-cli upgrade` to get the latest version.
+
+After installation, you can run:
+
+```bash
+view-cli init [dir]     # Initialize project from example structure
+view-cli dev           # Build then start static server (dev)
+view-cli build         # Build only (output to dist/)
+view-cli start         # Start static server only (requires prior build)
+view-cli upgrade       # Upgrade @dreamer/view to latest (use --beta for beta)
+view-cli update        # Update project dependencies and lockfile (use --latest for latest)
+view-cli version       # Show version (alias: v)
+view-cli --version     # Show version (alias: -v)
+view-cli --help        # Full help
+```
+
+### Add to existing project (library only)
+
+If you only need the library in an existing Deno/Bun project without the CLI:
+
+**Deno**
 
 ```bash
 deno add jsr:@dreamer/view
 ```
 
-Optional subpaths (match deno.json exports):
-
-```bash
-deno add jsr:@dreamer/view          # main entry (core + render)
-deno add jsr:@dreamer/view/csr      # CSR-only lightweight entry
-deno add jsr:@dreamer/view/hybrid   # client hybrid entry (hydrate)
-deno add jsr:@dreamer/view/store
-deno add jsr:@dreamer/view/reactive
-deno add jsr:@dreamer/view/context
-deno add jsr:@dreamer/view/resource
-deno add jsr:@dreamer/view/router
-deno add jsr:@dreamer/view/boundary
-deno add jsr:@dreamer/view/directive
-deno add jsr:@dreamer/view/stream
-deno add jsr:@dreamer/view/compiler # compile-time optimizations (optional)
-```
-
-**JSX:** In `deno.json` set `compilerOptions.jsx: "react-jsx"` and
-`compilerOptions.jsxImportSource: "jsr:@dreamer/view"`.
-
-### Bun
+**Bun**
 
 ```bash
 bunx jsr add @dreamer/view
+```
+
+**Optional subpaths** (for on-demand imports in either Deno or Bun; use
+`deno add` or `bunx jsr add` with the same subpath):
+
+```bash
+# Main entry: signal/effect/memo, createRoot, render, renderToString, hydrate
+deno add jsr:@dreamer/view
+# CSR-only: smaller bundle, no renderToString/hydrate/generateHydrationScript
+deno add jsr:@dreamer/view/csr
+# Hybrid: createRoot, render, hydrate (for client-side activation after SSR)
+deno add jsr:@dreamer/view/hybrid
+# Store: reactive state, getters, actions, optional persist (e.g. localStorage)
+deno add jsr:@dreamer/view/store
+# Reactive: createReactive for forms, value + onInput two-way binding
+deno add jsr:@dreamer/view/reactive
+# Context: createContext, Provider, useContext for cross-tree injection
+deno add jsr:@dreamer/view/context
+# Resource: createResource for async data, use with Suspense
+deno add jsr:@dreamer/view/resource
+# Router: createRouter for SPA routing (History, routes, navigate)
+deno add jsr:@dreamer/view/router
+# Boundary: Suspense, ErrorBoundary
+deno add jsr:@dreamer/view/boundary
+# Directive: built-in vIf/vFor/vShow and registerDirective for custom
+deno add jsr:@dreamer/view/directive
+# Stream: renderToStream for streaming SSR
+deno add jsr:@dreamer/view/stream
+# Compiler: optimize, createOptimizePlugin for build-time optimizations (optional)
+deno add jsr:@dreamer/view/compiler
 ```
 
 ---

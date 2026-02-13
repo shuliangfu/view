@@ -229,9 +229,21 @@ export function pickNewer(a: string | null, b: string | null): string | null {
  * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
  */
 async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
+  const v = await fetchLatestViewVersionFromJsr(useBeta);
+  return v ?? FALLBACK_VIEW_VERSION;
+}
+
+/**
+ * 从 JSR meta.json 拉取 @dreamer/view 最新版本（供 upgrade 命令使用）
+ * 成功时返回版本号，失败或无可用版本时返回 null
+ * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
+ */
+export async function fetchLatestViewVersionFromJsr(
+  useBeta: boolean,
+): Promise<string | null> {
   try {
     const res = await fetch(JSR_VIEW_META_URL);
-    if (!res.ok) return FALLBACK_VIEW_VERSION;
+    if (!res.ok) return null;
     const meta = (await res.json()) as {
       versions?: Record<string, { yanked?: boolean }>;
     };
@@ -239,7 +251,7 @@ async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
     const available = Object.entries(versions)
       .filter(([, m]) => !m.yanked)
       .map(([v]) => v);
-    if (available.length === 0) return FALLBACK_VIEW_VERSION;
+    if (available.length === 0) return null;
 
     const stableList = available.filter(isStableVersion);
     const latestStable = stableList.length > 0
@@ -247,14 +259,14 @@ async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
       : null;
 
     if (!useBeta) {
-      return latestStable ?? FALLBACK_VIEW_VERSION;
+      return latestStable ?? null;
     }
 
     const latestAny = available.sort((a, b) => -compareVersions(a, b))[0];
-    if (!latestStable) return latestAny ?? FALLBACK_VIEW_VERSION;
-    return pickNewer(latestStable, latestAny) ?? FALLBACK_VIEW_VERSION;
+    if (!latestStable) return latestAny ?? null;
+    return pickNewer(latestStable, latestAny) ?? null;
   } catch {
-    return FALLBACK_VIEW_VERSION;
+    return null;
   }
 }
 

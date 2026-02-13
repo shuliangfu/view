@@ -6,11 +6,11 @@
  * 当前页由 @dreamer/view/router 导出的 RoutePage 渲染（懒加载 + 按 path 缓存）。
  */
 
-import { createEffect, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
+import { createEffect, createSignal } from "@dreamer/view";
 import { RoutePage, type Router } from "@dreamer/view/router";
-import { Layout } from "./layout.tsx";
 import { routes } from "../router/routers.tsx";
+import { Layout } from "./layout.tsx";
 
 interface AppProps {
   router: Router;
