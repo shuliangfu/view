@@ -9,7 +9,6 @@
 
 import {
   existsSync,
-  join,
   readFile,
   resolve,
 } from "@dreamer/runtime-adapter";
