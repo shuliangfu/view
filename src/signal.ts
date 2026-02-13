@@ -1,7 +1,7 @@
 /**
  * @module @dreamer/view/signal
  * @description
- * View 模板引擎 — Signal（信号）。细粒度响应式单元：getter 读值并登记当前 effect 为依赖，setter 改值并通知所有依赖的 effect 执行。通知通过调度器异步执行，避免 effect 内「读→写」导致同步重入卡死主线程。currentEffect 的读写统一从 view-global 引入，保证 main 与 code-split chunk 共享同一 global。
+ * View 模板引擎 — Signal（信号）。细粒度响应式单元：getter 读值并登记当前 effect 为依赖，setter 改值并通知所有依赖的 effect 执行。通知通过调度器异步执行，避免 effect 内「读→写」导致同步重入卡死主线程。currentEffect 存于 globalThis，本模块自包含实现，保证 main 与 code-split chunk 共享同一 global。
  *
  * **本模块导出：**
  * - `createSignal(initial)`：创建信号，返回 [getter, setter]
@@ -10,10 +10,8 @@
  */
 
 import { schedule } from "./scheduler.ts";
-import {
-  getGlobalCurrentEffect,
-  setGlobalCurrentEffect,
-} from "@dreamer/view/view-global";
+
+const KEY_CURRENT_EFFECT = "__VIEW_CURRENT_EFFECT";
 
 /** 当前正在执行的 effect（run 函数），用于依赖收集；run 上可挂 _subscriptionSets 供清理 */
 type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
@@ -26,7 +24,7 @@ type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
  * @internal 由 effect 模块内部使用，一般业务代码无需调用
  */
 export function setCurrentEffect(effect: (() => void) | null): void {
-  setGlobalCurrentEffect(effect as EffectRun | null);
+  (globalThis as unknown as Record<string, EffectRun | null>)[KEY_CURRENT_EFFECT] = effect as EffectRun | null;
 }
 
 /**
@@ -37,7 +35,8 @@ export function setCurrentEffect(effect: (() => void) | null): void {
  * @internal 主要由 effect 与 dom 层使用，业务代码较少直接使用
  */
 export function getCurrentEffect(): (() => void) | null {
-  return getGlobalCurrentEffect();
+  const v = (globalThis as unknown as Record<string, EffectRun | null>)[KEY_CURRENT_EFFECT];
+  return v ?? null;
 }
 
 /** 单个 signal 的订阅者（effect 的重新执行函数）列表 */
@@ -61,7 +60,7 @@ export function createSignal<T>(
   const subscribers: Subscriber = new Set();
 
   const getter = (): T => {
-    const currentEffect = getGlobalCurrentEffect() as EffectRun | null;
+    const currentEffect = getCurrentEffect() as EffectRun | null;
     if (currentEffect) {
       subscribers.add(currentEffect);
       if (currentEffect._subscriptionSets) {

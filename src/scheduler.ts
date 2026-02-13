@@ -1,14 +1,30 @@
 /**
  * @module @dreamer/view/scheduler
  * @description
- * View 模板引擎 — 调度器（微任务批处理）。供 signal、store、effect 共用：订阅者/effect 不在此 tick 内同步执行，而是加入队列，由一次微任务统一 flush，避免同步重入导致主线程卡死。队列与 scheduled 从 view-global 读取，保证 main 与 code-split chunk 共用同一队列与同一 flush。
+ * View 模板引擎 — 调度器（微任务批处理）。供 signal、store、effect 共用：订阅者/effect 不在此 tick 内同步执行，而是加入队列，由一次微任务统一 flush，避免同步重入导致主线程卡死。队列与 scheduled 存于 globalThis，本模块自包含实现，保证 main 与 code-split chunk 共用同一队列与同一 flush。
  *
  * **本模块导出：**
  * - `schedule(run)`：将任务加入队列，微任务中执行
  * - `unschedule(run)`：从队列移除任务（如 effect dispose 时）
  */
 
-import { getGlobalSchedulerState } from "@dreamer/view/view-global";
+const KEY_SCHEDULER = "__VIEW_SCHEDULER";
+
+type SchedulerState = {
+  queue: Set<() => void>;
+  queueCopy: (() => void)[];
+  scheduled: boolean;
+};
+
+function getGlobalSchedulerState(): SchedulerState {
+  const g = globalThis as unknown as Record<string, SchedulerState | undefined>;
+  let state = g[KEY_SCHEDULER];
+  if (!state) {
+    state = { queue: new Set(), queueCopy: [], scheduled: false };
+    (globalThis as unknown as Record<string, SchedulerState>)[KEY_SCHEDULER] = state;
+  }
+  return state;
+}
 
 /**
  * 清空当前队列并依次执行所有任务（在微任务中调用）

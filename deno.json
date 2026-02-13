@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.15",
+  "version": "1.0.0-beta.16",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -21,7 +21,6 @@
     "./stream": "./src/stream.ts",
     "./router": "./src/router.ts",
     "./store": "./src/store.ts",
-    "./view-global": "./src/view-global.ts",
     "./types": "./src/types.ts",
     "./signal": "./src/signal.ts",
     "./effect": "./src/effect.ts",
@@ -40,7 +39,6 @@
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",
-    "@dreamer/view/view-global": "./src/view-global.ts",
     "@dreamer/view/effect": "./src/effect.ts",
     "@dreamer/view/dom": "./src/dom.ts",
     "@dreamer/view/dom/element": "./src/dom/element.ts",

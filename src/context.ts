@@ -19,11 +19,48 @@
 
 import { markSignalGetter } from "./signal.ts";
 import type { VNode } from "./types.ts";
-import {
-  getGlobalContextDefaults,
-  getGlobalContextStacks,
-  getGlobalProviderBindings,
-} from "@dreamer/view/view-global";
+
+const KEY_CONTEXT_STACKS = "__VIEW_CONTEXT_STACKS";
+const KEY_CONTEXT_DEFAULTS = "__VIEW_CONTEXT_DEFAULTS";
+const KEY_PROVIDER_BINDINGS = "__VIEW_PROVIDER_BINDINGS";
+
+/** context 栈：id -> value[]，跨 bundle 共享 */
+type GlobalContextStacks = Map<symbol, unknown[]>;
+/** context 默认值：id -> defaultValue */
+type GlobalContextDefaults = Map<symbol, unknown>;
+/** Provider 绑定：组件 -> { id, getValue } */
+export type ProviderBinding = { id: symbol; getValue: (props: Record<string, unknown>) => unknown };
+type GlobalProviderBindings = Map<(props: Record<string, unknown>) => unknown, ProviderBinding>;
+
+function getGlobalContextStacks(): GlobalContextStacks {
+  const g = globalThis as unknown as Record<string, GlobalContextStacks | undefined>;
+  let m = g[KEY_CONTEXT_STACKS];
+  if (!m) {
+    m = new Map();
+    (globalThis as unknown as Record<string, GlobalContextStacks>)[KEY_CONTEXT_STACKS] = m;
+  }
+  return m;
+}
+
+function getGlobalContextDefaults(): GlobalContextDefaults {
+  const g = globalThis as unknown as Record<string, GlobalContextDefaults | undefined>;
+  let m = g[KEY_CONTEXT_DEFAULTS];
+  if (!m) {
+    m = new Map();
+    (globalThis as unknown as Record<string, GlobalContextDefaults>)[KEY_CONTEXT_DEFAULTS] = m;
+  }
+  return m;
+}
+
+function getGlobalProviderBindings(): GlobalProviderBindings {
+  const g = globalThis as unknown as Record<string, GlobalProviderBindings | undefined>;
+  let m = g[KEY_PROVIDER_BINDINGS];
+  if (!m) {
+    m = new Map();
+    (globalThis as unknown as Record<string, GlobalProviderBindings>)[KEY_PROVIDER_BINDINGS] = m;
+  }
+  return m;
+}
 
 /** Fragment 的 type 标记，与 dom/shared 中 isFragment 判断一致，避免 context 依赖 dom */
 const FRAGMENT_TYPE = "Fragment";
