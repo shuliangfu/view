@@ -21,7 +21,7 @@ import {
 } from "@dreamer/runtime-adapter";
 import { afterAll, cleanupAllBrowsers, describe, expect, it } from "@dreamer/test";
 
-/** 规整路径：消除 .. 与 .，保证绝对路径一致（runtime-adapter resolve 不规整 ..） */
+/** 规整路径：消除 .. 与 .；Windows 盘符路径（/D:/ 或 D:/）不输出前导 /，避免 mkdir/cwd 报错 */
 function normalizeAbsolutePath(p: string): string {
   const isAbsolute = p.startsWith("/") || /^[A-Za-z]:[\\/]/.test(p);
   const parts = p.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -30,13 +30,17 @@ function normalizeAbsolutePath(p: string): string {
     if (part === "..") out.pop();
     else if (part !== ".") out.push(part);
   }
-  return isAbsolute ? "/" + out.join("/") : out.join("/");
+  const joined = out.join("/");
+  if (!isAbsolute) return joined;
+  // Windows 盘符路径（如 D:）不加重置前导 /，否则会变成 /D:/ 导致 os error 123
+  if (out[0] && /^[A-Za-z]:$/.test(out[0])) return joined;
+  return "/" + joined;
 }
 
-/** view 包根目录：由当前测试文件路径向上两级 */
+/** view 包根目录：由当前测试文件路径向上两级；Windows 下去掉 pathname 前导 /（/D:/ -> D:/） */
 const _testDir = dirname(
   typeof import.meta.url !== "undefined" && import.meta.url.startsWith("file:")
-    ? new URL(import.meta.url).pathname
+    ? new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")
     : join(cwd(), "tests", "e2e", "cli.test.ts"),
 );
 const VIEW_ROOT = normalizeAbsolutePath(join(_testDir, "..", ".."));
@@ -93,7 +97,7 @@ describe("CLI：build", () => {
   it("在 examples 目录执行 view build 应产出 dist/ 且含 main.js", async () => {
     const cmd = createCommand(execPath(), {
       args: ["run", "-A", "../src/cli.ts", "build"],
-      cwd: EXAMPLES_DIR,
+      cwd: resolve(EXAMPLES_DIR),
       stdout: "piped",
       stderr: "piped",
     });
@@ -107,7 +111,13 @@ describe("CLI：build", () => {
   });
 });
 
-/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径以兼容 Windows */
+/** Windows 下 bundler 需 file:// URL 才能解析盘符路径；Unix 用路径即可 */
+function entryPointForBrowser(): string {
+  const p = join(VIEW_ROOT, "examples", "dist", "main.js");
+  return /^[A-Za-z]:[\\/]/.test(p) ? "file:///" + p.replace(/\\/g, "/") : p;
+}
+
+/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径/file URL 以兼容 Windows */
 const startBrowserConfig = {
   sanitizeOps: false,
   sanitizeResources: false,
@@ -116,7 +126,7 @@ const startBrowserConfig = {
     enabled: true,
     headless: true,
     browserSource: "test" as const,
-    entryPoint: join(VIEW_ROOT, "examples", "dist", "main.js"),
+    entryPoint: entryPointForBrowser(),
     bodyContent: '<div id="root"></div>',
     browserMode: true,
     moduleLoadTimeout: 20_000,

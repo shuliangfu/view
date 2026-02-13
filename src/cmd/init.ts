@@ -1,6 +1,7 @@
 /**
  * init 命令：按示例项目结构初始化新项目
  * 使用 @dreamer/runtime-adapter 做文件与路径操作，兼容 Deno / Bun。
+ * 版本号通过 version.ts 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
  * 生成 routes/home.tsx、routes/about.tsx 及布局与路由，风格参考 view/examples。
  */
 
@@ -11,82 +12,11 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-
-const JSR_VIEW_META_URL = "https://jsr.io/@dreamer/view/meta.json";
-const FALLBACK_VIEW_VERSION = "1.0.0";
-
-/** 是否为正则的稳定版（无 prerelease 后缀，如 1.0.0；1.0.0-beta.1 则非稳定） */
-function isStableVersion(v: string): boolean {
-  const normalized = v.replace(/^v/, "");
-  return /^\d+\.\d+\.\d+$/.test(normalized) || !normalized.includes("-");
-}
-
-/**
- * 解析版本号为 [major, minor, patch]，prerelease 部分不参与数值比较
- */
-function parseVersionParts(v: string): number[] {
-  const base = v.replace(/^v/, "").split("-")[0] ?? "";
-  const parts = base.split(".").map((s) => parseInt(s, 10) || 0);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
-}
-
-/**
- * 版本比较：a 与 b 按 semver 比较，返回值 >0 表示 a>b，<0 表示 a<b，0 表示相等。
- * 若 major.minor.patch 相同，稳定版（无 prerelease）视为大于 prerelease。
- */
-function compareVersions(a: string, b: string): number {
-  const pa = parseVersionParts(a);
-  const pb = parseVersionParts(b);
-  for (let i = 0; i < 3; i++) {
-    if (pa[i] !== pb[i]) return pa[i] - pb[i];
-  }
-  const aStable = isStableVersion(a);
-  const bStable = isStableVersion(b);
-  if (aStable && !bStable) return 1;
-  if (!aStable && bStable) return -1;
-  return 0;
-}
-
-/**
- * 从 JSR meta.json 获取 @dreamer/view 版本号（排除 yanked）
- * @param beta 为 true 时允许返回最新 beta；若此时稳定版比 beta 新，仍返回稳定版
- * @param beta 为 false 时仅返回最新稳定版
- */
-async function getViewVersion(beta: boolean): Promise<string> {
-  try {
-    const res = await fetch(JSR_VIEW_META_URL);
-    if (!res.ok) return FALLBACK_VIEW_VERSION;
-    const meta = await res.json() as {
-      versions?: Record<string, { yanked?: boolean }>;
-    };
-    const versions = meta.versions ?? {};
-    const available = Object.entries(versions)
-      .filter(([, m]) => !m.yanked)
-      .map(([v]) => v);
-    if (available.length === 0) return FALLBACK_VIEW_VERSION;
-
-    const stableList = available.filter(isStableVersion);
-    const latestStable = stableList.length > 0
-      ? stableList.sort((a, b) => -compareVersions(a, b))[0]
-      : null;
-
-    if (!beta) {
-      return latestStable ?? FALLBACK_VIEW_VERSION;
-    }
-
-    const latestAny = available.sort((a, b) => -compareVersions(a, b))[0];
-    if (!latestStable) return latestAny ?? FALLBACK_VIEW_VERSION;
-    return compareVersions(latestStable, latestAny) >= 0
-      ? latestStable
-      : latestAny;
-  } catch {
-    return FALLBACK_VIEW_VERSION;
-  }
-}
+import { getViewVersion } from "../version.ts";
 
 /**
  * CLI 入口：由 @dreamer/console 的 action 调用
- * @param options options.dir 为可选目标目录（默认当前目录），options.beta 为 true 时允许使用最新 beta
+ * @param options options.dir 为可选目标目录（默认当前目录），options.beta 为 true 时允许使用最新 beta（若稳定版更高则仍用稳定版）
  */
 export async function main(
   options?: Record<string, unknown>,
