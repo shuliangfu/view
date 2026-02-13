@@ -15,6 +15,12 @@ import {
 } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "Signal",
+  description: "createSignal、createEffect、createMemo、onCleanup 核心 API 示例",
+  keywords: "createSignal, createEffect, createMemo, onCleanup",
+};
+
 const [count, setCount] = createSignal(0);
 const [name, setName] = createSignal("");
 

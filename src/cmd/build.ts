@@ -20,6 +20,7 @@ import {
 } from "@dreamer/runtime-adapter";
 import type { ViewConfig } from "./config.ts";
 import { loadViewConfig } from "./config.ts";
+import { generateRoutersFile } from "./generate.ts";
 
 /**
  * 开发模式在 main.js 开头注入的 __HMR_REFRESH__（无感刷新）：
@@ -255,6 +256,9 @@ export async function prepareDevBuild(
   devServeOutputs: DevServeOutput[];
   rebuild: (options?: { changedPath?: string }) => Promise<HmrRebuildResult>;
 }> {
+  // dev 时先根据 src/routes 自动生成 src/router/routers.tsx（动态 import），再构建
+  await generateRoutersFile(root, "src/routes", "src/router/routers.tsx");
+
   // 仅用于首次构建与 createContext；热更新时 watcher 只把监听到的文件路径作为 changedPath 传进 rebuild() 做增量编译
   const entry = config.build?.entry ?? "src/main.tsx";
   const outDir = config.build?.outDir ?? "dist";
@@ -294,6 +298,11 @@ export async function prepareDevBuild(
   const rebuild = async (
     options?: { changedPath?: string },
   ): Promise<HmrRebuildResult> => {
+    // 若变更文件在 routes 目录下，先重新生成 routers.tsx 再构建
+    const p = options?.changedPath ?? "";
+    if (p.replace(/\\/g, "/").includes("/routes/")) {
+      await generateRoutersFile(root, "src/routes", "src/router/routers.tsx");
+    }
     if (!cachedDevBuilder) {
       const full = await builder.build({ mode: "dev", write: false });
       const contents = full.outputContents ?? [];

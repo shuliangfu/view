@@ -4,6 +4,11 @@
 
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "404",
+  description: "页面未找到",
+};
+
 export function NotFound(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg backdrop-blur text-center dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-16">

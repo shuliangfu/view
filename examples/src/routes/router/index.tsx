@@ -10,6 +10,12 @@
 import type { VNode } from "@dreamer/view";
 import type { RouteMatchWithRouter } from "../../router/router.ts";
 
+export const meta = {
+  title: "Router",
+  description: "路由说明、编程式导航、动态参数、href、守卫",
+  keywords: "Router, navigate, beforeRoute, afterRoute",
+};
+
 /** 输入框 DOM 引用，非受控避免输入时整树重渲染失焦 */
 let pathInputEl: HTMLInputElement | null = null;
 
@@ -186,8 +192,8 @@ export function RouterDemo(match: RouteMatchWithRouter): VNode {
             >
               /router-redirect
             </a>{" "}
-            会被重定向到本页。 afterRoute：每次导航完成后会设置
-            document.title（在 main 中配置）。
+            会被重定向到本页。 afterRoute：每次导航完成后会同步当前路由的
+            meta 到 &lt;head&gt;（title、description、keywords、og:* 等，在 router 中配置）。
           </p>
         </div>
       </div>

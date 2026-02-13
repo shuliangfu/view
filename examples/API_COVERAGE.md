@@ -116,7 +116,7 @@ API**，说明示例项目（examples）中哪些已有示例、哪些尚未覆�
 | `router.href(path)`                              | 生成完整 href   | ✅       | Router 页（展示 router.href("/signal")） |
 | `router.stop()`                                  | 停止监听        | ❌       | 未示例（通常仅在卸载时用）               |
 | `beforeRoute`                                    | 前置守卫        | ✅       | main.tsx（/router-redirect → /router）   |
-| `afterRoute`                                     | 后置守卫        | ✅       | main.tsx（设置 document.title）          |
+| `afterRoute`                                     | 后置守卫        | ✅       | router.ts（同步 meta 到 head：title、meta 标签） |
 | 动态路由 `:param`、`match.params`、`match.query` | 路径与查询参数  | ✅       | Router 页「动态路由」说明与示例          |
 
 **结论**：路由相关 API 除 `router.stop()` 外均已覆盖；动态路由在 Router

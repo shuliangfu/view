@@ -2,7 +2,9 @@
   "name": "@dreamer/view",
   "version": "1.0.0-beta.2",
   "license": "MIT",
-  "workspace": ["examples"],
+  "workspace": [
+    "examples"
+  ],
   "exports": {
     ".": "./src/mod.ts",
     "./cli": "./src/cli.ts",
@@ -62,7 +64,9 @@
     "jsx.d.ts"
   ],
   "publish": {
-    "exclude": ["jsx.d.ts"]
+    "exclude": [
+      "jsx.d.ts"
+    ]
   },
   "nodeModulesDir": "auto",
   "tasks": {

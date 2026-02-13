@@ -9,6 +9,12 @@ import { createSignal } from "@dreamer/view";
 import { ErrorBoundary, Suspense } from "@dreamer/view/boundary";
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "Boundary",
+  description: "ErrorBoundary、Suspense 示例",
+  keywords: "ErrorBoundary, Suspense, 错误边界",
+};
+
 /** 统一按钮样式 */
 const btn =
   "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";

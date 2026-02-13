@@ -17,6 +17,7 @@
  */
 
 import type { VNode } from "./types.ts";
+import { applyMetaToHead } from "./meta.ts";
 
 /**
  * 前置守卫返回值：false 取消导航，string 重定向到该路径，true/void 放行；支持 Promise。
@@ -103,6 +104,8 @@ export interface CreateRouterOptions {
   beforeRoute?: RouteGuard | RouteGuard[];
   /** 后置守卫：导航完成后执行；支持异步 */
   afterRoute?: RouteGuardAfter | RouteGuardAfter[];
+  /** 文档标题后缀，设置后会在导航/start 时自动把路由 meta 同步到 head（title、meta 标签） */
+  documentTitleSuffix?: string;
   /** 前置守卫最大重定向次数，防止死循环，默认 5 */
   maxRedirects?: number;
 }
@@ -207,6 +210,7 @@ export function createRouter(options: CreateRouterOptions): Router {
     notFound: notFoundOption,
     beforeRoute: beforeRouteOption,
     afterRoute: afterRouteOption,
+    documentTitleSuffix = "",
     maxRedirects = 5,
   } = options;
 
@@ -326,6 +330,13 @@ export function createRouter(options: CreateRouterOptions): Router {
       for (const guard of afterGuards) {
         await Promise.resolve(guard(toAfter, from));
       }
+      if (typeof globalThis.document !== "undefined" && toAfter) {
+        applyMetaToHead(
+          toAfter.meta,
+          documentTitleSuffix,
+          toAfter.path,
+        );
+      }
     } catch {
       // 跨域或安全限制时可能抛错，忽略
     }
@@ -369,6 +380,12 @@ export function createRouter(options: CreateRouterOptions): Router {
 
   function start(): void {
     if (!hasHistory()) return;
+    if (typeof globalThis.document !== "undefined") {
+      const current = getCurrentRoute();
+      if (current) {
+        applyMetaToHead(current.meta, documentTitleSuffix, current.path);
+      }
+    }
 
     const g = globalThis as unknown as {
       addEventListener?: (type: string, fn: () => void) => void;

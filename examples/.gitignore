@@ -15,6 +15,9 @@ build/
 dist
 out/
 
+# 自动生成（dev 时根据 src/routes 生成，勿提交）
+src/router/routers.tsx
+
 # 环境变量
 .env
 .env.local

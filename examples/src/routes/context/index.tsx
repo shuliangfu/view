@@ -12,6 +12,12 @@ type Theme = "light" | "dark";
 
 const ThemeContext = createContext<Theme>("light");
 
+export const meta = {
+  title: "Context",
+  description: "createContext、Provider、useContext 跨层注入示例",
+  keywords: "Context, Provider, useContext",
+};
+
 /** 统一按钮样式 */
 const btn =
   "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
