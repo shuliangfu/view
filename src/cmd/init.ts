@@ -474,6 +474,12 @@ export function createAppRouter(opts: {
   routes: RouteConfig[];
   notFound: RouteConfig;
 }): Router {
+  if (typeof createViewRouter !== "function") {
+    throw new Error(
+      "[view] createRouter from @dreamer/view/router is undefined. " +
+        "Ensure @dreamer/view is installed and the build resolves the /router subpath (e.g. jsr:@dreamer/view@^1.0.0-beta.24/router).",
+    );
+  }
   const router = createViewRouter({
     routes: opts.routes,
     notFound: opts.notFound,
