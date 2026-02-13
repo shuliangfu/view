@@ -42,9 +42,6 @@
     "lib": [
       "deno.window",
       "dom"
-    ],
-    "types": [
-      "./jsx.d.ts"
     ]
   },
   "lint": {
@@ -60,8 +57,12 @@
   "exclude": [
     "dist/*",
     "examples/*",
-    "tests/data/"
+    "tests/data/",
+    "jsx.d.ts"
   ],
+  "publish": {
+    "exclude": ["jsx.d.ts"]
+  },
   "nodeModulesDir": "auto",
   "tasks": {
     "test": "deno test -A tests/",
