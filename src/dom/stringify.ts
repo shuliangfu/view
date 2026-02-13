@@ -1,7 +1,11 @@
 /**
- * View 模板引擎 — SSR：将 VNode 转为 HTML 字符串或流
+ * @module @dreamer/view/dom/stringify
+ * @description
+ * View 模板引擎 — SSR：将 VNode 转为 HTML 字符串或流。createElementToString、createElementToStream、stringifyAttributes、escapeText/escapeAttr、normalizeChildrenForSSR。
  *
- * createElementToString、createElementToStream、stringifyAttributes、escapeText/escapeAttr、normalizeChildrenForSSR
+ * **本模块导出：**
+ * - `createElementToString(vnode, options?)`：将 VNode 转为 HTML 字符串
+ * - `createElementToStream(vnode, options?)`：将 VNode 转为 HTML 流（生成器）
  */
 
 import { isSignalGetter } from "../signal.ts";

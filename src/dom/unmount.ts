@@ -1,7 +1,12 @@
 /**
- * View 模板引擎 — 指令 unmount 登记与执行
+ * @module @dreamer/view/dom/unmount
+ * @description
+ * View 模板引擎 — 指令 unmount 登记与执行。在 replaceChildren / removeChild 前对节点及其子树执行已登记的指令 unmounted 回调（先子后父）。
  *
- * 在 replaceChildren / removeChild 前对节点及其子树执行已登记的指令 unmounted 回调（先子后父）
+ * **本模块导出：**
+ * - `registerDirectiveUnmount(el, cb)`：为元素登记指令的 unmounted 回调
+ * - `runDirectiveUnmountOnChildren(parent)`：对父节点的所有子节点依次执行 runDirectiveUnmount
+ * - `runDirectiveUnmount(node)`：对节点及其子树递归执行已登记的指令 unmounted 回调
  */
 
 import type { ElementWithViewData } from "../types.ts";

@@ -1,5 +1,10 @@
 /**
- * 嵌套响应式 Proxy：get 登记 effect，set 通知订阅者；供 store / reactive 复用
+ * @module @dreamer/view/proxy
+ * @description
+ * 嵌套响应式 Proxy：get 登记 effect，set 通知订阅者；供 store / reactive 复用。
+ *
+ * **本模块导出：**
+ * - `createNestedProxy(target, subscribers, proxyCache)`：创建嵌套 Proxy，读写与 createEffect 联动
  */
 
 import { schedule } from "./scheduler.ts";

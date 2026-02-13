@@ -1,6 +1,11 @@
 /**
- * 路由 meta 渲染到 <head>：供开发/构建服务端注入首屏 SEO，以及客户端路由切换时更新 document。
- * 与模板引擎无关，仅在 view 的 cmd（dev/build/serve）及 router 中使用。
+ * @module @dreamer/view/meta
+ * @description
+ * 路由 meta 渲染到 <head>：供开发/构建服务端注入首屏 SEO，以及客户端路由切换时更新 document。与模板引擎无关，仅在 view 的 cmd（dev/build/serve）及 router 中使用。
+ *
+ * **本模块导出：**
+ * - `getMetaHeadFragment(meta, titleSuffix?, fallbackTitle?)`：生成要插入 head 的 HTML 片段（服务端用）
+ * - `applyMetaToHead(meta, titleSuffix?, fallbackTitle?)`：将 meta 同步到 document.head（浏览器用）
  */
 
 /** 对字符串做 HTML 转义，避免注入 */

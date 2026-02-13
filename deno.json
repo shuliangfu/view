@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.13",
+  "version": "1.0.0-beta.14",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -20,7 +20,23 @@
     "./context": "./src/context.ts",
     "./stream": "./src/stream.ts",
     "./router": "./src/router.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./view-global": "./src/view-global.ts",
+    "./types": "./src/types.ts",
+    "./signal": "./src/signal.ts",
+    "./effect": "./src/effect.ts",
+    "./scheduler": "./src/scheduler.ts",
+    "./proxy": "./src/proxy.ts",
+    "./meta": "./src/meta.ts",
+    "./route-page": "./src/route-page.tsx",
+    "./hmr": "./src/hmr.ts",
+    "./dom": "./src/dom.ts",
+    "./dom/shared": "./src/dom/shared.ts",
+    "./dom/unmount": "./src/dom/unmount.ts",
+    "./dom/element": "./src/dom/element.ts",
+    "./dom/stringify": "./src/dom/stringify.ts",
+    "./dom/hydrate": "./src/dom/hydrate.ts",
+    "./dom/props": "./src/dom/props.ts"
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",

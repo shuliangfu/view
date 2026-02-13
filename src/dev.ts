@@ -1,6 +1,10 @@
 /**
- * 开发模式入口：与 mod 导出一致，仅将 createRoot 包装为挂载后写入 globalThis.__VIEW_ROOT__，
- * 供 HMR 无感刷新时 unmount 后重载 main。仅用于 dev 构建时通过 alias 替换 @dreamer/view。
+ * @module @dreamer/view/dev
+ * @description
+ * 开发模式入口：与 mod 导出一致，仅将 createRoot 包装为挂载后写入 globalThis.__VIEW_ROOT__，供 HMR 无感刷新时 unmount 后重载 main。仅用于 dev 构建时通过 alias 替换 @dreamer/view。
+ *
+ * **本模块导出：**
+ * - 与主包一致的 API：`createRoot`（包装）、`createEffect`、`createMemo`、`createSignal`、`generateHydrationScript`、`getCurrentEffect`、`hydrate`、`isDOMEnvironment`、`isSignalGetter`、`onCleanup`、`render`、`renderToString`、`setCurrentEffect`、以及类型 `EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`HydrationScriptOptions`
  */
 
 import type { Root, VNode } from "./types.ts";

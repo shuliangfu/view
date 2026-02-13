@@ -1,7 +1,11 @@
 /**
- * View 模板引擎 — 公共类型
+ * @module @dreamer/view/types
+ * @description
+ * View 模板引擎 — 公共类型。定义 Signal、Effect、VNode、渲染结果等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
  *
- * 定义 Signal、Effect、VNode、渲染结果等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
+ * **本模块导出：**
+ * - 类型：`SignalGetter`、`SignalSetter`、`SignalTuple`、`EffectDispose`、`VNode`、`Root`、`ElementWithViewData`
+ * - 工具：`isDOMEnvironment()`
  */
 
 /**

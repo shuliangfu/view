@@ -1,7 +1,10 @@
 /**
- * View 模板引擎 — 向 DOM 元素应用 props
+ * @module @dreamer/view/dom/props
+ * @description
+ * View 模板引擎 — 向 DOM 元素应用 props。含 signal 绑定、ref、v-show、事件、className、style、布尔/表单属性及自定义指令。
  *
- * 含 signal 绑定、ref、v-show、事件、className、style、布尔/表单属性及自定义指令
+ * **本模块导出：**
+ * - `applyProps(el, props, vnode)`：向 DOM 元素应用 props（ref、事件、class、style、指令等）
  */
 
 import { createEffect } from "../effect.ts";

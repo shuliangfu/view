@@ -1,7 +1,10 @@
 /**
- * View 模板引擎 — 将 VNode 转为浏览器 DOM 节点
+ * @module @dreamer/view/dom/element
+ * @description
+ * View 模板引擎 — 将 VNode 转为浏览器 DOM 节点。支持 v-if / v-else / v-for / v-show / v-once、Fragment、keyed 列表、动态子节点。
  *
- * 支持 v-if / v-else / v-for / v-show / v-once、Fragment、keyed 列表、动态子节点
+ * **本模块导出：**
+ * - `appendDynamicChild`、`ChildItem`、`createElement`、`createNodeFromExpanded`、`ExpandedRoot`、`expandVNode`、`normalizeChildren`、`patchRoot`
  */
 
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";

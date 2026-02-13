@@ -1,11 +1,12 @@
 /**
- * View 模板引擎 — Signal（信号）
+ * @module @dreamer/view/signal
+ * @description
+ * View 模板引擎 — Signal（信号）。细粒度响应式单元：getter 读值并登记当前 effect 为依赖，setter 改值并通知所有依赖的 effect 执行。通知通过调度器异步执行，避免 effect 内「读→写」导致同步重入卡死主线程。currentEffect 的读写统一从 view-global 引入，保证 main 与 code-split chunk 共享同一 global。
  *
- * 细粒度响应式单元：getter 读值并登记当前 effect 为依赖，setter 改值并通知所有依赖的 effect 执行。
- * 通知通过调度器异步执行，避免 effect 内「读→写」导致同步重入卡死主线程。
- *
- * currentEffect 的读写统一从 view-global 引入，保证 main 与 code-split chunk 共享同一 global，
- * 否则 chunk 内 getter 读不到 main 里 effect 设置的 currentEffect，导致 subscribers: 0。
+ * **本模块导出：**
+ * - `createSignal(initial)`：创建信号，返回 [getter, setter]
+ * - `getCurrentEffect()`、`setCurrentEffect(effect)`：当前执行的 effect（依赖收集用）
+ * - `markSignalGetter(fn)`、`isSignalGetter(x)`：标记与判断 signal getter
  */
 
 import { schedule } from "./scheduler.ts";
