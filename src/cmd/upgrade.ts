@@ -67,7 +67,9 @@ export async function main(
   const latest = await fetchLatestViewVersionFromJsr(useBeta);
   if (!latest) {
     if (!useBeta) {
-      error("No stable release found. Try --beta to update to the latest beta.");
+      error(
+        "No stable release found. Try --beta to update to the latest beta.",
+      );
     } else {
       error("Could not fetch latest version from JSR.");
     }

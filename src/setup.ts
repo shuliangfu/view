@@ -190,7 +190,9 @@ async function installGlobalCli(): Promise<void> {
           ? await new Response(child.stderr).text()
           : "";
         console.error(
-          `${RED}Install failed (exit code ${status.code ?? ""}). ${stderr}${RESET}`,
+          `${RED}Install failed (exit code ${
+            status.code ?? ""
+          }). ${stderr}${RESET}`,
         );
         exit(status.code ?? 1);
       }
@@ -217,7 +219,9 @@ async function installGlobalCli(): Promise<void> {
         ? await new Response(child.stderr).text()
         : "";
       console.error(
-        `${RED}Install failed (exit code ${status.code ?? ""}). ${stderr}${RESET}`,
+        `${RED}Install failed (exit code ${
+          status.code ?? ""
+        }). ${stderr}${RESET}`,
       );
       exit(status.code ?? 1);
     }

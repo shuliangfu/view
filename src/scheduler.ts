@@ -21,7 +21,8 @@ function getGlobalSchedulerState(): SchedulerState {
   let state = g[KEY_SCHEDULER];
   if (!state) {
     state = { queue: new Set(), queueCopy: [], scheduled: false };
-    (globalThis as unknown as Record<string, SchedulerState>)[KEY_SCHEDULER] = state;
+    (globalThis as unknown as Record<string, SchedulerState>)[KEY_SCHEDULER] =
+      state;
   }
   return state;
 }

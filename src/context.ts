@@ -29,35 +29,56 @@ type GlobalContextStacks = Map<symbol, unknown[]>;
 /** context 默认值：id -> defaultValue */
 type GlobalContextDefaults = Map<symbol, unknown>;
 /** Provider 绑定：组件 -> { id, getValue } */
-export type ProviderBinding = { id: symbol; getValue: (props: Record<string, unknown>) => unknown };
-type GlobalProviderBindings = Map<(props: Record<string, unknown>) => unknown, ProviderBinding>;
+export type ProviderBinding = {
+  id: symbol;
+  getValue: (props: Record<string, unknown>) => unknown;
+};
+type GlobalProviderBindings = Map<
+  (props: Record<string, unknown>) => unknown,
+  ProviderBinding
+>;
 
 function getGlobalContextStacks(): GlobalContextStacks {
-  const g = globalThis as unknown as Record<string, GlobalContextStacks | undefined>;
+  const g = globalThis as unknown as Record<
+    string,
+    GlobalContextStacks | undefined
+  >;
   let m = g[KEY_CONTEXT_STACKS];
   if (!m) {
     m = new Map();
-    (globalThis as unknown as Record<string, GlobalContextStacks>)[KEY_CONTEXT_STACKS] = m;
+    (globalThis as unknown as Record<string, GlobalContextStacks>)[
+      KEY_CONTEXT_STACKS
+    ] = m;
   }
   return m;
 }
 
 function getGlobalContextDefaults(): GlobalContextDefaults {
-  const g = globalThis as unknown as Record<string, GlobalContextDefaults | undefined>;
+  const g = globalThis as unknown as Record<
+    string,
+    GlobalContextDefaults | undefined
+  >;
   let m = g[KEY_CONTEXT_DEFAULTS];
   if (!m) {
     m = new Map();
-    (globalThis as unknown as Record<string, GlobalContextDefaults>)[KEY_CONTEXT_DEFAULTS] = m;
+    (globalThis as unknown as Record<string, GlobalContextDefaults>)[
+      KEY_CONTEXT_DEFAULTS
+    ] = m;
   }
   return m;
 }
 
 function getGlobalProviderBindings(): GlobalProviderBindings {
-  const g = globalThis as unknown as Record<string, GlobalProviderBindings | undefined>;
+  const g = globalThis as unknown as Record<
+    string,
+    GlobalProviderBindings | undefined
+  >;
   let m = g[KEY_PROVIDER_BINDINGS];
   if (!m) {
     m = new Map();
-    (globalThis as unknown as Record<string, GlobalProviderBindings>)[KEY_PROVIDER_BINDINGS] = m;
+    (globalThis as unknown as Record<string, GlobalProviderBindings>)[
+      KEY_PROVIDER_BINDINGS
+    ] = m;
   }
   return m;
 }
