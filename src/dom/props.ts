@@ -162,9 +162,9 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     }
     return;
   }
-  if (key === "className") {
+  // class（HTML/经典 JSX）与 className（React 风格）统一落到 DOM 的 class
+  if (key === "class" || key === "className") {
     const classVal = value == null ? "" : String(value);
-    // SVG 元素的 className 为只读（SVGAnimatedString），必须用 setAttribute
     if (el.namespaceURI === "http://www.w3.org/2000/svg") {
       el.setAttribute("class", classVal);
     } else {
