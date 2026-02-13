@@ -24,7 +24,9 @@ type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
  * @internal 由 effect 模块内部使用，一般业务代码无需调用
  */
 export function setCurrentEffect(effect: (() => void) | null): void {
-  (globalThis as unknown as Record<string, EffectRun | null>)[KEY_CURRENT_EFFECT] = effect as EffectRun | null;
+  (globalThis as unknown as Record<string, EffectRun | null>)[
+    KEY_CURRENT_EFFECT
+  ] = effect as EffectRun | null;
 }
 
 /**
@@ -35,7 +37,9 @@ export function setCurrentEffect(effect: (() => void) | null): void {
  * @internal 主要由 effect 与 dom 层使用，业务代码较少直接使用
  */
 export function getCurrentEffect(): (() => void) | null {
-  const v = (globalThis as unknown as Record<string, EffectRun | null>)[KEY_CURRENT_EFFECT];
+  const v = (globalThis as unknown as Record<string, EffectRun | null>)[
+    KEY_CURRENT_EFFECT
+  ];
   return v ?? null;
 }
 

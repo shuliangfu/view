@@ -15,7 +15,7 @@
  * const vnode = <div class="foo">{count()}</div>;
  */
 
-import { FragmentType } from "./dom.ts";
+import { FragmentType } from "./dom/shared.ts";
 import type { VNode } from "./types.ts";
 
 /**

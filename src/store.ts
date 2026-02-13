@@ -34,11 +34,16 @@ const KEY_STORE_REGISTRY = "__VIEW_STORE_REGISTRY";
 const DEFAULT_STORE_KEY = "__view_default_store";
 
 function getGlobalStoreRegistry(): Map<string, unknown> {
-  const g = globalThis as unknown as Record<string, Map<string, unknown> | undefined>;
+  const g = globalThis as unknown as Record<
+    string,
+    Map<string, unknown> | undefined
+  >;
   let m = g[KEY_STORE_REGISTRY];
   if (!m) {
     m = new Map();
-    (globalThis as unknown as Record<string, Map<string, unknown>>)[KEY_STORE_REGISTRY] = m;
+    (globalThis as unknown as Record<string, Map<string, unknown>>)[
+      KEY_STORE_REGISTRY
+    ] = m;
   }
   return m;
 }
