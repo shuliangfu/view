@@ -46,11 +46,6 @@ export function App(props: AppProps): VNode {
     );
   }
 
-  const pageTitle = (current.meta?.title as string) ?? current.path;
-  if (typeof document !== "undefined" && document.title !== pageTitle) {
-    document.title = `${pageTitle} — @dreamer/view 示例`;
-  }
-
   return (
     <Layout routes={routes} currentPath={current.path}>
       <RoutePage

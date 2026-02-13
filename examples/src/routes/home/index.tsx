@@ -5,6 +5,18 @@
 
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "首页",
+  description: "首页描述",
+  keywords: "首页, 描述, 关键词",
+  author: "作者",
+  og: {
+    title: "首页",
+    description: "首页描述",
+    image: "https://example.com/image.jpg",
+  },
+};
+
 /** 首页模块图标：每个模块一个简洁 SVG，用 currentColor 继承文字色 */
 const ModuleIcons: Record<string, () => VNode> = {
   core: () => (

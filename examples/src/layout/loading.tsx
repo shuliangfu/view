@@ -3,6 +3,11 @@
  */
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "Loading",
+  description: "路由懒加载占位页",
+};
+
 export function RouteLoading(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-16 flex flex-col items-center justify-center min-h-[280px]">

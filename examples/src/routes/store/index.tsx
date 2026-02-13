@@ -24,6 +24,12 @@ type DemoActions = {
   setName(_name: string): void;
 };
 
+export const meta = {
+  title: "Store",
+  description: "createStore + getters + actions + persist 示例",
+  keywords: "createStore, getters, actions, persist",
+};
+
 const [get, _set, getters, actions] = createStore("demo-store", {
   state: { count: 0, name: "" } as DemoState,
   getters: withGetters<DemoState, DemoGetters>()({

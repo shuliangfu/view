@@ -8,7 +8,9 @@
 import {
   cwd,
   ensureDir,
+  existsSync,
   join,
+  readTextFile,
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
@@ -81,6 +83,7 @@ export default config;
       jsx: "react-jsx",
       jsxImportSource: "@dreamer/view",
       lib: ["deno.window", "dom"],
+      types: ["./tsx.d.ts"],
     },
     imports: {
       "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
@@ -101,6 +104,24 @@ export default config;
     join(targetDir, "deno.json"),
     JSON.stringify(denoJson, null, 2),
   );
+
+  // ---------------------------------------------------------------------------
+  // tsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
+  // ---------------------------------------------------------------------------
+  const tsxDts = `/**
+ * TSX/JSX 固有元素类型：供项目内 TSX 类型检查使用
+ */
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [tag: string]: Record<string, unknown>;
+    }
+  }
+}
+
+export {};
+`;
+  await writeTextFile(join(targetDir, "tsx.d.ts"), tsxDts);
 
   // ---------------------------------------------------------------------------
   // index.html（对齐示例：/main.js、Tailwind v4、dark 首屏、data-view-cloak）
@@ -328,6 +349,7 @@ export function Home(): VNode {
     </div>
   );
 }
+export default Home;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "home.tsx"), homeTsx);
 
@@ -366,6 +388,7 @@ export function About(): VNode {
     </div>
   );
 }
+export default About;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "about.tsx"), aboutTsx);
 
@@ -391,6 +414,7 @@ export function NotFound(): VNode {
     </section>
   );
 }
+export default NotFound;
 `;
   await writeTextFile(
     join(targetDir, "src", "routes", "not-found.tsx"),
@@ -454,24 +478,22 @@ export function createAppRouter(opts: {
   await writeTextFile(join(targetDir, "src", "router", "router.ts"), routerTs);
 
   // ---------------------------------------------------------------------------
-  // src/router/routers.tsx（路由表：/、/about、404）
+  // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/routes 自动重新生成，勿提交）
   // ---------------------------------------------------------------------------
   const routersTsx = `/**
- * 路由表：path → component
+ * 路由表（自动生成）：path → component，使用动态 import 实现按需加载
+ * 请勿手动编辑；dev 时会根据 src/routes 目录自动重新生成
  */
 import type { RouteConfig } from "@dreamer/view/router";
-import { Home } from "../routes/home.tsx";
-import { About } from "../routes/about.tsx";
-import { NotFound } from "../routes/not-found.tsx";
 
 export const routes: RouteConfig[] = [
-  { path: "/", component: () => Home(), meta: { title: "首页" } },
-  { path: "/about", component: () => About(), meta: { title: "关于" } },
+  { path: "/", component: () => import("../routes/home.tsx"), meta: { title: "首页" } },
+  { path: "/about", component: () => import("../routes/about.tsx"), meta: { title: "关于" } },
 ];
 
 export const notFoundRoute: RouteConfig = {
   path: "*",
-  component: () => NotFound(),
+  component: () => import("../routes/not-found.tsx"),
   meta: { title: "404" },
 };
 `;
@@ -524,6 +546,28 @@ export const toggleTheme = themeStore.toggleTheme;
     join(targetDir, "src", "utils", "README.md"),
     "# utils\n",
   );
+
+  // ---------------------------------------------------------------------------
+  // .gitignore：忽略构建产物与自动生成的路由表（勿提交）
+  // ---------------------------------------------------------------------------
+  const gitignorePath = join(targetDir, ".gitignore");
+  const routersIgnore = "src/router/routers.tsx";
+  if (existsSync(gitignorePath)) {
+    const content = await readTextFile(gitignorePath);
+    if (
+      !content.includes("routers.tsx") && !content.includes("router/routers")
+    ) {
+      await writeTextFile(
+        gitignorePath,
+        content.trimEnd() + "\n" + routersIgnore + "\n",
+      );
+    }
+  } else {
+    await writeTextFile(
+      gitignorePath,
+      "dist/\n" + routersIgnore + "\n",
+    );
+  }
 
   console.log(`Initialized @dreamer/view project at ${targetDir}`);
   console.log("  Routes: / (home), /about. Run: deno task dev");

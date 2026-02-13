@@ -7,7 +7,7 @@
 
 import { createRoot } from "@dreamer/view";
 import { createAppRouter } from "./router/router.ts";
-import { App } from "./routes/app.tsx";
+import { App } from "./layout/app.tsx";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 
 const container = document.getElementById("root");

@@ -730,6 +730,30 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 路由配置：path 支持动态参数 `:param`；component 接收 match；可选 meta。支持
 beforeRoute/afterRoute、notFound。
 
+**路由文件与 `export meta`（view-cli）：** 使用 `view-cli dev` 时，会按
+`src/routes` 目录 递归扫描（最多 5 层）自动生成
+`src/router/routers.tsx`。路由文件可导出 `meta` 对象，生成 时会合并进该路由的
+meta 配置：
+
+```tsx
+// src/routes/home/index.tsx（或任意路由文件）
+export const meta = {
+  title: "首页",
+  description: "首页描述",
+  keywords: "首页, 描述, 关键词",
+  author: "作者",
+  og: {
+    title: "首页",
+    description: "首页描述",
+    image: "https://example.com/image.jpg",
+  },
+};
+```
+
+支持的字段：`title`、`description`、`keywords`、`author`，以及 `og`（含
+`title`、 `description`、`image`）。未写 `export meta` 时，`title`
+由文件路径推断。生成的 `src/router/routers.tsx` 已加入 .gitignore，无需提交。
+
 ---
 
 ## 📚 API 速查表

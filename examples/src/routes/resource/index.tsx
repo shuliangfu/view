@@ -11,6 +11,12 @@ import { createResource } from "@dreamer/view/resource";
 import { Suspense } from "@dreamer/view/boundary";
 import type { VNode } from "@dreamer/view";
 
+export const meta = {
+  title: "Resource",
+  description: "createResource 异步数据与 Suspense 示例",
+  keywords: "createResource, Suspense, 异步数据",
+};
+
 /** 模拟 API：延迟 800ms 返回；name 使用「用户ID：1」格式，避免用 - 被误认为负数 */
 function fakeApi(id: number): Promise<{ id: number; name: string }> {
   return new Promise((resolve) => {

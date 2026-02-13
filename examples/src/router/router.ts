@@ -52,7 +52,7 @@ const DOC_TITLE_SUFFIX = " — @dreamer/view 示例";
 
 /**
  * 创建并启动应用路由
- * 内置：链接拦截、beforeRoute（如重定向）、afterRoute（标题同步）
+ * 内置：链接拦截、beforeRoute（如重定向）、documentTitleSuffix 下由 router 自动同步 meta 到 head
  */
 export function createAppRouter(opts: {
   routes: RouteConfig[];
@@ -62,15 +62,10 @@ export function createAppRouter(opts: {
     routes: opts.routes,
     notFound: opts.notFound,
     interceptLinks: true,
+    documentTitleSuffix: DOC_TITLE_SUFFIX,
     beforeRoute: (to) => {
       if (to?.fullPath === "/router-redirect") return "/router";
       return true;
-    },
-    afterRoute: (to) => {
-      const title = (to?.meta?.title as string) ?? to?.path ?? "";
-      if (title && typeof globalThis.document !== "undefined") {
-        globalThis.document.title = `${title}${DOC_TITLE_SUFFIX}`;
-      }
     },
   });
   router.start();
