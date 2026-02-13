@@ -11,10 +11,15 @@ import {
   existsSync,
   join,
   readTextFile,
+  relative,
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
 import { getViewVersion } from "../version.ts";
+
+/** ANSI green for success message */
+const GREEN = "\x1b[32m";
+const RESET = "\x1b[0m";
 
 /**
  * CLI 入口：由 @dreamer/console 的 action 调用
@@ -42,6 +47,13 @@ export async function main(
   await ensureDir(join(targetDir, "src", "stores"));
   await ensureDir(join(targetDir, "src", "hooks"));
   await ensureDir(join(targetDir, "src", "utils"));
+
+  /** Display path: always relative to cwd (e.g. "app-test" or ".") */
+  const displayDir =
+    targetDir === root ? "." : relative(root, targetDir) || ".";
+  /** Paths of all created files (relative to project), for final listing */
+  const createdFiles: string[] = [];
+  const addFile = (relPath: string) => createdFiles.push(relPath);
 
   // ---------------------------------------------------------------------------
   // view.config.ts（对齐示例，供 dev/build/start 读取）
@@ -74,6 +86,7 @@ const config = {
 export default config;
 `;
   await writeTextFile(join(targetDir, "view.config.ts"), viewConfigTs);
+  addFile("view.config.ts");
 
   // ---------------------------------------------------------------------------
   // deno.json
@@ -104,6 +117,7 @@ export default config;
     join(targetDir, "deno.json"),
     JSON.stringify(denoJson, null, 2),
   );
+  addFile("deno.json");
 
   // ---------------------------------------------------------------------------
   // tsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
@@ -122,6 +136,7 @@ declare global {
 export {};
 `;
   await writeTextFile(join(targetDir, "tsx.d.ts"), tsxDts);
+  addFile("tsx.d.ts");
 
   // ---------------------------------------------------------------------------
   // index.html（对齐示例：/main.js、Tailwind v4、dark 首屏、data-view-cloak）
@@ -158,6 +173,7 @@ export {};
 </html>
 `;
   await writeTextFile(join(targetDir, "index.html"), indexHtml);
+  addFile("index.html");
 
   // ---------------------------------------------------------------------------
   // src/main.tsx
@@ -173,11 +189,12 @@ import { notFoundRoute, routes } from "./router/routers.tsx";
 const container = document.getElementById("root");
 if (container) {
   const router = createAppRouter({ routes, notFound: notFoundRoute });
-  createRoot(() => <App router={router} />, container);
+  createRoot(() => <App router={router} routes={routes} />, container);
   container.removeAttribute("data-view-cloak");
 }
 `;
   await writeTextFile(join(targetDir, "src", "main.tsx"), mainTsx);
+  addFile("src/main.tsx");
 
   // ---------------------------------------------------------------------------
   // src/routes/app.tsx（根组件：订阅路由 + Layout + RoutePage）
@@ -187,15 +204,14 @@ if (container) {
  */
 import { createEffect, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
-import type { RouteMatch, Router } from "@dreamer/view/router";
+import type { RouteConfig, RouteMatch, Router } from "@dreamer/view/router";
 import { Layout } from "./layout.tsx";
-import { routes } from "../router/routers.tsx";
 
 function RoutePage(props: { match: RouteMatch }): VNode {
   return props.match.component(props.match);
 }
 
-export function App(props: { router: Router }): VNode {
+export function App(props: { router: Router; routes: RouteConfig[] }): VNode {
   const [match, setMatch] = createSignal(props.router.getCurrentRoute());
   createEffect(() => {
     setMatch(props.router.getCurrentRoute());
@@ -207,7 +223,7 @@ export function App(props: { router: Router }): VNode {
   const current = match();
   if (!current) {
     return (
-      <Layout routes={routes} currentPath="">
+      <Layout routes={props.routes} currentPath="">
         <section class="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
           <p class="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
             加载中…
@@ -221,13 +237,14 @@ export function App(props: { router: Router }): VNode {
     globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
   }
   return (
-    <Layout routes={routes} currentPath={current.path}>
+    <Layout routes={props.routes} currentPath={current.path}>
       <RoutePage match={current} />
     </Layout>
   );
 }
 `;
   await writeTextFile(join(targetDir, "src", "routes", "app.tsx"), appTsx);
+  addFile("src/routes/app.tsx");
 
   // ---------------------------------------------------------------------------
   // src/routes/layout.tsx（顶部导航 + 主题切换）
@@ -314,6 +331,7 @@ export function Layout(props: LayoutProps): VNode {
     join(targetDir, "src", "routes", "layout.tsx"),
     layoutTsx,
   );
+  addFile("src/routes/layout.tsx");
 
   // ---------------------------------------------------------------------------
   // src/routes/home.tsx（首页：Hero + 简介，美化）
@@ -352,6 +370,7 @@ export function Home(): VNode {
 export default Home;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "home.tsx"), homeTsx);
+  addFile("src/routes/home.tsx");
 
   // ---------------------------------------------------------------------------
   // src/routes/about.tsx（关于页，美化）
@@ -391,6 +410,7 @@ export function About(): VNode {
 export default About;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "about.tsx"), aboutTsx);
+  addFile("src/routes/about.tsx");
 
   // ---------------------------------------------------------------------------
   // src/routes/not-found.tsx（404）
@@ -420,6 +440,7 @@ export default NotFound;
     join(targetDir, "src", "routes", "not-found.tsx"),
     notFoundTsx,
   );
+  addFile("src/routes/not-found.tsx");
 
   // ---------------------------------------------------------------------------
   // src/router/router.ts
@@ -476,6 +497,7 @@ export function createAppRouter(opts: {
 }
 `;
   await writeTextFile(join(targetDir, "src", "router", "router.ts"), routerTs);
+  addFile("src/router/router.ts");
 
   // ---------------------------------------------------------------------------
   // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/routes 自动重新生成，勿提交）
@@ -501,6 +523,7 @@ export const notFoundRoute: RouteConfig = {
     join(targetDir, "src", "router", "routers.tsx"),
     routersTsx,
   );
+  addFile("src/router/routers.tsx");
 
   // ---------------------------------------------------------------------------
   // src/stores/theme.ts
@@ -537,15 +560,18 @@ export const setTheme = themeStore.setTheme;
 export const toggleTheme = themeStore.toggleTheme;
 `;
   await writeTextFile(join(targetDir, "src", "stores", "theme.ts"), themeTs);
+  addFile("src/stores/theme.ts");
 
   await writeTextFile(
     join(targetDir, "src", "hooks", "index.ts"),
     'export { useRouter } from "../router/router.ts";\n',
   );
+  addFile("src/hooks/index.ts");
   await writeTextFile(
     join(targetDir, "src", "utils", "README.md"),
     "# utils\n",
   );
+  addFile("src/utils/README.md");
 
   // ---------------------------------------------------------------------------
   // .gitignore：忽略构建产物与自动生成的路由表（勿提交）
@@ -561,14 +587,28 @@ export const toggleTheme = themeStore.toggleTheme;
         gitignorePath,
         content.trimEnd() + "\n" + routersIgnore + "\n",
       );
+      addFile(".gitignore");
     }
   } else {
     await writeTextFile(
       gitignorePath,
       "dist/\n" + routersIgnore + "\n",
     );
+    addFile(".gitignore");
   }
 
-  console.log(`Initialized @dreamer/view project at ${targetDir}`);
-  console.log("  Routes: / (home), /about. Run: deno task dev");
+  const prefix = displayDir === "." ? "" : displayDir + "/";
+  createdFiles.sort();
+  for (const f of createdFiles) {
+    console.log("  " + prefix + f);
+  }
+  console.log(
+    `${GREEN}Project created successfully at ${displayDir}.${RESET}`,
+  );
+  if (displayDir !== ".") {
+    console.log(`cd ${displayDir}`);
+  }
+  console.log("dev: view-cli dev");
+  console.log("build: view-cli build");
+  console.log("prod: view-cli start");
 }
