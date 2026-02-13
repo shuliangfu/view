@@ -1,13 +1,13 @@
 #!/usr/bin/env -S deno run -A
 
 /**
- * @dreamer/view CLI 入口
+ * @module @dreamer/view/cli
+ * @description
+ * view-cli 入口：init、dev、build、start。使用 @dreamer/console 的 Command 注册子命令，usage/help 由 console 自动实现；子命令由 cmd/* 动态导入执行。
  *
- * 使用 @dreamer/console 的 Command 注册子命令，usage/help 由 console 自动实现。
- * 子命令：init、dev、build、start，各由 cmd/* 动态导入执行。
- * 主入口显式传入运行时参数，确保在 deno task 等场景下子命令能正确匹配。
- *
- * @module
+ * @example
+ * deno run -A jsr:@dreamer/view/cli dev
+ * deno run -A jsr:@dreamer/view/cli build
  */
 
 import { Command } from "@dreamer/console";
