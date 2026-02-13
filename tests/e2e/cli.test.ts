@@ -111,10 +111,9 @@ describe("CLI：build", () => {
   });
 });
 
-/** Windows 下 bundler 需 file:// URL 才能解析盘符路径；Unix 用路径即可 */
+/** 浏览器 entryPoint：用固定存在的 stub，避免依赖 examples/dist/main.js（Windows CI 上路径/构建时序导致 Could not resolve） */
 function entryPointForBrowser(): string {
-  const p = join(VIEW_ROOT, "examples", "dist", "main.js");
-  return /^[A-Za-z]:[\\/]/.test(p) ? "file:///" + p.replace(/\\/g, "/") : p;
+  return join(VIEW_ROOT, "tests", "e2e", "browser-stub.js");
 }
 
 /** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径/file URL 以兼容 Windows */
