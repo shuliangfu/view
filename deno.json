@@ -35,13 +35,13 @@
     "@dreamer/router": "jsr:@dreamer/router@^1.0.8",
     "@dreamer/logger": "jsr:@dreamer/logger@^1.0.0",
     "@dreamer/render": "jsr:@dreamer/render@^1.0.12",
-    "view-jsx-internal": "./src/jsx-runtime",
-    "view-jsx-internal/jsx-runtime": "./src/jsx-runtime/jsx-runtime.ts",
+    "jsr:@dreamer/view": "./src/mod.ts",
+    "jsr:@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
     "happy-dom": "npm:happy-dom@20.4.0"
   },
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "view-jsx-internal",
+    "jsxImportSource": "jsr:@dreamer/view",
     "lib": [
       "deno.window",
       "dom"
