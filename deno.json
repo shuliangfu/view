@@ -30,7 +30,7 @@
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.5",
     "@dreamer/console": "jsr:@dreamer/console@^1.0.6",
     "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.0.9",
-    "@dreamer/server": "../server/src/mod.ts",
+    "@dreamer/server": "jsr:@dreamer/server@^1.0.5",
     "@dreamer/middleware": "jsr:@dreamer/middleware@^1.0.0",
     "@dreamer/router": "jsr:@dreamer/router@^1.0.8",
     "@dreamer/logger": "jsr:@dreamer/logger@^1.0.0",

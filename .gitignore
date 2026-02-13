@@ -39,7 +39,3 @@ coverage/
 
 # 分析报告
 analysis
-
-# 误生成的绝对路径目录与临时目录
-Users/
-var/
