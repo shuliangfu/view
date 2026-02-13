@@ -750,6 +750,11 @@ export const meta = {
 };
 ```
 
+**路由页面组件：** 每个路由文件必须**默认导出**页面组件（例如
+`export default function Home() { ... }`）。若仅使用命名导出再
+`export default Home`，运行时加载该路由时可能报错「data.default
+不是一个函数」。请使用单一、直接的默认导出。
+
 支持的字段：`title`、`description`、`keywords`、`author`，以及 `og`（含
 `title`、 `description`、`image`）。未写 `export meta` 时，`title`
 由文件路径推断。生成的 `src/router/routers.tsx` 已加入 .gitignore，无需提交。
@@ -776,11 +781,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.0**（2026-02-12）—
-首次发布：核心（signal、effect、memo、createRoot、render、renderToString、hydrate、generateHydrationScript）、store、reactive、context、resource、router、boundary（Suspense、ErrorBoundary）、指令（vIf/vElse/vElseIf/vFor/vShow/vOnce/vCloak、自定义）、流式
-SSR、JSX 运行时。
-
-完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.0-beta.29**（2026-02-13）—
+init：路由页模板改为直接默认导出；文档：路由页须默认导出，否则报「data.default
+不是一个函数」。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
