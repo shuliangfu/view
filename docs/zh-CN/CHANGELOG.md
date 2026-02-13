@@ -53,11 +53,13 @@
   - `ErrorBoundary` — 捕获子树错误并渲染 fallback(error)。
 
 - **指令**（`@dreamer/view/directive`）
-  - 内置：`vIf`、`vElse`、`vElseIf`、`vFor`、`vShow`、`vText`、`vHtml`、`vModel`（JSX
+  - 内置：`vIf`、`vElse`、`vElseIf`、`vFor`、`vShow`、`vOnce`、`vCloak`（JSX
     中驼峰）。
   - 自定义指令：`registerDirective(name, { mounted, updated, unmounted })`。
-  - 辅助：`hasDirective`、`getDirective`、`directiveNameToCamel`、`directiveNameToKebab`、`getDirectiveValue`
+  - 辅助：`hasDirective`、`getDirective`、`directiveNameToCamel`、`directiveNameToKebab`、`getDirectiveValue`、`hasStructuralDirective`、`createBinding`
     等。
+  - 表单双向绑定：使用 `value` + `onInput`/`onChange` 配合 signal 或
+    createReactive，无需 v-model 指令。
 
 - **流式 SSR**（`@dreamer/view/stream`）
   - `renderToStream(fn, options?)` — 返回 HTML 字符串生成器，用于流式响应。
@@ -67,11 +69,11 @@
     `jsxImportSource` 配置。
 
 - **DOM**
-  - 细粒度更新：动态子节点（getter）、带 key 的列表协调、vText/vShow 的 getter
+  - 细粒度更新：动态子节点（getter）、带 key 的列表协调、vShow 等指令的 getter
     在 effect 中更新。
   - 事件：`onClick`、`onInput`、`onChange` 等通过 addEventListener 绑定。
   - Ref：回调或 `{ current }` 在挂载后获取 DOM 引用。
-  - SVG 命名空间与指令应用顺序（vShow、vText、vHtml、vModel，再通用 props）。
+  - SVG 命名空间与指令应用顺序（vShow 等指令，再通用 props）。
 
 ### 说明
 

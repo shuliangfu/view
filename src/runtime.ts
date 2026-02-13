@@ -7,12 +7,9 @@
 
 /** hydrate 后移除 data-view-cloak，配合 CSS [data-view-cloak]{display:none} 减少 FOUC */
 function removeCloak(container: Element): void {
-  if (container.hasAttribute("data-view-cloak")) {
-    container.removeAttribute("data-view-cloak");
-  }
-  for (const el of Array.from(container.querySelectorAll("[data-view-cloak]"))) {
-    el.removeAttribute("data-view-cloak");
-  }
+  const list = Array.from(container.querySelectorAll("[data-view-cloak]"));
+  if (container.hasAttribute("data-view-cloak")) list.unshift(container);
+  for (const el of list) el.removeAttribute("data-view-cloak");
 }
 
 import { createEffect, setCurrentScope } from "./effect.ts";

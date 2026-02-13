@@ -13,41 +13,41 @@
 
 ## 测试结果
 
-- **总测试数**：208
-- **通过**：208
+- **总测试数**：201
+- **通过**：201
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 28 秒
+- **执行时间**：约 1 分 15 秒
 
 ### 测试文件统计
 
-| 测试文件                             | 测试数 | 状态        |
-| ------------------------------------ | ------ | ----------- |
-| boundary.test.ts                     | 13     | ✅ 全部通过 |
-| browser/view-example-browser.test.ts | 48     | ✅ 全部通过 |
-| context.test.ts                      | 7      | ✅ 全部通过 |
-| directive.test.ts                    | 32     | ✅ 全部通过 |
-| effect.test.ts                       | 15     | ✅ 全部通过 |
-| integration.test.ts                  | 10     | ✅ 全部通过 |
-| jsx-runtime.test.ts                  | 6      | ✅ 全部通过 |
-| reactive.test.ts                     | 7      | ✅ 全部通过 |
-| resource.test.ts                     | 8      | ✅ 全部通过 |
-| router.test.ts                       | 14     | ✅ 全部通过 |
-| runtime.test.ts                      | 13     | ✅ 全部通过 |
-| signal.test.ts                       | 14     | ✅ 全部通过 |
-| ssr-directives.test.ts               | 9      | ✅ 全部通过 |
-| store.test.ts                        | 12     | ✅ 全部通过 |
+| 测试文件                         | 测试数 | 状态        |
+| -------------------------------- | ------ | ----------- |
+| e2e/view-example-browser.test.ts | 48     | ✅ 全部通过 |
+| integration/integration.test.ts  | 11     | ✅ 全部通过 |
+| unit/boundary.test.ts            | 13     | ✅ 全部通过 |
+| unit/context.test.ts             | 7      | ✅ 全部通过 |
+| unit/directive.test.ts           | 25     | ✅ 全部通过 |
+| unit/effect.test.ts              | 15     | ✅ 全部通过 |
+| unit/jsx-runtime.test.ts         | 6      | ✅ 全部通过 |
+| unit/reactive.test.ts            | 7      | ✅ 全部通过 |
+| unit/resource.test.ts            | 8      | ✅ 全部通过 |
+| unit/router.test.ts              | 14     | ✅ 全部通过 |
+| unit/runtime.test.ts             | 13     | ✅ 全部通过 |
+| unit/signal.test.ts              | 14     | ✅ 全部通过 |
+| unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
+| unit/store.test.ts               | 14     | ✅ 全部通过 |
 
 ## 功能测试详情
 
-### 1. Boundary (boundary.test.ts) - 13 tests
+### 1. Boundary (unit/boundary.test.ts) - 13 tests
 
 - ✅ isErrorBoundary 对 ErrorBoundary 组件返回 true、对其它函数返回 false
 - ✅ getErrorBoundaryFallback：fallback 为函数/VNode/undefined/null 等边界
 - ✅ ErrorBoundary 直接返回 children；无 children 时返回 null
 - ✅ Suspense：同步 VNode、Promise 先 fallback 再解析、fallback 为 null 边界
 
-### 2. 浏览器示例 (view-example-browser.test.ts) - 48 tests
+### 2. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 48 tests
 
 - ✅ 首页挂载与多页面入口、各卡片进入
   Signal/Store/Boundary/指令/Reactive/Resource/Context/Runtime/Router 页
@@ -61,24 +61,23 @@
 - ✅ Runtime 页：输入后生成 HTML（renderToString）
 - ✅ 顶部导航与路由跳转、Layout 主题、404 与返回首页
 
-### 3. Context (context.test.ts) - 7 tests
+### 3. Context (unit/context.test.ts) - 7 tests
 
 - ✅ createContext 返回 Provider 与 useContext；无 Provider 时返回 defaultValue
 - ✅ 边界：defaultValue 为 undefined 时无 Provider 则 useContext() 为 undefined
 - ✅ 有 Provider 时 pushContext 后 useContext 返回 value；Provider value 为 null
   边界
 
-### 4. Directive (directive.test.ts) - 32 tests
+### 4. Directive (unit/directive.test.ts) - 25 tests
 
 - ✅ directiveNameToCamel / directiveNameToKebab（v-if / vElseIf 等）
 - ✅
-  getDirectiveValue、getVIfValue、getVElseShow、getVElseIfValue、getVShowValue、getVTextValue、getVHtmlValue
+  getDirectiveValue、getVIfValue、getVElseShow、getVElseIfValue、getVShowValue
 - ✅ getVForListAndFactory（数组、空数组、非数组边界）
 - ✅ hasDirective / hasStructuralDirective / isDirectiveProp
-- ✅ registerDirective /
-  getDirective、createBinding、getModelFromProps（vModel/model）
+- ✅ registerDirective / getDirective、createBinding
 
-### 5. Effect (effect.test.ts) - 15 tests
+### 5. Effect (unit/effect.test.ts) - 15 tests
 
 - ✅ createEffect：非函数抛错、立即执行、signal
   变更后再次执行、dispose、清理函数与 onCleanup
@@ -86,7 +85,7 @@
 - ✅ createMemo：非函数抛错、getter 与缓存、依赖变更重算、effect 中读取
   memo、返回 undefined/null 边界
 
-### 6. 集成 (integration.test.ts) - 10 tests
+### 6. 集成 (integration/integration.test.ts) - 11 tests
 
 - ✅ createRoot + 事件 + signal：按钮 onClick 更新 signal、DOM 随 signal 更新
 - ✅ 多事件类型：onClick 与 onChange 等绑定
@@ -96,23 +95,23 @@
 - ✅ 细粒度更新：patch 非整树替换、未依赖 signal 的 DOM
   节点保持同一引用、输入框未重挂
 
-### 7. JSX Runtime (jsx-runtime.test.ts) - 6 tests
+### 7. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
 
 - ✅ jsx / jsxs：type/props/children、key 提取与第三参覆盖、Fragment 为 Symbol
 
-### 8. Reactive (reactive.test.ts) - 7 tests
+### 8. Reactive (unit/reactive.test.ts) - 7 tests
 
 - ✅ createReactive：代理初始属性、不修改入参、set 后 get 返回新值
 - ✅ createEffect 内读取 reactive 属性，属性变更后 effect 再次执行（微任务后）
 - ✅ 嵌套代理、多字段赋值触发曾读取过的 effect
 
-### 9. Resource (resource.test.ts) - 8 tests
+### 9. Resource (unit/resource.test.ts) - 8 tests
 
 - ✅ createResource 无 source：loading/data/error、refetch、fetcher 抛错与非
   Promise 边界
 - ✅ createResource 有 source：source 变化时重新请求
 
-### 10. Router (router.test.ts) - 14 tests
+### 10. Router (unit/router.test.ts) - 14 tests
 
 - ✅
   createRouter：getCurrentRoute、navigate、replace、subscribe、start、stop、back/forward/go
@@ -121,7 +120,7 @@
 - ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
 - ✅ afterRoute、notFound 与 meta
 
-### 11. Runtime (runtime.test.ts) - 13 tests
+### 11. Runtime (unit/runtime.test.ts) - 13 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点
 - ✅ generateHydrationScript：无参/传入 data/scriptSrc
@@ -129,22 +128,23 @@
   已有子节点、unmount 后 set 不抛错
 - ✅ hydrate：复用子节点并激活、移除 cloak
 
-### 12. Signal (signal.test.ts) - 14 tests
+### 12. Signal (unit/signal.test.ts) - 14 tests
 
 - ✅ createSignal：[getter, setter]、初始值、setter 与 updater、Object.is
   相同值不更新
 - ✅ 边界：初始值为 undefined/null
 - ✅ isSignalGetter、markSignalGetter
 
-### 13. SSR 指令 (ssr-directives.test.ts) - 9 tests
+### 13. SSR 指令 (unit/ssr-directives.test.ts) - 6 tests
 
-- ✅ SSR vIf / vElseIf / vElse、vFor、vShow、vText / vHtml（转义与 allowRawHtml:
-  false）
+- ✅ SSR vIf / vElseIf / vElse、vFor、vShow
 
-### 14. Store (store.test.ts) - 12 tests
+### 14. Store (unit/store.test.ts) - 14 tests
 
 - ✅ createStore：仅 state 时 [get, set]、空 state、get() 响应式、set
   updater、嵌套属性
+- ✅ 默认 asObject 为 true 时返回对象，可直接读 state
+  属性；默认返回对象支持直接赋值 store.xxx = value 更新 state
 - ✅ actions、persist 自定义 storage、persist.key 空串边界
 - ✅ getters 派生与 state 更新、getters 返回 undefined、actions 内抛错边界
 
@@ -165,6 +165,6 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 208 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 201 个用例，全部通过，通过率
 100%。覆盖信号、响应式、路由、资源、上下文、指令、运行时与
 SSR、Store、Reactive、Boundary 及浏览器示例流程，满足发布与文档展示需求。

@@ -55,12 +55,15 @@ and this project adheres to
   - `ErrorBoundary` — catch subtree errors and render fallback(error).
 
 - **Directives** (`@dreamer/view/directive`)
-  - Built-in: `vIf`, `vElse`, `vElseIf`, `vFor`, `vShow`, `vText`, `vHtml`,
-    `vModel` (camelCase in JSX).
+  - Built-in: `vIf`, `vElse`, `vElseIf`, `vFor`, `vShow`, `vOnce`, `vCloak`
+    (camelCase in JSX).
   - Custom directives:
     `registerDirective(name, { mounted, updated, unmounted })`.
   - Helpers: `hasDirective`, `getDirective`, `directiveNameToCamel`,
-    `directiveNameToKebab`, `getDirectiveValue`, etc.
+    `directiveNameToKebab`, `getDirectiveValue`, `hasStructuralDirective`,
+    `createBinding`, etc.
+  - Form two-way binding: use `value` + `onInput`/`onChange` with signal or
+    createReactive; no v-model directive.
 
 - **Stream SSR** (`@dreamer/view/stream`)
   - `renderToStream(fn, options?)` — generator of HTML chunks for streaming
@@ -71,11 +74,11 @@ and this project adheres to
     configurable via `jsxImportSource`.
 
 - **DOM**
-  - Fine-grained updates: dynamic children (getter), keyed reconciliation,
-    vText/vShow getters in effects.
+  - Fine-grained updates: dynamic children (getter), keyed reconciliation, vShow
+    and other directive getters in effects.
   - Events: `onClick`, `onInput`, `onChange`, etc. bound via addEventListener.
   - Ref: callback or `{ current }` for post-mount DOM reference.
-  - SVG namespace and directive application order (vShow, vText, vHtml, vModel,
+  - SVG namespace and directive application order (vShow and other directives,
     then props).
 
 ### Notes

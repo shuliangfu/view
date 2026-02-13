@@ -27,15 +27,15 @@ serve）。切换页面使用顶部导航或首页链接；在任意路由下刷
 
 ## 示例结构
 
-| 序号 | 模块     | 说明                                                              |
-| ---- | -------- | ----------------------------------------------------------------- |
-| 1    | 核心     | createSignal、createEffect、createMemo、onCleanup                 |
-| 2    | Store    | createStore（getters、actions、persist）                          |
-| 3    | Boundary | ErrorBoundary、Suspense                                           |
-| 4    | 指令     | vIf、vElse、vElseIf、vFor、vShow、vText、vHtml、自定义（v-focus） |
-| 5    | Resource | createResource（无/有 source）、Suspense                          |
-| 6    | Context  | createContext、Provider、useContext                               |
-| 7    | Runtime  | createRoot、render、renderToString、generateHydrationScript       |
+| 序号 | 模块     | 说明                                                               |
+| ---- | -------- | ------------------------------------------------------------------ |
+| 1    | 核心     | createSignal、createEffect、createMemo、onCleanup                  |
+| 2    | Store    | createStore（getters、actions、persist）                           |
+| 3    | Boundary | ErrorBoundary、Suspense                                            |
+| 4    | 指令     | vIf、vElse、vElseIf、vFor、vShow、vOnce、vCloak、自定义（v-focus） |
+| 5    | Resource | createResource（无/有 source）、Suspense                           |
+| 6    | Context  | createContext、Provider、useContext                                |
+| 7    | Runtime  | createRoot、render、renderToString、generateHydrationScript        |
 
 ## 依赖说明
 

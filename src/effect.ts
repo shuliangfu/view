@@ -6,7 +6,7 @@
  * 支持 EffectScope：根可注册所有子 effect 的 disposer，unmount 时统一清理。
  */
 
-import { schedule, unschedule } from "./scheduler.ts";
+import { unschedule } from "./scheduler.ts";
 import {
   createSignal,
   getCurrentEffect,
@@ -21,35 +21,44 @@ type EffectRunWithSubs = (() => void) & {
   _cleanups?: (() => void)[];
 };
 
-/** 当前 effect 作用域（由 createRoot 设置），用于 unmount 时回收该树下所有 effect */
+/**
+ * Effect 作用域：由 createRoot 在挂载时设置，用于在 unmount 时统一回收该根下所有 effect 的 disposer。
+ */
 export type EffectScope = { addDisposer(dispose: () => void): void };
 let currentScope: EffectScope | null = null;
 
+/**
+ * 获取当前 effect 作用域（由 createRoot 设置）。
+ *
+ * @returns 当前 EffectScope，若不在根 effect 内则为 null
+ * @internal 主要由 runtime 使用
+ */
 export function getCurrentScope(): EffectScope | null {
   return currentScope;
 }
 
+/**
+ * 设置当前 effect 作用域（供 createRoot 在根 effect 内挂载 disposer 使用）。
+ *
+ * @param scope - 要设置的作用域，或 null 表示清除
+ * @internal 主要由 runtime 使用
+ */
 export function setCurrentScope(scope: EffectScope | null): void {
   currentScope = scope;
 }
 
-/** 调度 effect 的「下次执行」到微任务，避免同步重入（与 signal/store 共用 scheduler） */
-function scheduleEffect(run: () => void): void {
-  schedule(run);
-}
-
 /**
- * 创建响应式副作用
+ * 在当前 effect 内登记清理函数。
+ * 清理函数会在该 effect 下次重新执行前、或 effect 被 dispose 时统一执行。
+ * 仅在 createEffect(fn) 的 fn 执行过程中调用有效。
  *
- * 立即执行一次 fn；执行过程中读到的 signal 会将该 effect 登记为依赖。
- * 之后任意依赖的 signal 变更时，会调度该 effect 重新执行（微任务批处理）。
+ * @param cb - 清理函数（如取消订阅、移除监听器等）
  *
- * @param fn 副作用函数，可返回清理函数（在下次执行前或 dispose 时调用）
- * @returns dispose 函数，调用后取消该 effect 的订阅并不再执行
- */
-/**
- * 在当前 effect 内登记清理函数，effect 下次运行前或 dispose 时统一执行
- * 仅在 createEffect(fn) 的 fn 执行过程中调用有效
+ * @example
+ * createEffect(() => {
+ *   const id = setInterval(() => {}, 1000);
+ *   onCleanup(() => clearInterval(id));
+ * });
  */
 export function onCleanup(cb: () => void): void {
   const run = getCurrentEffect() as EffectRunWithSubs | null;
@@ -64,6 +73,23 @@ function runCleanups(run: EffectRunWithSubs): void {
   }
 }
 
+/**
+ * 创建响应式副作用。
+ * 立即执行一次 fn；执行过程中读到的 signal 会将该 effect 登记为依赖。
+ * 之后任意依赖的 signal 变更时，会通过调度器异步重新执行该 effect（微任务批处理）。
+ * fn 可返回一个清理函数，在 effect 下次运行前或 dispose 时被调用。
+ *
+ * @param fn - 副作用函数，可返回清理函数（可选）
+ * @returns dispose 函数，调用后取消该 effect 的所有订阅并不再执行
+ *
+ * @example
+ * const [count, setCount] = createSignal(0);
+ * const stop = createEffect(() => {
+ *   console.log(count());
+ *   return () => console.log("cleanup");
+ * });
+ * stop(); // 停止 effect 并执行 cleanup
+ */
 export function createEffect(fn: () => void | (() => void)): EffectDispose {
   let disposed = false;
 
@@ -91,12 +117,6 @@ export function createEffect(fn: () => void | (() => void)): EffectDispose {
     }
   };
 
-  const schedule = (): void => {
-    if (disposed) return;
-    runCleanups(run as EffectRunWithSubs);
-    scheduleEffect(run);
-  };
-
   (run as EffectRunWithSubs)._subscriptionSets = [];
   (run as EffectRunWithSubs)._cleanups = [];
   run();
@@ -111,15 +131,23 @@ export function createEffect(fn: () => void | (() => void)): EffectDispose {
       subs.length = 0;
     }
     runCleanups(runWithSubs);
-    unschedule(schedule);
+    unschedule(run);
   };
   if (currentScope) currentScope.addDisposer(disposer);
   return disposer;
 }
 
 /**
- * 创建只读派生值（memo），依赖变化时才重算并缓存
- * 返回 getter，在 effect 或模板中读取时会登记依赖
+ * 创建只读派生值（memo）。
+ * 依赖的 signal 变化时才重新计算并缓存结果；在 effect 或模板中读取返回的 getter 时会登记依赖。
+ *
+ * @param fn - 派生计算函数，应只依赖 signal 等响应式数据
+ * @returns 无参 getter，返回当前缓存的计算结果
+ *
+ * @example
+ * const [a, setA] = createSignal(1);
+ * const double = createMemo(() => a() * 2);
+ * createEffect(() => console.log(double())); // 2 → setA(2) 后输出 4
  */
 export function createMemo<T>(fn: () => T): () => T {
   const [get, set] = createSignal<T>(undefined as unknown as T);

@@ -1,18 +1,31 @@
 /**
- * View 模板引擎 — 指令系统
+ * @module @dreamer/view/directive
+ * @description
+ * 指令系统：内置 v-if/v-else/v-else-if、v-for、v-show、v-once、v-cloak，以及用户通过 registerDirective 注册的自定义指令。
  *
- * 支持内置指令 v-if / v-else / v-else-if / v-for / v-show / v-text / v-html / v-model，以及用户注册的自定义指令（v-xxxx）。
- * JSX 中使用 camelCase：vIf、vElse、vElseIf、vFor、vShow、vText、vHtml、vModel；模板中可使用 v-if、v-html、v-model 等。
- * v-model 用法：vModel={[getter, setter]}，如 createSignal 返回的元组。原生 input/textarea/select 由 applyProps 双向绑定；
- * 自定义表单组件：父组件直接传 model={[get, set]}，组件内解构 props.model 即可。
+ * **本模块导出：**
+ * - 类型：`DirectiveBinding`、`DirectiveHooks`
+ * - 注册与查询：`registerDirective`、`getDirective`、`directiveNameToCamel`、`directiveNameToKebab`、`isDirectiveProp`、`hasDirective`
+ * - 取值与绑定：`getDirectiveValue`、`createBinding`、`hasStructuralDirective`、`getVIfValue`、`getVElseShow`、`getVElseIfValue`、`resolveVForFactory`、`getVForListAndFactory`、`getVShowValue`
+ * - 应用：`applyDirectives`（dom 层在 applyProps 时调用）
+ *
+ * **表单双向绑定：** 使用 createReactive 或 createSignal，在 input/textarea/select 上写 `value={...}` + `onInput`/`onChange` 即可，无需 v-model 指令。
+ *
+ * @example
+ * import { registerDirective } from "jsr:@dreamer/view/directive";
+ * registerDirective("v-focus", { mounted(el) { (el as HTMLInputElement).focus(); } });
  */
 
 import { isSignalGetter } from "./signal.ts";
 import type { VNode } from "./types.ts";
 
-/** 指令绑定：传给指令钩子的参数 */
+/**
+ * 指令绑定：传给指令钩子的参数。
+ */
 export interface DirectiveBinding<T = unknown> {
+  /** 当前绑定值 */
   value: T;
+  /** 上一次的绑定值（updated 时可用） */
   oldValue?: T;
   /** 参数，如 v-foo:arg 中的 arg */
   arg?: string;
@@ -20,7 +33,9 @@ export interface DirectiveBinding<T = unknown> {
   modifiers?: string[];
 }
 
-/** 指令钩子：mounted 挂载时、updated 绑定值变化时、unmounted 卸载时 */
+/**
+ * 指令钩子：mounted 在元素挂载时调用，updated 在绑定值变化时调用，unmounted 在元素卸载时调用。
+ */
 export interface DirectiveHooks<T = unknown> {
   mounted?(el: Element, binding: DirectiveBinding<T>): void;
   updated?(el: Element, binding: DirectiveBinding<T>): void;
@@ -29,7 +44,12 @@ export interface DirectiveHooks<T = unknown> {
 
 const registry = new Map<string, DirectiveHooks>();
 
-/** 将模板风格名称转为 camelCase，如 v-if -> vIf */
+/**
+ * 将模板风格指令名转为 camelCase（如 v-if -> vIf）。
+ *
+ * @param name - 指令名（如 "v-if" 或 "vIf"）
+ * @returns 驼峰形式
+ */
 export function directiveNameToCamel(name: string): string {
   if (name.startsWith("v-")) {
     const rest = name.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -38,7 +58,12 @@ export function directiveNameToCamel(name: string): string {
   return name;
 }
 
-/** 将 camelCase 转为短横线，如 vIf -> v-if */
+/**
+ * 将 camelCase 指令名转为短横线形式（如 vIf -> v-if）。
+ *
+ * @param name - 驼峰指令名
+ * @returns 短横线形式
+ */
 export function directiveNameToKebab(name: string): string {
   if (name.startsWith("v") && name.length > 1) {
     const rest = name.slice(1).replace(
@@ -68,7 +93,10 @@ export function registerDirective(name: string, hooks: DirectiveHooks): void {
 }
 
 /**
- * 根据 prop 名获取指令（支持 vIf、v-if 等）
+ * 根据 prop 名获取已注册的指令（支持 vIf、v-if 等写法）。
+ *
+ * @param propKey - props 中的键名
+ * @returns 指令钩子对象，未注册则返回 undefined
  */
 export function getDirective(propKey: string): DirectiveHooks | undefined {
   if (!propKey.startsWith("v") && !propKey.startsWith("v-")) return undefined;
@@ -87,32 +115,30 @@ const BUILTIN_DIRECTIVE_PROPS = new Set([
   "v-for",
   "vShow",
   "v-show",
-  "vText",
-  "v-text",
-  "vHtml",
-  "v-html",
-  "vModel",
-  "v-model",
   "vOnce",
   "v-once",
   "vCloak",
   "v-cloak",
 ]);
 
+/**
+ * 判断给定 prop 键名是否为指令类（内置或 v- 开头等）。
+ *
+ * @param propKey - props 中的键名
+ * @returns 若为指令 prop 则为 true
+ */
 export function isDirectiveProp(propKey: string): boolean {
-  if (BUILTIN_DIRECTIVE_PROPS.has(propKey)) return true;
-  if (
-    (propKey.startsWith("v") && propKey.length > 1) || propKey.startsWith("v-")
-  ) {
-    return true;
-  }
-  return false;
+  return BUILTIN_DIRECTIVE_PROPS.has(propKey) ||
+    (propKey.startsWith("v") && propKey.length > 1) ||
+    propKey.startsWith("v-");
 }
 
 /**
- * 判断 props 是否包含指定指令（同时支持 camelCase 与 kebab-case，减少魔法字符串）
- * @param props 节点 props
- * @param camelName 指令驼峰名，如 'vShow'、'vIf'、'vText'
+ * 判断 props 是否包含指定指令（同时支持 camelCase 与 kebab-case）。
+ *
+ * @param props - 节点 props
+ * @param camelName - 指令驼峰名，如 'vShow'、'vIf'
+ * @returns 若包含该指令则为 true
  */
 export function hasDirective(
   props: Record<string, unknown>,
@@ -123,13 +149,24 @@ export function hasDirective(
   return kebab in props;
 }
 
-/** 获取指令绑定当前值（若为 getter 则求值）；供 dom 层 v-once 等冻结时使用 */
+/**
+ * 获取指令绑定的当前值：若为 signal getter 则求值，否则返回原值。
+ * 供 dom 层 v-once 冻结及指令应用时使用。
+ *
+ * @param value - 原始值或 getter
+ * @returns 求值后的值
+ */
 export function getDirectiveValue(value: unknown): unknown {
   return isSignalGetter(value) ? (value as () => unknown)() : value;
 }
 
 /**
- * 从 props 中提取指令绑定（供 dom 层在 applyProps 时调用自定义指令）
+ * 从 value/arg/modifiers 构造 DirectiveBinding，供 dom 层在 applyProps 时调用自定义指令。
+ *
+ * @param value - 绑定值（可为 getter，会在此处求值）
+ * @param arg - 可选参数
+ * @param modifiers - 可选修饰符数组
+ * @returns 指令绑定对象
  */
 export function createBinding(
   value: unknown,
@@ -144,7 +181,10 @@ export function createBinding(
 }
 
 /**
- * 检查 vnode 是否有结构性指令 vIf / vFor，需在 createElement 中优先处理
+ * 检查 props 是否包含结构性指令 vIf 或 vFor（需在 createElement 中优先处理）。
+ *
+ * @param props - 节点 props
+ * @returns "vIf" | "vFor" | null
  */
 export function hasStructuralDirective(
   props: Record<string, unknown>,
@@ -155,8 +195,11 @@ export function hasStructuralDirective(
 }
 
 /**
- * 取 vIf 的当前值（boolean 或 getter 求值）
- * 支持标记过的 signal getter 与普通无参函数（如 () => tab() === "a"），以便在 effect 内读 signal 并订阅
+ * 取 v-if 的当前条件值（支持 getter 求值）。
+ * 支持 signal getter 与普通无参函数，在 effect 内读取并订阅。
+ *
+ * @param props - 节点 props
+ * @returns 条件为真则 true
  */
 export function getVIfValue(props: Record<string, unknown>): boolean {
   const raw = props["vIf"] ?? props["v-if"];
@@ -168,15 +211,20 @@ export function getVIfValue(props: Record<string, unknown>): boolean {
 }
 
 /**
- * 取 vElse 是否应显示：依赖外部传入的 lastVIf（上一个 vIf 为 false 时 vElse 才显示）
+ * 取 v-else 是否应显示：仅当上一个 v-if 为 false 时 v-else 才显示。
+ *
+ * @param lastVIf - 同一批兄弟中上一个 v-if 的结果
+ * @returns 若应显示 v-else 则为 true
  */
 export function getVElseShow(lastVIf: boolean): boolean {
   return !lastVIf;
 }
 
 /**
- * 取 v-else-if 的当前条件值（仅当上一个 v-if 为 false 时才有意义）
- * 支持标记过的 signal getter 与普通无参函数，以便在 effect 内读 signal 并订阅
+ * 取 v-else-if 的当前条件值（支持 getter 求值）。
+ *
+ * @param props - 节点 props
+ * @returns 条件为真则 true
  */
 export function getVElseIfValue(props: Record<string, unknown>): boolean {
   const raw = props["vElseIf"] ?? props["v-else-if"];
@@ -188,8 +236,11 @@ export function getVElseIfValue(props: Record<string, unknown>): boolean {
 }
 
 /**
- * 从 v-for 的 children 解析出工厂函数。
- * 支持：(item, index) => VNode 的单个函数，或 expand 后得到的单元素数组 [factory]。
+ * 从 v-for 的 children 解析出列表项工厂函数。
+ * 支持单个函数 (item, index) => VNode，或 expand 后的单元素数组 [factory]。
+ *
+ * @param children - v-for 对应的 children
+ * @returns (item, index) => VNode | VNode[]
  */
 export function resolveVForFactory(
   children: unknown,
@@ -207,7 +258,11 @@ export function resolveVForFactory(
 }
 
 /**
- * 取 vFor 的 list 与子节点工厂（children 为 (item, index) => VNode | VNode[]）
+ * 从 props 与 children 取 v-for 的列表与工厂函数。
+ *
+ * @param props - 节点 props（含 vFor/v-for）
+ * @param children - 子节点（工厂函数或 [factory]）
+ * @returns { list, factory } 或 null（未传 vFor 时）
  */
 export function getVForListAndFactory(
   props: Record<string, unknown>,
@@ -225,65 +280,26 @@ export function getVForListAndFactory(
   return { list, factory };
 }
 
-/** 取 v-show 的当前值（boolean 或 getter 求值），供 dom 层应用 display */
+/**
+ * 取 v-show 的当前值（支持 getter 求值），供 dom 层应用 display 样式。
+ *
+ * @param props - 节点 props
+ * @returns 为 true 时显示，false 时隐藏（display: none）
+ */
 export function getVShowValue(props: Record<string, unknown>): boolean {
   const raw = props["vShow"] ?? props["v-show"];
   if (raw == null) return true;
   return Boolean(getDirectiveValue(raw));
 }
 
-/** 取 v-text 的当前值（string 或 getter/函数求值），供 dom 层应用 textContent */
-export function getVTextValue(props: Record<string, unknown>): string {
-  const raw = props["vText"] ?? props["v-text"];
-  if (raw == null) return "";
-  const v = typeof raw === "function"
-    ? (raw as () => unknown)()
-    : getDirectiveValue(raw);
-  return v == null ? "" : String(v);
-}
-
 /**
- * 取 v-html 的当前值（string 或 getter/函数求值），供 dom 层应用 innerHTML
+ * 应用自定义指令到元素：对每个指令 prop 调用 mounted，若值为 getter 则用 effect 订阅并调用 updated；
+ * 若指令提供 unmounted，通过 registerUnmount 登记，节点从 DOM 移除前会调用。
  *
- * 安全：未转义 HTML，存在 XSS 风险。禁止将未 sanitize 的用户输入传入。
- * 仅限信任内容；对用户输入请先用 DOMPurify、sanitize-html 等库做 sanitize 后再传入。
- */
-export function getVHtmlValue(props: Record<string, unknown>): string {
-  const raw = props["vHtml"] ?? props["v-html"];
-  if (raw == null) return "";
-  const v = typeof raw === "function"
-    ? (raw as () => unknown)()
-    : getDirectiveValue(raw);
-  return v == null ? "" : String(v);
-}
-
-/**
- * 从 props 中取出 v-model/model 绑定，供需要同时兼容 vModel 与 model 的自定义组件使用
- *
- * 推荐做法：自定义组件直接接收 model={[get, set]}，组件内 const [get, set] = props.model 即可。
- * 若组件需同时接受 vModel 或 model（如模板编译产物），可调用本函数统一取出 [getter, setter]。
- *
- * @param props 组件 props（可含 vModel、v-model 或 model）
- * @returns [getter, setter] 或 null（未传时）
- */
-export function getModelFromProps(
-  props: Record<string, unknown>,
-): [() => unknown, (v: unknown) => void] | null {
-  const raw = props["vModel"] ?? props["v-model"] ?? props["model"];
-  if (
-    !Array.isArray(raw) ||
-    raw.length < 2 ||
-    typeof raw[0] !== "function" ||
-    typeof raw[1] !== "function"
-  ) {
-    return null;
-  }
-  return [raw[0] as () => unknown, raw[1] as (v: unknown) => void];
-}
-
-/**
- * 应用自定义指令到元素：在 applyProps 中对每个指令 prop 调用 mounted，若值为 getter 则用 effect 调用 updated；
- * 若指令提供 unmounted，通过 registerUnmount 登记，节点从 DOM 移除前会调用
+ * @param el - 目标 DOM 元素
+ * @param props - 节点 props（含指令键值）
+ * @param effectFn - 创建 effect 的函数（如 createEffect），用于响应式更新
+ * @param registerUnmount - 可选，登记指令 unmount 回调的函数（如 registerDirectiveUnmount）
  */
 export function applyDirectives(
   el: Element,
@@ -298,7 +314,8 @@ export function applyDirectives(
     if (!directive) continue;
     const binding = createBinding(value);
     if (directive.mounted) {
-      directive.mounted(el, binding);
+      // 延后到下一微任务执行，确保元素已插入文档后再调用，使 focus() 等依赖 DOM 的挂载逻辑生效
+      queueMicrotask(() => directive.mounted!(el, binding));
     }
     if (directive.updated && isSignalGetter(value)) {
       effectFn(() => {

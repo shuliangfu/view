@@ -1,2 +1,0 @@
-var s=Symbol.for("view.fragment");var G=Symbol.for("view.signalGetter");var k=s;function g(o,e){let n=o??{},t=e??n.key??null,{key:r,...y}=n;return{props:y,key:t??void 0}}function w(o,e,n){let{props:t,key:r}=g(e,n);return{type:o,props:t,key:r,children:t.children}}function Ze(o,e,n){let{props:t,key:r}=g(e,n);return{type:o,props:t,key:r,children:t.children}}export{k as Fragment,w as jsx,Ze as jsxs};
-//# sourceMappingURL=jsx-runtime.js.map

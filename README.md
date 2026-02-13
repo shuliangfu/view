@@ -1,18 +1,23 @@
 # @dreamer/view
 
-> A lightweight, fine-grained reactive view engine. No virtual DOM: signals and effects drive precise DOM updates. Supports CSR, SSR, streaming SSR, and hydration.
+> A lightweight, fine-grained reactive view engine. No virtual DOM: signals and
+> effects drive precise DOM updates. Supports CSR, SSR, streaming SSR, and
+> hydration.
 
 English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-208%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
 ## 🎯 Features
 
-A reactive view engine with fine-grained updates: no virtual DOM, dependency tracking via signals and effects, and optional store, router, context, resource, and boundaries. Use JSX with built-in directives (v-if, v-for, v-model, etc.) for CSR, SSR, streaming SSR, and hydration.
+A reactive view engine with fine-grained updates: no virtual DOM, dependency
+tracking via signals and effects, and optional store, router, context, resource,
+and boundaries. Use JSX with built-in directives (v-if, v-for, v-show, etc.) for
+CSR, SSR, streaming SSR, and hydration.
 
 ---
 
@@ -24,9 +29,12 @@ A reactive view engine with fine-grained updates: no virtual DOM, dependency tra
 deno add jsr:@dreamer/view
 ```
 
-Optional subpaths (add as needed):
+Optional subpaths (match deno.json exports):
 
 ```bash
+deno add jsr:@dreamer/view          # main entry (core + render)
+deno add jsr:@dreamer/view/csr      # CSR-only lightweight entry
+deno add jsr:@dreamer/view/hybrid   # client hybrid entry (hydrate)
 deno add jsr:@dreamer/view/store
 deno add jsr:@dreamer/view/reactive
 deno add jsr:@dreamer/view/context
@@ -35,9 +43,11 @@ deno add jsr:@dreamer/view/router
 deno add jsr:@dreamer/view/boundary
 deno add jsr:@dreamer/view/directive
 deno add jsr:@dreamer/view/stream
+deno add jsr:@dreamer/view/compiler # compile-time optimizations (optional)
 ```
 
-**JSX:** In `deno.json` set `compilerOptions.jsx: "react-jsx"` and `compilerOptions.jsxImportSource: "jsr:@dreamer/view"`.
+**JSX:** In `deno.json` set `compilerOptions.jsx: "react-jsx"` and
+`compilerOptions.jsxImportSource: "jsr:@dreamer/view"`.
 
 ### Bun
 
@@ -49,42 +59,53 @@ bunx jsr add @dreamer/view
 
 ## 🌍 Environment Compatibility
 
-| Environment   | Version       | Status |
-| ------------- | ------------- | ------ |
-| **Deno**      | 2.5+          | ✅ Full support |
-| **Bun**       | 1.0+          | ✅ Full support |
-| **Browser**   | Modern (ES2020+) | ✅ CSR, Hydration |
-| **Server**    | -             | ✅ SSR, streaming SSR (no DOM) |
-| **Dependencies** | -          | 📦 Optional: happy-dom for tests; @dreamer/test for test runner |
+| Environment      | Version          | Status                                                          |
+| ---------------- | ---------------- | --------------------------------------------------------------- |
+| **Deno**         | 2.5+             | ✅ Full support                                                 |
+| **Bun**          | 1.0+             | ✅ Full support                                                 |
+| **Browser**      | Modern (ES2020+) | ✅ CSR, Hydration                                               |
+| **Server**       | -                | ✅ SSR, streaming SSR (no DOM)                                  |
+| **Dependencies** | -                | 📦 Optional: happy-dom for tests; @dreamer/test for test runner |
 
 ---
 
 ## ✨ Characteristics
 
 - **Core**
-  - `createSignal` / `createEffect` / `createMemo` — reactive primitives; effects re-run when tracked signals change (microtask).
-  - `createRoot` / `render` — mount reactive root; fine-grained DOM patch, no full tree replace.
-  - `renderToString` — SSR/SSG HTML; optional `allowRawHtml: false` for v-html escaping.
-  - `hydrate` — activate server-rendered markup; `generateHydrationScript` for hybrid apps.
+  - `createSignal` / `createEffect` / `createMemo` — reactive primitives;
+    effects re-run when tracked signals change (microtask).
+  - `createRoot` / `render` — mount reactive root; fine-grained DOM patch, no
+    full tree replace.
+  - `renderToString` — SSR/SSG HTML; optional `allowRawHtml: false` for
+    dangerouslySetInnerHTML escaping.
+  - `hydrate` — activate server-rendered markup; `generateHydrationScript` for
+    hybrid apps.
 - **Store** (`@dreamer/view/store`)
-  - `createStore` — reactive store with state, getters, actions, and optional persist (e.g. localStorage).
+  - `createStore` — reactive store with state, getters, actions, and optional
+    persist (e.g. localStorage).
 - **Reactive** (`@dreamer/view/reactive`)
-  - `createReactive` — proxy for form models; reads in effects are tracked, writes trigger updates.
+  - `createReactive` — proxy for form models; reads in effects are tracked,
+    writes trigger updates.
 - **Context** (`@dreamer/view/context`)
-  - `createContext` — Provider / useContext / registerProviderAlias for cross-tree injection.
+  - `createContext` — Provider / useContext / registerProviderAlias for
+    cross-tree injection.
 - **Resource** (`@dreamer/view/resource`)
-  - `createResource(fetcher)` or `createResource(source, fetcher)` — async data with `{ data, loading, error, refetch }`.
+  - `createResource(fetcher)` or `createResource(source, fetcher)` — async data
+    with `{ data, loading, error, refetch }`.
 - **Router** (`@dreamer/view/router`)
-  - `createRouter` — History-based SPA routing: routes, basePath, beforeRoute/afterRoute, notFound, back/forward/go.
+  - `createRouter` — History-based SPA routing: routes, basePath,
+    beforeRoute/afterRoute, notFound, back/forward/go.
 - **Boundary** (`@dreamer/view/boundary`)
   - `Suspense` — fallback until Promise or getter-resolved children.
   - `ErrorBoundary` — catch subtree errors and render fallback(error).
 - **Directives** (`@dreamer/view/directive`)
-  - Built-in: vIf, vElse, vElseIf, vFor, vShow, vText, vHtml, vModel; custom via `registerDirective`.
+  - Built-in: vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak; custom via
+    `registerDirective`.
 - **Stream SSR** (`@dreamer/view/stream`)
   - `renderToStream` — generator of HTML chunks for streaming responses.
 - **JSX**
-  - `jsx` / `jsxs` / `Fragment` via jsx-runtime; reactive content via getters in JSX.
+  - `jsx` / `jsxs` / `Fragment` via jsx-runtime; reactive content via getters in
+    JSX.
 
 ---
 
@@ -94,7 +115,8 @@ bunx jsr add @dreamer/view
 - **SSR / SSG**: Server-render or pre-render to HTML.
 - **Streaming SSR**: Stream HTML chunks for faster first paint.
 - **Hydration**: Activate SSR HTML in the browser.
-- **Forms**: createReactive + vModel for two-way binding.
+- **Forms**: createReactive (or createSignal) + value + onInput/onChange for
+  two-way binding.
 - **Global state**: createStore with getters/actions/persist.
 - **Async UI**: createResource + Suspense.
 - **Routing**: createRouter for SPA navigation.
@@ -125,7 +147,10 @@ const container = document.getElementById("root")!;
 createRoot(() => <App />, container);
 ```
 
-Use **getters** in JSX for reactive content (`{count}`). Two-way binding: **vModel** (see API). Events: `onClick`, `onInput`, `onChange` (camelCase). Ref: `ref={(el) => { ... }}` or `ref={refObj}`. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
+Use **getters** in JSX for reactive content (`{count}`). Forms: **value** +
+**onInput** / **onChange** with createSignal or createReactive. Events:
+`onClick`, `onInput`, `onChange` (camelCase). Ref: `ref={(el) => { ... }}` or
+`ref={refObj}`. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
 
 ---
 
@@ -134,7 +159,7 @@ Use **getters** in JSX for reactive content (`{count}`). Two-way binding: **vMod
 ### Signal + effect
 
 ```ts
-import { createSignal, createEffect, createMemo } from "jsr:@dreamer/view";
+import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view";
 
 const [count, setCount] = createSignal(0);
 const double = createMemo(() => count() * 2);
@@ -145,26 +170,49 @@ setCount(1);
 ### Store
 
 ```ts
-import { createStore } from "jsr:@dreamer/view/store";
+import { createStore, withActions, withGetters } from "jsr:@dreamer/view/store";
 
-const [get, set, getters, actions] = createStore({
-  state: { count: 0 },
-  getters: { double: (get) => get().count * 2 },
-  actions: { increment: (get, set) => set({ ...get(), count: get().count + 1 }) },
+// Default return is a single object: store.count read, store.count = 1 write, store.increment() call
+type State = { count: number };
+type Getters = { double(): number };
+type Actions = { increment(): void; reset(): void };
+
+const store = createStore({
+  state: { count: 0 } as State,
+  getters: withGetters<State, Getters>()({
+    double() {
+      return this.count * 2;
+    },
+  }),
+  actions: withActions<State, Actions>()({
+    increment() {
+      this.count = this.count + 1;
+    },
+    reset() {
+      this.count = 0;
+    },
+  }),
   persist: { key: "app" },
 });
-get().count;
-actions.increment();
+store.count; // read
+store.count = 1; // direct assignment
+store.setState({ count: 2 }); // or setState
+store.double; // getter
+store.increment(); // action
 ```
 
-### createReactive + vModel
+### createReactive + value + onInput
 
 ```tsx
 import { createReactive } from "jsr:@dreamer/view/reactive";
 
 const form = createReactive({ name: "" });
 // In JSX:
-<input type="text" vModel={[() => form.name, (v) => (form.name = v)]} />
+<input
+  type="text"
+  value={form.name}
+  onInput={(e) => (form.name = (e.target as HTMLInputElement).value)}
+/>;
 ```
 
 ### Resource + Suspense
@@ -177,31 +225,505 @@ const user = createResource(() => fetch("/api/user").then((r) => r.json()));
 // In JSX: use user() in effect or wrap async child in <Suspense fallback={...}>...</Suspense>
 ```
 
+### Directive usage (built-in + custom)
+
+Use **camelCase** in JSX; use **getters** for reactive directives (vIf, vFor,
+vShow). Register custom directives with `registerDirective`, then use them in
+JSX.
+
+**All built-in: vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak**
+
+```tsx
+import { createSignal } from "jsr:@dreamer/view";
+import type { VNode } from "jsr:@dreamer/view";
+
+function Demo(): VNode {
+  const [show, setShow] = createSignal(true);
+  const [list, setList] = createSignal([{ id: 1, name: "a" }, {
+    id: 2,
+    name: "b",
+  }]);
+  const [visible, setVisible] = createSignal(true);
+  const [staticText] = createSignal("Rendered once, no effect");
+  return (
+    <div>
+      {/* Conditional: vIf / vElse / vElseIf */}
+      <div vIf={() => show()}>Shown when show is true</div>
+      <div vElseIf={() => false}>Optional: another condition</div>
+      <div vElse>Otherwise this</div>
+
+      {/* List: vFor value is () => array; child is factory (item, index) => VNode; put key on child */}
+      <ul>
+        <li vFor={() => list()}>
+          {(item, index) => <span key={item.id}>{index + 1}. {item.name}</span>}
+        </li>
+      </ul>
+
+      {/* Toggle display (CSS only, node kept): vShow */}
+      <p vShow={() => visible()}>Shown when visible is true</p>
+
+      {/* Render once: vOnce. Getters evaluated once and frozen, no effect; good for static content */}
+      <div vOnce>{staticText}</div>
+
+      {/* Hide until hydrated: vCloak. Element gets data-view-cloak; use CSS [data-view-cloak]{ display:none }, removed after hydrate */}
+      <div vCloak>Hidden during SSR, shown after client hydrate</div>
+    </div>
+  );
+}
+```
+
+**Custom: registerDirective + use in JSX**
+
+```tsx
+// Register once at app entry or before root
+import { registerDirective } from "jsr:@dreamer/view/directive";
+
+registerDirective("v-focus", {
+  mounted(el) {
+    (el as HTMLInputElement).focus();
+  },
+});
+
+// Use in JSX (camelCase vFocus or kebab v-focus)
+function Form(): VNode {
+  return <input type="text" vFocus />;
+}
+```
+
+See **registerDirective** in “More API code examples” and **Modules and exports
+→ Directive** for more.
+
+### More API code examples
+
+Short examples for APIs not yet shown in the sections above.
+
+**CSR entry (client-only, smaller bundle)**
+
+When you don't need SSR or hydrate, import from `view/csr` for a smaller bundle
+(no renderToString, hydrate, generateHydrationScript):
+
+```tsx
+import { createSignal, render } from "jsr:@dreamer/view/csr";
+import type { VNode } from "jsr:@dreamer/view";
+
+function App(): VNode {
+  const [count, setCount] = createSignal(0);
+  return <div onClick={() => setCount(count() + 1)}>Count: {count}</div>;
+}
+render(() => <App />, document.getElementById("root")!);
+```
+
+**onCleanup (cleanup inside effect)**
+
+```ts
+import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view";
+
+const [id, setId] = createSignal(1);
+createEffect(() => {
+  const currentId = id();
+  const timer = setInterval(() => console.log(currentId), 1000);
+  onCleanup(() => clearInterval(timer));
+});
+```
+
+**renderToString (SSR)**
+
+```ts
+import { renderToString } from "jsr:@dreamer/view";
+
+const html = renderToString(() => <div>Hello SSR</div>);
+// optional: allowRawHtml: false to escape dangerouslySetInnerHTML
+const safe = renderToString(() => <App />, { allowRawHtml: false });
+```
+
+**hydrate + generateHydrationScript (hybrid)**
+
+```ts
+// Server: output HTML + inject hydration script
+import { generateHydrationScript, renderToString } from "jsr:@dreamer/view";
+const html = renderToString(() => <App />);
+const script = generateHydrationScript({ scriptSrc: "/client.js" });
+// return html + script
+
+// Client (e.g. from jsr:@dreamer/view/hybrid): activate
+import { hydrate } from "jsr:@dreamer/view/hybrid";
+hydrate(() => <App />, document.getElementById("root")!);
+```
+
+**createContext (Provider / useContext)**
+
+```tsx
+import { createContext } from "jsr:@dreamer/view/context";
+
+const ThemeContext = createContext<"light" | "dark">("light");
+// Root: <ThemeContext.Provider value={theme()}><App /></ThemeContext.Provider>
+// Child: const theme = ThemeContext.useContext();
+```
+
+**createResource(source, fetcher)**
+
+```ts
+import { createEffect, createSignal } from "jsr:@dreamer/view";
+import { createResource } from "jsr:@dreamer/view/resource";
+
+const [id, setId] = createSignal(1);
+const user = createResource(
+  id,
+  (id) => fetch(`/api/user/${id}`).then((r) => r.json()),
+);
+createEffect(() => {
+  const { data, loading, error, refetch } = user();
+  if (data) console.log(data);
+});
+```
+
+**createRouter (start / subscribe / navigate)**
+
+```ts
+import { createRouter } from "jsr:@dreamer/view/router";
+import { createSignal } from "jsr:@dreamer/view";
+
+const router = createRouter({
+  routes: [
+    { path: "/", component: () => <Home /> },
+    { path: "/user/:id", component: (match) => <User id={match.params.id} /> },
+  ],
+  notFound: () => <div>Not found</div>,
+});
+const [match, setMatch] = createSignal(router.getCurrentRoute());
+router.subscribe(() => setMatch(router.getCurrentRoute()));
+router.start();
+// router.navigate("/user/1"); router.back(); router.forward();
+```
+
+**ErrorBoundary**
+
+```tsx
+import { ErrorBoundary } from "jsr:@dreamer/view/boundary";
+
+<ErrorBoundary fallback={(err) => <div>Error: {String(err?.message)}</div>}>
+  <MaybeThrow />
+</ErrorBoundary>;
+```
+
+**registerDirective (custom directive)**
+
+```ts
+import { registerDirective } from "jsr:@dreamer/view/directive";
+
+registerDirective("v-focus", {
+  mounted(el) {
+    (el as HTMLInputElement).focus();
+  },
+});
+// In JSX: <input vFocus /> or vFocus={true}
+```
+
+**renderToStream**
+
+```ts
+import { renderToStream } from "jsr:@dreamer/view/stream";
+
+const stream = renderToStream(() => <App />);
+for (const chunk of stream) response.write(chunk);
+// or ReadableStream.from(renderToStream(() => <App />))
+```
+
+**Compiler: optimize / createOptimizePlugin**
+
+```ts
+import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/compiler";
+
+const out = optimize(sourceCode, "App.tsx");
+// esbuild plugin
+import { build } from "esbuild";
+await build({
+  plugins: [createOptimizePlugin(/\.tsx$/)],
+  // ...
+});
+```
+
+**Store tuple form (asObject: false)**
+
+```ts
+import { createStore } from "jsr:@dreamer/view/store";
+
+const [get, set, getters, actions] = createStore({
+  state: { count: 0 },
+  getters: {
+    double() {
+      return this.count * 2;
+    },
+  },
+  actions: {
+    increment() {
+      this.count++;
+    },
+  },
+  asObject: false,
+});
+get().count;
+actions.increment();
+```
+
 ---
 
-## 📚 API Documentation
+## 📚 Store (detailed) — `jsr:@dreamer/view/store`
 
-| Area    | API | Import |
-| ------- | --- | ------ |
-| Core    | createSignal, createEffect, createMemo, onCleanup, createRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view` |
-| Store   | createStore | `jsr:@dreamer/view/store` |
-| Reactive| createReactive | `jsr:@dreamer/view/reactive` |
-| Context | createContext | `jsr:@dreamer/view/context` |
-| Resource| createResource | `jsr:@dreamer/view/resource` |
-| Router  | createRouter | `jsr:@dreamer/view/router` |
-| Boundary| Suspense, ErrorBoundary | `jsr:@dreamer/view/boundary` |
-| Directives | registerDirective, hasDirective, getDirective, … | `jsr:@dreamer/view/directive` |
-| Stream  | renderToStream | `jsr:@dreamer/view/stream` |
+Store provides a reactive state tree plus getters, actions, and optional
+persistence (e.g. localStorage). It works with createEffect for global state
+(user, theme, cart).
 
-**Core:** createSignal returns `[getter, setter]`; createEffect runs once then re-runs when dependencies change (microtask), returns dispose; createMemo returns a getter with cached value. **Rendering:** createRoot/render mount reactive root; renderToString for SSR; hydrate + generateHydrationScript for hybrid. **Directives:** vIf, vElse, vElseIf, vFor, vShow, vText, vHtml, vModel (camelCase in JSX); values can be getters. **Types:** VNode, Root, SignalGetter, SignalSetter, EffectDispose.
+### Import and create
 
-Full API and examples: [docs/en-US](./docs/en-US/) (English) / [docs/zh-CN](./docs/zh-CN/README.md) (中文).
+```ts
+import { createStore, withActions, withGetters } from "jsr:@dreamer/view/store";
+```
+
+### Config: CreateStoreConfig
+
+| Field      | Type                | Required | Description                                                                                                                                                               |
+| ---------- | ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`    | `T`                 | ✅       | Initial state (shallow-copied); must extend `Record<string, unknown>`                                                                                                     |
+| `getters`  | `G`                 | No       | Derived read-only: methods use `this` to read state (e.g. `double() { return this.count * 2 }`); updates reactively in effects                                            |
+| `actions`  | `A`                 | No       | Methods: read/write state via `this`, call `this.setState(...)`, or other actions (e.g. `this.increment()`)                                                               |
+| `persist`  | `PersistOptions<T>` | No       | Persistence: `key` required; `storage` defaults to localStorage; optional `serialize`/`deserialize`                                                                       |
+| `asObject` | `boolean`           | No       | **Default `true`**: return a single object (`store.xxx` read, `store.xxx = value` write, `store.actionName()`). Use `false` to get tuple `[get, set, getters?, actions?]` |
+
+### Return shape
+
+- **Default (asObject true)**: One **object**.
+  - Read state: `store.count`, `store.theme` (reactive in effects/components).
+  - Write state: `store.count = 1` or `store.setState({ count: 1 })`,
+    `store.setState(prev => ({ ...prev, count: prev.count + 1 }))`.
+  - With getters: `store.double` etc. (read-only derived).
+  - With actions: `store.increment()`, `store.toggleTheme()` etc.
+- **asObject: false**: Tuple `[get, set]` or `[get, set, getters]` or
+  `[get, set, actions]` or `[get, set, getters, actions]`.
+
+### withGetters / withActions (recommended)
+
+- **withGetters&lt;State, GettersType&gt;()(getters)**: Types getter `this` as
+  state for IDE and code navigation (e.g. `this.count`).
+- **withActions&lt;State, ActionsType&gt;()(actions)**: Types action `this` to
+  include other actions so you can call `this.otherAction()` without type
+  assertions.
+
+Define types then pass:
+
+```ts
+type ThemeState = Record<string, unknown> & { theme: "light" | "dark" };
+type ThemeActions = {
+  setTheme(next: "light" | "dark"): void;
+  toggleTheme(): void;
+};
+
+const themeStore = createStore({
+  state: { theme: "light" } as ThemeState,
+  actions: withActions<ThemeState, ThemeActions>()({
+    setTheme(next) {
+      this.theme = next;
+    },
+    toggleTheme() {
+      this.setTheme(this.theme === "dark" ? "light" : "dark");
+    },
+  }),
+  persist: { key: "view-theme" },
+});
+themeStore.theme;
+themeStore.toggleTheme();
+```
+
+### Type exports
+
+- **StorageLike**, **PersistOptions&lt;T&gt;** — persistence.
+- **StoreGetters&lt;T&gt;**; **StoreActions&lt;T&gt;**;
+  **StoreActionContextBase&lt;T&gt;**; **StoreActionContext&lt;T, A&gt;** —
+  getters/actions and action `this`.
+- **WithGettersContext&lt;T, G&gt;**; **WithActionsContext&lt;T, A&gt;** —
+  withGetters/withActions parameter types.
+- **StoreAsObjectStateOnly&lt;T&gt;**; **StoreAsObjectWithGetters&lt;T, G&gt;**;
+  **StoreAsObject&lt;T, A&gt;**; **StoreAsObjectWithGettersAndActions&lt;T, G,
+  A&gt;** — return object types.
+- **CreateStoreConfig&lt;T, G?, A?&gt;** — config type.
+
+---
+
+## 📦 Modules and exports (full)
+
+These match `deno.json` exports; import from the listed subpaths as needed.
+
+### Main entry `jsr:@dreamer/view` (`.`)
+
+Core reactive and rendering API.
+
+| Export                                      | Description                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **createSignal**                            | Returns `[getter, setter]`; getter in effect registers dependency                           |
+| **createEffect**                            | Runs once, then re-runs when deps change (microtask); returns dispose                       |
+| **createMemo**                              | Cached derived getter                                                                       |
+| **onCleanup**                               | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                   |
+| **getCurrentEffect** / **setCurrentEffect** | Current effect (internal)                                                                   |
+| **isSignalGetter**                          | Detect signal getter                                                                        |
+| **createRoot**                              | Create reactive root (root component function)                                              |
+| **render**                                  | Mount root: `render(() => <App />, container)`                                              |
+| **renderToString**                          | SSR: root to HTML string                                                                    |
+| **hydrate**                                 | Activate server-rendered HTML in the browser                                                |
+| **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                 |
+| **Types**                                   | VNode, Root, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions |
+| **isDOMEnvironment**                        | Whether in DOM environment                                                                  |
+
+### CSR entry `jsr:@dreamer/view/csr`
+
+Client-only bundle: no renderToString, hydrate, generateHydrationScript.
+Exports: createSignal, createEffect, createMemo, onCleanup, createRoot,
+**render**, and related types.
+
+### Hybrid entry `jsr:@dreamer/view/hybrid`
+
+Client hybrid entry: **createRoot**, **render**, **hydrate** (no renderToString
+/ generateHydrationScript). Use main or stream for server HTML, this entry for
+`hydrate()` on the client.
+
+### JSX runtime `jsr:@dreamer/view/jsx-runtime`
+
+React 17+ automatic runtime. Exports **jsx**, **jsxs**, **Fragment**. Configure
+deno.json so the compiler injects from `jsr:@dreamer/view` (or
+`jsr:@dreamer/view/jsx-runtime`); no need to import in app code.
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "jsr:@dreamer/view"
+  }
+}
+```
+
+### Store `jsr:@dreamer/view/store`
+
+See **Store (detailed)** above. Exports: **createStore**, **withGetters**,
+**withActions**, and StorageLike, PersistOptions, StoreGetters, StoreActions,
+CreateStoreConfig, StoreAsObject* types.
+
+### Reactive `jsr:@dreamer/view/reactive`
+
+Single reactive object for forms and two-way binding.
+
+| Export                      | Description                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **createReactive(initial)** | Turns object into Proxy; reads in effects are tracked, writes trigger updates. Use with `value={form.name}` + `onInput` |
+
+### Boundary `jsr:@dreamer/view/boundary`
+
+| Export                                    | Description                                                                        |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Suspense**                              | Shows fallback until children (Promise or getter) resolve; use with createResource |
+| **ErrorBoundary**                         | Catches sync errors in subtree, renders `fallback(error)`                          |
+| isErrorBoundary, getErrorBoundaryFallback | Internal/dom use                                                                   |
+
+### Directive `jsr:@dreamer/view/directive`
+
+Built-in vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak; custom via
+**registerDirective**. **Usage examples:** see **Usage examples → Directive
+usage** above.
+
+| Export                                                                                                      | Description                                                   |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **registerDirective(name, hooks)**                                                                          | Register custom directive; hooks: mounted, updated, unmounted |
+| **getDirective**, **hasDirective**, **directiveNameToCamel**, **directiveNameToKebab**, **isDirectiveProp** | Lookup and naming                                             |
+| **DirectiveBinding**, **DirectiveHooks**                                                                    | Types                                                         |
+
+Forms: use createReactive or createSignal with `value={...}` + onInput/onChange;
+no v-model.
+
+### Resource `jsr:@dreamer/view/resource`
+
+Async data source.
+
+| Export                              | Description                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------- |
+| **createResource(fetcher)**         | No source; one-shot or refetch; getter returns `{ data, loading, error, refetch }` |
+| **createResource(source, fetcher)** | Refetches when source changes; fetcher receives current source value               |
+| **ResourceResult&lt;T&gt;**         | Type: data, loading, error, refetch                                                |
+
+Use with Suspense: fallback while loading, content when data is set.
+
+### Compiler `jsr:@dreamer/view/compiler`
+
+Build-time optimizations (static hoisting, constant folding); uses TypeScript
+compiler API.
+
+| Export                                       | Description                                            |
+| -------------------------------------------- | ------------------------------------------------------ |
+| **optimize(code, fileName?)**                | Optimize source, return optimized string               |
+| **createOptimizePlugin(filter?, readFile?)** | esbuild onLoad plugin to run optimize on matched files |
+
+### Context `jsr:@dreamer/view/context`
+
+Cross-tree injection.
+
+| Export                          | Description                                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **createContext(defaultValue)** | Returns `{ Provider, useContext, registerProviderAlias }`; Provider injects value, useContext reads in children |
+| **registerProviderAlias**       | Alias component (e.g. RouterProvider) to inject same context                                                    |
+
+### Stream `jsr:@dreamer/view/stream`
+
+Streaming SSR.
+
+| Export                           | Description                                                                                                                                                           |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **renderToStream(fn, options?)** | Renders root to Generator&lt;string&gt;; options may include allowRawHtml. Use `for (const chunk of renderToStream(fn))` or `ReadableStream.from(renderToStream(fn))` |
+
+### Router `jsr:@dreamer/view/router`
+
+Built-in SPA router (History API).
+
+| Export                    | Description                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| **createRouter(options)** | Create router; call **start()** to listen to popstate and intercept links           |
+| **Router methods**        | getCurrentRoute, href, navigate, replace, back, forward, go, subscribe, start, stop |
+| **Types**                 | RouteConfig, RouteMatch, RouteGuard, RouteGuardAfter, CreateRouterOptions           |
+
+Routes: path supports `:param`; component receives match; optional meta.
+beforeRoute/afterRoute, notFound supported.
+
+---
+
+## 📚 API quick reference
+
+| Area       | API                                                                                                                     | Import                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
+| Store      | createStore, withGetters, withActions                                                                                   | `jsr:@dreamer/view/store`     |
+| Reactive   | createReactive                                                                                                          | `jsr:@dreamer/view/reactive`  |
+| Context    | createContext                                                                                                           | `jsr:@dreamer/view/context`   |
+| Resource   | createResource                                                                                                          | `jsr:@dreamer/view/resource`  |
+| Router     | createRouter                                                                                                            | `jsr:@dreamer/view/router`    |
+| Boundary   | Suspense, ErrorBoundary                                                                                                 | `jsr:@dreamer/view/boundary`  |
+| Directives | registerDirective, hasDirective, getDirective, …                                                                        | `jsr:@dreamer/view/directive` |
+| Stream     | renderToStream                                                                                                          | `jsr:@dreamer/view/stream`    |
+
+**Core:** createSignal returns `[getter, setter]`; createEffect runs once then
+re-runs when deps change (microtask); createMemo returns cached getter.
+**Rendering:** createRoot/render mount root; renderToString for SSR; hydrate +
+generateHydrationScript for hybrid. **Directives:** vIf, vElse, vElseIf, vFor,
+vShow, vOnce, vCloak (camelCase in JSX). **Types:** VNode, Root, SignalGetter,
+SignalSetter, EffectDispose.
+
+More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
+[docs/en-US](./docs/en-US/) (English).
 
 ---
 
 ## 📋 Changelog
 
-**v1.0.0** (2026-02-12) — Initial release: core (signal, effect, memo, createRoot, render, renderToString, hydrate, generateHydrationScript), store, reactive, context, resource, router, boundary (Suspense, ErrorBoundary), directives (vIf/vFor/vShow/vText/vHtml/vModel, custom), stream SSR, JSX runtime.
+**v1.0.0** (2026-02-12) — Initial release: core (signal, effect, memo,
+createRoot, render, renderToString, hydrate, generateHydrationScript), store,
+reactive, context, resource, router, boundary (Suspense, ErrorBoundary),
+directives (vIf/vElse/vElseIf/vFor/vShow/vOnce/vCloak, custom), stream SSR, JSX
+runtime.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
@@ -209,14 +731,14 @@ See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ## 📊 Test Report
 
-| Metric      | Value        |
-| ----------- | ------------ |
-| Test date   | 2026-02-12   |
-| Total tests | 208          |
-| Passed      | 208 ✅       |
-| Failed      | 0            |
-| Pass rate   | 100%         |
-| Duration    | ~1m 28s      |
+| Metric      | Value      |
+| ----------- | ---------- |
+| Test date   | 2026-02-12 |
+| Total tests | 201        |
+| Passed      | 201 ✅     |
+| Failed      | 0          |
+| Pass rate   | 100%       |
+| Duration    | ~1m 15s    |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
@@ -224,10 +746,14 @@ See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
 ## 📝 Notes
 
-- **No virtual DOM**: Updates are driven by signal/store/reactive subscriptions; root re-runs with fine-grained patch.
-- **Getters in JSX**: Use getters (e.g. `{count}`, `value={() => name()}`, `vShow={() => visible()}`) so the engine can track and update.
-- **JSX config**: `compilerOptions.jsx: "react-jsx"` and `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
-- **Type safety**: Full TypeScript support; VNode, Root, and effect/signal types exported.
+- **No virtual DOM**: Updates are driven by signal/store/reactive subscriptions;
+  root re-runs with fine-grained patch.
+- **Getters in JSX**: Use getters (e.g. `{count}`, `value={() => name()}`,
+  `vShow={() => visible()}`) so the engine can track and update.
+- **JSX config**: `compilerOptions.jsx: "react-jsx"` and
+  `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
+- **Type safety**: Full TypeScript support; VNode, Root, and effect/signal types
+  exported.
 
 ---
 

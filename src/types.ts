@@ -4,23 +4,31 @@
  * 定义 Signal、Effect、VNode、渲染结果等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
  */
 
-/** Signal 的 getter 函数（无参，返回当前值），用于依赖收集 */
+/**
+ * Signal 的 getter 函数：无参，返回当前值；在 effect 或模板中调用时会参与依赖收集。
+ */
 export type SignalGetter<T> = () => T;
 
-/** Signal 的 setter 函数（支持值或 updater 函数） */
+/**
+ * Signal 的 setter 函数：可传入新值或 updater 函数 (prev => next)。
+ */
 export type SignalSetter<T> = (value: T | ((prev: T) => T)) => void;
 
-/** createSignal 返回的元组 [getter, setter] */
+/**
+ * createSignal 返回的元组：[getter, setter]。
+ */
 export type SignalTuple<T> = [getter: SignalGetter<T>, setter: SignalSetter<T>];
 
-/** Effect 的 dispose 函数，用于取消订阅 */
+/**
+ * Effect 的 dispose 函数：调用后取消该 effect 的订阅并执行已登记的 cleanup。
+ */
 export type EffectDispose = () => void;
 
 /**
- * VNode 描述符：JSX 编译后的节点描述，供 render / renderToString 消费
- * - type 为字符串时表示原生 DOM 标签
- * - type 为函数时表示组件（接收 props 返回 VNode 或 VNode[]）
- * - type 为 Symbol（如 Fragment）时表示占位/片段，不生成真实节点
+ * VNode 描述符：JSX 编译后的节点描述，供 render / renderToString / hydrate 消费。
+ * - type 为字符串：原生 DOM 标签名
+ * - type 为函数：组件，接收 props 返回 VNode 或 VNode[] 或 null
+ * - type 为 Symbol（如 Fragment）：占位/片段，不生成真实 DOM 节点
  */
 export type VNode = {
   type:
@@ -32,23 +40,31 @@ export type VNode = {
   children?: VNode[];
 };
 
-/** 根实例：render / hydrate 返回的句柄，可 unmount */
+/**
+ * 根实例：createRoot / render / hydrate 返回的句柄。
+ * 调用 unmount() 可卸载该根并回收其下所有 effect。
+ */
 export type Root = {
+  /** 卸载根并清理所有 effect 与指令 */
   unmount: () => void;
-  /** 挂载的容器元素（仅浏览器环境） */
+  /** 挂载的 DOM 容器（仅浏览器环境有值） */
   container?: Element | null;
 };
 
 /**
- * 扩展 Element：挂载指令 unmounted 回调列表及事件等扩展属性，供 dom 层内部使用
- * 集中声明后避免多处 el as unknown as Record<string, unknown> 断言
+ * 扩展 Element：挂载 View 指令的 unmount 回调等扩展属性，供 dom 层内部使用。
  */
 export interface ElementWithViewData extends Element {
   __viewDirectiveUnmount?: (() => void)[];
   [key: string]: unknown;
 }
 
-/** 是否处于浏览器 DOM 环境（用于 SSR 与 CSR 分支） */
+/**
+ * 判断当前是否处于浏览器 DOM 环境（存在 document 等）。
+ * 用于在 SSR 与 CSR 之间做分支（如 createRoot 在非 DOM 环境直接返回空 Root）。
+ *
+ * @returns 若 globalThis.document 存在则为 true，否则为 false
+ */
 export function isDOMEnvironment(): boolean {
   return typeof globalThis !== "undefined" &&
     typeof (globalThis as { document?: unknown }).document !== "undefined";

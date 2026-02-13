@@ -1,50 +1,20 @@
 /**
- * @dreamer/view/reactive — 响应式对象（用于表单 model 等双向绑定）
+ * @module @dreamer/view/reactive
+ * @description
+ * 响应式对象：将普通对象变为与 createEffect 联动的 Proxy，适合作为表单 model 等「单对象、多字段、双向绑定」场景。
  *
- * 职责单一：提供 createReactive(initial)，返回可读写、与 createEffect 联动的代理对象。
- * 不放在 store：store 负责完整状态（getters/actions/persist）；不放在 signal：signal 是 [get, set] 元组。
+ * **本模块导出：**
+ * - `createReactive(initial)`：创建响应式代理，在 effect 中读取会登记依赖，任意属性赋值会触发订阅更新
  *
- * 用法：const model = createReactive({ name: "", age: "" }); <Form model={model} />；表单内 model.name = value 即可双向更新。
+ * **与 store / signal 区别：** 不提供 getters/actions/persist（用 store）；不是单值 [get, set]（用 signal）。仅提供「可读写对象树 + 响应式」。
+ *
+ * @example
+ * import { createReactive } from "jsr:@dreamer/view/reactive";
+ * const model = createReactive({ name: "", age: "" });
+ * // 表单内：props.model.name = e.target.value 即可双向更新
  */
 
-import { getCurrentEffect } from "./signal.ts";
-import { schedule } from "./scheduler.ts";
-
-type SubscriberSet = Set<() => void>;
-
-/**
- * 为嵌套对象创建代理：get 登记当前 effect，set 通知订阅者
- */
-function createNestedProxy<T extends object>(
-  target: T,
-  subscribers: SubscriberSet,
-  proxyCache: WeakMap<object, object>,
-): T {
-  const cached = proxyCache.get(target);
-  if (cached) return cached as T;
-  const proxy = new Proxy(target, {
-    get(t, key: string) {
-      const effect = getCurrentEffect();
-      if (effect) subscribers.add(effect);
-      const value = Reflect.get(t, key);
-      if (value !== null && typeof value === "object") {
-        return createNestedProxy(
-          value as object,
-          subscribers,
-          proxyCache,
-        ) as T[keyof T];
-      }
-      return value;
-    },
-    set(t, key: string, value: unknown) {
-      const ok = Reflect.set(t, key, value);
-      if (ok) subscribers.forEach((run) => schedule(run));
-      return ok;
-    },
-  }) as T;
-  proxyCache.set(target, proxy);
-  return proxy;
-}
+import { createNestedProxy } from "./proxy.ts";
 
 /**
  * 创建响应式对象（Proxy），读写与 createEffect 联动，适合作为表单 model 等「传一个变量、双向更新」的场景
@@ -61,7 +31,5 @@ export function createReactive<T extends Record<string, unknown>>(
   initial: T,
 ): T {
   const state = { ...initial };
-  const subscribers: SubscriberSet = new Set();
-  const proxyCache = new WeakMap<object, object>();
-  return createNestedProxy(state, subscribers, proxyCache);
+  return createNestedProxy(state, new Set(), new WeakMap());
 }

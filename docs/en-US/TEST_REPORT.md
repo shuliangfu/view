@@ -13,34 +13,34 @@
 
 ## Test Results
 
-- **Total tests**: 208
-- **Passed**: 208
+- **Total tests**: 201
+- **Passed**: 201
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 28s
+- **Duration**: ~1m 15s
 
 ### Test File Summary
 
-| Test file                            | Tests | Status        |
-| ------------------------------------ | ----- | ------------- |
-| boundary.test.ts                     | 13    | ✅ All passed |
-| browser/view-example-browser.test.ts | 48    | ✅ All passed |
-| context.test.ts                      | 7     | ✅ All passed |
-| directive.test.ts                    | 32    | ✅ All passed |
-| effect.test.ts                       | 15    | ✅ All passed |
-| integration.test.ts                  | 10    | ✅ All passed |
-| jsx-runtime.test.ts                  | 6     | ✅ All passed |
-| reactive.test.ts                     | 7     | ✅ All passed |
-| resource.test.ts                     | 8     | ✅ All passed |
-| router.test.ts                       | 14    | ✅ All passed |
-| runtime.test.ts                      | 13    | ✅ All passed |
-| signal.test.ts                       | 14    | ✅ All passed |
-| ssr-directives.test.ts               | 9     | ✅ All passed |
-| store.test.ts                        | 12    | ✅ All passed |
+| Test file                        | Tests | Status        |
+| -------------------------------- | ----- | ------------- |
+| e2e/view-example-browser.test.ts | 48    | ✅ All passed |
+| integration/integration.test.ts  | 11    | ✅ All passed |
+| unit/boundary.test.ts            | 13    | ✅ All passed |
+| unit/context.test.ts             | 7     | ✅ All passed |
+| unit/directive.test.ts           | 25    | ✅ All passed |
+| unit/effect.test.ts              | 15    | ✅ All passed |
+| unit/jsx-runtime.test.ts         | 6     | ✅ All passed |
+| unit/reactive.test.ts            | 7     | ✅ All passed |
+| unit/resource.test.ts            | 8     | ✅ All passed |
+| unit/router.test.ts              | 14    | ✅ All passed |
+| unit/runtime.test.ts             | 13    | ✅ All passed |
+| unit/signal.test.ts              | 14    | ✅ All passed |
+| unit/ssr-directives.test.ts      | 6     | ✅ All passed |
+| unit/store.test.ts               | 14    | ✅ All passed |
 
 ## Feature Test Details
 
-### 1. Boundary (boundary.test.ts) - 13 tests
+### 1. Boundary (unit/boundary.test.ts) - 13 tests
 
 - ✅ isErrorBoundary returns true for ErrorBoundary and false for other
   functions
@@ -49,7 +49,7 @@
 - ✅ Suspense: sync VNode, Promise with fallback then resolve, null fallback
   edge case
 
-### 2. Browser Examples (view-example-browser.test.ts) - 48 tests
+### 2. E2E Browser Examples (e2e/view-example-browser.test.ts) - 48 tests
 
 - ✅ Home mount and multi-page entry; navigation to
   Signal/Store/Boundary/Directive/Reactive/Resource/Context/Runtime/Router
@@ -63,7 +63,7 @@
 - ✅ Runtime page: input then generate HTML (renderToString)
 - ✅ Top nav and route changes, Layout theme, 404 and back to home
 
-### 3. Context (context.test.ts) - 7 tests
+### 3. Context (unit/context.test.ts) - 7 tests
 
 - ✅ createContext returns Provider and useContext; useContext returns
   defaultValue when no Provider
@@ -72,17 +72,16 @@
 - ✅ With Provider, pushContext then useContext returns value; Provider value
   null edge case
 
-### 4. Directive (directive.test.ts) - 32 tests
+### 4. Directive (unit/directive.test.ts) - 25 tests
 
 - ✅ directiveNameToCamel / directiveNameToKebab (v-if, vElseIf, etc.)
 - ✅ getDirectiveValue, getVIfValue, getVElseShow, getVElseIfValue,
-  getVShowValue, getVTextValue, getVHtmlValue
+  getVShowValue
 - ✅ getVForListAndFactory (array, empty array, non-array edge)
 - ✅ hasDirective / hasStructuralDirective / isDirectiveProp
-- ✅ registerDirective / getDirective, createBinding, getModelFromProps
-  (vModel/model)
+- ✅ registerDirective / getDirective, createBinding
 
-### 5. Effect (effect.test.ts) - 15 tests
+### 5. Effect (unit/effect.test.ts) - 15 tests
 
 - ✅ createEffect: non-function throws, runs once immediately, re-runs after
   signal change, dispose, cleanup and onCleanup
@@ -90,7 +89,7 @@
 - ✅ createMemo: non-function throws, getter and cache, recompute on dependency
   change, read in effect, undefined/null return edge
 
-### 6. Integration (integration.test.ts) - 10 tests
+### 6. Integration (integration/integration.test.ts) - 11 tests
 
 - ✅ createRoot + event + signal: button onClick updates signal, DOM updates
   with signal
@@ -102,12 +101,12 @@
 - ✅ Fine-grained update: patch without full tree replace, DOM node identity
   preserved, input not re-mounted
 
-### 7. JSX Runtime (jsx-runtime.test.ts) - 6 tests
+### 7. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
 
 - ✅ jsx / jsxs: type/props/children, key extraction and third-arg override,
   Fragment as Symbol
 
-### 8. Reactive (reactive.test.ts) - 7 tests
+### 8. Reactive (unit/reactive.test.ts) - 7 tests
 
 - ✅ createReactive: proxy initial props, does not mutate initial, get after set
   returns new value
@@ -115,13 +114,13 @@
   microtask)
 - ✅ Nested proxy, multi-field set triggers effects that read those fields
 
-### 9. Resource (resource.test.ts) - 8 tests
+### 9. Resource (unit/resource.test.ts) - 8 tests
 
 - ✅ createResource (no source): loading/data/error, refetch, fetcher throw and
   non-Promise edge
 - ✅ createResource (with source): re-request when source changes
 
-### 10. Router (router.test.ts) - 14 tests
+### 10. Router (unit/router.test.ts) - 14 tests
 
 - ✅ createRouter: getCurrentRoute, navigate, replace, subscribe, start, stop,
   back/forward/go
@@ -130,7 +129,7 @@
 - ✅ beforeRoute: false cancels, redirect path, true continues
 - ✅ afterRoute, notFound and meta
 
-### 11. Runtime (runtime.test.ts) - 13 tests
+### 11. Runtime (unit/runtime.test.ts) - 13 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children
 - ✅ generateHydrationScript: no args, data, scriptSrc
@@ -138,22 +137,23 @@
   Fragment, container with existing children, set after unmount does not throw
 - ✅ hydrate: reuse children and activate, remove cloak
 
-### 12. Signal (signal.test.ts) - 14 tests
+### 12. Signal (unit/signal.test.ts) - 14 tests
 
 - ✅ createSignal: [getter, setter], initial value, setter and updater, same
   value (Object.is) no update
 - ✅ Edge: initial undefined/null
 - ✅ isSignalGetter, markSignalGetter
 
-### 13. SSR Directives (ssr-directives.test.ts) - 9 tests
+### 13. SSR Directives (unit/ssr-directives.test.ts) - 6 tests
 
-- ✅ SSR vIf / vElseIf / vElse, vFor, vShow, vText / vHtml (escape and
-  allowRawHtml: false)
+- ✅ SSR vIf / vElseIf / vElse, vFor, vShow
 
-### 14. Store (store.test.ts) - 12 tests
+### 14. Store (unit/store.test.ts) - 14 tests
 
 - ✅ createStore: [get, set] for state only, empty state, get() reactive, set
   updater, nested props
+- ✅ Default asObject true returns object (direct read of state); default object
+  supports direct assignment store.xxx = value to update state
 - ✅ actions, persist custom storage, persist.key empty string edge
 - ✅ getters derived and state update, getters return undefined, action throw
   edge
@@ -175,7 +175,7 @@
 
 ## Conclusion
 
-All 208 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 201 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, router, resource, context, directives, runtime and SSR,
 store, reactive, boundary, and browser example flows, suitable for release and
 documentation.

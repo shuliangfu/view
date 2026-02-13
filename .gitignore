@@ -12,6 +12,7 @@ bun.lock
 
 # 构建输出
 build/
+dist/
 out/
 
 # 环境变量
@@ -38,3 +39,7 @@ coverage/
 
 # 分析报告
 analysis
+
+# 误生成的绝对路径目录与临时目录
+Users/
+var/
