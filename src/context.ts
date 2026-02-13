@@ -23,7 +23,7 @@ import {
   getGlobalContextDefaults,
   getGlobalContextStacks,
   getGlobalProviderBindings,
-} from "./view-global.ts";
+} from "@dreamer/view/view-global";
 
 /** Fragment 的 type 标记，与 dom/shared 中 isFragment 判断一致，避免 context 依赖 dom */
 const FRAGMENT_TYPE = "Fragment";

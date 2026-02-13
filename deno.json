@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.14",
+  "version": "1.0.0-beta.15",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -40,6 +40,13 @@
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",
+    "@dreamer/view/view-global": "./src/view-global.ts",
+    "@dreamer/view/effect": "./src/effect.ts",
+    "@dreamer/view/dom": "./src/dom.ts",
+    "@dreamer/view/dom/element": "./src/dom/element.ts",
+    "@dreamer/view/dom/unmount": "./src/dom/unmount.ts",
+    "@dreamer/view/dom/hydrate": "./src/dom/hydrate.ts",
+    "@dreamer/view/types": "./src/types.ts",
     "@dreamer/view/dev": "./src/dev.ts",
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/store": "./src/store.ts",
