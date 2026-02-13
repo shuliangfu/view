@@ -217,8 +217,8 @@ export function App(props: { router: Router }): VNode {
   if (!current) {
     return (
       <Layout routes={routes} currentPath="">
-        <section class="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
-          <p class="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
+          <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
             加载中…
           </p>
         </section>
@@ -274,24 +274,24 @@ export function Layout(props: LayoutProps): VNode {
   const navItems = navItemsFromRoutes(routes);
   const isDark = theme() === "dark";
   return (
-    <div class="min-h-screen">
-      <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
-        <nav class="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
+        <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
           <a
             href="/"
-            class="text-lg font-semibold tracking-tight text-slate-800 hover:text-indigo-600 transition-colors dark:text-slate-200 dark:hover:text-indigo-400"
+            className="text-lg font-semibold tracking-tight text-slate-800 hover:text-indigo-600 transition-colors dark:text-slate-200 dark:hover:text-indigo-400"
           >
             @dreamer/view
           </a>
-          <div class="flex items-center gap-2">
-            <ul class="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <ul className="flex items-center gap-1">
               {navItems.map((item) => {
                 const isActive = currentPath === item.path;
                 return (
                   <li key={item.path}>
                     <a
                       href={item.path}
-                      class={isActive
+                      className={isActive
                         ? "rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 dark:text-indigo-300 dark:bg-indigo-900/50"
                         : "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"}
                     >
@@ -304,7 +304,7 @@ export function Layout(props: LayoutProps): VNode {
             <button
               type="button"
               onClick={() => toggleTheme()}
-              class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
               title={isDark ? "切换到浅色" : "切换到深色"}
               aria-label={isDark ? "切换到浅色" : "切换到深色"}
             >
@@ -313,7 +313,7 @@ export function Layout(props: LayoutProps): VNode {
           </div>
         </nav>
       </header>
-      <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
         {children}
       </main>
     </div>
@@ -336,22 +336,22 @@ import type { VNode } from "@dreamer/view";
 
 export function Home(): VNode {
   return (
-    <div class="space-y-10">
-      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
-        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+    <div className="space-y-10">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
           View 模板引擎
         </p>
-        <h1 class="mb-4 text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+        <h1 className="mb-4 text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
           欢迎使用 @dreamer/view
         </h1>
-        <p class="max-w-xl text-slate-600 dark:text-slate-300 leading-relaxed">
-          这是一个由 <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">view init</code> 生成的项目。
-          编辑 <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/home.tsx</code> 和{" "}
-          <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/about.tsx</code> 开始开发。
+        <p className="max-w-xl text-slate-600 dark:text-slate-300 leading-relaxed">
+          这是一个由 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">view init</code> 生成的项目。
+          编辑 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/home.tsx</code> 和{" "}
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/about.tsx</code> 开始开发。
         </p>
         <a
           href="/about"
-          class="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
         >
           前往关于
           <span aria-hidden="true">→</span>
@@ -375,15 +375,15 @@ import type { VNode } from "@dreamer/view";
 
 export function About(): VNode {
   return (
-    <div class="space-y-10">
-      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
-        <h1 class="mb-4 text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+    <div className="space-y-10">
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
+        <h1 className="mb-4 text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
           关于
         </h1>
-        <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+        <p className="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
           @dreamer/view 是面向前端的视图层库，提供响应式、路由、Store、Boundary 等能力。
         </p>
-        <ul class="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
+        <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
           <li>响应式：createSignal、createEffect、createMemo</li>
           <li>路由：无刷新切换、守卫、标题同步</li>
           <li>Store：状态 + 持久化</li>
@@ -391,7 +391,7 @@ export function About(): VNode {
         </ul>
         <a
           href="/"
-          class="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <span aria-hidden="true">←</span>
           返回首页
@@ -415,12 +415,12 @@ import type { VNode } from "@dreamer/view";
 
 export function NotFound(): VNode {
   return (
-    <section class="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
-      <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
-      <p class="mt-2 text-slate-600 dark:text-slate-300">您访问的路径不存在。</p>
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
+      <p className="mt-2 text-slate-600 dark:text-slate-300">您访问的路径不存在。</p>
       <a
         href="/"
-        class="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+        className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
       >
         返回首页
       </a>

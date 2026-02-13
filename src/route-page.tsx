@@ -224,16 +224,16 @@ export function RoutePage(props: {
   if (error) {
     const message = error instanceof Error ? error.message : String(error);
     return (
-      <section class={cls("errorSection")} style={sty("errorSection")}>
-        <p class={cls("errorTitle")} style={sty("errorTitle")}>
+      <section className={cls("errorSection")} style={sty("errorSection")}>
+        <p className={cls("errorTitle")} style={sty("errorTitle")}>
           {errorTitle}
         </p>
-        <p class={cls("errorMessage")} style={sty("errorMessage")}>
+        <p className={cls("errorMessage")} style={sty("errorMessage")}>
           {message}
         </p>
         <button
           type="button"
-          class={cls("retryButton")}
+          className={cls("retryButton")}
           style={sty("retryButton")}
           onClick={() => refetch()}
         >
@@ -246,13 +246,16 @@ export function RoutePage(props: {
   if (loading || !data) {
     if (props.showLoading === true) {
       return (
-        <section class={cls("loadingSection")} style={sty("loadingSection")}>
+        <section
+          className={cls("loadingSection")}
+          style={sty("loadingSection")}
+        >
           <div
-            class={cls("loadingSpinner")}
+            className={cls("loadingSpinner")}
             style={sty("loadingSpinner")}
             aria-hidden="true"
           />
-          <p class={cls("loadingText")} style={sty("loadingText")}>
+          <p className={cls("loadingText")} style={sty("loadingText")}>
             {loadingText}
           </p>
         </section>
@@ -261,7 +264,7 @@ export function RoutePage(props: {
     ensureRoutePageTransitionStyle();
     return (
       <div
-        class={cls("transitionPlaceholder")}
+        className={cls("transitionPlaceholder")}
         style={sty("transitionPlaceholder")}
         aria-hidden="true"
       />
@@ -271,7 +274,7 @@ export function RoutePage(props: {
   ensureRoutePageTransitionStyle();
   const content = data.default(matchWithRouter);
   return (
-    <div class={cls("transitionWrapper")} style={sty("transitionWrapper")}>
+    <div className={cls("transitionWrapper")} style={sty("transitionWrapper")}>
       {content}
     </div>
   ) as VNode;
