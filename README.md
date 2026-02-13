@@ -748,6 +748,12 @@ export const meta = {
 };
 ```
 
+**Route page component:** Every route file must **default-export** the page
+component (e.g. `export default function Home() { ... }`). If you only use a
+named export and then `export default Home`, the runtime can fail with
+"data.default is not a function" when loading the route. Use a single direct
+default export.
+
 Supported fields: `title`, `description`, `keywords`, `author`, and `og` (with
 `title`, `description`, `image`). If no `export meta` is present, `title` is
 inferred from the file path. The generated `src/router/routers.tsx` is
@@ -783,13 +789,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.0** (2026-02-12) — Initial release: core (signal, effect, memo,
-createRoot, render, renderToString, hydrate, generateHydrationScript), store,
-reactive, context, resource, router, boundary (Suspense, ErrorBoundary),
-directives (vIf/vElse/vElseIf/vFor/vShow/vOnce/vCloak, custom), stream SSR, JSX
-runtime.
-
-See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.0-beta.29** (2026-02-13) — init: route page templates use direct default
+export; docs: route page must default-export or "data.default is not a
+function". See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

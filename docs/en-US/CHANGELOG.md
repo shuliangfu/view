@@ -8,6 +8,21 @@ and this project adheres to
 
 ---
 
+## [1.0.0-beta.29] - 2026-02-13
+
+### Changed
+
+- **init:** Route page templates (home, about, not-found) now use a single
+  direct default export (`export default function Home() { ... }`) so that
+  dynamic route loading works without "data.default is not a function".
+
+### Documentation
+
+- **Router:** Document that every route file must default-export the page
+  component; otherwise the runtime may throw "data.default is not a function".
+
+---
+
 ## [1.0.0] - 2026-02-12
 
 ### Added

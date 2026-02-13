@@ -334,7 +334,7 @@ export function Layout(props: LayoutProps): VNode {
  */
 import type { VNode } from "@dreamer/view";
 
-export function Home(): VNode {
+export default function Home(): VNode {
   return (
     <div className="space-y-10">
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
@@ -360,7 +360,6 @@ export function Home(): VNode {
     </div>
   );
 }
-export default Home;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "home.tsx"), homeTsx);
   addFile("src/routes/home.tsx");
@@ -373,7 +372,7 @@ export default Home;
  */
 import type { VNode } from "@dreamer/view";
 
-export function About(): VNode {
+export default function About(): VNode {
   return (
     <div className="space-y-10">
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
@@ -400,7 +399,6 @@ export function About(): VNode {
     </div>
   );
 }
-export default About;
 `;
   await writeTextFile(join(targetDir, "src", "routes", "about.tsx"), aboutTsx);
   addFile("src/routes/about.tsx");
@@ -413,7 +411,7 @@ export default About;
  */
 import type { VNode } from "@dreamer/view";
 
-export function NotFound(): VNode {
+export default function NotFound(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
       <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
@@ -427,7 +425,6 @@ export function NotFound(): VNode {
     </section>
   );
 }
-export default NotFound;
 `;
   await writeTextFile(
     join(targetDir, "src", "routes", "not-found.tsx"),
