@@ -12,7 +12,7 @@ function removeCloak(container: Element): void {
   for (const el of list) el.removeAttribute("data-view-cloak");
 }
 
-import { createEffect, setCurrentScope } from "@dreamer/view/effect";
+import { createEffect, setCurrentScope } from "./effect.ts";
 import {
   createElement,
   createElementToString,
@@ -22,10 +22,10 @@ import {
   patchRoot,
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
-} from "@dreamer/view/dom";
-import type { ExpandedRoot, SSROptions } from "@dreamer/view/dom";
-import { isDOMEnvironment } from "@dreamer/view/types";
-import type { Root, VNode } from "@dreamer/view/types";
+} from "./dom.ts";
+import type { ExpandedRoot, SSROptions } from "./dom.ts";
+import { isDOMEnvironment } from "./types.ts";
+import type { Root, VNode } from "./types.ts";
 
 /**
  * 创建根实例并挂载到容器（浏览器）

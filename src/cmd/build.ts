@@ -316,21 +316,21 @@ export async function prepareDevBuild(
     const viewDevPath = join(viewSrcDir, "dev.ts");
     const useLocalView = existsSync(viewDevPath);
     if (useLocalView) {
-      const viewAliases: Record<string, string> = {
-        "@dreamer/view": viewDevPath,
-        "@dreamer/view/jsx-runtime": join(viewSrcDir, "jsx-runtime.ts"),
-        "@dreamer/view/store": join(viewSrcDir, "store.ts"),
-        "@dreamer/view/reactive": join(viewSrcDir, "reactive.ts"),
-        "@dreamer/view/context": join(viewSrcDir, "context.ts"),
-        "@dreamer/view/router": join(viewSrcDir, "router.ts"),
-        "@dreamer/view/boundary": join(viewSrcDir, "boundary.ts"),
-        "@dreamer/view/directive": join(viewSrcDir, "directive.ts"),
-        "@dreamer/view/resource": join(viewSrcDir, "resource.ts"),
-        "@dreamer/view/stream": join(viewSrcDir, "stream.ts"),
-      };
-      for (const [k, v] of Object.entries(viewAliases)) {
-        clientConfig.bundle.alias[k] = v;
-      }
+      // const viewAliases: Record<string, string> = {
+      //   "@dreamer/view": viewDevPath,
+      //   "@dreamer/view/jsx-runtime": join(viewSrcDir, "jsx-runtime.ts"),
+      //   "@dreamer/view/store": join(viewSrcDir, "store.ts"),
+      //   "@dreamer/view/reactive": join(viewSrcDir, "reactive.ts"),
+      //   "@dreamer/view/context": join(viewSrcDir, "context.ts"),
+      //   "@dreamer/view/router": join(viewSrcDir, "router.ts"),
+      //   "@dreamer/view/boundary": join(viewSrcDir, "boundary.ts"),
+      //   "@dreamer/view/directive": join(viewSrcDir, "directive.ts"),
+      //   "@dreamer/view/resource": join(viewSrcDir, "resource.ts"),
+      //   "@dreamer/view/stream": join(viewSrcDir, "stream.ts"),
+      // };
+      // for (const [k, v] of Object.entries(viewAliases)) {
+      //   clientConfig.bundle.alias[k] = v;
+      // }
     } else {
       clientConfig.bundle.alias["@dreamer/view"] = "jsr:@dreamer/view/dev";
     }

@@ -97,7 +97,7 @@ export default config;
       jsx: "react-jsx",
       jsxImportSource: "@dreamer/view",
       lib: ["deno.window", "dom"],
-      types: ["./tsx.d.ts"],
+      types: ["./jsx.d.ts"],
     },
     imports: {
       "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
@@ -116,10 +116,10 @@ export default config;
   addFile("deno.json");
 
   // ---------------------------------------------------------------------------
-  // tsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
+  // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
   // ---------------------------------------------------------------------------
-  const tsxDts = `/**
- * TSX/JSX 固有元素类型：供项目内 TSX 类型检查使用
+  const jsxDts = `/**
+ * JSX 固有元素类型：供项目内 TSX 类型检查使用
  */
 declare global {
   namespace JSX {
@@ -131,8 +131,8 @@ declare global {
 
 export {};
 `;
-  await writeTextFile(join(targetDir, "tsx.d.ts"), tsxDts);
-  addFile("tsx.d.ts");
+  await writeTextFile(join(targetDir, "jsx.d.ts"), jsxDts);
+  addFile("jsx.d.ts");
 
   // ---------------------------------------------------------------------------
   // index.html（对齐示例：/main.js、Tailwind v4、dark 首屏、data-view-cloak）
