@@ -13,7 +13,7 @@ import { schedule } from "./scheduler.ts";
 import {
   getGlobalCurrentEffect,
   setGlobalCurrentEffect,
-} from "./view-global.ts";
+} from "@dreamer/view/view-global";
 
 /** 当前正在执行的 effect（run 函数），用于依赖收集；run 上可挂 _subscriptionSets 供清理 */
 type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };

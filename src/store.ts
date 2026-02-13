@@ -27,7 +27,7 @@ import { createNestedProxy } from "./proxy.ts";
 import { schedule } from "./scheduler.ts";
 import { getCurrentEffect } from "./signal.ts";
 import type { SignalTuple } from "./types.ts";
-import { getGlobalStore, setGlobalStore } from "./view-global.ts";
+import { getGlobalStore, setGlobalStore } from "@dreamer/view/view-global";
 
 const STORE_INTERNAL = Symbol.for("view.store.internal");
 

@@ -5,21 +5,21 @@
  * 用于「服务端用主包或 stream 出 HTML，客户端用本入口激活」的 Hybrid 场景，体积介于 core 与全量之间。
  */
 
-import { createEffect, setCurrentScope } from "./effect.ts";
+import { createEffect, setCurrentScope } from "@dreamer/view/effect";
 import {
   createElement,
   createNodeFromExpanded,
   type ExpandedRoot,
   expandVNode,
   patchRoot,
-} from "./dom/element.ts";
+} from "@dreamer/view/dom/element";
 import {
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
-} from "./dom/unmount.ts";
-import { hydrateElement } from "./dom/hydrate.ts";
-import { isDOMEnvironment } from "./types.ts";
-import type { Root, VNode } from "./types.ts";
+} from "@dreamer/view/dom/unmount";
+import { hydrateElement } from "@dreamer/view/dom/hydrate";
+import { isDOMEnvironment } from "@dreamer/view/types";
+import type { Root, VNode } from "@dreamer/view/types";
 
 /** hydrate 后移除 data-view-cloak，配合 CSS [data-view-cloak]{display:none} 减少 FOUC */
 function removeCloak(container: Element): void {

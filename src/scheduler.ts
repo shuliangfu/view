@@ -8,7 +8,7 @@
  * - `unschedule(run)`：从队列移除任务（如 effect dispose 时）
  */
 
-import { getGlobalSchedulerState } from "./view-global.ts";
+import { getGlobalSchedulerState } from "@dreamer/view/view-global";
 
 /**
  * 清空当前队列并依次执行所有任务（在微任务中调用）
