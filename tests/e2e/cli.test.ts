@@ -12,14 +12,20 @@ import {
   cwd,
   dirname,
   ensureDir,
-  existsSync,
   execPath,
+  existsSync,
   join,
   readTextFile,
   remove,
   resolve,
 } from "@dreamer/runtime-adapter";
-import { afterAll, cleanupAllBrowsers, describe, expect, it } from "@dreamer/test";
+import {
+  afterAll,
+  cleanupAllBrowsers,
+  describe,
+  expect,
+  it,
+} from "@dreamer/test";
 
 /** 规整路径：消除 .. 与 .；Windows 盘符路径（/D:/ 或 D:/）不输出前导 /，避免 mkdir/cwd 报错 */
 function normalizeAbsolutePath(p: string): string {
@@ -62,35 +68,39 @@ describe("CLI：init", () => {
     }
   });
 
-  it("view init <dir> 应在目标目录生成 view.config.ts、deno.json、src 等", async () => {
-    await ensureDir(INIT_OUT_DIR);
-    // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
-    const { main: initMain } = await import("../../src/cmd/init.ts");
-    await initMain({ dir: INIT_OUT_DIR });
+  it(
+    "view init <dir> 应在目标目录生成 view.config.ts、deno.json、src 等",
+    async () => {
+      await ensureDir(INIT_OUT_DIR);
+      // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
+      const { main: initMain } = await import("../../src/cmd/init.ts");
+      await initMain({ dir: INIT_OUT_DIR });
 
-    const viewConfigPath = join(INIT_OUT_DIR, "view.config.ts");
-    const denoJsonPath = join(INIT_OUT_DIR, "deno.json");
-    const mainTsxPath = join(INIT_OUT_DIR, "src", "main.tsx");
-    const routesDir = join(INIT_OUT_DIR, "src", "routes");
-    const routerDir = join(INIT_OUT_DIR, "src", "router");
+      const viewConfigPath = join(INIT_OUT_DIR, "view.config.ts");
+      const denoJsonPath = join(INIT_OUT_DIR, "deno.json");
+      const mainTsxPath = join(INIT_OUT_DIR, "src", "main.tsx");
+      const routesDir = join(INIT_OUT_DIR, "src", "routes");
+      const routerDir = join(INIT_OUT_DIR, "src", "router");
 
-    expect(existsSync(viewConfigPath)).toBe(true);
-    expect(existsSync(denoJsonPath)).toBe(true);
-    expect(existsSync(mainTsxPath)).toBe(true);
-    expect(existsSync(routesDir)).toBe(true);
-    expect(existsSync(routerDir)).toBe(true);
+      expect(existsSync(viewConfigPath)).toBe(true);
+      expect(existsSync(denoJsonPath)).toBe(true);
+      expect(existsSync(mainTsxPath)).toBe(true);
+      expect(existsSync(routesDir)).toBe(true);
+      expect(existsSync(routerDir)).toBe(true);
 
-    const viewConfigContent = await readTextFile(viewConfigPath);
-    expect(viewConfigContent).toContain("view 项目配置");
-    expect(viewConfigContent).toContain("server");
-    expect(viewConfigContent).toContain("build");
+      const viewConfigContent = await readTextFile(viewConfigPath);
+      expect(viewConfigContent).toContain("view 项目配置");
+      expect(viewConfigContent).toContain("server");
+      expect(viewConfigContent).toContain("build");
 
-    const denoJsonContent = await readTextFile(denoJsonPath);
-    expect(denoJsonContent).toContain("@dreamer/view");
-    expect(denoJsonContent).toContain("dev");
-    expect(denoJsonContent).toContain("build");
-    expect(denoJsonContent).toContain("start");
-  }, { sanitizeOps: false, sanitizeResources: false });
+      const denoJsonContent = await readTextFile(denoJsonPath);
+      expect(denoJsonContent).toContain("@dreamer/view");
+      expect(denoJsonContent).toContain("dev");
+      expect(denoJsonContent).toContain("build");
+      expect(denoJsonContent).toContain("start");
+    },
+    { sanitizeOps: false, sanitizeResources: false },
+  );
 });
 
 describe("CLI：build", () => {
@@ -148,102 +158,108 @@ describe("CLI：start", () => {
     await cleanupAllBrowsers();
   });
 
-  it("先 build 再 start --port 后，用浏览器打开首页应含「多页面示例」", async (t) => {
-    // 先确保已 build（与上面 build 用例共享产物）
-    const buildCmd = createCommand(execPath(), {
-      args: ["run", "-A", "../src/cli.ts", "build"],
-      cwd: EXAMPLES_DIR,
-      stdout: "piped",
-      stderr: "piped",
-    });
-    const buildOut = await buildCmd.output();
-    expect(buildOut.success).toBe(true);
+  it(
+    "先 build 再 start --port 后，用浏览器打开首页应含「多页面示例」",
+    async (t) => {
+      // 先确保已 build（与上面 build 用例共享产物）
+      const buildCmd = createCommand(execPath(), {
+        args: ["run", "-A", "../src/cli.ts", "build"],
+        cwd: EXAMPLES_DIR,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const buildOut = await buildCmd.output();
+      expect(buildOut.success).toBe(true);
 
-    const startCmd = createCommand(execPath(), {
-      args: [
-        "run",
-        "-A",
-        join(VIEW_ROOT, "src", "cli.ts"),
-        "start",
-        "--port",
-        String(START_PORT),
-      ],
-      cwd: EXAMPLES_DIR,
-      stdout: "piped",
-      stderr: "piped",
-    });
-    const child = startCmd.spawn();
-    startProcess = child;
+      const startCmd = createCommand(execPath(), {
+        args: [
+          "run",
+          "-A",
+          join(VIEW_ROOT, "src", "cli.ts"),
+          "start",
+          "--port",
+          String(START_PORT),
+        ],
+        cwd: EXAMPLES_DIR,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const child = startCmd.spawn();
+      startProcess = child;
 
-    // 后台消费 stdout/stderr，避免管道满导致子进程阻塞；收集两者便于超时时报错
-    const stdoutChunks: Uint8Array[] = [];
-    const stderrChunks: Uint8Array[] = [];
-    const drain = async (
-      stream: ReadableStream<Uint8Array> | null,
-      into: Uint8Array[],
-    ) => {
-      if (!stream) return;
-      const reader = stream.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) into.push(value);
-        }
-      } catch {
-        // ignore
-      }
-    };
-    drain(child.stderr ?? null, stderrChunks).catch(() => {});
-    drain(child.stdout ?? null, stdoutChunks).catch(() => {});
-
-    // 等待 stdout 出现 "Server started" 再用浏览器打开，并给 drain 时间读完，避免子进程堵在 console.log
-    const deadlineReady = Date.now() + 10_000;
-    while (Date.now() < deadlineReady) {
-      const len = stdoutChunks.reduce((a, c) => a + c.length, 0);
-      if (len > 0) {
-        const buf = new Uint8Array(len);
-        let off = 0;
-        for (const c of stdoutChunks) {
-          buf.set(c, off);
-          off += c.length;
-        }
-        const out = new TextDecoder().decode(buf);
-        if (out.includes("Server started") && out.includes(String(START_PORT))) {
-          await new Promise((r) => setTimeout(r, 500));
-          break;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 150));
-    }
-
-    if (!t?.browser?.goto) {
-      const decodeChunks = (chunks: Uint8Array[]) => {
+      // 后台消费 stdout/stderr，避免管道满导致子进程阻塞；收集两者便于超时时报错
+      const stdoutChunks: Uint8Array[] = [];
+      const stderrChunks: Uint8Array[] = [];
+      const drain = async (
+        stream: ReadableStream<Uint8Array> | null,
+        into: Uint8Array[],
+      ) => {
+        if (!stream) return;
+        const reader = stream.getReader();
         try {
-          const len = chunks.reduce((a, c) => a + c.length, 0);
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) into.push(value);
+          }
+        } catch {
+          // ignore
+        }
+      };
+      drain(child.stderr ?? null, stderrChunks).catch(() => {});
+      drain(child.stdout ?? null, stdoutChunks).catch(() => {});
+
+      // 等待 stdout 出现 "Server started" 再用浏览器打开，并给 drain 时间读完，避免子进程堵在 console.log
+      const deadlineReady = Date.now() + 10_000;
+      while (Date.now() < deadlineReady) {
+        const len = stdoutChunks.reduce((a, c) => a + c.length, 0);
+        if (len > 0) {
           const buf = new Uint8Array(len);
           let off = 0;
-          for (const c of chunks) {
+          for (const c of stdoutChunks) {
             buf.set(c, off);
             off += c.length;
           }
-          return new TextDecoder().decode(buf);
-        } catch {
-          return "(unreadable)";
+          const out = new TextDecoder().decode(buf);
+          if (
+            out.includes("Server started") && out.includes(String(START_PORT))
+          ) {
+            await new Promise((r) => setTimeout(r, 500));
+            break;
+          }
         }
-      };
-      throw new Error(
-        "Start test requires browser; missing t.browser.goto. stdout: " +
-          decodeChunks(stdoutChunks),
-      );
-    }
+        await new Promise((r) => setTimeout(r, 150));
+      }
 
-    await t.browser.goto(START_URL);
-    await new Promise((r) => setTimeout(r, 400));
-    const mainText = (await t.browser.evaluate(() => {
-      const main = document.querySelector("main");
-      return main ? main.innerText : document.body?.innerText ?? "";
-    })) as string;
-    expect(mainText).toContain("多页面示例");
-  }, startBrowserConfig);
+      if (!t?.browser?.goto) {
+        const decodeChunks = (chunks: Uint8Array[]) => {
+          try {
+            const len = chunks.reduce((a, c) => a + c.length, 0);
+            const buf = new Uint8Array(len);
+            let off = 0;
+            for (const c of chunks) {
+              buf.set(c, off);
+              off += c.length;
+            }
+            return new TextDecoder().decode(buf);
+          } catch {
+            return "(unreadable)";
+          }
+        };
+        throw new Error(
+          "Start test requires browser; missing t.browser.goto. stdout: " +
+            decodeChunks(stdoutChunks),
+        );
+      }
+
+      await t.browser.goto(START_URL);
+      await new Promise((r) => setTimeout(r, 400));
+      const mainText = (await t.browser.evaluate(() => {
+        const main = document.querySelector("main");
+        return main ? main.innerText : document.body?.innerText ?? "";
+      })) as string;
+      expect(mainText).toContain("多页面示例");
+    },
+    startBrowserConfig,
+  );
 });

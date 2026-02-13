@@ -82,14 +82,8 @@ export function jsxs(
 }
 
 /**
- * JSX intrinsic 元素类型：供 TSX 中 DOM 标签类型检查使用。
- * 使用 jsxImportSource: "@dreamer/view" 时编译器会使用此命名空间。
- * 因包含 declare global，JSR 发布需使用 --allow-slow-types。
+ * JSX 固有元素类型说明（JSR 不允许包内 declare global，故不在此处声明）：
+ * 使用本运行时写 JSX 时，可在项目内自行添加：
+ *   /// <reference path="node_modules/jsr/@dreamer/view/jsx-runtime.d.ts" />
+ * 或在任意 .d.ts 中：declare global { namespace JSX { interface IntrinsicElements { [tag: string]: Record<string, unknown>; } } }
  */
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [tag: string]: Record<string, unknown>;
-    }
-  }
-}

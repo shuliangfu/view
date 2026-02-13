@@ -31,12 +31,11 @@ export async function run(
     config.server?.prod?.host ??
     "127.0.0.1";
   const portRaw = options?.port ?? config.server?.prod?.port ?? 8787;
-  const port: number =
-    typeof portRaw === "string"
-      ? parseInt(portRaw, 10)
-      : typeof portRaw === "number" && Number.isFinite(portRaw)
-        ? portRaw
-        : 8787;
+  const port: number = typeof portRaw === "string"
+    ? parseInt(portRaw, 10)
+    : typeof portRaw === "number" && Number.isFinite(portRaw)
+    ? portRaw
+    : 8787;
 
   const prodServer: ViewServeOptions = {
     host,

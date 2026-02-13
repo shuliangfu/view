@@ -59,6 +59,9 @@
     "examples/*",
     "tests/data/"
   ],
+  "publish": {
+    "exclude": ["src/jsx.d.ts"]
+  },
   "nodeModulesDir": "auto",
   "tasks": {
     "test": "deno test -A tests/",
