@@ -166,9 +166,9 @@ export async function run(
   const outputsGetter = getDevServeOutputs ?? (() => devServeOutputs);
   const initialOutputs = outputsGetter();
   if (initialOutputs.length > 0) {
-    const firstPath = initialOutputs[0].path;
-    const lastSlash = firstPath.lastIndexOf("/");
-    const pathPrefix = lastSlash >= 0 ? firstPath.slice(0, lastSlash + 1) : "/";
+    /* 用 "/" 作为 prefix，使 /main.js、/src/main.js、/dist/chunk-xxx.js 等任意产出路径都能命中 outputMap；
+     * 关闭代码分割时产出可能为 /src/main.js，而 index 请求 /main.js，必须统一走 map 查找 */
+    const pathPrefix = "/";
 
     /* 单文件或多文件都走 pathHandler，每次请求用 getter 取最新产出以支持 HMR；"/" 不处理以便走中间件读 index.html */
     pathHandlers.push({
