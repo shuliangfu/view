@@ -21,36 +21,75 @@
 
 ## 📦 安装
 
-### Deno
+### 全局安装 view-cli
+
+在任意目录使用 `view-cli` 命令（如
+`view-cli init`、`view-cli dev`）前，请先执行安装脚本：
+
+```bash
+deno run -A jsr:@dreamer/view/setup
+```
+
+安装完成后，可执行 `view-cli upgrade` 升级到最新版本。
+
+安装后可用命令：
+
+```bash
+view-cli init [dir]     # 按示例结构初始化项目
+view-cli dev            # 构建并启动开发静态服务
+view-cli build         # 仅构建（输出到 dist/）
+view-cli start         # 仅启动静态服务（需先 build）
+view-cli upgrade       # 升级 @dreamer/view 到最新版（加 --beta 可升级到 beta）
+view-cli update        # 更新项目依赖与 lockfile（加 --latest 更新到最新）
+view-cli version       # 显示版本（别名：v）
+view-cli --version     # 显示版本（别名：-v）
+view-cli --help        # 完整帮助
+```
+
+### 在已有项目中仅使用库（不安装 CLI）
+
+若只需在现有 Deno/Bun 项目中引用库而无需 CLI：
+
+**Deno**
 
 ```bash
 deno add jsr:@dreamer/view
 ```
 
-按需添加子路径（与 deno.json exports 对应）：
-
-```bash
-deno add jsr:@dreamer/view          # 主入口（核心 + 渲染）
-deno add jsr:@dreamer/view/csr      # 仅 CSR 轻量入口
-deno add jsr:@dreamer/view/hybrid   # 客户端混合入口（hydrate）
-deno add jsr:@dreamer/view/store
-deno add jsr:@dreamer/view/reactive
-deno add jsr:@dreamer/view/context
-deno add jsr:@dreamer/view/resource
-deno add jsr:@dreamer/view/router
-deno add jsr:@dreamer/view/boundary
-deno add jsr:@dreamer/view/directive
-deno add jsr:@dreamer/view/stream
-deno add jsr:@dreamer/view/compiler # 编译优化（可选）
-```
-
-**JSX：** 在 `deno.json` 中设置 `compilerOptions.jsx: "react-jsx"` 与
-`compilerOptions.jsxImportSource: "jsr:@dreamer/view"`。
-
-### Bun
+**Bun**
 
 ```bash
 bunx jsr add @dreamer/view
+```
+
+**按需添加子路径**（Deno 与 Bun 均需按需导入时，在项目里添加以下子路径；Deno 用
+`deno add`，Bun 用 `bunx jsr add`，子路径一致）
+
+```bash
+# 主入口：signal/effect/memo、createRoot、render、renderToString、hydrate 等
+deno add jsr:@dreamer/view
+# 仅 CSR：更小体积，无 renderToString/hydrate/generateHydrationScript
+deno add jsr:@dreamer/view/csr
+# 客户端混合入口：createRoot、render、hydrate（配合服务端 SSR 激活）
+deno add jsr:@dreamer/view/hybrid
+# Store：响应式状态、getters、actions、可选持久化（如 localStorage）
+deno add jsr:@dreamer/view/store
+# Reactive：表单代理 createReactive，value + onInput 双向绑定
+deno add jsr:@dreamer/view/reactive
+# Context：createContext、Provider、useContext 跨树注入
+deno add jsr:@dreamer/view/context
+# Resource：createResource 异步数据，配合 Suspense 使用
+deno add jsr:@dreamer/view/resource
+# Router：createRouter SPA 路由（History、routes、navigate）
+deno add jsr:@dreamer/view/router
+# Boundary：Suspense、ErrorBoundary 边界组件
+deno add jsr:@dreamer/view/boundary
+# Directive：内置 vIf/vFor/vShow 等与 registerDirective 自定义指令
+deno add jsr:@dreamer/view/directive
+# Stream：renderToStream 流式 SSR
+deno add jsr:@dreamer/view/stream
+# Compiler：optimize、createOptimizePlugin 编译时优化（可选）
+deno add jsr:@dreamer/view/compiler
 ```
 
 ---

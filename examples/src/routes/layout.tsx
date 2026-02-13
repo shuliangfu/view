@@ -33,7 +33,8 @@ interface LayoutProps {
   routes: RouteConfig[];
   /** 当前路径，用于高亮 Navbar 激活项 */
   currentPath?: string;
-  children: VNode | VNode[];
+  /** 主内容区（JSX 子节点会注入到此） */
+  children?: VNode | VNode[];
 }
 
 /** GitHub 图标（24x24），用于 Navbar 外链 */

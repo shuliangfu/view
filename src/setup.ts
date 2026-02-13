@@ -82,12 +82,16 @@ function getPackageRoot(): string {
 /**
  * 获取 CLI 入口路径或 JSR 说明符
  * - 本地：返回项目内 src/cli.ts 的绝对路径
- * - JSR：返回 jsr:@dreamer/view/cli
+ * - JSR：返回带版本的 jsr:@dreamer/view@<version>/cli，避免 deno install 解析为 * 导致找不到版本
+ * @param viewVersion 从 JSR 运行时的包版本（由 loadViewDenoJson 等提供），未传时退回无版本（可能触发 * 解析错误）
  */
-function getCliEntry(): string {
+function getCliEntry(viewVersion?: string): string {
   if (isLocalRun()) {
     const root = getPackageRoot();
     return join(root, "src", "cli.ts");
+  }
+  if (viewVersion) {
+    return `jsr:@dreamer/view@${viewVersion}/cli`;
   }
   return "jsr:@dreamer/view/cli";
 }
@@ -136,12 +140,18 @@ async function createTempCliConfig(): Promise<string> {
 /**
  * 执行 deno install 安装全局命令
  *
- * - JSR 远程安装：不使用 --config，直接安装 jsr:@dreamer/view/cli，由 JSR 包自身配置解析
+ * - JSR 远程安装：先取当前包版本（fetch 包根 deno.json），再安装 jsr:@dreamer/view@<version>/cli，避免解析为 * 报错
  * - 本地调试安装：使用 --config 临时 config（去除 workspace），避免解析 examples 等不存在的路径
  */
 async function installGlobalCli(): Promise<void> {
   const runtime = execPath();
-  const cliEntry = getCliEntry();
+  let cliEntry: string;
+  if (isLocalRun()) {
+    cliEntry = getCliEntry();
+  } else {
+    const config = await loadViewDenoJson();
+    cliEntry = getCliEntry(config?.version);
+  }
   const args: string[] = [
     "install",
     "--global",
@@ -222,7 +232,15 @@ function printUsage(): void {
   console.log(
     `  ${CLI_NAME} start       # Start static server only (requires prior build)`,
   );
-  console.log(`  ${CLI_NAME} --help      # Show help`);
+  console.log(
+    `  ${CLI_NAME} upgrade     # Upgrade @dreamer/view to latest (use --beta for beta)`,
+  );
+  console.log(
+    `  ${CLI_NAME} update     # Update project dependencies and lockfile`,
+  );
+  console.log(`  ${CLI_NAME} version    # Show version`);
+  console.log(`  ${CLI_NAME} --version  # Show version (alias: -v)`);
+  console.log(`  ${CLI_NAME} --help     # Show help`);
   console.log("");
 }
 
