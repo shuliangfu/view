@@ -242,7 +242,10 @@ export async function fetchLatestViewVersionFromJsr(
   useBeta: boolean,
 ): Promise<string | null> {
   try {
-    const res = await fetch(JSR_VIEW_META_URL);
+    // JSR 要求：Accept 不能含 text/html，否则会返回 HTML 页面
+    const res = await fetch(JSR_VIEW_META_URL, {
+      headers: { Accept: "application/json" },
+    });
     if (!res.ok) return null;
     const meta = (await res.json()) as {
       versions?: Record<string, { yanked?: boolean }>;
