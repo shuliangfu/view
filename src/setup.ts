@@ -27,6 +27,11 @@ import { loadViewDenoJson, writeVersionCache } from "./version.ts";
 /** CLI 全局命令名称（与 cli.ts 中一致） */
 const CLI_NAME = "view-cli";
 
+/** ANSI 颜色（安装成功绿、失败红） */
+const GREEN = "\x1b[32m";
+const RED = "\x1b[31m";
+const RESET = "\x1b[0m";
+
 /**
  * 安装成功后写入版本缓存到 ~/.dreamer/view/version.json，供 view-cli init 等快速读取
  */
@@ -177,7 +182,7 @@ async function installGlobalCli(): Promise<void> {
       const child = cmd.spawn();
       const status = await child.status;
       if (status.success) {
-        console.log(`${CLI_NAME} installed successfully.`);
+        console.log(`${GREEN}${CLI_NAME} installed successfully.${RESET}`);
         await writeVersionCacheOnInstall();
         printUsage();
       } else {
@@ -185,7 +190,7 @@ async function installGlobalCli(): Promise<void> {
           ? await new Response(child.stderr).text()
           : "";
         console.error(
-          `Install failed (exit code ${status.code ?? ""}). ${stderr}`,
+          `${RED}Install failed (exit code ${status.code ?? ""}). ${stderr}${RESET}`,
         );
         exit(status.code ?? 1);
       }
@@ -204,7 +209,7 @@ async function installGlobalCli(): Promise<void> {
     const child = cmd.spawn();
     const status = await child.status;
     if (status.success) {
-      console.log(`${CLI_NAME} installed successfully.`);
+      console.log(`${GREEN}${CLI_NAME} installed successfully.${RESET}`);
       await writeVersionCacheOnInstall();
       printUsage();
     } else {
@@ -212,7 +217,7 @@ async function installGlobalCli(): Promise<void> {
         ? await new Response(child.stderr).text()
         : "";
       console.error(
-        `Install failed (exit code ${status.code ?? ""}). ${stderr}`,
+        `${RED}Install failed (exit code ${status.code ?? ""}). ${stderr}${RESET}`,
       );
       exit(status.code ?? 1);
     }
