@@ -9,7 +9,7 @@
  * 使用 classic JSX + 适配器，避免 JSR 发布时对 jsxImportSource/jsx-runtime 的错误解析（mod.ts/jsx-runtime 等）。
  */
 /** @jsx jsx */
-import { jsx as runtimeJsx, Fragment } from "./jsx-runtime.ts";
+import { jsx as runtimeJsx } from "./jsx-runtime.ts";
 import { getHmrVersionGetter } from "./hmr.ts"
 
 /** classic 转换 (type, props, ...children) 适配为 view 运行时 jsx(type, propsWithChildren, key) */
