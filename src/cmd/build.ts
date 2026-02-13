@@ -122,6 +122,41 @@ function injectHmrBannerIntoEntry(
   }
 }
 
+/**
+ * 从 chunk 中移除 esbuild 错误导出的 import_runtime（代码分割时内部 helper 被误加入 export 列表导致 SyntaxError）。
+ * 仅处理 .js 且 content 中含 import_runtime 的产出。
+ */
+function stripImportRuntimeFromChunkOutputs(outputs: DevServeOutput[]): void {
+  for (const o of outputs) {
+    if (!o.path.endsWith(".js") || o.path.endsWith(".map")) continue;
+    if (!o.content.includes("import_runtime")) continue;
+    o.content = o.content
+      .replace(/\bimport_runtime\s*,\s*/g, "")
+      .replace(/,\s*import_runtime\s*}/g, " }")
+      .replace(/,\s*import_runtime\s*,/g, ",");
+  }
+}
+
+/**
+ * 关闭代码分割时，esbuild 可能不写 outdir，产出路径会变成如 /src/main.js；
+ * index 请求的是 /main.js，pathHandler 找不到会回退 SPA 返回 HTML，导致 MIME 错误。
+ * 当 splitting 为 false 且仅有一个 JS 产出时，为 /main.js 增加一条映射，确保能命中内存产出。
+ */
+function ensureMainJsServedWhenNoSplitting(
+  outputs: DevServeOutput[],
+  entryRequestPath: string,
+  splitting: NonNullable<ViewConfig["build"]>["splitting"],
+): void {
+  if (splitting !== false) return;
+  const jsOnly = outputs.filter(
+    (o) => o.path.endsWith(".js") && !o.path.endsWith(".map"),
+  );
+  if (jsOnly.length !== 1) return;
+  const single = jsOnly[0];
+  if (single.path === entryRequestPath) return;
+  outputs.push({ path: entryRequestPath, content: single.content });
+}
+
 /** dev 时从内存提供单条产出（路径 + 内容），供 serve 与 HMR 使用 */
 export interface DevServeOutput {
   path: string;
@@ -310,6 +345,12 @@ export async function prepareDevBuild(
     content: o.text ?? "",
   }));
   injectHmrBannerIntoEntry(devServeOutputs, outFile);
+  stripImportRuntimeFromChunkOutputs(devServeOutputs);
+  ensureMainJsServedWhenNoSplitting(
+    devServeOutputs,
+    "/" + outFile,
+    config.build?.splitting,
+  );
 
   await builder.createContext("dev", { write: false });
   cachedDevBuilder = builder;
@@ -330,10 +371,15 @@ export async function prepareDevBuild(
         content: o.text ?? "",
       }));
       injectHmrBannerIntoEntry(outputs, outFile);
-      const outputFiles = contents.map((o) => ({
-        path: toRequestPath(root, o.path, { stripOutDir: outDir }),
-        contents:
-          (o.contents ?? new TextEncoder().encode(o.text ?? "")) as Uint8Array,
+      stripImportRuntimeFromChunkOutputs(outputs);
+      ensureMainJsServedWhenNoSplitting(
+        outputs,
+        "/" + outFile,
+        config.build?.splitting,
+      );
+      const outputFiles = outputs.map((o) => ({
+        path: o.path,
+        contents: new TextEncoder().encode(o.content),
       }));
       const requestPaths = outputs.map((o) => o.path);
       const chunkUrl = options?.changedPath
@@ -352,10 +398,15 @@ export async function prepareDevBuild(
       content: o.text ?? "",
     }));
     injectHmrBannerIntoEntry(devServeOutputsNext, outFile);
-    const outputFiles = contents.map((o) => ({
-      path: toRequestPath(root, o.path, { stripOutDir: outDir }),
-      contents:
-        (o.contents ?? new TextEncoder().encode(o.text ?? "")) as Uint8Array,
+    stripImportRuntimeFromChunkOutputs(devServeOutputsNext);
+    ensureMainJsServedWhenNoSplitting(
+      devServeOutputsNext,
+      "/" + outFile,
+      config.build?.splitting,
+    );
+    const outputFiles = devServeOutputsNext.map((o) => ({
+      path: o.path,
+      contents: new TextEncoder().encode(o.content),
     }));
     const requestPaths = devServeOutputsNext.map((o) => o.path);
     const chunkUrl = options?.changedPath
