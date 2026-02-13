@@ -41,7 +41,7 @@ const config: ViewConfig = {
     browserMode: false,
     splitting: true,
     /** 是否开启 BuilderClient 调试日志（resolver / onLoad 等），便于排查构建问题 */
-    debug: true,
+    // debug: true,
   },
 };
 
