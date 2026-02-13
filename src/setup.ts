@@ -219,28 +219,36 @@ async function installGlobalCli(): Promise<void> {
   }
 }
 
-/** 打印 view-cli 使用说明 */
+/** 打印 view-cli 使用说明（# 注释列对齐） */
 function printUsage(): void {
+  const w = 12; // 命令部分宽度，保证 # 对齐
+  const pad = (s: string) => s.padEnd(w);
   console.log("Usage:");
   console.log(
-    `  ${CLI_NAME} init [dir]   # Initialize project from example structure`,
+    `  ${CLI_NAME} ${
+      pad("init [dir]")
+    } # Initialize project from example structure`,
   );
   console.log(
-    `  ${CLI_NAME} dev         # Build then start static server (dev)`,
+    `  ${CLI_NAME} ${pad("dev")} # Build then start static server (dev)`,
   );
-  console.log(`  ${CLI_NAME} build       # Build only (output to dist/)`);
+  console.log(`  ${CLI_NAME} ${pad("build")} # Build only (output to dist/)`);
   console.log(
-    `  ${CLI_NAME} start       # Start static server only (requires prior build)`,
+    `  ${CLI_NAME} ${
+      pad("start")
+    } # Start static server only (requires prior build)`,
   );
   console.log(
-    `  ${CLI_NAME} upgrade     # Upgrade @dreamer/view to latest (use --beta for beta)`,
+    `  ${CLI_NAME} ${
+      pad("upgrade")
+    } # Upgrade @dreamer/view to latest (use --beta for beta)`,
   );
   console.log(
-    `  ${CLI_NAME} update     # Update project dependencies and lockfile`,
+    `  ${CLI_NAME} ${pad("update")} # Update project dependencies and lockfile`,
   );
-  console.log(`  ${CLI_NAME} version    # Show version`);
-  console.log(`  ${CLI_NAME} --version  # Show version (alias: -v)`);
-  console.log(`  ${CLI_NAME} --help     # Show help`);
+  console.log(`  ${CLI_NAME} ${pad("version")} # Show version`);
+  console.log(`  ${CLI_NAME} ${pad("--version")} # Show version (alias: -v)`);
+  console.log(`  ${CLI_NAME} ${pad("--help")} # Show help`);
   console.log("");
 }
 
