@@ -67,7 +67,7 @@ export async function main(
   const latest = await fetchLatestViewVersionFromJsr(useBeta);
   if (!latest) {
     if (!useBeta) {
-      error("没有找到稳定版，请使用 --beta 尝试更新");
+      error("No stable release found. Try --beta to update to the latest beta.");
     } else {
       error("Could not fetch latest version from JSR.");
     }

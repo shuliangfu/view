@@ -63,12 +63,12 @@ const HMR_BANNER = `
           var el = typeof g.document !== "undefined" && g.document.getElementById ? g.document.getElementById("root") : null;
           var check = function(){
             if (!el){
-              console.warn("[view] HMR: #root 不存在，回退整页重载");
+              console.warn("[view] HMR: #root not found, falling back to full page reload");
               reload();
               return;
             }
             if (el.childNodes.length === 0){
-              console.warn("[view] HMR 无感刷新后容器仍为空，回退整页重载");
+              console.warn("[view] HMR: container still empty after refresh, falling back to full page reload");
               reload();
             }
           };
@@ -77,7 +77,7 @@ const HMR_BANNER = `
           setTimeout(check, 500);
         })
         .catch(function(err){
-          console.warn("[view] HMR 无感刷新失败，回退整页重载:", err?.message || err);
+          console.warn("[view] HMR refresh failed, falling back to full page reload:", err?.message || err);
           reload();
         });
     };
