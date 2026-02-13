@@ -38,8 +38,7 @@
     "happy-dom": "npm:happy-dom@20.4.0"
   },
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@dreamer/view",
+    "jsx": "react",
     "lib": [
       "deno.window",
       "dom"
