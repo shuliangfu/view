@@ -1,9 +1,14 @@
 /**
- * View 模板引擎 — Effect（副作用）
+ * @module @dreamer/view/effect
+ * @description
+ * View 模板引擎 — Effect（副作用）。执行用户函数时登记所读到的 signal 为依赖；当这些 signal 变更时自动重新执行 effect。重新执行前会先清理上次登记的依赖，再重新收集。支持 EffectScope：根可注册所有子 effect 的 disposer，unmount 时统一清理。
  *
- * 执行用户函数时登记所读到的 signal 为依赖；当这些 signal 变更时自动重新执行 effect。
- * 重新执行前会先清理上次登记的依赖，再重新收集。
- * 支持 EffectScope：根可注册所有子 effect 的 disposer，unmount 时统一清理。
+ * **本模块导出：**
+ * - `createEffect(fn)`：创建副作用，返回 dispose 函数
+ * - `createMemo(fn)`：创建派生值（只读 signal）
+ * - `onCleanup(fn)`：在 effect/memo 内登记清理函数
+ * - `setCurrentScope(scope)`：设置当前 EffectScope（runtime 用）
+ * - 类型：`EffectScope`
  */
 
 import { unschedule } from "./scheduler.ts";

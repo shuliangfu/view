@@ -1,7 +1,10 @@
 /**
- * View 模板引擎 — 在已有 DOM 上 hydrate
+ * @module @dreamer/view/dom/hydrate
+ * @description
+ * View 模板引擎 — 在已有 DOM 上 hydrate。复用 container 内子节点，与 vnode 树一一对应并挂上 props/effect。
  *
- * 复用 container 内子节点，与 vnode 树一一对应并挂上 props/effect
+ * **本模块导出：**
+ * - `hydrateElement(container, vnode)`：在已有 DOM 上激活，与 vnode 一一对应并挂上 props/effect
  */
 
 import { isSignalGetter } from "../signal.ts";

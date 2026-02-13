@@ -1,8 +1,15 @@
 /**
- * 跨 bundle 共享的 global 读写（currentEffect、scheduler、context 栈、store 注册表等）
+ * @module @dreamer/view/view-global
+ * @description
+ * 跨 bundle 共享的 global 读写：currentEffect、scheduler、context 栈/默认值/Provider 绑定、store 注册表等。
+ * 独立小模块，供 signal / effect / scheduler / context / store 引用，保证 code-split 后 main 与 chunk 读写同一 global。
+ * 无其他依赖，避免循环引用。一般由业务通过 @dreamer/view、@dreamer/view/context、@dreamer/view/store 等间接使用，无需直接导入本模块。
  *
- * 独立小模块，供 signal / effect / scheduler / context 引用，保证 code-split 后 main 与 chunk 读写同一 global。
- * 无其他依赖，避免循环引用。
+ * **本模块导出：**
+ * - Effect：`getGlobalCurrentEffect`、`setGlobalCurrentEffect`
+ * - Scheduler：`getGlobalSchedulerState`、类型 `SchedulerState`
+ * - Context：`getGlobalContextStacks`、`getGlobalContextDefaults`、`getGlobalProviderBindings`，类型 `GlobalContextStacks`、`GlobalContextDefaults`、`GlobalProviderBindings`、`ProviderBinding`
+ * - Store：`getGlobalStoreRegistry`、`setGlobalStore`、`getGlobalStore`、`DEFAULT_STORE_KEY`，类型 `GlobalStoreRegistry`
  */
 
 const KEY_EFFECT = "__VIEW_CURRENT_EFFECT";

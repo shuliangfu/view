@@ -1,7 +1,10 @@
 /**
- * View 模板引擎 — DOM 层共享类型与工具
+ * @module @dreamer/view/dom/shared
+ * @description
+ * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element / stringify / hydrate 复用。
  *
- * Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element / stringify / hydrate 复用
+ * **本模块导出：**
+ * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`createTextVNode(value)`、`createDynamicSpan(doc)`
  */
 
 import type { VNode } from "../types.ts";

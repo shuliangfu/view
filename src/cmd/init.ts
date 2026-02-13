@@ -101,17 +101,12 @@ export default config;
     },
     imports: {
       "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
-      "@dreamer/view/jsx-runtime":
-        `jsr:@dreamer/view@^${VIEW_VERSION}/jsx-runtime`,
-      "@dreamer/view/store": `jsr:@dreamer/view@^${VIEW_VERSION}/store`,
-      "@dreamer/view/context": `jsr:@dreamer/view@^${VIEW_VERSION}/context`,
-      "@dreamer/view/router": `jsr:@dreamer/view@^${VIEW_VERSION}/router`,
     },
     lint: { include: ["src/"], exclude: ["dist/"] },
     tasks: {
-      dev: "deno run -A jsr:@dreamer/view/cli dev",
-      build: "deno run -A jsr:@dreamer/view/cli build",
-      start: "deno run -A jsr:@dreamer/view/cli start",
+      dev: "deno run -A @dreamer/view/cli dev",
+      build: "deno run -A @dreamer/view/cli build",
+      start: "deno run -A @dreamer/view/cli start",
     },
   };
   await writeTextFile(

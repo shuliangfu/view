@@ -1,10 +1,11 @@
 /**
- * View 模板引擎 — 调度器（微任务批处理）
+ * @module @dreamer/view/scheduler
+ * @description
+ * View 模板引擎 — 调度器（微任务批处理）。供 signal、store、effect 共用：订阅者/effect 不在此 tick 内同步执行，而是加入队列，由一次微任务统一 flush，避免同步重入导致主线程卡死。队列与 scheduled 从 view-global 读取，保证 main 与 code-split chunk 共用同一队列与同一 flush。
  *
- * 供 signal、store、effect 共用：订阅者/effect 不在此 tick 内同步执行，而是加入队列，
- * 由一次微任务统一 flush，避免「写 → 立即跑 effect → 再写」的同步重入导致主线程卡死。
- *
- * 队列与 scheduled 从 view-global 读取，保证 main 与 code-split chunk 共用同一队列与同一 flush。
+ * **本模块导出：**
+ * - `schedule(run)`：将任务加入队列，微任务中执行
+ * - `unschedule(run)`：从队列移除任务（如 effect dispose 时）
  */
 
 import { getGlobalSchedulerState } from "./view-global.ts";
