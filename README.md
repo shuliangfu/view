@@ -7,7 +7,7 @@
 English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
@@ -877,10 +877,8 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.0** (2026-02-12) — Core (signals, effects, SSR, hydrate), Store, Router,
-Context, Resource, Boundary, Directives, Stream SSR, Compiler, and **view-cli**
-(init, dev, build, start, upgrade, update). See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.1** (2026-02-14) — Docs: license badge and README license section updated
+to Apache-2.0. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
@@ -920,7 +918,7 @@ Issues and Pull Requests are welcome!
 
 ## 📄 License
 
-MIT License - see [LICENSE.md](./LICENSE.md)
+Apache License 2.0 - see [LICENSE](./LICENSE)
 
 ---
 
