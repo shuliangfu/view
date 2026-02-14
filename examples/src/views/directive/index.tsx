@@ -5,16 +5,10 @@
  * 表单双向绑定：使用 value + onInput/onChange 与 createSignal 或 createReactive。
  */
 
-import { createSignal } from "@dreamer/view";
-import { registerDirective } from "@dreamer/view/directive";
 import type { VNode } from "@dreamer/view";
+import { createSignal } from "@dreamer/view";
 
-/** 注册自定义指令：挂载时 focus（引擎已在 mounted 时延后到微任务，元素已入文档） */
-registerDirective("v-focus", {
-  mounted(el: Element) {
-    (el as HTMLInputElement).focus();
-  },
-});
+/** v-focus、v-copy 已在 main.tsx 注册 */
 
 export const meta = {
   title: "Directive",
@@ -197,6 +191,20 @@ export function DirectiveDemo(): VNode {
               onClick={() => focusInputEl?.focus()}
             >
               再次聚焦
+            </button>
+          </p>
+        </div>
+        <div className={block}>
+          <h3 className={subTitle}>自定义指令 v-copy</h3>
+          <p className="mb-2 text-slate-600 dark:text-slate-300">
+            点击按钮将指定内容复制到剪贴板，可多次点击；页面重渲染后仍可复制（mounted 仅执行一次，监听一直有效）。
+          </p>
+          <p className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+            <button type="button" className={btn} vCopy="Hello v-copy">
+              复制「Hello v-copy」
+            </button>
+            <button type="button" className={btn} vCopy>
+              复制按钮内文字
             </button>
           </p>
         </div>

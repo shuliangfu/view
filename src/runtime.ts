@@ -5,16 +5,12 @@
  * unmount 时会回收该根下所有 effect，避免泄漏。
  */
 
-/** hydrate 后移除 data-view-cloak，配合 CSS [data-view-cloak]{display:none} 减少 FOUC */
-function removeCloak(container: Element): void {
-  const list = Array.from(container.querySelectorAll("[data-view-cloak]"));
-  if (container.hasAttribute("data-view-cloak")) list.unshift(container);
-  for (const el of list) el.removeAttribute("data-view-cloak");
-}
-
-import { createEffect, setCurrentScope } from "./effect.ts";
 import {
-  createElement,
+  createEffect,
+  createRunDisposersCollector,
+  setCurrentScope,
+} from "./effect.ts";
+import {
   createElementToString,
   createNodeFromExpanded,
   expandVNode,
@@ -23,81 +19,34 @@ import {
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./dom.ts";
-import type { ExpandedRoot, SSROptions } from "./dom.ts";
+import type { ExpandedRoot } from "./dom.ts";
+import type { SSROptions } from "./dom.ts";
+import { KEY_VIEW_DATA } from "./constants.ts";
+import {
+  createCreateRoot,
+  createReactiveRootWith,
+  createRender,
+  removeCloak,
+} from "./runtime-shared.ts";
+import { createSignal } from "./signal.ts";
 import { isDOMEnvironment } from "./types.ts";
 import type { Root, VNode } from "./types.ts";
 
-/**
- * 创建根实例并挂载到容器（浏览器）
- * 根为响应式：fn 内读到的 signal 变化时会重新执行 fn 并更新挂载内容。
- * unmount 时回收该树下创建的所有 effect。
- *
- * @param fn 根组件函数，返回 VNode（或 JSX）
- * @param container 挂载的 DOM 容器
- * @returns Root 句柄，可调用 unmount 卸载
- */
-export function createRoot(fn: () => VNode, container: Element): Root {
-  if (!isDOMEnvironment()) {
-    return {
-      unmount: () => {},
-      container: null,
-    };
-  }
+/** 创建根并挂载（实现来自 runtime-shared，依赖从 dom/effect 注入） */
+export const createRoot = createCreateRoot({
+  createEffect,
+  createRunDisposersCollector,
+  setCurrentScope,
+  isDOMEnvironment,
+  createRenderTriggerSignal: () => createSignal(0),
+  expandVNode,
+  createNodeFromExpanded,
+  patchRoot,
+  runDirectiveUnmount,
+});
 
-  let mounted: Node | null = null;
-  let lastExpanded: ExpandedRoot | null = null;
-  let disposed = false;
-  const disposers: Array<() => void> = [];
-
-  const root: Root = {
-    container,
-    unmount() {
-      disposed = true;
-      disposers.forEach((d) => d());
-      disposers.length = 0;
-      if (mounted && container.contains(mounted)) {
-        runDirectiveUnmount(mounted);
-        container.removeChild(mounted);
-      }
-      mounted = null;
-      lastExpanded = null;
-    },
-  };
-
-  // 根 effect：首次挂载用 expand + createNodeFromExpanded；之后用 patchRoot 原地更新，不整树替换，表单不重挂、不丢焦点
-  const disposeRoot = createEffect(() => {
-    if (disposed) return;
-    setCurrentScope({ addDisposer: (d) => disposers.push(d) });
-    try {
-      const vnode = fn();
-      const newExpanded = expandVNode(vnode);
-      if (mounted == null || !container.contains(mounted)) {
-        mounted = createNodeFromExpanded(newExpanded);
-        container.appendChild(mounted);
-        lastExpanded = newExpanded;
-      } else {
-        patchRoot(container, mounted, lastExpanded!, newExpanded);
-        lastExpanded = newExpanded;
-      }
-    } finally {
-      setCurrentScope(null);
-    }
-  });
-  disposers.push(disposeRoot);
-
-  return root;
-}
-
-/**
- * 便捷方法：创建根并挂载（等同于 createRoot(fn, container)）
- *
- * @param fn 根组件函数
- * @param container 挂载的 DOM 容器
- * @returns Root 句柄
- */
-export function render(fn: () => VNode, container: Element): Root {
-  return createRoot(fn, container);
-}
+/** 便捷方法：创建根并挂载（等同于 createRoot(fn, container)），由 runtime-shared.createRender 统一实现 */
+export const render = createRender(createRoot);
 
 /**
  * 创建响应式单根：由外部状态驱动，状态变化时在根内做细粒度 patch，不整树卸载。
@@ -113,7 +62,7 @@ export function createReactiveRoot<T>(
   getState: () => T,
   buildTree: (state: T) => VNode,
 ): Root {
-  return createRoot(() => buildTree(getState()), container);
+  return createReactiveRootWith(createRoot, container, getState, buildTree);
 }
 
 /**
@@ -135,7 +84,7 @@ export function renderToString(
 export type HydrationScriptOptions = {
   /** 注入到 window 的初始数据，客户端可通过同一 dataKey 读取 */
   data?: unknown;
-  /** 挂到 window 上的键名，默认 __VIEW_DATA__ */
+  /** 挂到 window 上的键名，默认见 constants.KEY_VIEW_DATA */
   dataKey?: string;
   /** 客户端入口脚本 URL（type="module"），可选 */
   scriptSrc?: string;
@@ -160,7 +109,7 @@ export function generateHydrationScript(
 ): string {
   const {
     data,
-    dataKey = "__VIEW_DATA__",
+    dataKey = KEY_VIEW_DATA,
     scriptSrc,
     nonce,
   } = options;
@@ -189,7 +138,8 @@ export function generateHydrationScript(
 /**
  * 在已有服务端 HTML 的容器上激活（Hybrid）
  * 若 container 已有子节点，则与 fn() 的 VNode 一一对应复用 DOM（完整 hydrate）；
- * 首次复用后，后续响应式更新仍做整树替换。无子节点时与 createRoot 行为一致。
+ * 首次复用后，后续响应式更新与 createRoot 一致，走 patchRoot 细粒度 patch，不整树替换。
+ * 无子节点时与 createRoot 行为一致。
  *
  * @param fn 根组件函数（与 SSR 时相同）
  * @param container 已有 SSR 内容的 DOM 容器
@@ -200,9 +150,11 @@ export function hydrate(fn: () => VNode, container: Element): Root {
     return { unmount: () => {}, container: null };
   }
   let mounted: Node | Element | null = null;
+  let lastExpanded: ExpandedRoot | null = null;
   let disposed = false;
   let didHydrate = false;
   const disposers: Array<() => void> = [];
+  const { runDisposers, getScopeForRun } = createRunDisposersCollector();
 
   const root: Root = {
     container,
@@ -210,6 +162,8 @@ export function hydrate(fn: () => VNode, container: Element): Root {
       disposed = true;
       disposers.forEach((d) => d());
       disposers.length = 0;
+      runDisposers.forEach((d) => d());
+      runDisposers.length = 0;
       if (mounted != null) {
         if (mounted === container) {
           runDirectiveUnmountOnChildren(container as Element);
@@ -220,32 +174,55 @@ export function hydrate(fn: () => VNode, container: Element): Root {
         }
       }
       mounted = null;
+      lastExpanded = null;
     },
   };
 
   const disposeRoot = createEffect(() => {
     if (disposed) return;
-    setCurrentScope({ addDisposer: (d) => disposers.push(d) });
+    setCurrentScope(getScopeForRun());
     try {
       const vnode = fn();
       const hasExisting = (container as Element).hasChildNodes();
       if (hasExisting && !didHydrate) {
         hydrateElement(container as Element, vnode);
         didHydrate = true;
-        mounted = container as Element;
         removeCloak(container as Element);
+        const expanded = expandVNode(vnode);
+        lastExpanded = expanded;
+        mounted = Array.isArray(expanded)
+          ? (container as Element)
+          : (container as Element).firstChild;
       } else {
-        if (mounted != null) {
-          if (mounted === container) {
-            runDirectiveUnmountOnChildren(container as Element);
-            (container as Element).textContent = "";
-          } else if ((container as Element).contains(mounted)) {
-            runDirectiveUnmount(mounted);
-            (container as Element).removeChild(mounted);
+        const newExpanded = expandVNode(vnode);
+        if (
+          mounted != null && lastExpanded != null && container.contains(mounted)
+        ) {
+          patchRoot(
+            container as Element,
+            mounted,
+            lastExpanded,
+            newExpanded,
+          );
+          lastExpanded = newExpanded;
+          mounted = Array.isArray(newExpanded)
+            ? (container as Element)
+            : (container as Element).firstChild;
+        } else {
+          if (mounted != null) {
+            if (mounted === container) {
+              runDirectiveUnmountOnChildren(container as Element);
+              (container as Element).textContent = "";
+            } else if ((container as Element).contains(mounted)) {
+              runDirectiveUnmount(mounted);
+              (container as Element).removeChild(mounted);
+            }
           }
+          mounted = createNodeFromExpanded(newExpanded);
+          (container as Element).appendChild(mounted);
+          lastExpanded = newExpanded;
+          didHydrate = true;
         }
-        mounted = createElement(vnode);
-        (container as Element).appendChild(mounted);
       }
     } finally {
       setCurrentScope(null);

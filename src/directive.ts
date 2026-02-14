@@ -16,6 +16,11 @@
  * registerDirective("v-focus", { mounted(el) { (el as HTMLInputElement).focus(); } });
  */
 
+import {
+  KEY_DIRECTIVE_MOUNTED_RAN,
+  KEY_DIRECTIVE_REGISTRY,
+} from "./constants.ts";
+import { getGlobalOrDefault } from "./globals.ts";
 import { isSignalGetter } from "./signal.ts";
 import type { VNode } from "./types.ts";
 
@@ -42,7 +47,17 @@ export interface DirectiveHooks<T = unknown> {
   unmounted?(el: Element): void;
 }
 
-const registry = new Map<string, DirectiveHooks>();
+/** 用 globalThis 存 registry，避免打包多份 directive 模块时各用各的 Map，导致懒加载页注册的指令在 applyDirectives 里查不到 */
+const registry = getGlobalOrDefault(
+  KEY_DIRECTIVE_REGISTRY,
+  () => new Map<string, DirectiveHooks>(),
+);
+
+/** 记录已在某元素上执行过 mounted 的指令 key，存于 globalThis 与 registry 一致，多份 directive 共享，重渲染时不再重复执行 */
+const mountedRanByElement = getGlobalOrDefault(
+  KEY_DIRECTIVE_MOUNTED_RAN,
+  () => new WeakMap<Element, Set<string>>(),
+);
 
 /**
  * 将模板风格指令名转为 camelCase（如 v-if -> vIf）。
@@ -100,7 +115,9 @@ export function registerDirective(name: string, hooks: DirectiveHooks): void {
  */
 export function getDirective(propKey: string): DirectiveHooks | undefined {
   if (!propKey.startsWith("v") && !propKey.startsWith("v-")) return undefined;
-  return registry.get(propKey) ?? registry.get(directiveNameToCamel(propKey));
+  return registry.get(propKey) ??
+    registry.get(directiveNameToCamel(propKey)) ??
+    registry.get(directiveNameToKebab(propKey));
 }
 
 /** 判断是否为指令类 prop 名（内置或已注册） */
@@ -314,8 +331,15 @@ export function applyDirectives(
     if (!directive) continue;
     const binding = createBinding(value);
     if (directive.mounted) {
-      // 延后到下一微任务执行，确保元素已插入文档后再调用，使 focus() 等依赖 DOM 的挂载逻辑生效
-      queueMicrotask(() => directive.mounted!(el, binding));
+      let ran = mountedRanByElement.get(el);
+      if (ran?.has(key)) continue; // 该元素上此指令已执行过 mounted，跳过（仅首次生效）
+      if (!ran) {
+        ran = new Set<string>();
+        mountedRanByElement.set(el, ran);
+      }
+      ran.add(key);
+      // 延后到下一任务执行，确保元素已插入文档（applyProps 在 createElement 时调用）
+      globalThis.setTimeout(() => directive.mounted!(el, binding), 0);
     }
     if (directive.updated && isSignalGetter(value)) {
       effectFn(() => {

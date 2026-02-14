@@ -14,8 +14,8 @@ import {
   KEY_HMR_CHUNK_FOR_PATH,
   KEY_HMR_CLEAR_ROUTE_CACHE,
 } from "./constants.ts";
-import type { EffectScope } from "./effect.ts";
 import { createEffect, untrack } from "./effect.ts";
+import { FragmentType } from "./dom/shared.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
 import { jsx as runtimeJsx } from "./jsx-runtime.ts";
@@ -56,33 +56,6 @@ const resourceCache = new Map<string, ResourceGetter>();
 /** 按 path 缓存 _loading 组件的 resource getter；作用域仅当前目录，子目录不继承 */
 const loadingComponentCache = new Map<string, ResourceGetter>();
 
-/**
- * 按 path 的 effect 作用域：resource 内部 effect 登记到此 scope，不随根 effect 重跑被 dispose，
- * 否则 _loading 先加载触发根重跑时会 dispose 掉页面 resource 的 effect，index 加载完成时 generation 已 -1 导致不 setState。
- */
-const pathScopes = new Map<
-  string,
-  EffectScope & { runDisposers(): void }
->();
-
-function getScopeForPath(path: string): EffectScope & { runDisposers(): void } {
-  let scope = pathScopes.get(path);
-  if (!scope) {
-    const disposers: Array<() => void> = [];
-    scope = {
-      addDisposer(d: () => void) {
-        disposers.push(d);
-      },
-      runDisposers() {
-        disposers.forEach((d) => d());
-        disposers.length = 0;
-      },
-    };
-    pathScopes.set(path, scope);
-  }
-  return scope;
-}
-
 /** 有 _loading 时的最短展示时间（毫秒）：页面未加载完继续显示 loading；页面很快加载完也至少展示此时长再进入内容 */
 const MIN_LOADING_DELAY_MS = 10;
 
@@ -112,8 +85,6 @@ function getOrCreateMinDelaySignal(
 
 /** HMR 无感刷新前由 __HMR_REFRESH__ 置为 true，本模块执行时清空缓存以便拉新 chunk */
 if (getGlobal<boolean>(KEY_HMR_CLEAR_ROUTE_CACHE)) {
-  for (const scope of pathScopes.values()) scope.runDisposers();
-  pathScopes.clear();
   resourceCache.clear();
   loadingComponentCache.clear();
   setGlobal(KEY_HMR_CLEAR_ROUTE_CACHE, false);
@@ -279,13 +250,9 @@ export function RoutePage(props: {
   getHmrVersionGetter()();
   const chunkMap = getGlobal<Record<string, string>>(KEY_HMR_CHUNK_FOR_PATH);
   if (chunkMap?.[path]) {
-    pathScopes.get(path)?.runDisposers();
-    pathScopes.delete(path);
     resourceCache.delete(path);
     loadingComponentCache.delete(path);
   }
-
-  const pathScope = getScopeForPath(path);
 
   if (props.match.loading) {
     let loadingGetter = loadingComponentCache.get(path);
@@ -294,7 +261,6 @@ export function RoutePage(props: {
       loadingGetter = createResource(
         () => path + ":loading",
         () => loadingLoader().then((mod) => mod),
-        { scope: pathScope },
       );
       loadingComponentCache.set(path, loadingGetter);
     }
@@ -339,17 +305,19 @@ export function RoutePage(props: {
           },
         };
       },
-      { scope: pathScope },
     );
     resourceCache.set(path, resourceGetter);
   }
 
   /**
-   * 在组件体内直接读取 resource，使当前渲染（根 effect 或父组件）建立对 resource 的订阅；
-   * 这样 resource 更新时由同一作用域重跑，避免用「动态子 getter」导致 Boundary/Suspense 整页刷新或重载。
+   * 读取主 resource 状态：页面组件加载前 loading 为 true 或 data 为空；
+   * 页面组件加载完成后 createResource 内部 setState，触发订阅者重跑，本组件随之重跑，
+   * 此时 loading 为 false 且 data 有值，即「收到信号」→ 终止 loading、显示页面。
    */
   const { data, loading, error, refetch } = resourceGetter();
   const pageReady = !error && !loading && data != null;
+
+  console.log({ pageReady, data, loading, error });
 
   if (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -373,19 +341,24 @@ export function RoutePage(props: {
     );
   }
 
-  /* 页面组件未就绪：优先显示 _loading，否则默认 loading 或占位 */
+  /* 页面组件未就绪：显示 loading，直到 resource 完成并触发重跑（收到信号） */
   if (!pageReady) {
     const loadingLoader = props.match.loading;
     if (loadingLoader) {
-      const loadingGetter = loadingComponentCache.get(path);
-      if (loadingGetter) {
-        const loadingState = loadingGetter();
-        if (!loadingState.loading && loadingState.data) {
-          const LoadingComponent = loadingState.data.default ??
-            loadingState.data.RouteLoading;
-          if (typeof LoadingComponent === "function") {
-            return LoadingComponent(matchWithRouter) as VNode;
-          }
+      let loadingGetter = loadingComponentCache.get(path);
+      if (!loadingGetter) {
+        loadingGetter = createResource(
+          () => path + ":loading",
+          () => loadingLoader().then((mod) => mod),
+        );
+        loadingComponentCache.set(path, loadingGetter);
+      }
+      const loadingState = loadingGetter();
+      if (!loadingState.loading && loadingState.data) {
+        const LoadingComponent = loadingState.data.default ??
+          loadingState.data.RouteLoading;
+        if (typeof LoadingComponent === "function") {
+          return LoadingComponent(matchWithRouter) as VNode;
         }
       }
     }
@@ -416,7 +389,7 @@ export function RoutePage(props: {
     ) as VNode;
   }
 
-  /* 页面已就绪但 minDelay 未到：再显示一段 _loading 或默认 loading / 占位后切到内容 */
+  /* 页面已就绪，可选：再显示一小段 loading（minDelay）后切到内容 */
   if (pageReady && data && props.match.loading && !minDelayElapsed()) {
     const loadingGetter = loadingComponentCache.get(path);
     if (loadingGetter) {
@@ -455,14 +428,11 @@ export function RoutePage(props: {
     ) as VNode;
   }
 
-  /* 页面就绪且 minDelay 已过：显示内容并加过渡容器 */
+  /* 收到「页面组件加载完成」信号后走到此处：终止 loading，显示页面内容 */
   ensureRoutePageTransitionStyle();
   const content = data.default(matchWithRouter);
   return (
-    <div
-      className={cls("transitionWrapper")}
-      style={sty("transitionWrapper")}
-    >
+    <div className={cls("transitionWrapper")} style={sty("transitionWrapper")}>
       {content}
     </div>
   ) as VNode;

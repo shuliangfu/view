@@ -26,26 +26,15 @@ import { createMemo } from "./effect.ts";
 import { createNestedProxy } from "./proxy.ts";
 import { schedule } from "./scheduler.ts";
 import { getCurrentEffect } from "./signal.ts";
+import { DEFAULT_STORE_KEY, KEY_STORE_REGISTRY } from "./constants.ts";
+import { getGlobalOrDefault } from "./globals.ts";
 import type { SignalTuple } from "./types.ts";
 
-/** 全局 store 注册表 key，与 view-global 脱耦，避免打包时 view-global 未解析导致 getGlobalStore 为 undefined */
-const KEY_STORE_REGISTRY = "__VIEW_STORE_REGISTRY";
-/** 默认 store 槽位 key，createStore 自动注册时使用，getGlobalStore() 无参时取此槽位 */
-const DEFAULT_STORE_KEY = "__view_default_store";
-
 function getGlobalStoreRegistry(): Map<string, unknown> {
-  const g = globalThis as unknown as Record<
-    string,
-    Map<string, unknown> | undefined
-  >;
-  let m = g[KEY_STORE_REGISTRY];
-  if (!m) {
-    m = new Map();
-    (globalThis as unknown as Record<string, Map<string, unknown>>)[
-      KEY_STORE_REGISTRY
-    ] = m;
-  }
-  return m;
+  return getGlobalOrDefault(
+    KEY_STORE_REGISTRY,
+    () => new Map<string, unknown>(),
+  );
 }
 
 /** 从全局注册表取 store；code-split 下 chunk 内调用可拿到 main 里 createStore 注册的同一实例 */

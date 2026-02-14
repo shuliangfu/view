@@ -13,18 +13,18 @@
 
 ## Test Results
 
-- **Total tests**: 252
-- **Passed**: 252
+- **Total tests**: 256
+- **Passed**: 256
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 35s
+- **Duration**: ~1m 56s
 
 ### Test File Summary
 
 | Test file                        | Tests | Status        |
 | -------------------------------- | ----- | ------------- |
 | e2e/cli.test.ts                  | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts | 49    | ✅ All passed |
+| e2e/view-example-browser.test.ts | 51    | ✅ All passed |
 | integration/integration.test.ts  | 11    | ✅ All passed |
 | unit/boundary.test.ts            | 13    | ✅ All passed |
 | unit/build-hmr.test.ts           | 5     | ✅ All passed |
@@ -39,7 +39,7 @@
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
 | unit/router.test.ts              | 14    | ✅ All passed |
-| unit/runtime.test.ts             | 18    | ✅ All passed |
+| unit/runtime.test.ts             | 20    | ✅ All passed |
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
@@ -65,7 +65,7 @@
 - ✅ view start after build: serves and browser opens home with multi-page
   example
 
-### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 49 tests
+### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 51 tests
 
 - ✅ Home mount and multi-page entry; navigation to
   Signal/Store/Boundary/Directive/Reactive/Resource/Context/Runtime/Router
@@ -77,6 +77,10 @@
 - ✅ Resource page: refetch, id switch, Suspense and Promise blocks
 - ✅ Context page: light/dark theme toggle
 - ✅ Runtime page: input then generate HTML (renderToString)
+- ✅ **Layout page**: /layout shows layout example and _layout、inheritLayout
+  copy
+- ✅ **Loading page**: /loading lazy-loads then shows loading-state example and
+  _loading copy
 - ✅ Top nav and route changes, Layout theme, 404 and back to home
 
 ### 4. Context (unit/context.test.ts) - 8 tests
@@ -150,12 +154,13 @@
 - ✅ beforeRoute: false cancels, redirect path, true continues
 - ✅ afterRoute, notFound and meta
 
-### 13. Runtime (unit/runtime.test.ts) - 18 tests
+### 13. Runtime (unit/runtime.test.ts) - 20 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children
 - ✅ generateHydrationScript: no args, data, scriptSrc
 - ✅ createRoot / render: mount, root signal dependency updates DOM, empty
   Fragment, container with existing children, set after unmount does not throw
+- ✅ **forceRender**: root.forceRender() triggers root effect re-run (e.g. external router integration)
 - ✅ **createReactiveRoot**: initial mount and Root return; getState as signal
   triggers patch update (number and object state); unmount clears container;
   edge: set state after unmount does not throw and does not update DOM
@@ -226,7 +231,7 @@
 
 ## Conclusion
 
-All 252 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 256 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, scheduler, router, resource, context, directives, runtime
 and SSR (createRoot, render, **createReactiveRoot**, hydrate, renderToString),
 store, reactive, boundary, meta, proxy, compiler, stream, build/HMR, CLI

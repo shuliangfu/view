@@ -17,8 +17,12 @@
  * createEffect(() => { const { data, loading } = user(); if (data) console.log(data); });
  */
 
+import type { EffectScope } from "./effect.ts";
 import { createEffect } from "./effect.ts";
 import { createSignal, markSignalGetter } from "./signal.ts";
+
+/** createResource 可选配置：scope 使内部 effect 不登记到根 run scope，避免根重跑时被 dispose 导致 Promise 回调跳过 setState */
+export type CreateResourceOptions = { scope?: EffectScope };
 
 /**
  * Resource 的只读状态，由 createResource 返回的 getter() 得到。
@@ -48,6 +52,7 @@ type ResourceState<T> = Pick<ResourceResult<T>, "data" | "loading" | "error">;
  */
 export function createResource<T>(
   fetcher: () => Promise<T>,
+  options?: CreateResourceOptions,
 ): () => ResourceResult<T>;
 
 /**
@@ -55,6 +60,7 @@ export function createResource<T>(
  *
  * @param source 响应式 source getter；在 effect 中读取，source() 变化时触发重新请求
  * @param fetcher 接收当前 source 值，返回 Promise；仅在 source 变化或 refetch 时调用
+ * @param options 可选；scope 指定内部 effect 登记的作用域，不随根 run scope 清理（如 RoutePage 按 path 的 scope）
  * @returns 返回 getter：在 effect/组件中调用 getter() 得到 { data, loading, error, refetch }
  *
  * @example
@@ -64,18 +70,28 @@ export function createResource<T>(
 export function createResource<S, T>(
   source: () => S,
   fetcher: (source: S) => Promise<T>,
+  options?: CreateResourceOptions,
 ): () => ResourceResult<T>;
 
-export function createResource<S, T>(
-  sourceOrFetcher: (() => S) | (() => Promise<T>),
-  maybeFetcher?: (source: S) => Promise<T>,
+/**
+ * 实现签名：单泛型 T + unknown 表示 source，使无 source / 有 source 两种 overload 均与此实现兼容
+ */
+export function createResource<T>(
+  sourceOrFetcher: (() => unknown) | (() => Promise<T>),
+  maybeFetcherOrOptions?:
+    | ((source: unknown) => Promise<T>)
+    | CreateResourceOptions,
+  maybeOptions?: CreateResourceOptions,
 ): () => ResourceResult<T> {
-  const hasSource = typeof maybeFetcher === "function";
+  const hasSource = typeof maybeFetcherOrOptions === "function";
+  const options: CreateResourceOptions | undefined = hasSource
+    ? maybeOptions
+    : (maybeFetcherOrOptions as CreateResourceOptions | undefined);
   const source = hasSource
-    ? (sourceOrFetcher as () => S)
+    ? (sourceOrFetcher as () => unknown)
     : ((): undefined => undefined);
   const fetcher = hasSource
-    ? (maybeFetcher as (source: S) => Promise<T>)
+    ? (maybeFetcherOrOptions as (source: unknown) => Promise<T>)
     : (sourceOrFetcher as () => Promise<T>);
 
   const [getState, setState] = createSignal<ResourceState<T>>({
@@ -89,26 +105,29 @@ export function createResource<S, T>(
 
   /** effect dispose 或重新运行后置为 -1，Promise 回调仅当 gen === generation 时才 setState，避免 unmount/旧 run 后误更新 */
   let generation = 0;
-  createEffect(() => {
-    const gen = ++generation;
-    const s = source();
-    runRef.current = () => {
-      setState((prev) => ({ ...prev, loading: true, error: undefined }));
-      Promise.resolve(fetcher(s as S))
-        .then((value) => {
-          if (gen !== generation) return;
-          setState({ data: value, loading: false, error: undefined });
-        })
-        .catch((e) => {
-          if (gen !== generation) return;
-          setState((prev) => ({ ...prev, loading: false, error: e }));
-        });
-    };
-    runRef.current();
-    return () => {
-      generation = -1;
-    };
-  });
+  createEffect(
+    () => {
+      const gen = ++generation;
+      const s = source();
+      runRef.current = () => {
+        setState((prev) => ({ ...prev, loading: true, error: undefined }));
+        Promise.resolve(fetcher(s))
+          .then((value) => {
+            if (gen !== generation) return;
+            setState({ data: value, loading: false, error: undefined });
+          })
+          .catch((e) => {
+            if (gen !== generation) return;
+            setState((prev) => ({ ...prev, loading: false, error: e }));
+          });
+      };
+      runRef.current();
+      return () => {
+        generation = -1;
+      };
+    },
+    options?.scope ? { scope: options.scope } : undefined,
+  );
 
   const getter = (): ResourceResult<T> => {
     const s = getState();

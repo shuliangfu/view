@@ -13,18 +13,18 @@
 
 ## 测试结果
 
-- **总测试数**：252
-- **通过**：252
+- **总测试数**：256
+- **通过**：256
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 35 秒
+- **执行时间**：约 1 分 56 秒
 
 ### 测试文件统计
 
 | 测试文件                         | 测试数 | 状态        |
 | -------------------------------- | ------ | ----------- |
 | e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts | 49     | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts | 51     | ✅ 全部通过 |
 | integration/integration.test.ts  | 11     | ✅ 全部通过 |
 | unit/boundary.test.ts            | 13     | ✅ 全部通过 |
 | unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
@@ -39,7 +39,7 @@
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
 | unit/router.test.ts              | 14     | ✅ 全部通过 |
-| unit/runtime.test.ts             | 18     | ✅ 全部通过 |
+| unit/runtime.test.ts             | 20     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
@@ -62,7 +62,7 @@
 - ✅ examples 目录下 view build：产出 dist/ 且含 main.js
 - ✅ build 后 view start：启动服务并用浏览器打开首页（多页面示例）
 
-### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 49 tests
+### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 51 tests
 
 - ✅ 首页挂载与多页面入口、各卡片进入
   Signal/Store/Boundary/指令/Reactive/Resource/Context/Runtime/Router 页
@@ -74,6 +74,8 @@
 - ✅ Resource 页：重新请求、id 切换、Suspense 与 Promise 区块
 - ✅ Context 页：light/dark 主题切换
 - ✅ Runtime 页：输入后生成 HTML（renderToString）
+- ✅ **Layout 页**：/layout 显示布局示例与 _layout、inheritLayout 说明
+- ✅ **Loading 页**：/loading 懒加载完成后显示加载态示例与 _loading 说明
 - ✅ 顶部导航与路由跳转、Layout 主题、404 与返回首页
 
 ### 4. Context (unit/context.test.ts) - 8 tests
@@ -140,12 +142,13 @@
 - ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
 - ✅ afterRoute、notFound 与 meta
 
-### 13. Runtime (unit/runtime.test.ts) - 18 tests
+### 13. Runtime (unit/runtime.test.ts) - 20 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点
 - ✅ generateHydrationScript：无参/传入 data/scriptSrc
 - ✅ createRoot / render：挂载、根依赖 signal 后更新 DOM、空 Fragment、container
   已有子节点、unmount 后 set 不抛错
+- ✅ **forceRender**：root.forceRender() 可触发根 effect 重跑（如外部路由集成）
 - ✅ **createReactiveRoot**：初始挂载与 Root 返回值；getState 为 signal
   时数字/对象 状态变更后 patch 更新 DOM；unmount 后容器清空；边界：unmount 后再
   set state 不抛错且不更新 DOM
@@ -212,6 +215,6 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 252 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 256 个用例，全部通过，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**createReactiveRoot**、hydrate、renderToString）、Store、Reactive、Boundary、meta、proxy、compiler、stream、build/HMR、CLI（init/build/start）及浏览器示例流程，满足发布与文档展示需求。

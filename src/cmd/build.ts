@@ -20,6 +20,12 @@ import {
   setEnv,
   writeFile,
 } from "@dreamer/runtime-adapter";
+import {
+  KEY_HMR_BUMP,
+  KEY_HMR_CHUNK_FOR_PATH,
+  KEY_HMR_CLEAR_ROUTE_CACHE,
+  KEY_VIEW_ROOT,
+} from "../constants.ts";
 import type { ViewConfig } from "./config.ts";
 import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
 import { generateRoutersFile } from "./generate.ts";
@@ -49,11 +55,11 @@ const HMR_BANNER = `
       if (typeof g.location !== "undefined") g.location.reload();
     };
     var chunkUrl = hmrOpts && hmrOpts.chunkUrl;
-    var r = g.__VIEW_ROOT__;
+    var r = g["${KEY_VIEW_ROOT}"];
     var mainUrl = getMainUrl();
     mainUrl = mainUrl + (mainUrl.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
     var runMain = function(){
-      g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = true;
+      g["${KEY_HMR_CLEAR_ROUTE_CACHE}"] = true;
       if (r && typeof r.unmount === "function") r.unmount();
       var clearRoot = function(){
         var rootEl = typeof g.document !== "undefined" && g.document.getElementById ? g.document.getElementById("root") : null;
@@ -83,7 +89,7 @@ const HMR_BANNER = `
           reload();
         });
     };
-    if (chunkUrl && typeof chunkUrl === "string" && g.__VIEW_HMR_BUMP__) {
+    if (chunkUrl && typeof chunkUrl === "string" && g["${KEY_HMR_BUMP}"]) {
       var routePath = hmrOpts && hmrOpts.routePath;
       if (typeof routePath !== "string") {
         var name = chunkUrl.split("/").pop() || "";
@@ -97,11 +103,11 @@ const HMR_BANNER = `
         routePath = (seg === "home" || seg === "index") ? "/" : "/" + seg;
       }
       if (typeof routePath === "string") {
-        if (!g.__VIEW_HMR_CHUNK_FOR_PATH__) g.__VIEW_HMR_CHUNK_FOR_PATH__ = {};
-        g.__VIEW_HMR_CHUNK_FOR_PATH__[routePath] = chunkUrl;
+        if (!g["${KEY_HMR_CHUNK_FOR_PATH}"]) g["${KEY_HMR_CHUNK_FOR_PATH}"] = {};
+        g["${KEY_HMR_CHUNK_FOR_PATH}"][routePath] = chunkUrl;
       }
-      g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = true;
-      import(/* @vite-ignore */ chunkUrl).then(function(){ g.__VIEW_HMR_BUMP__(); }).catch(runMain);
+      g["${KEY_HMR_CLEAR_ROUTE_CACHE}"] = true;
+      import(/* @vite-ignore */ chunkUrl).then(function(){ g["${KEY_HMR_BUMP}"](); }).catch(runMain);
       return;
     }
     runMain();
@@ -326,16 +332,6 @@ export async function prepareDevBuild(
   if (clientConfig.bundle) {
     clientConfig.bundle.minify = false;
     clientConfig.bundle.sourcemap = true;
-    // dev 时仅在 view 仓库内（存在 ../src/dev.ts）将 @dreamer/view 指到 dev 入口，使 root 挂到 __VIEW_ROOT__ 便于 HMR unmount。
-    // 仓库外（init 创建的项目）不设 alias，用主入口，避免 jsr:@dreamer/view/dev 在 JSR 未导出 ./dev 时解析失败导致 createRoot 为 (void 0)、运行时 (void 0) is not a function。
-    clientConfig.bundle.alias = clientConfig.bundle.alias ?? {};
-    const viewSrcDir = resolve(root, "..", "src");
-    const viewDevPath = join(viewSrcDir, "dev.ts");
-    const useLocalView = existsSync(viewDevPath);
-    if (useLocalView) {
-      clientConfig.bundle.alias["@dreamer/view"] = viewDevPath;
-    }
-    // 仓库外不设置 alias["@dreamer/view"] = "jsr:@dreamer/view/dev"，使用默认主入口
   }
   // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
   if (buildConfig.debug !== undefined) {

@@ -8,6 +8,8 @@
  * @internal 仅 route-page 与 build 注入的 HMR 脚本使用
  */
 
+import { KEY_HMR_BUMP } from "./constants.ts";
+import { setGlobal } from "./globals.ts";
 import { createSignal } from "./signal.ts";
 
 const [getHmrVersion, setHmrVersion] = createSignal(0);
@@ -18,6 +20,5 @@ export function getHmrVersionGetter(): () => number {
 }
 
 if (typeof globalThis !== "undefined") {
-  (globalThis as unknown as { __VIEW_HMR_BUMP__?: () => void })
-    .__VIEW_HMR_BUMP__ = () => setHmrVersion((v) => v + 1);
+  setGlobal(KEY_HMR_BUMP, () => setHmrVersion((v) => v + 1));
 }

@@ -47,12 +47,15 @@ export type VNode = {
 /**
  * 根实例：createRoot / render / hydrate 返回的句柄。
  * 调用 unmount() 可卸载该根并回收其下所有 effect。
+ * forceRender() 可强制根 effect 重新执行一次，用于外部路由等非响应式来源驱动整树重算。
  */
 export type Root = {
   /** 卸载根并清理所有 effect 与指令 */
   unmount: () => void;
   /** 挂载的 DOM 容器（仅浏览器环境有值） */
   container?: Element | null;
+  /** 强制根 effect 重新执行一次（外部路由等场景触发整树重算） */
+  forceRender?: () => void;
 };
 
 /**

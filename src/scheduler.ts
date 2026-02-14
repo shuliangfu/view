@@ -8,7 +8,8 @@
  * - `unschedule(run)`：从队列移除任务（如 effect dispose 时）
  */
 
-const KEY_SCHEDULER = "__VIEW_SCHEDULER";
+import { KEY_SCHEDULER } from "./constants.ts";
+import { getGlobalOrDefault } from "./globals.ts";
 
 type SchedulerState = {
   queue: Set<() => void>;
@@ -17,14 +18,11 @@ type SchedulerState = {
 };
 
 function getGlobalSchedulerState(): SchedulerState {
-  const g = globalThis as unknown as Record<string, SchedulerState | undefined>;
-  let state = g[KEY_SCHEDULER];
-  if (!state) {
-    state = { queue: new Set(), queueCopy: [], scheduled: false };
-    (globalThis as unknown as Record<string, SchedulerState>)[KEY_SCHEDULER] =
-      state;
-  }
-  return state;
+  return getGlobalOrDefault(KEY_SCHEDULER, () => ({
+    queue: new Set(),
+    queueCopy: [],
+    scheduled: false,
+  }));
 }
 
 /**

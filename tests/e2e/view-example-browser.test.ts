@@ -983,6 +983,45 @@ describe("浏览器测试（examples 入口）", () => {
     expect(title).toContain("Router");
   }, exampleBrowserConfig);
 
+  it(
+    "Layout 页：进入 /layout 后显示布局示例与 _layout、inheritLayout 说明",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/layout");
+      await new Promise((r) => setTimeout(r, 500));
+      const text = await getMainText(t);
+      expect(text).toContain("布局示例");
+      expect(text).toContain("Layout");
+      expect(text).toContain("_layout");
+      expect(text).toContain("inheritLayout");
+      const title = await getDocumentTitle(t);
+      expect(title).toContain("Layout");
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "Loading 页：进入 /loading 后懒加载完成并显示加载态示例与 _loading 说明",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/loading");
+      // 等待懒加载：可能先出现 _loading 转圈，再切到页面内容（最多等 3s）
+      const deadline = Date.now() + 3000;
+      let text = "";
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 200));
+        text = await getMainText(t);
+        if (text.includes("加载态示例") || text.includes("_loading.tsx")) break;
+      }
+      expect(text).toContain("加载态示例");
+      expect(text).toMatch(/loading/i);
+      expect(text).toContain("_loading");
+      const title = await getDocumentTitle(t);
+      expect(title).toMatch(/loading/i);
+    },
+    exampleBrowserConfig,
+  );
+
   it("Layout 主题切换：点击切换按钮后 html 主题 class 变化", async (t) => {
     if (!t?.browser) return;
     await navigate(t, "/");

@@ -76,18 +76,69 @@ function normalizeChildrenForSSR(children: unknown): VNode[] {
   return [createTextVNode(children)];
 }
 
+/** 静态 props 属性串缓存：仅当 props 中无 signal getter 时使用，避免重复拼接。最大条目数，超出时淘汰一半 */
+const STATIC_ATTR_CACHE_MAX = 200;
+const staticAttrCache = new Map<string, string>();
+
 /**
- * SSR：将 props 中需要输出的属性转为 HTML 属性字符串（不含 children/key）
- * 若后续需优化，可对静态 props 做缓存拼接结果（需识别“静态”），或仅在确有动态 props 时再优化
+ * 若 props 为纯静态（无 getter、无指令输出），返回用于缓存的指纹；否则返回 null 表示不缓存。
+ */
+function getStaticPropsFingerprint(
+  props: Record<string, unknown>,
+): string | null {
+  const entries: [string, string][] = [];
+  for (const [key, value] of Object.entries(props)) {
+    if (
+      key === "children" || key === "key" || key === "ref" ||
+      key === "dangerouslySetInnerHTML"
+    ) continue;
+    if (key === "vCloak" || key === "v-cloak") {
+      entries.push([key, ""]);
+      continue;
+    }
+    if (isDirectiveProp(key)) continue;
+    if (isSignalGetter(value)) return null;
+    if (typeof value === "function") continue;
+    if (value == null || value === false) continue;
+    if (value === true) {
+      entries.push([key, "true"]);
+      continue;
+    }
+    let str: string;
+    if (key === "style" && typeof value === "object" && value !== null) {
+      str = Object.entries(value as Record<string, unknown>)
+        .map(([k, val]) =>
+          `${k.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "")}: ${
+            val == null ? "" : String(val)
+          }`
+        )
+        .join("; ");
+    } else {
+      str = String(value);
+    }
+    entries.push([key, str]);
+  }
+  entries.sort((a, b) => a[0].localeCompare(b[0]));
+  return JSON.stringify(entries);
+}
+
+/**
+ * SSR：将 props 中需要输出的属性转为 HTML 属性字符串（不含 children/key）。
+ * 纯静态 props（无 signal getter）时使用缓存，减少重复字符串拼接。
  */
 function stringifyAttributes(props: Record<string, unknown>): string {
+  const fp = getStaticPropsFingerprint(props);
+  if (fp !== null) {
+    const cached = staticAttrCache.get(fp);
+    if (cached !== undefined) return cached;
+  }
+
   const parts: string[] = [];
   for (const [key, value] of Object.entries(props)) {
     if (
       key === "children" || key === "key" || key === "ref" ||
       key === "dangerouslySetInnerHTML"
     ) continue;
-    // v-cloak：输出为 data-view-cloak 供 CSS 隐藏，hydrate 后由 runtime 移除
     if (key === "vCloak" || key === "v-cloak") {
       parts.push('data-view-cloak=""');
       continue;
@@ -120,7 +171,18 @@ function stringifyAttributes(props: Record<string, unknown>): string {
       parts.push(`${escapeAttr(key)}="${escapeAttr(str)}"`);
     }
   }
-  return parts.length ? " " + parts.join(" ") : "";
+  const result = parts.length ? " " + parts.join(" ") : "";
+  if (fp !== null) {
+    if (staticAttrCache.size >= STATIC_ATTR_CACHE_MAX) {
+      const keysToDelete = [...staticAttrCache.keys()].slice(
+        0,
+        Math.floor(STATIC_ATTR_CACHE_MAX / 2),
+      );
+      for (const k of keysToDelete) staticAttrCache.delete(k);
+    }
+    staticAttrCache.set(fp, result);
+  }
+  return result;
 }
 
 /**
