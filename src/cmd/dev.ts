@@ -35,9 +35,13 @@ export async function run(
   const watchPaths = Array.isArray(watchCfg)
     ? watchCfg
     : (watchCfg?.paths ?? ["./src"]);
-  const watchIgnore = Array.isArray(watchCfg)
+  const baseIgnore = Array.isArray(watchCfg)
     ? ["node_modules", ".git", "dist"]
     : (watchCfg?.ignore ?? ["node_modules", ".git", "dist"]);
+  // 自动生成的 routers.tsx 加入忽略，避免 generateRoutersFile 写入后触发第二次 rebuild 导致下发错误的 chunkUrl
+  const watchIgnore = baseIgnore.some((s) => s.includes("routers.tsx"))
+    ? baseIgnore
+    : [...baseIgnore, "routers.tsx"];
 
   // 命令行 --host/--port 最高优先级，其次 config
   const host = (options?.host as string | undefined) ??

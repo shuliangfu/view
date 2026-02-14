@@ -1,12 +1,7 @@
 /**
- * 路由懒加载时的占位：显示加载中
+ * 路由懒加载时的占位（约定 _loading.tsx，路由扫描自动屏蔽）：显示加载中
  */
 import type { VNode } from "@dreamer/view";
-
-export const meta = {
-  title: "Loading",
-  description: "路由懒加载占位页",
-};
 
 export function RouteLoading(): VNode {
   return (

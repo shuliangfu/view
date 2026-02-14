@@ -10,8 +10,13 @@
  * 使用 classic JSX + 适配器，避免 JSR 发布时对 jsxImportSource/jsx-runtime 的错误解析（mod.ts/jsx-runtime 等）。
  */
 /** @jsx jsx */
-import { jsx as runtimeJsx } from "./jsx-runtime.ts";
+import { createEffect, untrack } from "./effect.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
+import { jsx as runtimeJsx } from "./jsx-runtime.ts";
+import { createResource } from "./resource.ts";
+import type { LayoutComponentModule, RouteMatch, Router } from "./router.ts";
+import { createSignal } from "./signal.ts";
+import type { VNode } from "./types.ts";
 
 /** classic 转换 (type, props, ...children) 适配为 view 运行时 jsx(type, propsWithChildren, key) */
 function jsx(
@@ -24,9 +29,6 @@ function jsx(
     : { children: props != null ? [props, ...children] : children };
   return runtimeJsx(type, merged, null);
 }
-import { createResource } from "./resource.ts";
-import type { RouteMatch, Router } from "./router.ts";
-import type { VNode } from "./types.ts";
 
 /** Resource getter 返回类型（与 createResource 一致） */
 type ResourceGetter = () => {
@@ -39,6 +41,36 @@ type ResourceGetter = () => {
 /** 按 path 缓存 resource getter，避免每次渲染新建 createResource 导致死循环 */
 const resourceCache = new Map<string, ResourceGetter>();
 
+/** 按 path 缓存 _loading 组件的 resource getter；作用域仅当前目录，子目录不继承 */
+const loadingComponentCache = new Map<string, ResourceGetter>();
+
+/** 有 _loading 时的最短展示时间（毫秒）：页面未加载完继续显示 loading；页面很快加载完也至少展示此时长再进入内容 */
+const MIN_LOADING_DELAY_MS = 10;
+
+/** 已启动过「最短 MIN_LOADING_DELAY_MS」计时器的 path，避免重复启动导致一直 loading */
+const minDelayTimerStartedPaths = new Set<string>();
+
+/** 上一帧的 path，用于仅在 path 变化时重置 minDelayElapsed，避免根 effect 重跑时反复置 false */
+let prevPathForMinDelay = "";
+
+/** 按 path 缓存 minDelayElapsed 的 [getter, setter]，保证根 effect 重跑时仍用同一 signal，定时器回调更新的是当前渲染所读的 signal */
+const minDelaySignalsByPath = new Map<
+  string,
+  [() => boolean, (value: boolean) => void]
+>();
+
+function getOrCreateMinDelaySignal(
+  path: string,
+): [() => boolean, (value: boolean) => void] {
+  let tuple = minDelaySignalsByPath.get(path);
+  if (!tuple) {
+    const [get, set] = createSignal(false);
+    tuple = [get, set];
+    minDelaySignalsByPath.set(path, tuple);
+  }
+  return tuple;
+}
+
 /** HMR 无感刷新前由 __HMR_REFRESH__ 置为 true，本模块执行时清空缓存以便拉新 chunk */
 if (typeof globalThis !== "undefined") {
   const g = globalThis as unknown as {
@@ -46,6 +78,7 @@ if (typeof globalThis !== "undefined") {
   };
   if (g.__VIEW_HMR_CLEAR_ROUTE_CACHE__) {
     resourceCache.clear();
+    loadingComponentCache.clear();
     g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = false;
   }
 }
@@ -169,8 +202,34 @@ export function RoutePage(props: {
   styles?: RoutePageStyles;
 }): VNode {
   const path = props.match.path;
+  const pathRef = { current: path };
+  pathRef.current = path;
   const matchWithRouter = { ...props.match, router: props.router };
   const labels = props.labels ?? {};
+  const [minDelayElapsed, setMinDelayElapsed] = getOrCreateMinDelaySignal(path);
+  createEffect(() => {
+    path;
+    if (prevPathForMinDelay !== path) {
+      minDelayTimerStartedPaths.delete(prevPathForMinDelay);
+      prevPathForMinDelay = path;
+      setMinDelayElapsed(false);
+    }
+  });
+  createEffect(() => {
+    const hasLoading = untrack(() => props.match.loading);
+    const p = untrack(() => path);
+    if (!hasLoading || minDelayTimerStartedPaths.has(p)) return;
+    minDelayTimerStartedPaths.add(p);
+    const pathWhenStarted = p;
+    const setElapsed = getOrCreateMinDelaySignal(pathWhenStarted)[1];
+    const t = setTimeout(() => {
+      if (pathRef.current === pathWhenStarted) setElapsed(true);
+    }, MIN_LOADING_DELAY_MS);
+    return () => {
+      clearTimeout(t);
+      minDelayTimerStartedPaths.delete(pathWhenStarted);
+    };
+  });
   const errorTitle = labels.errorTitle ?? DEFAULT_ERROR_TITLE;
   const retryText = labels.retryText ?? DEFAULT_RETRY_TEXT;
   const loadingText = labels.loadingText ?? DEFAULT_LOADING_TEXT;
@@ -180,14 +239,27 @@ export function RoutePage(props: {
     classes[key] ?? DEFAULT_CLASSES[key];
   const sty = (key: keyof RoutePageStyles) => styles[key];
 
+  /** HMR 时 version 变化使本组件重跑；若有该 path 的 chunk 待更新则清掉缓存，让下面重新 createResource 并走 loader 里的 override，避免继续用旧 resource 显示旧内容（如「核心 333」） */
   getHmrVersionGetter()();
   if (typeof globalThis !== "undefined") {
     const g = globalThis as unknown as {
-      __VIEW_HMR_CLEAR_ROUTE_CACHE__?: boolean;
+      __VIEW_HMR_CHUNK_FOR_PATH__?: Record<string, string>;
     };
-    if (g.__VIEW_HMR_CLEAR_ROUTE_CACHE__) {
-      resourceCache.clear();
-      g.__VIEW_HMR_CLEAR_ROUTE_CACHE__ = false;
+    if (g.__VIEW_HMR_CHUNK_FOR_PATH__?.[path]) {
+      resourceCache.delete(path);
+      loadingComponentCache.delete(path);
+    }
+  }
+
+  if (props.match.loading) {
+    let loadingGetter = loadingComponentCache.get(path);
+    if (!loadingGetter) {
+      const loadingLoader = props.match.loading;
+      loadingGetter = createResource(
+        () => path + ":loading",
+        () => loadingLoader().then((mod) => mod),
+      );
+      loadingComponentCache.set(path, loadingGetter);
     }
   }
 
@@ -196,7 +268,7 @@ export function RoutePage(props: {
     const match = props.match;
     resourceGetter = createResource(
       () => path,
-      (_path) => {
+      async (_path) => {
         const g = typeof globalThis !== "undefined"
           ? globalThis as unknown as {
             __VIEW_HMR_CHUNK_FOR_PATH__?: Record<string, string>;
@@ -210,10 +282,27 @@ export function RoutePage(props: {
           >;
         }
         const result = match.component(matchWithRouter) as unknown;
-        if (result && typeof (result as Promise<unknown>).then === "function") {
-          return result as Promise<{ default: (m?: unknown) => VNode }>;
+        const pageMod =
+          result && typeof (result as Promise<unknown>).then === "function"
+            ? (await result as { default: (m?: unknown) => VNode })
+            : { default: () => result as VNode };
+        if (!match.layouts?.length) {
+          return {
+            default: (m?: unknown) => pageMod.default(m ?? matchWithRouter),
+          };
         }
-        return Promise.resolve({ default: () => result as VNode });
+        const layoutMods = await Promise.all(
+          match.layouts.map((loader) => loader()),
+        ) as LayoutComponentModule[];
+        return {
+          default: (m?: unknown) => {
+            let inner: VNode = pageMod.default(m ?? matchWithRouter);
+            for (const mod of layoutMods) {
+              inner = mod.default({ children: inner });
+            }
+            return inner;
+          },
+        };
       },
     );
     resourceCache.set(path, resourceGetter);
@@ -244,6 +333,22 @@ export function RoutePage(props: {
   }
 
   if (loading || !data) {
+    const loadingLoader = props.match.loading;
+    if (loadingLoader) {
+      let loadingGetter = loadingComponentCache.get(path);
+      if (!loadingGetter) {
+        loadingGetter = createResource(
+          () => path + ":loading",
+          () => loadingLoader().then((mod) => mod),
+        );
+        loadingComponentCache.set(path, loadingGetter);
+      }
+      const loadingState = loadingGetter();
+      if (!loadingState.loading && loadingState.data) {
+        const LoadingComponent = loadingState.data.default;
+        return LoadingComponent(matchWithRouter) as VNode;
+      }
+    }
     if (props.showLoading === true) {
       return (
         <section
@@ -262,6 +367,41 @@ export function RoutePage(props: {
       );
     }
     ensureRoutePageTransitionStyle();
+    return (
+      <div
+        className={cls("transitionPlaceholder")}
+        style={sty("transitionPlaceholder")}
+        aria-hidden="true"
+      />
+    ) as VNode;
+  }
+
+  if (data && props.match.loading && !minDelayElapsed()) {
+    const loadingGetter = loadingComponentCache.get(path);
+    if (loadingGetter) {
+      const loadingState = loadingGetter();
+      if (!loadingState.loading && loadingState.data) {
+        const LoadingComponent = loadingState.data.default;
+        return LoadingComponent(matchWithRouter) as VNode;
+      }
+    }
+    if (props.showLoading === true) {
+      return (
+        <section
+          className={cls("loadingSection")}
+          style={sty("loadingSection")}
+        >
+          <div
+            className={cls("loadingSpinner")}
+            style={sty("loadingSpinner")}
+            aria-hidden="true"
+          />
+          <p className={cls("loadingText")} style={sty("loadingText")}>
+            {loadingText}
+          </p>
+        </section>
+      );
+    }
     return (
       <div
         className={cls("transitionPlaceholder")}

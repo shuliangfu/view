@@ -175,7 +175,7 @@ const HOME_MODULES: Array<{
   accentText: string;
 }> = [
   {
-    title: "核心 333",
+    title: "核心",
     desc: "createSignal、createEffect、createMemo、onCleanup",
     href: "/signal",
     iconKey: "core",
