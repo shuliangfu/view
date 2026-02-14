@@ -11,6 +11,7 @@ import {
   createSignal,
   generateHydrationScript,
   hydrate,
+  mount,
   render,
   renderToString,
 } from "@dreamer/view";
@@ -308,6 +309,85 @@ describe("createReactiveRoot", () => {
     expect(() => setState(1)).not.toThrow();
     await Promise.resolve();
     expect(container.textContent).toBe("");
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+describe("mount", () => {
+  it("mount(container, fn) 传入 Element 时与 render 一致", () => {
+    const container = document.createElement("div");
+    const root = mount(
+      container,
+      () => ({ type: "span", props: {}, children: [] }),
+    );
+    expect(root.container).toBe(container);
+    expect(container.querySelector("span")).not.toBeNull();
+    root.unmount();
+  });
+
+  it("mount(selector, fn) 传入选择器时解析并挂载", () => {
+    const id = "mount-selector-test";
+    const container = document.createElement("div");
+    container.id = id;
+    document.body.appendChild(container);
+    try {
+      const root = mount(
+        "#" + id,
+        () => ({ type: "p", props: {}, children: [] }),
+      );
+      expect(container.querySelector("p")).not.toBeNull();
+      root.unmount();
+    } finally {
+      document.body.removeChild(container);
+    }
+  });
+
+  it("mount(selector, fn, { noopIfNotFound: true }) 查不到时返回空 Root 不抛错", () => {
+    const root = mount(
+      "#non-existent-mount-id-xyz",
+      () => ({ type: "div", props: {}, children: [] }),
+      { noopIfNotFound: true },
+    );
+    expect(root.container).toBeNull();
+    expect(() => root.unmount()).not.toThrow();
+  });
+
+  it("mount(selector, fn) 查不到且未设 noopIfNotFound 时抛错", () => {
+    expect(() =>
+      mount(
+        "#non-existent-mount-id-abc",
+        () => ({ type: "div", props: {}, children: [] }),
+      )
+    ).toThrow(/container not found/);
+  });
+
+  it("有子节点时走 hydrate 路径（移除 cloak）", () => {
+    const container = document.createElement("div");
+    container.setAttribute("data-view-cloak", "");
+    container.innerHTML = "<span>hydrated</span>";
+    const root = mount(
+      container,
+      () => ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: "hydrated" },
+          children: [],
+        }],
+      }),
+    );
+    expect(container.hasAttribute("data-view-cloak")).toBe(false);
+    root.unmount();
+  });
+
+  it("无子节点时走 render 路径", () => {
+    const container = document.createElement("div");
+    const root = mount(
+      container,
+      () => ({ type: "span", props: {}, children: [] }),
+    );
+    expect(container.querySelector("span")).not.toBeNull();
+    root.unmount();
   });
 }, { sanitizeOps: false, sanitizeResources: false });
 

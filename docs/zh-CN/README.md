@@ -66,11 +66,11 @@ bunx jsr add @dreamer/view
 `deno add`，Bun 用 `bunx jsr add`，子路径一致）
 
 ```bash
-# 主入口：signal/effect/memo、createRoot、render、renderToString、hydrate 等
+# 主入口：signal/effect/memo、createRoot、render、mount、renderToString、hydrate 等
 deno add jsr:@dreamer/view
 # 仅 CSR：更小体积，无 renderToString/hydrate/generateHydrationScript
 deno add jsr:@dreamer/view/csr
-# 客户端混合入口：createRoot、render、hydrate（配合服务端 SSR 激活）
+# 客户端混合入口：createRoot、render、mount、hydrate（配合服务端 SSR 激活）
 deno add jsr:@dreamer/view/hybrid
 # Store：响应式状态、getters、actions、可选持久化（如 localStorage）
 deno add jsr:@dreamer/view/store
@@ -193,6 +193,9 @@ CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
   - `createSignal` / `createEffect` / `createMemo` — 响应式基础；依赖的 signal
     变化后 effect 在微任务中重跑。
   - `createRoot` / `render` — 挂载响应式根；细粒度 DOM patch，不整树替换。
+  - `mount(container, fn, options?)` — 统一挂载入口：`container` 可为选择器（如
+    `"#root"`）或 `Element`；有子节点则 **hydrate**（hybrid/全量），否则
+    **render**。选项：`hydrate`（强制）、`noopIfNotFound`（选择器查不到时返回空 Root）。一步到位减少分支与心智负担。
   - `createReactiveRoot` — 挂载**由外部状态驱动**的根：传入
     `(container, getState, buildTree)`；当 `getState()` 的返回值变化（如 signal
     更新）时，会按新状态重新建树并在原地 patch，不整树卸载。适用于 SPA
@@ -453,14 +456,17 @@ externalRouter.onChange(() => root2.forceRender?.());
 renderToString、hydrate、generateHydrationScript）：
 
 ```tsx
-import { createSignal, render } from "jsr:@dreamer/view/csr";
+import { createSignal, mount } from "jsr:@dreamer/view/csr";
 import type { VNode } from "jsr:@dreamer/view";
 
 function App(): VNode {
   const [count, setCount] = createSignal(0);
   return <div onClick={() => setCount(count() + 1)}>Count: {count}</div>;
 }
-render(() => <App />, document.getElementById("root")!);
+// mount 接受选择器或 Element；CSR 下始终 render（无 hydrate）
+mount("#root", () => <App />);
+// 可选：选择器查不到时静默返回空 Root 而不抛错
+mount("#maybe-missing", () => <App />, { noopIfNotFound: true });
 ```
 
 **onCleanup（effect 内注册清理）**
@@ -498,6 +504,10 @@ const script = generateHydrationScript({ scriptSrc: "/client.js" });
 // 客户端（如从 jsr:@dreamer/view/hybrid 引入）：激活
 import { hydrate } from "jsr:@dreamer/view/hybrid";
 hydrate(() => <App />, document.getElementById("root")!);
+
+// 或使用 mount：选择器 + 自动 hydrate/render（有子节点 → hydrate，否则 render）
+import { mount } from "jsr:@dreamer/view/hybrid";
+mount("#root", () => <App />);
 ```
 
 **createContext（Provider / useContext）**
@@ -723,10 +733,11 @@ themeStore.toggleTheme();
 | **createRoot**                              | 创建响应式根；返回 Root，含 **unmount** 与 **forceRender**（用于外部路由等场景强制重跑）   |
 | **createReactiveRoot**                      | 创建由状态驱动的根：`(container, getState, buildTree)`，状态变化时原地 patch                |
 | **render**                                  | 挂载根到 DOM：`render(() => <App />, container)`                                            |
+| **mount**                                   | 统一挂载：`mount(container, fn, options?)`；container 为选择器或 Element；有子节点→hydrate，否则 render；选项：`hydrate`、`noopIfNotFound` |
 | **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                             |
 | **hydrate**                                 | 在浏览器中激活服务端 HTML                                                                   |
 | **generateHydrationScript**                 | 生成激活脚本标签（用于混合应用）                                                            |
-| **类型**                                    | VNode、Root、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions |
+| **类型**                                    | VNode、Root、MountOptions、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions |
 | **isDOMEnvironment**                        | 当前是否为 DOM 环境                                                                         |
 
 ### CSR 入口 `jsr:@dreamer/view/csr`
@@ -734,14 +745,14 @@ themeStore.toggleTheme();
 仅客户端渲染的轻量入口：不含
 `renderToString`、`hydrate`、`generateHydrationScript`，bundle 更小。
 
-导出：createSignal、createEffect、createMemo、onCleanup、createRoot、**render**，以及相关类型。不需要
+导出：createSignal、createEffect、createMemo、onCleanup、createRoot、**render**、**mount**（选择器或 Element，始终 render），以及相关类型。不需要
 SSR 或 hydrate 时从此入口引入。
 
 ### Hybrid 入口 `jsr:@dreamer/view/hybrid`
 
-客户端混合渲染入口：含 **createRoot**、**render**、**hydrate**，不含
+客户端混合渲染入口：含 **createRoot**、**render**、**mount**、**hydrate**，不含
 renderToString、generateHydrationScript。服务端用主包或 stream 出
-HTML，客户端用本入口 `hydrate()` 激活。
+HTML，客户端用本入口激活。**mount(container, fn)** 接受选择器或 Element；有子节点→hydrate，否则→render。
 
 ### JSX 运行时 `jsr:@dreamer/view/jsx-runtime`
 
@@ -883,7 +894,7 @@ export const meta = {
 
 | 模块     | 主要 API                                                                                                                                    | 导入                          |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
+| 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
 | Store    | createStore, withGetters, withActions                                                                                                       | `jsr:@dreamer/view/store`     |
 | Reactive | createReactive                                                                                                                              | `jsr:@dreamer/view/reactive`  |
 | Context  | createContext                                                                                                                               | `jsr:@dreamer/view/context`   |

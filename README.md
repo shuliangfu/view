@@ -68,11 +68,11 @@ bunx jsr add @dreamer/view
 `deno add` or `bunx jsr add` with the same subpath):
 
 ```bash
-# Main entry: signal/effect/memo, createRoot, render, renderToString, hydrate
+# Main entry: signal/effect/memo, createRoot, render, mount, renderToString, hydrate
 deno add jsr:@dreamer/view
 # CSR-only: smaller bundle, no renderToString/hydrate/generateHydrationScript
 deno add jsr:@dreamer/view/csr
-# Hybrid: createRoot, render, hydrate (for client-side activation after SSR)
+# Hybrid: createRoot, render, mount, hydrate (for client-side activation after SSR)
 deno add jsr:@dreamer/view/hybrid
 # Store: reactive state, getters, actions, optional persist (e.g. localStorage)
 deno add jsr:@dreamer/view/store
@@ -201,6 +201,10 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
     effects re-run when tracked signals change (microtask).
   - `createRoot` / `render` — mount reactive root; fine-grained DOM patch, no
     full tree replace.
+  - `mount(container, fn, options?)` — unified entry: `container` may be a
+    selector (e.g. `"#root"`) or `Element`; if container has children, **hydrate**
+    (hybrid/full), else **render**. Options: `hydrate` (force), `noopIfNotFound`
+    (return empty Root when selector misses). Reduces branching and mental load.
   - `createReactiveRoot` — mount a **state-driven** root: you pass
     `(container, getState, buildTree)`; when `getState()` changes (e.g. a
     signal), the tree is rebuilt and patched in place. Use for SPA shells where
@@ -466,14 +470,17 @@ When you don't need SSR or hydrate, import from `view/csr` for a smaller bundle
 (no renderToString, hydrate, generateHydrationScript):
 
 ```tsx
-import { createSignal, render } from "jsr:@dreamer/view/csr";
+import { createSignal, mount } from "jsr:@dreamer/view/csr";
 import type { VNode } from "jsr:@dreamer/view";
 
 function App(): VNode {
   const [count, setCount] = createSignal(0);
   return <div onClick={() => setCount(count() + 1)}>Count: {count}</div>;
 }
-render(() => <App />, document.getElementById("root")!);
+// mount accepts selector or Element; CSR always renders (no hydrate)
+mount("#root", () => <App />);
+// Optional: noop when selector not found instead of throwing
+mount("#maybe-missing", () => <App />, { noopIfNotFound: true });
 ```
 
 **onCleanup (cleanup inside effect)**
@@ -511,6 +518,10 @@ const script = generateHydrationScript({ scriptSrc: "/client.js" });
 // Client (e.g. from jsr:@dreamer/view/hybrid): activate
 import { hydrate } from "jsr:@dreamer/view/hybrid";
 hydrate(() => <App />, document.getElementById("root")!);
+
+// Or use mount: selector + auto hydrate/render (has children → hydrate, else render)
+import { mount } from "jsr:@dreamer/view/hybrid";
+mount("#root", () => <App />);
 ```
 
 **createContext (Provider / useContext)**
@@ -731,23 +742,25 @@ Core reactive and rendering API.
 | **createRoot**                              | Create reactive root; returns Root with **unmount** and **forceRender** (for external router integration) |
 | **createReactiveRoot**                      | Create state-driven root: `(container, getState, buildTree)`; state changes trigger patch   |
 | **render**                                  | Mount root: `render(() => <App />, container)`                                              |
+| **mount**                                   | Unified mount: `mount(container, fn, options?)`; container = selector or Element; has children → hydrate, else render; options: `hydrate`, `noopIfNotFound` |
 | **renderToString**                          | SSR: root to HTML string                                                                    |
 | **hydrate**                                 | Activate server-rendered HTML in the browser                                                |
 | **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                 |
-| **Types**                                   | VNode, Root, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions |
+| **Types**                                   | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions |
 | **isDOMEnvironment**                        | Whether in DOM environment                                                                  |
 
 ### CSR entry `jsr:@dreamer/view/csr`
 
 Client-only bundle: no renderToString, hydrate, generateHydrationScript.
 Exports: createSignal, createEffect, createMemo, onCleanup, createRoot,
-**render**, and related types.
+**render**, **mount** (selector or Element, always render), and related types.
 
 ### Hybrid entry `jsr:@dreamer/view/hybrid`
 
-Client hybrid entry: **createRoot**, **render**, **hydrate** (no renderToString
-/ generateHydrationScript). Use main or stream for server HTML, this entry for
-`hydrate()` on the client.
+Client hybrid entry: **createRoot**, **render**, **mount**, **hydrate** (no
+renderToString / generateHydrationScript). Use main or stream for server HTML,
+this entry for client activation. **mount(container, fn)** uses selector or
+Element; if container has children → hydrate, else → render.
 
 ### JSX runtime `jsr:@dreamer/view/jsx-runtime`
 
@@ -892,7 +905,7 @@ gitignored and should not be committed.
 
 | Area       | API                                                                                                                                         | Import                        |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
+| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
 | Store      | createStore, withGetters, withActions                                                                                                       | `jsr:@dreamer/view/store`     |
 | Reactive   | createReactive                                                                                                                              | `jsr:@dreamer/view/reactive`  |
 | Context    | createContext                                                                                                                               | `jsr:@dreamer/view/context`   |
@@ -904,9 +917,7 @@ gitignored and should not be committed.
 
 **Core:** createSignal returns `[getter, setter]`; createEffect runs once then
 re-runs when deps change (microtask); createMemo returns cached getter.
-**Rendering:** createRoot/render mount root; createReactiveRoot for state-driven
-roots (container, getState, buildTree) with patch on state change;
-renderToString for SSR; hydrate + generateHydrationScript for hybrid.
+**Rendering:** createRoot/render mount root; **mount(container, fn, options?)** accepts selector or Element and auto hydrate/render (has children → hydrate); createReactiveRoot for state-driven roots; renderToString for SSR; hydrate + generateHydrationScript for hybrid.
 **Directives:** vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak (camelCase in
 JSX). **Types:** VNode, Root, SignalGetter, SignalSetter, EffectDispose.
 
