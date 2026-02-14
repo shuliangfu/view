@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -105,6 +105,92 @@ deno add jsr:@dreamer/view/compiler
 | **Browser**      | Modern (ES2020+) | ✅ CSR, Hydration                                               |
 | **Server**       | -                | ✅ SSR, streaming SSR (no DOM)                                  |
 | **Dependencies** | -                | 📦 Optional: happy-dom for tests; @dreamer/test for test runner |
+
+---
+
+## 📁 Project structure and conventions (view-cli)
+
+When you use **view-cli init [dir]** to create a project, the following
+structure and conventions apply. Reading this section helps you understand what
+each file does and how to add routes or change layout.
+
+### What view init creates
+
+After running `view-cli init`, you get (among others):
+
+- **view.config.ts** — Project config for dev/build/start (see
+  [view.config](#viewconfig) below).
+- **deno.json** — Compiler options (jsx, jsxImportSource), imports
+  (@dreamer/view), tasks (dev, build, start).
+- **jsx.d.ts** — TypeScript types for JSX (referenced in deno.json); required
+  for TSX type-checking.
+- **src/main.tsx** — Entry: creates router, mounts `<App />` into `#root`.
+- **src/views/** — File-based routes and convention files.
+- **src/router/router.ts** — Router factory (createAppRouter).
+- **src/router/routers.tsx** — **Auto-generated** from `src/views`; do not edit
+  by hand; it is gitignored.
+
+### Convention files in src/views (underscore prefix)
+
+Files whose name starts with `_` are **special** and are **excluded from normal
+route scanning**. Only one of them becomes a route: `_404.tsx` is used as the
+notFound route (path `*`).
+
+| File             | Purpose                                                                                         | Route?  |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ------- |
+| **_app.tsx**     | Root component: uses router, renders Layout + current page.                                     | No      |
+| **_layout.tsx**  | Layout wrapper (e.g. nav + main). Can export `inheritLayout = false`.                           | No      |
+| **_loading.tsx** | Loading placeholder for lazy route; **scoped to current directory** (not inherited by subdirs). | No      |
+| **_404.tsx**     | 404 page; used as the single notFound route (path `*`).                                         | Yes (*) |
+| **_error.tsx**   | Error fallback (e.g. for ErrorBoundary).                                                        | No      |
+
+- **_layout and inheritLayout**: In any `_layout.tsx` you can export
+  `export const inheritLayout = false` so that route under this directory **does
+  not** inherit the parent layout. Layouts can be nested to any depth.
+- **_loading scope**: A `_loading.tsx` in a directory only applies to routes in
+  **that directory**; subdirectories do not inherit it (they can have their own
+  `_loading.tsx`).
+
+### Route files (no underscore)
+
+- **Path mapping**: Files under `src/views` (recursive, max 5 levels) become
+  routes. Path is inferred: `home.tsx` or `index.tsx` or `home/index.tsx` → `/`;
+  `about.tsx` → `/about`; `blog/post.tsx` → `/blog/post`. Special names
+  `not-found` / `404` (with optional `/index`) → path `*` (notFound).
+- **Default export**: Every route file **must default-export** the page
+  component (e.g. `export default function Home() { ... }`). Using only a named
+  export and then `export default Home` can cause runtime error "data.default is
+  not a function"; use a single direct default export.
+- **export meta**: You can export a `meta` object (title, description, keywords,
+  author, og) from a route file; it is merged into that route’s config when
+  `routers.tsx` is generated. If `meta` is absent, `title` is inferred from the
+  file path.
+
+### view.config
+
+The CLI (dev / build / start) reads **view.config.ts** or **view.config.json**
+from the project root.
+
+| Section         | Fields (main)                                        | Description                                                        |
+| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| **server.dev**  | port, host, dev.hmr, dev.watch                       | Dev server and HMR / watch options.                                |
+| **server.prod** | port, host                                           | Production server (start command).                                 |
+| **build**       | entry, outDir, outFile, minify, sourcemap, splitting | Build entry and output; splitting enables route chunks.            |
+| **build.dev**   | same as build                                        | Overrides for dev mode only (e.g. minify: false, sourcemap: true). |
+| **build.prod**  | same as build                                        | Overrides for prod mode only.                                      |
+
+- **server.dev.port** / **server.prod.port**: Default 8787; can be overridden by
+  environment variable `PORT`.
+- **server.dev.dev.hmr**: e.g. `{ enabled: true, path: "/__hmr" }`.
+- **build.entry**: Default `"src/main.tsx"`. **build.outDir**: Default `"dist"`.
+  **build.outFile**: Default `"main.js"`.
+- **build.dev** / **build.prod**: Same shape as **build**; the CLI merges
+  **build** with **build.dev** in dev mode (or **build.prod** in prod), so you
+  can e.g. set `dev: { minify: false, sourcemap: true }` for debugging and
+  `prod: { minify: true }` for production.
+
+The generated `src/router/routers.tsx` is re-generated on each dev build from
+`src/views`; do not commit it (it is in .gitignore).
 
 ---
 
@@ -730,8 +816,10 @@ beforeRoute/afterRoute, notFound supported.
 
 **Route files and `export meta` (view-cli):** When using `view-cli dev`, the
 file `src/router/routers.tsx` is auto-generated by scanning `src/views`
-(recursive, max 5 levels). Route files can export a `meta` object so it is
-merged into the generated route config:
+(recursive, max 5 levels). For convention files (_app, _layout, _loading, _404,
+_error), path mapping, and view.config, see **Project structure and conventions
+(view-cli)** above. Route files can export a `meta` object so it is merged into
+the generated route config:
 
 ```tsx
 // src/views/home/index.tsx (or any route file)
@@ -799,12 +887,12 @@ function". See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 | Metric      | Value      |
 | ----------- | ---------- |
-| Test date   | 2026-02-12 |
-| Total tests | 201        |
-| Passed      | 201 ✅     |
+| Test date   | 2026-02-13 |
+| Total tests | 247        |
+| Passed      | 247 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
-| Duration    | ~1m 15s    |
+| Duration    | ~1m 29s    |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 

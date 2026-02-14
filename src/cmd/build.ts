@@ -20,7 +20,7 @@ import {
   writeFile,
 } from "@dreamer/runtime-adapter";
 import type { ViewConfig } from "./config.ts";
-import { loadViewConfig } from "./config.ts";
+import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
 import { generateRoutersFile } from "./generate.ts";
 
 /**
@@ -309,17 +309,18 @@ export async function prepareDevBuild(
   // dev 时先根据 src/views 自动生成 src/router/routers.tsx（动态 import），再构建
   await generateRoutersFile(root, "src/views", "src/router/routers.tsx");
 
-  // 仅用于首次构建与 createContext；热更新时 watcher 只把监听到的文件路径作为 changedPath 传进 rebuild() 做增量编译
-  const entry = config.build?.entry ?? "src/main.tsx";
-  const outDir = config.build?.outDir ?? "dist";
-  const outFile = config.build?.outFile ?? "main.js";
+  // 仅用于首次构建与 createContext；热更新时 watcher 只把监听到的文件路径作为 changedPath 传进 rebuild() 做增量编译；使用 build.dev 覆盖
+  const buildConfig = getBuildConfigForMode(config, "dev");
+  const entry = buildConfig.entry ?? "src/main.tsx";
+  const outDir = buildConfig.outDir ?? "dist";
+  const outFile = buildConfig.outFile ?? "main.js";
 
   const clientConfig = toClientConfig(
     root,
     entry,
     outDir,
     outFile,
-    config.build,
+    buildConfig,
   );
   if (clientConfig.bundle) {
     clientConfig.bundle.minify = false;
@@ -336,11 +337,11 @@ export async function prepareDevBuild(
     // 仓库外不设置 alias["@dreamer/view"] = "jsr:@dreamer/view/dev"，使用默认主入口
   }
   // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
-  if (config.build?.debug !== undefined) {
-    clientConfig.debug = config.build.debug;
+  if (buildConfig.debug !== undefined) {
+    clientConfig.debug = buildConfig.debug;
   }
   clientConfig.logger = createLogger({
-    level: config.build?.debug ? "debug" : "info",
+    level: buildConfig.debug ? "debug" : "info",
     format: "text",
     output: { console: true },
   });
@@ -358,7 +359,7 @@ export async function prepareDevBuild(
   ensureMainJsServedWhenNoSplitting(
     devServeOutputs,
     "/" + outFile,
-    config.build?.splitting,
+    buildConfig.splitting,
   );
 
   await builder.createContext("dev", { write: false });
@@ -384,7 +385,7 @@ export async function prepareDevBuild(
       ensureMainJsServedWhenNoSplitting(
         outputs,
         "/" + outFile,
-        config.build?.splitting,
+        buildConfig.splitting,
       );
       const outputFiles = outputs.map((o) => ({
         path: o.path,
@@ -411,7 +412,7 @@ export async function prepareDevBuild(
     ensureMainJsServedWhenNoSplitting(
       devServeOutputsNext,
       "/" + outFile,
-      config.build?.splitting,
+      buildConfig.splitting,
     );
     const outputFiles = devServeOutputsNext.map((o) => ({
       path: o.path,
@@ -443,23 +444,24 @@ export async function run(): Promise<number> {
   setEnv("DENO_ENV", "prod");
   const root = cwd();
   const config = await loadViewConfig(root);
-  const entry = config.build?.entry ?? "src/main.tsx";
-  const outDir = config.build?.outDir ?? "dist";
-  const outFile = config.build?.outFile ?? "main.js";
+  const buildConfig = getBuildConfigForMode(config, "prod");
+  const entry = buildConfig.entry ?? "src/main.tsx";
+  const outDir = buildConfig.outDir ?? "dist";
+  const outFile = buildConfig.outFile ?? "main.js";
 
   const clientConfig = toClientConfig(
     root,
     entry,
     outDir,
     outFile,
-    config.build,
+    buildConfig,
   );
   // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
-  if (config.build?.debug !== undefined) {
-    clientConfig.debug = config.build.debug;
+  if (buildConfig.debug !== undefined) {
+    clientConfig.debug = buildConfig.debug;
   }
   clientConfig.logger = createLogger({
-    level: config.build?.debug ? "debug" : "info",
+    level: buildConfig.debug ? "debug" : "info",
     format: "text",
     output: { console: true },
   });
