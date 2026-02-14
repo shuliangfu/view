@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-252%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -416,14 +416,22 @@ function Form(): VNode {
 
 以下为文档中提到的、尚未在「使用示例」中展开的 API 的简短示例。
 
-**createReactiveRoot（由状态驱动的根）**
+**createReactiveRoot 与 forceRender（外部状态 / 外部路由）**
 
-适用于「页面/路由」状态由外部维护（如 router）、View 只根据该状态渲染并在
-状态变化时原地 patch 的场景：
+当「页面/路由」状态**由 View 以 signal 维护**时，使用
+**createReactiveRoot**：传入 `(container, getState, buildTree)`，当
+`getState()` 变化（如 signal 更新）时，树会按状态重建并原地 patch。适合希望
+View 随路由自动更新的 SPA 壳。
+
+当使用 **createRoot** / **render** 但驱动方（如第三方 router）**在 View 外且
+不是 signal** 时，根 effect 只会在其追踪的 signal 变化时重跑。在每次路由（或
+其他外部）变更后调用 **root.forceRender()** 可强制重跑一次并重渲染整树。
+`createRoot`/`render` 返回的 `Root` 上提供 `forceRender` 即用于此场景。
 
 ```ts
-import { createReactiveRoot, createSignal } from "jsr:@dreamer/view";
+import { createReactiveRoot, createRoot, createSignal, render } from "jsr:@dreamer/view";
 
+// 方式 A：路由状态是 signal → createReactiveRoot（状态变化时自动 patch）
 const [pageState, setPageState] = createSignal({ route: "home", id: null });
 const container = document.getElementById("root")!;
 
@@ -432,8 +440,11 @@ const root = createReactiveRoot(container, pageState, (state) => {
   if (state.route === "user") return <User id={state.id} />;
   return <NotFound />;
 });
-// 调用 setPageState({ route: "user", id: "1" }) 后，树会在原地 patch 更新。
-// 拆卸时调用 root.unmount()。
+// setPageState({ route: "user", id: "1" }) 后树会原地 patch。拆卸时 root.unmount()。
+
+// 方式 B：外部 router、无 signal → createRoot + 路由变更后调用 forceRender
+const root2 = createRoot(() => <App />, container);
+externalRouter.onChange(() => root2.forceRender?.());
 ```
 
 **CSR 入口（仅客户端、更小 bundle）**
@@ -709,7 +720,7 @@ themeStore.toggleTheme();
 | **onCleanup**                               | 在 effect/memo 内注册清理函数（当前 effect 重跑或 dispose 时执行）                          |
 | **getCurrentEffect** / **setCurrentEffect** | 当前运行的 effect（内部/高级用法）                                                          |
 | **isSignalGetter**                          | 判断是否为 signal getter                                                                    |
-| **createRoot**                              | 创建响应式根（接收根组件函数）                                                              |
+| **createRoot**                              | 创建响应式根；返回 Root，含 **unmount** 与 **forceRender**（用于外部路由等场景强制重跑）   |
 | **createReactiveRoot**                      | 创建由状态驱动的根：`(container, getState, buildTree)`，状态变化时原地 patch                |
 | **render**                                  | 挂载根到 DOM：`render(() => <App />, container)`                                            |
 | **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                             |
@@ -900,8 +911,8 @@ export const meta = {
 | 项目     | 值         |
 | -------- | ---------- |
 | 测试日期 | 2026-02-13 |
-| 总用例数 | 252        |
-| 通过     | 252 ✅     |
+| 总用例数 | 256        |
+| 通过     | 256 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
 | 耗时     | ~1m 35s    |

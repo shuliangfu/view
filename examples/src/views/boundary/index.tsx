@@ -6,7 +6,7 @@
  */
 
 import type { VNode } from "@dreamer/view";
-import { createSignal } from "@dreamer/view";
+import { createEffect, createSignal } from "@dreamer/view";
 import { ErrorBoundary, Suspense } from "@dreamer/view/boundary";
 
 export const meta = {
@@ -25,8 +25,12 @@ function Thrower(props: { shouldThrow?: boolean }): VNode {
   return <span className="text-slate-600 dark:text-slate-300">未抛错</span>;
 }
 
-/** 模拟异步组件：Promise 约 1s 后 resolve */
-function AsyncContent(): Promise<VNode> {
+/**
+ * 模拟异步内容：约 1s 后 resolve 的 Promise。
+ * 在 createEffect 里调用并写入 signal，避免在渲染路径里每次调用产生新 Promise；
+ * signal 放在模块级，这样 BoundaryDemo 重渲染时不会新建 signal、不会丢已设的 Promise。
+ */
+function createAsyncContentPromise(): Promise<VNode> {
   return new Promise((resolve) => {
     setTimeout(
       () =>
@@ -40,9 +44,19 @@ function AsyncContent(): Promise<VNode> {
   });
 }
 
+/** 模块级：保证重渲染时复用同一 Promise，不因组件重跑而新建 signal */
+const [asyncPromise, setAsyncPromise] = createSignal<Promise<VNode> | null>(
+  null,
+);
+
 const [shouldThrow, setShouldThrow] = createSignal(false);
 
 export function BoundaryDemo(): VNode {
+  // 只在尚未有 Promise 时请求一次，effect 重跑时因 asyncPromise() 已有值不会重复执行
+  createEffect(() => {
+    if (!asyncPromise()) setAsyncPromise(createAsyncContentPromise());
+  });
+
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
       <p className="mb-2 text-sm font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
@@ -84,7 +98,7 @@ export function BoundaryDemo(): VNode {
               <p className="text-slate-500 dark:text-slate-400">加载中…</p>
             }
           >
-            {AsyncContent()}
+            {asyncPromise() ?? <p className="text-slate-500 dark:text-slate-400">加载中…</p>}
           </Suspense>
         </div>
       </div>

@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-252%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -427,14 +427,24 @@ See **registerDirective** in “More API code examples” and **Modules and expo
 
 Short examples for APIs not yet shown in the sections above.
 
-**createReactiveRoot (state-driven root)**
+**createReactiveRoot and forceRender (external state / external router)**
 
-Use when the “page” or “route” state is owned outside View (e.g. router). View
-only renders from that state and patches when it changes:
+When the “page” or “route” state is **owned by View as a signal**, use
+**createReactiveRoot**: pass `(container, getState, buildTree)`; when
+`getState()` changes (e.g. a signal), the tree is rebuilt and patched in place.
+Ideal for SPA shells where you want View to react automatically to route
+changes.
+
+When you use **createRoot** / **render** but the driver (e.g. a third-party
+router) is **outside View and not a signal**, the root effect only re-runs when
+its tracked signals change. After each route (or other external) change, call
+**root.forceRender()** to force one re-run and re-render the tree. The returned
+`Root` from `createRoot`/`render` includes `forceRender` for this case.
 
 ```ts
-import { createReactiveRoot, createSignal } from "jsr:@dreamer/view";
+import { createReactiveRoot, createRoot, createSignal, render } from "jsr:@dreamer/view";
 
+// Option A: route state is a signal → createReactiveRoot (auto patch on change)
 const [pageState, setPageState] = createSignal({ route: "home", id: null });
 const container = document.getElementById("root")!;
 
@@ -443,8 +453,11 @@ const root = createReactiveRoot(container, pageState, (state) => {
   if (state.route === "user") return <User id={state.id} />;
   return <NotFound />;
 });
-// When setPageState({ route: "user", id: "1" }) runs, the tree is patched in place.
-// root.unmount() when tearing down.
+// setPageState({ route: "user", id: "1" }) → tree patches in place. root.unmount() when tearing down.
+
+// Option B: external router, no signal → createRoot + forceRender after route change
+const root2 = createRoot(() => <App />, container);
+externalRouter.onChange(() => root2.forceRender?.());
 ```
 
 **CSR entry (client-only, smaller bundle)**
@@ -715,7 +728,7 @@ Core reactive and rendering API.
 | **onCleanup**                               | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                   |
 | **getCurrentEffect** / **setCurrentEffect** | Current effect (internal)                                                                   |
 | **isSignalGetter**                          | Detect signal getter                                                                        |
-| **createRoot**                              | Create reactive root (root component function)                                              |
+| **createRoot**                              | Create reactive root; returns Root with **unmount** and **forceRender** (for external router integration) |
 | **createReactiveRoot**                      | Create state-driven root: `(container, getState, buildTree)`; state changes trigger patch   |
 | **render**                                  | Mount root: `render(() => <App />, container)`                                              |
 | **renderToString**                          | SSR: root to HTML string                                                                    |
@@ -916,8 +929,8 @@ in-place patch; tests and docs updated. See
 | Metric      | Value      |
 | ----------- | ---------- |
 | Test date   | 2026-02-13 |
-| Total tests | 252        |
-| Passed      | 252 ✅     |
+| Total tests | 256        |
+| Passed      | 256 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
 | Duration    | ~1m 35s    |

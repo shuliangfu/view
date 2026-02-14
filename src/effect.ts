@@ -34,16 +34,6 @@ export type EffectScope = { addDisposer(dispose: () => void): void };
 let currentScope: EffectScope | null = null;
 
 /**
- * 获取当前 effect 作用域（由 createRoot 设置）。
- *
- * @returns 当前 EffectScope，若不在根 effect 内则为 null
- * @internal 主要由 runtime 使用
- */
-export function getCurrentScope(): EffectScope | null {
-  return currentScope;
-}
-
-/**
  * 设置当前 effect 作用域（供 createRoot 在根 effect 内挂载 disposer 使用）。
  *
  * @param scope - 要设置的作用域，或 null 表示清除
@@ -51,6 +41,29 @@ export function getCurrentScope(): EffectScope | null {
  */
 export function setCurrentScope(scope: EffectScope | null): void {
   currentScope = scope;
+}
+
+/**
+ * 创建「按轮收集子 effect disposer」的收集器，供 createRoot / hydrate 复用。
+ * 根 effect 每次 run 时先执行上一轮收集的 disposers、清空，再设置本轮 scope，避免子 effect 堆积。
+ *
+ * @returns runDisposers 数组（unmount 时需执行）与 getScopeForRun()（根每次 run 时调用，返回本轮 scope）
+ * @internal 仅由 runtime / runtime-csr / runtime-hybrid 使用
+ */
+export function createRunDisposersCollector(): {
+  runDisposers: Array<() => void>;
+  /** 根 effect 每次 run 时调用：执行上一轮 disposers、清空，并返回本轮应设置的 scope */
+  getScopeForRun(): EffectScope;
+} {
+  const runDisposers: Array<() => void> = [];
+  return {
+    runDisposers,
+    getScopeForRun() {
+      runDisposers.forEach((d) => d());
+      runDisposers.length = 0;
+      return { addDisposer: (d) => runDisposers.push(d) };
+    },
+  };
 }
 
 /**
@@ -103,12 +116,22 @@ function runCleanups(run: EffectRunWithSubs): void {
 }
 
 /**
+ * createEffect 的可选配置：scope 用于将本 effect 的 disposer 登记到指定作用域，
+ * 而非当前 effect 的 run scope。RoutePage 等需「与 path 绑定的长生命周期」时传入，避免根重跑时被误 dispose。
+ */
+export type CreateEffectOptions = {
+  scope?: EffectScope;
+};
+
+/**
  * 创建响应式副作用。
  * 立即执行一次 fn；执行过程中读到的 signal 会将该 effect 登记为依赖。
  * 之后任意依赖的 signal 变更时，会通过调度器异步重新执行该 effect（微任务批处理）。
  * fn 可返回一个清理函数，在 effect 下次运行前或 dispose 时被调用。
+ * 传入 opts.scope 时，disposer 登记到该 scope 而非当前 run scope，适合不随根重跑清理的 resource。
  *
  * @param fn - 副作用函数，可返回清理函数（可选）
+ * @param opts - 可选；scope 指定登记 disposer 的作用域
  * @returns dispose 函数，调用后取消该 effect 的所有订阅并不再执行
  *
  * @example
@@ -119,7 +142,10 @@ function runCleanups(run: EffectRunWithSubs): void {
  * });
  * stop(); // 停止 effect 并执行 cleanup
  */
-export function createEffect(fn: () => void | (() => void)): EffectDispose {
+export function createEffect(
+  fn: () => void | (() => void),
+  opts?: CreateEffectOptions,
+): EffectDispose {
   let disposed = false;
 
   const run = (): void => {
@@ -162,7 +188,8 @@ export function createEffect(fn: () => void | (() => void)): EffectDispose {
     runCleanups(runWithSubs);
     unschedule(run);
   };
-  if (currentScope) currentScope.addDisposer(disposer);
+  const scope = opts?.scope ?? currentScope;
+  if (scope) scope.addDisposer(disposer);
   return disposer;
 }
 

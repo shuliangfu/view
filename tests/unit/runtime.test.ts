@@ -161,6 +161,32 @@ describe("createRoot / render (DOM)", () => {
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });
+
+  it("forceRender：外部路由等场景可手动触发根 effect 重跑", async () => {
+    const container = document.createElement("div");
+    let tick = 0;
+    const root = createRoot(
+      () => ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: String(++tick) },
+          children: [],
+        }],
+      }),
+      container,
+    );
+    expect(root.forceRender).toBeDefined();
+    expect(container.textContent).toBe("1");
+    root.forceRender!();
+    await Promise.resolve();
+    expect(container.textContent).toBe("2");
+    root.forceRender!();
+    await Promise.resolve();
+    expect(container.textContent).toBe("3");
+    root.unmount();
+  });
 }, { sanitizeOps: false, sanitizeResources: false });
 
 describe("createReactiveRoot", () => {
@@ -299,6 +325,53 @@ describe("hydrate", () => {
       container,
     );
     expect(container.hasAttribute("data-view-cloak")).toBe(false);
+    root.unmount();
+  });
+
+  it("首次 hydrate 后，状态变化时应走 patchRoot 细粒度更新（未变节点保持同一 DOM 引用）", async () => {
+    const [getCount, setCount] = createSignal(0);
+    const container = document.createElement("div");
+    container.innerHTML =
+      '<div><input data-testid="input"><span data-testid="count">0</span></div>';
+    const root = hydrate(
+      () =>
+        ({
+          type: "div",
+          props: {},
+          children: [
+            {
+              type: "input",
+              props: { type: "text", "data-testid": "input" },
+              children: [],
+            },
+            {
+              type: "span",
+              props: { "data-testid": "count" },
+              children: [{
+                type: "#text",
+                props: { nodeValue: String(getCount()) },
+                children: [],
+              }],
+            },
+          ],
+        }) as VNode,
+      container,
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    const inputRef = container.querySelector('[data-testid="input"]');
+    const countSpan = container.querySelector('[data-testid="count"]');
+    expect(inputRef).not.toBeNull();
+    expect(countSpan?.textContent).toBe("0");
+
+    setCount(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(countSpan?.textContent).toBe("1");
+    expect(container.contains(inputRef)).toBe(true);
+    const inputStillSame = container.querySelector('[data-testid="input"]');
+    expect(inputStillSame).toBe(inputRef);
+
     root.unmount();
   });
 });

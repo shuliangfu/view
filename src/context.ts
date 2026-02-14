@@ -17,12 +17,14 @@
  * // 子组件：const theme = ThemeContext.useContext();
  */
 
+import {
+  KEY_CONTEXT_DEFAULTS,
+  KEY_CONTEXT_STACKS,
+  KEY_PROVIDER_BINDINGS,
+} from "./constants.ts";
+import { getGlobalOrDefault } from "./globals.ts";
 import { markSignalGetter } from "./signal.ts";
 import type { VNode } from "./types.ts";
-
-const KEY_CONTEXT_STACKS = "__VIEW_CONTEXT_STACKS";
-const KEY_CONTEXT_DEFAULTS = "__VIEW_CONTEXT_DEFAULTS";
-const KEY_PROVIDER_BINDINGS = "__VIEW_PROVIDER_BINDINGS";
 
 /** context 栈：id -> value[]，跨 bundle 共享 */
 type GlobalContextStacks = Map<symbol, unknown[]>;
@@ -38,49 +40,28 @@ type GlobalProviderBindings = Map<
   ProviderBinding
 >;
 
+/**
+ * 按 key 从 globalThis 取或创建 Map 并写入，供 context 的三种全局 Map 复用。
+ * @param key - constants 中的 __VIEW_* 键名
+ * @returns 已挂到 globalThis 的 Map（懒创建）
+ */
+function getGlobalMap<K, V>(key: string): Map<K, V> {
+  return getGlobalOrDefault(key, () => new Map<K, V>());
+}
+
 function getGlobalContextStacks(): GlobalContextStacks {
-  const g = globalThis as unknown as Record<
-    string,
-    GlobalContextStacks | undefined
-  >;
-  let m = g[KEY_CONTEXT_STACKS];
-  if (!m) {
-    m = new Map();
-    (globalThis as unknown as Record<string, GlobalContextStacks>)[
-      KEY_CONTEXT_STACKS
-    ] = m;
-  }
-  return m;
+  return getGlobalMap<symbol, unknown[]>(KEY_CONTEXT_STACKS);
 }
 
 function getGlobalContextDefaults(): GlobalContextDefaults {
-  const g = globalThis as unknown as Record<
-    string,
-    GlobalContextDefaults | undefined
-  >;
-  let m = g[KEY_CONTEXT_DEFAULTS];
-  if (!m) {
-    m = new Map();
-    (globalThis as unknown as Record<string, GlobalContextDefaults>)[
-      KEY_CONTEXT_DEFAULTS
-    ] = m;
-  }
-  return m;
+  return getGlobalMap<symbol, unknown>(KEY_CONTEXT_DEFAULTS);
 }
 
 function getGlobalProviderBindings(): GlobalProviderBindings {
-  const g = globalThis as unknown as Record<
-    string,
-    GlobalProviderBindings | undefined
-  >;
-  let m = g[KEY_PROVIDER_BINDINGS];
-  if (!m) {
-    m = new Map();
-    (globalThis as unknown as Record<string, GlobalProviderBindings>)[
-      KEY_PROVIDER_BINDINGS
-    ] = m;
-  }
-  return m;
+  return getGlobalMap<
+    (props: Record<string, unknown>) => unknown,
+    ProviderBinding
+  >(KEY_PROVIDER_BINDINGS);
 }
 
 /** Fragment 的 type 标记，与 dom/shared 中 isFragment 判断一致，避免 context 依赖 dom */

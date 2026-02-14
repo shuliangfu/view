@@ -9,9 +9,9 @@
  * - `markSignalGetter(fn)`、`isSignalGetter(x)`：标记与判断 signal getter
  */
 
+import { KEY_CURRENT_EFFECT } from "./constants.ts";
+import { getGlobal, setGlobal } from "./globals.ts";
 import { schedule } from "./scheduler.ts";
-
-const KEY_CURRENT_EFFECT = "__VIEW_CURRENT_EFFECT";
 
 /** 当前正在执行的 effect（run 函数），用于依赖收集；run 上可挂 _subscriptionSets 供清理 */
 type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
@@ -24,9 +24,7 @@ type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
  * @internal 由 effect 模块内部使用，一般业务代码无需调用
  */
 export function setCurrentEffect(effect: (() => void) | null): void {
-  (globalThis as unknown as Record<string, EffectRun | null>)[
-    KEY_CURRENT_EFFECT
-  ] = effect as EffectRun | null;
+  setGlobal(KEY_CURRENT_EFFECT, effect as EffectRun | null);
 }
 
 /**
@@ -37,10 +35,7 @@ export function setCurrentEffect(effect: (() => void) | null): void {
  * @internal 主要由 effect 与 dom 层使用，业务代码较少直接使用
  */
 export function getCurrentEffect(): (() => void) | null {
-  const v = (globalThis as unknown as Record<string, EffectRun | null>)[
-    KEY_CURRENT_EFFECT
-  ];
-  return v ?? null;
+  return getGlobal<EffectRun | null>(KEY_CURRENT_EFFECT) ?? null;
 }
 
 /** 单个 signal 的订阅者（effect 的重新执行函数）列表 */
