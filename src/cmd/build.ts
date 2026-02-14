@@ -324,31 +324,16 @@ export async function prepareDevBuild(
   if (clientConfig.bundle) {
     clientConfig.bundle.minify = false;
     clientConfig.bundle.sourcemap = true;
-    // dev 时用 dev 入口包装 createRoot，使 root 挂到 __VIEW_ROOT__，并注入 __HMR_REFRESH__
-    // 若在 view 仓库内（如 view/app-test、view/examples），将全部 @dreamer/view 子路径 alias 到本地 src，与 examples 一致，避免 JSR 解析导致 chunk 错误导出 import_runtime
+    // dev 时仅在 view 仓库内（存在 ../src/dev.ts）将 @dreamer/view 指到 dev 入口，使 root 挂到 __VIEW_ROOT__ 便于 HMR unmount。
+    // 仓库外（init 创建的项目）不设 alias，用主入口，避免 jsr:@dreamer/view/dev 在 JSR 未导出 ./dev 时解析失败导致 createRoot 为 (void 0)、运行时 (void 0) is not a function。
     clientConfig.bundle.alias = clientConfig.bundle.alias ?? {};
     const viewSrcDir = resolve(root, "..", "src");
     const viewDevPath = join(viewSrcDir, "dev.ts");
     const useLocalView = existsSync(viewDevPath);
     if (useLocalView) {
-      // const viewAliases: Record<string, string> = {
-      //   "@dreamer/view": viewDevPath,
-      //   "@dreamer/view/jsx-runtime": join(viewSrcDir, "jsx-runtime.ts"),
-      //   "@dreamer/view/store": join(viewSrcDir, "store.ts"),
-      //   "@dreamer/view/reactive": join(viewSrcDir, "reactive.ts"),
-      //   "@dreamer/view/context": join(viewSrcDir, "context.ts"),
-      //   "@dreamer/view/router": join(viewSrcDir, "router.ts"),
-      //   "@dreamer/view/boundary": join(viewSrcDir, "boundary.ts"),
-      //   "@dreamer/view/directive": join(viewSrcDir, "directive.ts"),
-      //   "@dreamer/view/resource": join(viewSrcDir, "resource.ts"),
-      //   "@dreamer/view/stream": join(viewSrcDir, "stream.ts"),
-      // };
-      // for (const [k, v] of Object.entries(viewAliases)) {
-      //   clientConfig.bundle.alias[k] = v;
-      // }
-    } else {
-      clientConfig.bundle.alias["@dreamer/view"] = "jsr:@dreamer/view/dev";
+      clientConfig.bundle.alias["@dreamer/view"] = viewDevPath;
     }
+    // 仓库外不设置 alias["@dreamer/view"] = "jsr:@dreamer/view/dev"，使用默认主入口
   }
   // 显式传入 debug 与 logger：debug 为 true 时使用 level "debug" 的 logger，resolver 的 log.debug() 才会输出
   if (config.build?.debug !== undefined) {
