@@ -863,9 +863,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.0-beta.29**（2026-02-13）—
-init：路由页模板改为直接默认导出；文档：路由页须默认导出，否则报「data.default
-不是一个函数」。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.0**（2026-02-12）— 核心（signal、effect、SSR、hydrate）、Store、Router、
+Context、Resource、Boundary、指令、流式 SSR、编译器及 **view-cli**（init、dev、
+build、start、upgrade、update）。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

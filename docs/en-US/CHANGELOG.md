@@ -8,21 +8,6 @@ and this project adheres to
 
 ---
 
-## [1.0.0-beta.29] - 2026-02-13
-
-### Changed
-
-- **init:** Route page templates (home, about, not-found) now use a single
-  direct default export (`export default function Home() { ... }`) so that
-  dynamic route loading works without "data.default is not a function".
-
-### Documentation
-
-- **Router:** Document that every route file must default-export the page
-  component; otherwise the runtime may throw "data.default is not a function".
-
----
-
 ## [1.0.0] - 2026-02-12
 
 ### Added
@@ -95,6 +80,25 @@ and this project adheres to
   - Ref: callback or `{ current }` for post-mount DOM reference.
   - SVG namespace and directive application order (vShow and other directives,
     then props).
+
+- **Compiler** (`@dreamer/view/compiler`)
+  - Build-time optimizations: `optimize`, `createOptimizePlugin` for esbuild or
+    other bundlers (optional).
+
+- **CLI (view-cli)**
+  - Global install: `deno run -A jsr:@dreamer/view/setup`; then run `view-cli`
+    from any directory.
+  - `view-cli init [dir]` — scaffold project (views, view.config.ts, _app,
+    _layout, _loading, _404, _error).
+  - `view-cli dev` — build then start static server (dev mode).
+  - `view-cli build` — build only (output to dist/).
+  - `view-cli start` — start static server only (requires prior build).
+  - `view-cli upgrade` — upgrade @dreamer/view to latest (use `--beta` for
+    beta).
+  - `view-cli update` — update project dependencies and lockfile (use `--latest`
+    for latest).
+  - `view-cli version` / `view-cli --version` — show version.
+  - `view-cli --help` — show full help.
 
 ### Notes
 
