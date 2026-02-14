@@ -100,6 +100,23 @@ export function render(fn: () => VNode, container: Element): Root {
 }
 
 /**
+ * 创建响应式单根：由外部状态驱动，状态变化时在根内做细粒度 patch，不整树卸载。
+ * 适用于 SPA 路由等「状态 → 整树」由外部维护、View 只负责根据状态渲染并增量更新的场景。
+ *
+ * @param container 挂载的 DOM 容器
+ * @param getState 获取当前状态（建议为 createSignal 的 getter，以便 effect 追踪）
+ * @param buildTree 根据状态构建根 VNode
+ * @returns Root 句柄，可调用 unmount 卸载
+ */
+export function createReactiveRoot<T>(
+  container: Element,
+  getState: () => T,
+  buildTree: (state: T) => VNode,
+): Root {
+  return createRoot(() => buildTree(getState()), container);
+}
+
+/**
  * 将根组件渲染为 HTML 字符串（SSR/SSG，无浏览器 API）
  *
  * @param fn 根组件函数

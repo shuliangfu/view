@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-252%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -193,8 +193,12 @@ CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
   - `createSignal` / `createEffect` / `createMemo` — 响应式基础；依赖的 signal
     变化后 effect 在微任务中重跑。
   - `createRoot` / `render` — 挂载响应式根；细粒度 DOM patch，不整树替换。
+  - `createReactiveRoot` — 挂载**由外部状态驱动**的根：传入
+    `(container, getState, buildTree)`；当 `getState()` 的返回值变化（如 signal
+    更新）时，会按新状态重新建树并在原地 patch，不整树卸载。适用于 SPA
+    外壳由外部维护「页面状态」（如路由），View 只根据该状态渲染的场景。
   - `renderToString` — SSR/SSG 输出 HTML；可选 `allowRawHtml: false` 对
-    dangerouslySetInnerHTML 转义 转义。
+    dangerouslySetInnerHTML 转义。
   - `hydrate` — 激活服务端 HTML；`generateHydrationScript` 用于混合应用。
 - **Store**（`@dreamer/view/store`）
   - `createStore` — 响应式 store：state、getters、actions，可选 persist（如
@@ -411,6 +415,26 @@ function Form(): VNode {
 ### 更多 API 代码示例
 
 以下为文档中提到的、尚未在「使用示例」中展开的 API 的简短示例。
+
+**createReactiveRoot（由状态驱动的根）**
+
+适用于「页面/路由」状态由外部维护（如 router）、View 只根据该状态渲染并在
+状态变化时原地 patch 的场景：
+
+```ts
+import { createReactiveRoot, createSignal } from "jsr:@dreamer/view";
+
+const [pageState, setPageState] = createSignal({ route: "home", id: null });
+const container = document.getElementById("root")!;
+
+const root = createReactiveRoot(container, pageState, (state) => {
+  if (state.route === "home") return <Home />;
+  if (state.route === "user") return <User id={state.id} />;
+  return <NotFound />;
+});
+// 调用 setPageState({ route: "user", id: "1" }) 后，树会在原地 patch 更新。
+// 拆卸时调用 root.unmount()。
+```
 
 **CSR 入口（仅客户端、更小 bundle）**
 
@@ -686,6 +710,7 @@ themeStore.toggleTheme();
 | **getCurrentEffect** / **setCurrentEffect** | 当前运行的 effect（内部/高级用法）                                                          |
 | **isSignalGetter**                          | 判断是否为 signal getter                                                                    |
 | **createRoot**                              | 创建响应式根（接收根组件函数）                                                              |
+| **createReactiveRoot**                      | 创建由状态驱动的根：`(container, getState, buildTree)`，状态变化时原地 patch                |
 | **render**                                  | 挂载根到 DOM：`render(() => <App />, container)`                                            |
 | **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                             |
 | **hydrate**                                 | 在浏览器中激活服务端 HTML                                                                   |
@@ -845,17 +870,17 @@ export const meta = {
 
 ## 📚 API 速查表
 
-| 模块     | 主要 API                                                                                                                | 导入                          |
-| -------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
-| Store    | createStore, withGetters, withActions                                                                                   | `jsr:@dreamer/view/store`     |
-| Reactive | createReactive                                                                                                          | `jsr:@dreamer/view/reactive`  |
-| Context  | createContext                                                                                                           | `jsr:@dreamer/view/context`   |
-| Resource | createResource                                                                                                          | `jsr:@dreamer/view/resource`  |
-| Router   | createRouter                                                                                                            | `jsr:@dreamer/view/router`    |
-| Boundary | Suspense, ErrorBoundary                                                                                                 | `jsr:@dreamer/view/boundary`  |
-| 指令     | registerDirective, hasDirective, getDirective, …                                                                        | `jsr:@dreamer/view/directive` |
-| Stream   | renderToStream                                                                                                          | `jsr:@dreamer/view/stream`    |
+| 模块     | 主要 API                                                                                                                                    | 导入                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
+| Store    | createStore, withGetters, withActions                                                                                                       | `jsr:@dreamer/view/store`     |
+| Reactive | createReactive                                                                                                                              | `jsr:@dreamer/view/reactive`  |
+| Context  | createContext                                                                                                                               | `jsr:@dreamer/view/context`   |
+| Resource | createResource                                                                                                                              | `jsr:@dreamer/view/resource`  |
+| Router   | createRouter                                                                                                                                | `jsr:@dreamer/view/router`    |
+| Boundary | Suspense, ErrorBoundary                                                                                                                     | `jsr:@dreamer/view/boundary`  |
+| 指令     | registerDirective, hasDirective, getDirective, …                                                                                            | `jsr:@dreamer/view/directive` |
+| Stream   | renderToStream                                                                                                                              | `jsr:@dreamer/view/stream`    |
 
 更完整说明见上文 **Store 详解** 与 **模块与导出**。
 
@@ -863,8 +888,10 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.1**（2026-02-14）— 文档：许可证徽章与 README 许可证说明更新为
-Apache-2.0。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.2**（2026-02-13）— 新增
+`createReactiveRoot(container, getState, buildTree)`，
+支持由外部状态驱动的根并在状态变化时原地 patch；测试与文档已更新。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -873,11 +900,11 @@ Apache-2.0。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 | 项目     | 值         |
 | -------- | ---------- |
 | 测试日期 | 2026-02-13 |
-| 总用例数 | 247        |
-| 通过     | 247 ✅     |
+| 总用例数 | 252        |
+| 通过     | 252 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
-| 耗时     | ~1m 29s    |
+| 耗时     | ~1m 35s    |
 
 详见 [TEST_REPORT.md](./TEST_REPORT.md)。
 
