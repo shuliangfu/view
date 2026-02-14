@@ -937,9 +937,8 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.4** (2026-02-14) — Init template: module-level createSignal + `{count}`
-for display; component can return `() => VNode` for local state; reactive v-if
-use getter e.g. `vIf={() => condition}`. See
+**v1.0.5** (2026-02-14) — Init template: v-if demo section with getter-based
+`vIf`/`vElseIf`/`vElse` and styled badges (emerald/amber/slate). See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---

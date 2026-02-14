@@ -917,9 +917,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.4**（2026-02-14）— Init 模板：模块顶层 createSignal + `{count}`
-展示；组件可返回 `() => VNode` 保持组件内 state；响应式 v-if 使用 getter 如
-`vIf={() => condition}`。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.5**（2026-02-14）— Init 模板：新增 v-if 演示区块，getter 形式
+`vIf`/`vElseIf`/`vElse`，配翠绿/琥珀/灰标签。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

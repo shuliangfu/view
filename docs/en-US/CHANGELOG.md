@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [1.0.5] - 2026-02-14
+
+### Added
+
+- **Init template (home.tsx):** v-if demo section — conditional blocks (count ≤
+  2 → AAA, 3–5 → BBB, else → CCC) with getter-based `vIf`/`vElseIf`/`vElse` and
+  styled badges (emerald / amber / slate) for clearer UX.
+
+---
+
 ## [1.0.4] - 2026-02-14
 
 ### Changed
