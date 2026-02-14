@@ -8,6 +8,24 @@ and this project adheres to
 
 ---
 
+## [1.0.4] - 2026-02-14
+
+### Changed
+
+- **Init template (home.tsx):** Counter uses module-level `createSignal` and
+  `{count}` for display (same as example project), so the root effect does not
+  subscribe to count and the counter works correctly.
+- **Component returning function:** When a component returns `() => VNode`, the
+  slot is rendered in its own effect (expandVNode + createElement); component
+  body runs once so local state (e.g. createSignal inside component) is
+  preserved.
+- **Reactive v-if:** Use a getter for conditions, e.g.
+  `vIf={() => count() <= 2}`, so only the v-if effect subscribes to the signal;
+  using `vIf={count() <= 2}` would subscribe the root and can reset component
+  state on update.
+
+---
+
 ## [1.0.3] - 2026-02-13
 
 ### Added

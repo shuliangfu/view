@@ -917,10 +917,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.3**（2026-02-13）— 新增 **mount(container, fn, options?)**（选择器或
-Element；按子节点
-hydrate/render）、**MountOptions**、**Root.forceRender()**；createRoot/render
-自动移除 `data-view-cloak`。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.4**（2026-02-14）— Init 模板：模块顶层 createSignal + `{count}`
+展示；组件可返回 `() => VNode` 保持组件内 state；响应式 v-if 使用 getter 如
+`vIf={() => condition}`。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

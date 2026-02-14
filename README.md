@@ -937,9 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.3** (2026-02-13) — Added **mount(container, fn, options?)** (selector or
-Element; hydrate/render by children), **MountOptions**, **Root.forceRender()**;
-createRoot/render auto-remove `data-view-cloak`. See
+**v1.0.4** (2026-02-14) — Init template: module-level createSignal + `{count}`
+for display; component can return `() => VNode` for local state; reactive v-if
+use getter e.g. `vIf={() => condition}`. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
