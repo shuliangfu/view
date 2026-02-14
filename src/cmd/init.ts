@@ -489,6 +489,33 @@ export default function Home(): VNode {
           </button>
         </div>
       </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
+        <h2 className="mb-4 text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+          v-if 演示
+        </h2>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          count ≤ 2 显示 AAA，3～5 显示 BBB，否则 CCC；条件用 getter 才能响应式切换。
+        </p>
+        <div vIf={() => count() <= 2} className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
+          <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-700/50 dark:text-emerald-200">
+            count ≤ 2
+          </span>
+          <span className="text-base font-medium text-emerald-800 dark:text-emerald-200">AAA</span>
+        </div>
+        <div vElseIf={() => count() >= 3 && count() <= 5} className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-900/20">
+          <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-700/50 dark:text-amber-200">
+            3 ≤ count ≤ 5
+          </span>
+          <span className="text-base font-medium text-amber-800 dark:text-amber-200">BBB</span>
+        </div>
+        <div vElse className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-500/30 dark:bg-slate-700/30">
+          <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600/80 dark:text-slate-200">
+            count &gt; 5
+          </span>
+          <span className="text-base font-medium text-slate-800 dark:text-slate-200">CCC</span>
+        </div>
+      </section>
     </div>
   );
 }
