@@ -6,7 +6,7 @@
 [English](../../README.md) | 中文
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
 [![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
@@ -863,9 +863,8 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.0**（2026-02-12）— 核心（signal、effect、SSR、hydrate）、Store、Router、
-Context、Resource、Boundary、指令、流式 SSR、编译器及 **view-cli**（init、dev、
-build、start、upgrade、update）。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.1**（2026-02-14）— 文档：许可证徽章与 README 许可证说明更新为
+Apache-2.0。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -905,7 +904,7 @@ build、start、upgrade、update）。完整历史见 [CHANGELOG.md](./CHANGELOG
 
 ## 📄 许可证
 
-MIT License - 见 [LICENSE.md](../../LICENSE.md)。
+Apache License 2.0 - 见 [LICENSE](../../LICENSE)。
 
 ---
 

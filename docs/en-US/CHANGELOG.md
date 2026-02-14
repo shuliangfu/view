@@ -8,6 +8,15 @@ and this project adheres to
 
 ---
 
+## [1.0.1] - 2026-02-14
+
+### Changed
+
+- **Documentation:** License badge and README license section updated from MIT
+  to Apache-2.0; links point to LICENSE and NOTICE.
+
+---
+
 ## [1.0.0] - 2026-02-12
 
 ### Added
