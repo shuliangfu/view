@@ -7,22 +7,6 @@
 
 ---
 
-## [1.0.0-beta.29] - 2026-02-13
-
-### 变更
-
-- **init：** 路由页模板（home、about、not-found）改为单一直接默认导出
-  （`export default function Home() { ... }`），避免动态加载时报「data.default
-  不是一个函数」。
-
-### 文档
-
-- **Router：**
-  说明每个路由文件必须默认导出页面组件，否则运行时可报「data.default
-  不是一个函数」。
-
----
-
 ## [1.0.0] - 2026-02-12
 
 ### 新增
@@ -90,6 +74,23 @@
   - 事件：`onClick`、`onInput`、`onChange` 等通过 addEventListener 绑定。
   - Ref：回调或 `{ current }` 在挂载后获取 DOM 引用。
   - SVG 命名空间与指令应用顺序（vShow 等指令，再通用 props）。
+
+- **编译器**（`@dreamer/view/compiler`）
+  - 构建时优化：`optimize`、`createOptimizePlugin`，可配合 esbuild 等打包器
+    （可选）。
+
+- **CLI（view-cli）**
+  - 全局安装：`deno run -A jsr:@dreamer/view/setup`；安装后可在任意目录使用
+    `view-cli`。
+  - `view-cli init [dir]` — 脚手架生成项目（views、view.config.ts、_app、
+    _layout、_loading、_404、_error）。
+  - `view-cli dev` — 构建并启动静态服务（开发模式）。
+  - `view-cli build` — 仅构建（输出到 dist/）。
+  - `view-cli start` — 仅启动静态服务（需先执行 build）。
+  - `view-cli upgrade` — 将 @dreamer/view 升级到最新（加 `--beta` 使用 beta）。
+  - `view-cli update` — 更新项目依赖与 lockfile（加 `--latest` 使用最新版本）。
+  - `view-cli version` / `view-cli --version` — 显示版本。
+  - `view-cli --help` — 显示完整帮助。
 
 ### 说明
 

@@ -877,9 +877,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.0-beta.29** (2026-02-13) — init: route page templates use direct default
-export; docs: route page must default-export or "data.default is not a
-function". See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.0** (2026-02-12) — Core (signals, effects, SSR, hydrate), Store, Router,
+Context, Resource, Boundary, Directives, Stream SSR, Compiler, and **view-cli**
+(init, dev, build, start, upgrade, update). See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
