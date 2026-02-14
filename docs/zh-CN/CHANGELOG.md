@@ -7,6 +7,36 @@
 
 ---
 
+## [1.0.3] - 2026-02-13
+
+### 新增
+
+- **mount(container, fn, options?)** — 统一挂载 API，适用于 CSR、hybrid
+  与全量入口。`container` 可为 CSS 选择器（如 `"#root"`）或 `Element`。在
+  hybrid/全量下：若容器有子节点则 hydrate，否则 render。选项：`hydrate`（强制
+  hydrate 或 render）、`noopIfNotFound`（选择器 查不到时返回空
+  Root）。从主入口、`@dreamer/view/csr`、`@dreamer/view/hybrid`
+  导出。一步到位减少 客户端入口分支与心智负担。
+- **MountOptions** 类型 — `hydrate?: boolean`、`noopIfNotFound?: boolean`。
+- **resolveMountContainer**（内部）— 将选择器解析为 Element；根据
+  `noopIfNotFound` 在未找到时抛错或返回 null。
+- **Root.forceRender** — `createRoot`/`render`（以及 `mount`）返回的 `Root`
+  上提供 **forceRender()**，用于强制重跑一次根 effect
+  并重渲染整树，适用于外部路由或其它非响应式状态源。
+
+### 变更
+
+- **createRoot / render：** 首次 append 后自动调用
+  `removeCloak(container)`，无需在业务中手动移除 `data-view-cloak`。hydrate
+  路径行为不变（原本即会 removeCloak）。
+- **测试：** 为 mount 新增 6
+  个单元测试（Element、选择器、noopIfNotFound、选择器缺失时抛错、hydrate
+  路径、render 路径）。总用例数 262。
+- **文档：** README（中英文）与 TEST_REPORT（中英文）补充 mount
+  API、MountOptions 及 262 用例摘要。
+
+---
+
 ## [1.0.2] - 2026-02-14
 
 ### 新增

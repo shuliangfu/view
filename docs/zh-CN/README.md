@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-262%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -195,7 +195,8 @@ CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
   - `createRoot` / `render` — 挂载响应式根；细粒度 DOM patch，不整树替换。
   - `mount(container, fn, options?)` — 统一挂载入口：`container` 可为选择器（如
     `"#root"`）或 `Element`；有子节点则 **hydrate**（hybrid/全量），否则
-    **render**。选项：`hydrate`（强制）、`noopIfNotFound`（选择器查不到时返回空 Root）。一步到位减少分支与心智负担。
+    **render**。选项：`hydrate`（强制）、`noopIfNotFound`（选择器查不到时返回空
+    Root）。一步到位减少分支与心智负担。
   - `createReactiveRoot` — 挂载**由外部状态驱动**的根：传入
     `(container, getState, buildTree)`；当 `getState()` 的返回值变化（如 signal
     更新）时，会按新状态重新建树并在原地 patch，不整树卸载。适用于 SPA
@@ -422,9 +423,9 @@ function Form(): VNode {
 **createReactiveRoot 与 forceRender（外部状态 / 外部路由）**
 
 当「页面/路由」状态**由 View 以 signal 维护**时，使用
-**createReactiveRoot**：传入 `(container, getState, buildTree)`，当
-`getState()` 变化（如 signal 更新）时，树会按状态重建并原地 patch。适合希望
-View 随路由自动更新的 SPA 壳。
+**createReactiveRoot**：传入 `(container, getState, buildTree)`，当 `getState()`
+变化（如 signal 更新）时，树会按状态重建并原地 patch。适合希望 View
+随路由自动更新的 SPA 壳。
 
 当使用 **createRoot** / **render** 但驱动方（如第三方 router）**在 View 外且
 不是 signal** 时，根 effect 只会在其追踪的 signal 变化时重跑。在每次路由（或
@@ -432,7 +433,12 @@ View 随路由自动更新的 SPA 壳。
 `createRoot`/`render` 返回的 `Root` 上提供 `forceRender` 即用于此场景。
 
 ```ts
-import { createReactiveRoot, createRoot, createSignal, render } from "jsr:@dreamer/view";
+import {
+  createReactiveRoot,
+  createRoot,
+  createSignal,
+  render,
+} from "jsr:@dreamer/view";
 
 // 方式 A：路由状态是 signal → createReactiveRoot（状态变化时自动 patch）
 const [pageState, setPageState] = createSignal({ route: "home", id: null });
@@ -722,37 +728,38 @@ themeStore.toggleTheme();
 
 核心响应式与渲染 API。
 
-| 导出                                        | 说明                                                                                        |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **createSignal**                            | 创建 signal，返回 `[getter, setter]`；在 effect 中调用 getter 会登记依赖                    |
-| **createEffect**                            | 创建 effect，先执行一次，依赖的 signal 变化后在微任务中重跑，返回 dispose                   |
-| **createMemo**                              | 创建带缓存的派生 getter                                                                     |
-| **onCleanup**                               | 在 effect/memo 内注册清理函数（当前 effect 重跑或 dispose 时执行）                          |
-| **getCurrentEffect** / **setCurrentEffect** | 当前运行的 effect（内部/高级用法）                                                          |
-| **isSignalGetter**                          | 判断是否为 signal getter                                                                    |
-| **createRoot**                              | 创建响应式根；返回 Root，含 **unmount** 与 **forceRender**（用于外部路由等场景强制重跑）   |
-| **createReactiveRoot**                      | 创建由状态驱动的根：`(container, getState, buildTree)`，状态变化时原地 patch                |
-| **render**                                  | 挂载根到 DOM：`render(() => <App />, container)`                                            |
+| 导出                                        | 说明                                                                                                                                       |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **createSignal**                            | 创建 signal，返回 `[getter, setter]`；在 effect 中调用 getter 会登记依赖                                                                   |
+| **createEffect**                            | 创建 effect，先执行一次，依赖的 signal 变化后在微任务中重跑，返回 dispose                                                                  |
+| **createMemo**                              | 创建带缓存的派生 getter                                                                                                                    |
+| **onCleanup**                               | 在 effect/memo 内注册清理函数（当前 effect 重跑或 dispose 时执行）                                                                         |
+| **getCurrentEffect** / **setCurrentEffect** | 当前运行的 effect（内部/高级用法）                                                                                                         |
+| **isSignalGetter**                          | 判断是否为 signal getter                                                                                                                   |
+| **createRoot**                              | 创建响应式根；返回 Root，含 **unmount** 与 **forceRender**（用于外部路由等场景强制重跑）                                                   |
+| **createReactiveRoot**                      | 创建由状态驱动的根：`(container, getState, buildTree)`，状态变化时原地 patch                                                               |
+| **render**                                  | 挂载根到 DOM：`render(() => <App />, container)`                                                                                           |
 | **mount**                                   | 统一挂载：`mount(container, fn, options?)`；container 为选择器或 Element；有子节点→hydrate，否则 render；选项：`hydrate`、`noopIfNotFound` |
-| **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                             |
-| **hydrate**                                 | 在浏览器中激活服务端 HTML                                                                   |
-| **generateHydrationScript**                 | 生成激活脚本标签（用于混合应用）                                                            |
-| **类型**                                    | VNode、Root、MountOptions、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions |
-| **isDOMEnvironment**                        | 当前是否为 DOM 环境                                                                         |
+| **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                                                                            |
+| **hydrate**                                 | 在浏览器中激活服务端 HTML                                                                                                                  |
+| **generateHydrationScript**                 | 生成激活脚本标签（用于混合应用）                                                                                                           |
+| **类型**                                    | VNode、Root、MountOptions、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions                                  |
+| **isDOMEnvironment**                        | 当前是否为 DOM 环境                                                                                                                        |
 
 ### CSR 入口 `jsr:@dreamer/view/csr`
 
 仅客户端渲染的轻量入口：不含
 `renderToString`、`hydrate`、`generateHydrationScript`，bundle 更小。
 
-导出：createSignal、createEffect、createMemo、onCleanup、createRoot、**render**、**mount**（选择器或 Element，始终 render），以及相关类型。不需要
-SSR 或 hydrate 时从此入口引入。
+导出：createSignal、createEffect、createMemo、onCleanup、createRoot、**render**、**mount**（选择器或
+Element，始终 render），以及相关类型。不需要 SSR 或 hydrate 时从此入口引入。
 
 ### Hybrid 入口 `jsr:@dreamer/view/hybrid`
 
 客户端混合渲染入口：含 **createRoot**、**render**、**mount**、**hydrate**，不含
 renderToString、generateHydrationScript。服务端用主包或 stream 出
-HTML，客户端用本入口激活。**mount(container, fn)** 接受选择器或 Element；有子节点→hydrate，否则→render。
+HTML，客户端用本入口激活。**mount(container, fn)** 接受选择器或
+Element；有子节点→hydrate，否则→render。
 
 ### JSX 运行时 `jsr:@dreamer/view/jsx-runtime`
 
@@ -892,17 +899,17 @@ export const meta = {
 
 ## 📚 API 速查表
 
-| 模块     | 主要 API                                                                                                                                    | 导入                          |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 模块     | 主要 API                                                                                                                                           | 导入                          |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
-| Store    | createStore, withGetters, withActions                                                                                                       | `jsr:@dreamer/view/store`     |
-| Reactive | createReactive                                                                                                                              | `jsr:@dreamer/view/reactive`  |
-| Context  | createContext                                                                                                                               | `jsr:@dreamer/view/context`   |
-| Resource | createResource                                                                                                                              | `jsr:@dreamer/view/resource`  |
-| Router   | createRouter                                                                                                                                | `jsr:@dreamer/view/router`    |
-| Boundary | Suspense, ErrorBoundary                                                                                                                     | `jsr:@dreamer/view/boundary`  |
-| 指令     | registerDirective, hasDirective, getDirective, …                                                                                            | `jsr:@dreamer/view/directive` |
-| Stream   | renderToStream                                                                                                                              | `jsr:@dreamer/view/stream`    |
+| Store    | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`     |
+| Reactive | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`  |
+| Context  | createContext                                                                                                                                      | `jsr:@dreamer/view/context`   |
+| Resource | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`  |
+| Router   | createRouter                                                                                                                                       | `jsr:@dreamer/view/router`    |
+| Boundary | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`  |
+| 指令     | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive` |
+| Stream   | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`    |
 
 更完整说明见上文 **Store 详解** 与 **模块与导出**。
 
@@ -910,10 +917,10 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.2**（2026-02-14）— 新增
-`createReactiveRoot(container, getState, buildTree)`，
-支持由外部状态驱动的根并在状态变化时原地 patch；测试与文档已更新。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.3**（2026-02-13）— 新增 **mount(container, fn, options?)**（选择器或
+Element；按子节点
+hydrate/render）、**MountOptions**、**Root.forceRender()**；createRoot/render
+自动移除 `data-view-cloak`。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -922,8 +929,8 @@ export const meta = {
 | 项目     | 值         |
 | -------- | ---------- |
 | 测试日期 | 2026-02-13 |
-| 总用例数 | 256        |
-| 通过     | 256 ✅     |
+| 总用例数 | 262        |
+| 通过     | 262 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
 | 耗时     | ~1m 35s    |

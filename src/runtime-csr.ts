@@ -27,7 +27,8 @@ import { isDOMEnvironment } from "./types.ts";
 import type { MountOptions, Root, VNode } from "./types.ts";
 
 /** 创建根并挂载（实现来自 runtime-shared，依赖从 effect + dom 注入） */
-export const createRoot = createCreateRoot({
+export const createRoot: (fn: () => VNode, container: Element) => Root =
+  createCreateRoot({
   createEffect,
   createRunDisposersCollector,
   setCurrentScope,
@@ -37,10 +38,11 @@ export const createRoot = createCreateRoot({
   createNodeFromExpanded,
   patchRoot,
   runDirectiveUnmount,
-});
+  });
 
 /** 便捷方法：创建根并挂载，由 runtime-shared.createRender 统一实现 */
-export const render = createRender(createRoot);
+export const render: (fn: () => VNode, container: Element) => Root =
+  createRender(createRoot);
 
 /**
  * 统一挂载入口：支持选择器或 Element；仅 CSR 时始终 render（无 hydrate）。
