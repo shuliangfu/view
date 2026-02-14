@@ -888,7 +888,7 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.2**（2026-02-13）— 新增
+**v1.0.2**（2026-02-14）— 新增
 `createReactiveRoot(container, getState, buildTree)`，
 支持由外部状态驱动的根并在状态变化时原地 patch；测试与文档已更新。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。

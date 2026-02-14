@@ -904,7 +904,7 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.2** (2026-02-13) — Added
+**v1.0.2** (2026-02-14) — Added
 `createReactiveRoot(container, getState, buildTree)` for state-driven roots with
 in-place patch; tests and docs updated. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
