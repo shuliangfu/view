@@ -16,7 +16,7 @@ export {
   setCurrentEffect,
 } from "./signal.ts";
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
-export { createRoot, render } from "./runtime-csr.ts";
+export { createReactiveRoot, createRoot, render } from "./runtime-csr.ts";
 export type {
   Root,
   SignalGetter,

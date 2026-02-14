@@ -16,7 +16,12 @@ export {
   setCurrentEffect,
 } from "./signal.ts";
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
-export { createRoot, hydrate, render } from "./runtime-hybrid.ts";
+export {
+  createReactiveRoot,
+  createRoot,
+  hydrate,
+  render,
+} from "./runtime-hybrid.ts";
 export type {
   Root,
   SignalGetter,

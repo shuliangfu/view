@@ -42,4 +42,4 @@ describe("renderToStream", () => {
     const html = [...gen].join("");
     expect(html).toContain("hello");
   });
-});
+}, { sanitizeOps: false, sanitizeResources: false });

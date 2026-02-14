@@ -77,6 +77,22 @@ export function render(fn: () => VNode, container: Element): Root {
 }
 
 /**
+ * 创建响应式单根：由外部状态驱动，状态变化时在根内做细粒度 patch。
+ *
+ * @param container 挂载的 DOM 容器
+ * @param getState 获取当前状态（建议为 createSignal 的 getter）
+ * @param buildTree 根据状态构建根 VNode
+ * @returns Root 句柄
+ */
+export function createReactiveRoot<T>(
+  container: Element,
+  getState: () => T,
+  buildTree: (state: T) => VNode,
+): Root {
+  return createRoot(() => buildTree(getState()), container);
+}
+
+/**
  * 在已有服务端 HTML 的容器上激活（Hybrid）
  */
 export function hydrate(fn: () => VNode, container: Element): Root {

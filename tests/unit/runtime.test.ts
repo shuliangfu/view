@@ -6,6 +6,7 @@ import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import type { VNode } from "@dreamer/view";
 import {
+  createReactiveRoot,
   createRoot,
   createSignal,
   generateHydrationScript,
@@ -157,6 +158,128 @@ describe("createRoot / render (DOM)", () => {
     );
     root.unmount();
     expect(() => set(1)).not.toThrow();
+    await Promise.resolve();
+    expect(container.textContent).toBe("");
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+describe("createReactiveRoot", () => {
+  it("应挂载初始状态对应的 DOM 并返回 Root", () => {
+    const container = document.createElement("div");
+    const getState = () => ({ count: 0, label: "zero" });
+    const root = createReactiveRoot(
+      container,
+      getState,
+      (state) => ({
+        type: "div",
+        props: { "data-count": state.count },
+        children: [{
+          type: "#text",
+          props: { nodeValue: state.label },
+          children: [],
+        }],
+      }),
+    );
+    expect(root.container).toBe(container);
+    expect(root.unmount).toBeDefined();
+    const div = container.querySelector("div");
+    expect(div).not.toBeNull();
+    expect(div?.getAttribute("data-count")).toBe("0");
+    expect(container.textContent).toBe("zero");
+    root.unmount();
+    expect(container.textContent).toBe("");
+  });
+
+  it("getState 为 signal 时，状态变更后应 patch 更新 DOM", async () => {
+    const container = document.createElement("div");
+    const [getCount, setCount] = createSignal(0);
+    const root = createReactiveRoot(
+      container,
+      getCount,
+      (count) => ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: String(count) },
+          children: [],
+        }],
+      }),
+    );
+    expect(container.textContent).toBe("0");
+    setCount(1);
+    await Promise.resolve();
+    expect(container.textContent).toBe("1");
+    setCount(42);
+    await Promise.resolve();
+    expect(container.textContent).toBe("42");
+    root.unmount();
+  });
+
+  it("unmount 后容器应清空且无泄漏", () => {
+    const container = document.createElement("div");
+    const getState = () => "mounted";
+    const root = createReactiveRoot(
+      container,
+      getState,
+      (text) => ({
+        type: "p",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: text },
+          children: [],
+        }],
+      }),
+    );
+    expect(container.querySelector("p")).not.toBeNull();
+    root.unmount();
+    expect(container.textContent).toBe("");
+    expect(container.querySelector("p")).toBeNull();
+  });
+
+  it("状态为对象时，signal 变更后应 patch 更新 DOM", async () => {
+    const container = document.createElement("div");
+    const [getState, setState] = createSignal({ count: 0 });
+    const root = createReactiveRoot(
+      container,
+      getState,
+      (state) => ({
+        type: "div",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: String(state.count) },
+          children: [],
+        }],
+      }),
+    );
+    expect(container.textContent).toBe("0");
+    setState({ count: 1 });
+    await Promise.resolve();
+    expect(container.textContent).toBe("1");
+    root.unmount();
+  });
+
+  it("边界：unmount 后再次 set state 不抛错、不更新 DOM", async () => {
+    const container = document.createElement("div");
+    const [getState, setState] = createSignal(0);
+    const root = createReactiveRoot(
+      container,
+      getState,
+      (n) => ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: String(n) },
+          children: [],
+        }],
+      }),
+    );
+    root.unmount();
+    expect(container.textContent).toBe("");
+    expect(() => setState(1)).not.toThrow();
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });

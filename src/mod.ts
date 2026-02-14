@@ -26,6 +26,7 @@ export {
 } from "./signal.ts";
 export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
 export {
+  createReactiveRoot,
   createRoot,
   generateHydrationScript,
   hydrate,

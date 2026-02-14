@@ -7,6 +7,25 @@
 
 ---
 
+## [1.0.2] - 2026-02-13
+
+### 新增
+
+- **createReactiveRoot(container, getState, buildTree)** — 创建由外部状态驱动的
+  根：当 `getState()`（如 signal）的返回值变化时，会按新状态重新建树并在原地
+  patch，不整树卸载。从主入口、`@dreamer/view/csr` 与 `@dreamer/view/hybrid`
+  导出。适用于 SPA 外壳由外部维护页面/路由状态、View 只根据该状态渲染的场景。
+
+### 变更
+
+- **测试：** 为 createReactiveRoot 新增 5 个单元测试（初始挂载、signal 驱动
+  patch、unmount 清理、对象状态 patch、unmount 后再 set 的边界）。总用例数 252。
+
+- **文档：** 测试报告（中英文）与 README（中英文）补充 createReactiveRoot 说明、
+  用法与示例。
+
+---
+
 ## [1.0.1] - 2026-02-14
 
 ### 变更

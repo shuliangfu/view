@@ -8,6 +8,28 @@ and this project adheres to
 
 ---
 
+## [1.0.2] - 2026-02-13
+
+### Added
+
+- **createReactiveRoot(container, getState, buildTree)** — Create a state-driven
+  root: when `getState()` (e.g. a signal) changes, the tree is rebuilt and
+  patched in place without full unmount. Exported from main,
+  `@dreamer/view/csr`, and `@dreamer/view/hybrid`. Suited for SPA shells where
+  page/route state is owned outside View (e.g. router) and View only renders
+  from that state.
+
+### Changed
+
+- **Tests:** Added 5 unit tests for createReactiveRoot (initial mount, reactive
+  patch with signal, unmount cleanup, object state patch, set-after-unmount
+  edge). Total tests: 252.
+
+- **Docs:** TEST_REPORT (en/zh) and README (en/zh) updated with
+  createReactiveRoot description, usage, and examples.
+
+---
+
 ## [1.0.1] - 2026-02-14
 
 ### Changed
