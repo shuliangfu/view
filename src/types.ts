@@ -45,6 +45,16 @@ export type VNode = {
 };
 
 /**
+ * mount(container, fn, options?) 的可选配置。
+ * - hydrate: true 强制 hydrate，false 强制 render，undefined 时「有子节点则 hydrate 否则 render」
+ * - noopIfNotFound: 为 true 且 container 为选择器且查不到元素时不抛错，返回空 Root；默认 false 抛错
+ */
+export type MountOptions = {
+  hydrate?: boolean;
+  noopIfNotFound?: boolean;
+};
+
+/**
  * 根实例：createRoot / render / hydrate 返回的句柄。
  * 调用 unmount() 可卸载该根并回收其下所有 effect。
  * forceRender() 可强制根 effect 重新执行一次，用于外部路由等非响应式来源驱动整树重算。

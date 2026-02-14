@@ -26,11 +26,13 @@ import {
   createCreateRoot,
   createReactiveRootWith,
   createRender,
+  NOOP_ROOT,
   removeCloak,
+  resolveMountContainer,
 } from "./runtime-shared.ts";
 import { createSignal } from "./signal.ts";
 import { isDOMEnvironment } from "./types.ts";
-import type { Root, VNode } from "./types.ts";
+import type { MountOptions, Root, VNode } from "./types.ts";
 
 /** 创建根并挂载（实现来自 runtime-shared，依赖从 dom/effect 注入） */
 export const createRoot = createCreateRoot({
@@ -47,6 +49,33 @@ export const createRoot = createCreateRoot({
 
 /** 便捷方法：创建根并挂载（等同于 createRoot(fn, container)），由 runtime-shared.createRender 统一实现 */
 export const render = createRender(createRoot);
+
+/**
+ * 统一挂载入口：支持选择器或 Element；有子节点则 hydrate 否则 render，减少分支与心智负担。
+ * 容器为选择器且查不到时：options.noopIfNotFound 为 true 则返回空 Root，否则抛错。
+ *
+ * @param container 选择器（如 "#root"）或 DOM 元素
+ * @param fn 根组件函数
+ * @param options hydrate 强制 hydrate/render；noopIfNotFound 查不到时静默返回空 Root
+ * @returns Root 句柄
+ */
+export function mount(
+  container: string | Element,
+  fn: () => VNode,
+  options?: MountOptions,
+): Root {
+  const el = resolveMountContainer(
+    container,
+    options?.noopIfNotFound ?? false,
+  );
+  if (!el) return NOOP_ROOT;
+  const useHydrate = options?.hydrate === true
+    ? true
+    : options?.hydrate === false
+    ? false
+    : el.hasChildNodes();
+  return useHydrate ? hydrate(fn, el) : render(fn, el);
+}
 
 /**
  * 创建响应式单根：由外部状态驱动，状态变化时在根内做细粒度 patch，不整树卸载。

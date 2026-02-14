@@ -5,7 +5,7 @@
  *
  * **本模块导出：**
  * - 响应式：`createSignal`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`
- * - 渲染：`createRoot`、`render`、`renderToString`、`hydrate`、`generateHydrationScript`
+ * - 渲染：`createRoot`、`render`、`mount`、`renderToString`、`hydrate`、`generateHydrationScript`
  * - 类型：`HydrationScriptOptions`、`EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`isDOMEnvironment`
  *
  * **JSX：** 在 deno.json / tsconfig 中设置 `jsxImportSource: "@dreamer/view"`，并从 `@dreamer/view/jsx-runtime` 解析 jsx/jsxs/Fragment。
@@ -30,12 +30,14 @@ export {
   createRoot,
   generateHydrationScript,
   hydrate,
+  mount,
   render,
   renderToString,
 } from "./runtime.ts";
 export type { HydrationScriptOptions } from "./runtime.ts";
 export type {
   EffectDispose,
+  MountOptions,
   Root,
   SignalGetter,
   SignalSetter,

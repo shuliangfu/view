@@ -1,6 +1,6 @@
 /**
  * @description
- * 运行时共享：createRoot、createReactiveRoot、removeCloak、createRender 的通用实现，供 runtime / runtime-csr / runtime-hybrid 复用。
+ * 运行时共享：createRoot、createReactiveRoot、removeCloak、createRender、resolveMountContainer 的通用实现，供 runtime / runtime-csr / runtime-hybrid 复用。
  * 各 runtime 仅注入各自的 effect、dom 等依赖，避免重复代码。
  * @internal 仅由上述 runtime 模块使用，不对外导出
  */
@@ -8,9 +8,48 @@
 import type { ExpandedRoot } from "./dom/element.ts";
 import type { Root, VNode } from "./types.ts";
 
+/** 容器未找到或非 DOM 时 mount 返回的空 Root，避免重复创建对象 */
+export const NOOP_ROOT: Root = { unmount: () => {}, container: null };
+
+/**
+ * 将 mount 的 container 参数解析为 Element。
+ * - 若为 Element 直接返回；
+ * - 若为 string 则用 document.querySelector 查找，找不到时根据 noopIfNotFound 返回 null 或抛错。
+ *
+ * @param container 选择器（如 "#root"）或 DOM 元素
+ * @param noopIfNotFound 为 true 时查不到元素返回 null；为 false 时抛 Error
+ * @returns 解析后的元素，或 null（仅当 noopIfNotFound 且未找到时）
+ */
+export function resolveMountContainer(
+  container: string | Element,
+  noopIfNotFound: boolean,
+): Element | null {
+  if (
+    typeof container === "object" && container != null &&
+    "nodeType" in container
+  ) {
+    return container as Element;
+  }
+  const doc = typeof globalThis !== "undefined"
+    ? (globalThis as { document?: Document }).document
+    : undefined;
+  if (!doc) {
+    if (noopIfNotFound) return null;
+    throw new Error("Mount: document not available (non-DOM environment).");
+  }
+  const el = doc.querySelector(String(container));
+  if (!el) {
+    if (noopIfNotFound) return null;
+    throw new Error(
+      `Mount: container not found for selector "${String(container)}".`,
+    );
+  }
+  return el;
+}
+
 /**
  * 移除容器及其子树上的 data-view-cloak 属性，配合 CSS [data-view-cloak]{display:none} 减少 FOUC。
- * hydrate 或首次挂载后由 runtime / runtime-hybrid 调用。
+ * createRoot 首次 append 后、hydrate 激活后均由运行时调用，业务侧无需手动移除。
  */
 export function removeCloak(container: Element): void {
   const list = Array.from(container.querySelectorAll("[data-view-cloak]"));
@@ -121,6 +160,7 @@ export function createCreateRoot(
           mounted = createNodeFromExpanded(newExpanded);
           container.appendChild(mounted);
           lastExpanded = newExpanded;
+          removeCloak(container);
         } else {
           patchRoot(container, mounted, lastExpanded!, newExpanded);
           lastExpanded = newExpanded;

@@ -2,11 +2,11 @@
  * @dreamer/view 多页面示例 — 入口
  *
  * 从 router/router 创建带拦截与守卫的应用路由，
- * createRoot 根组件订阅路由并渲染当前页。
- * 自定义指令（如 v-focus）须在此处注册，与 createRoot 同包，避免懒加载页用到的 registry 与 applyDirectives 不一致。
+ * mount("#root", ...) 挂载根组件（有子节点则 hydrate，否则 render）。
+ * 自定义指令（如 v-focus）须在此处注册，与 mount 同包，避免懒加载页用到的 registry 与 applyDirectives 不一致。
  */
 
-import { createRoot } from "@dreamer/view";
+import { mount } from "@dreamer/view";
 import { registerDirective } from "@dreamer/view/directive";
 import { createAppRouter } from "./router/router.ts";
 import { App } from "./views/_app.tsx";
@@ -53,9 +53,13 @@ registerDirective("v-copy", {
   },
 });
 
-const container = document.getElementById("root");
-if (container) {
-  const router = createAppRouter({ routes, notFound: notFoundRoute });
-  createRoot(() => <App router={router} />, container);
-  container.removeAttribute("data-view-cloak");
-}
+// 原 createRoot 写法（保留作参考）；createRoot/render 首次挂载后 view 会自动移除 data-view-cloak
+// const container = document.getElementById("root");
+// if (container) {
+//   const router = createAppRouter({ routes, notFound: notFoundRoute });
+//   createRoot(() => <App router={router} />, container);
+// }
+
+// 使用 mount：选择器 + 有子节点则 hydrate 否则 render；查不到 #root 时静默返回
+const router = createAppRouter({ routes, notFound: notFoundRoute });
+mount("#root", () => <App router={router} />, { noopIfNotFound: true });

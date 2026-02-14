@@ -19,10 +19,12 @@ import {
   createCreateRoot,
   createReactiveRootWith,
   createRender,
+  NOOP_ROOT,
+  resolveMountContainer,
 } from "./runtime-shared.ts";
 import { createSignal } from "./signal.ts";
 import { isDOMEnvironment } from "./types.ts";
-import type { Root, VNode } from "./types.ts";
+import type { MountOptions, Root, VNode } from "./types.ts";
 
 /** 创建根并挂载（实现来自 runtime-shared，依赖从 effect + dom 注入） */
 export const createRoot = createCreateRoot({
@@ -39,6 +41,28 @@ export const createRoot = createCreateRoot({
 
 /** 便捷方法：创建根并挂载，由 runtime-shared.createRender 统一实现 */
 export const render = createRender(createRoot);
+
+/**
+ * 统一挂载入口：支持选择器或 Element；仅 CSR 时始终 render（无 hydrate）。
+ * 容器为选择器且查不到时：options.noopIfNotFound 为 true 则返回空 Root，否则抛错。
+ *
+ * @param container 选择器（如 "#root"）或 DOM 元素
+ * @param fn 根组件函数
+ * @param options noopIfNotFound 查不到时是否静默返回空 Root；hydrate 在 CSR 中忽略
+ * @returns Root 句柄
+ */
+export function mount(
+  container: string | Element,
+  fn: () => VNode,
+  options?: MountOptions,
+): Root {
+  const el = resolveMountContainer(
+    container,
+    options?.noopIfNotFound ?? false,
+  );
+  if (!el) return NOOP_ROOT;
+  return render(fn, el);
+}
 
 /**
  * 创建响应式单根：由外部状态驱动，状态变化时在根内做细粒度 patch。
