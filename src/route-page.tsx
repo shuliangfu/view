@@ -30,9 +30,15 @@ function jsx(
   return runtimeJsx(type, merged, null);
 }
 
+/** 懒加载模块可能为 default 或命名导出 RouteLoading */
+type LoadingModule = {
+  default?: (m?: unknown) => VNode;
+  RouteLoading?: (m?: unknown) => VNode;
+};
+
 /** Resource getter 返回类型（与 createResource 一致） */
 type ResourceGetter = () => {
-  data: { default: (m?: unknown) => VNode } | undefined;
+  data: LoadingModule | undefined;
   loading: boolean;
   error: unknown;
   refetch: () => void;
@@ -345,8 +351,11 @@ export function RoutePage(props: {
       }
       const loadingState = loadingGetter();
       if (!loadingState.loading && loadingState.data) {
-        const LoadingComponent = loadingState.data.default;
-        return LoadingComponent(matchWithRouter) as VNode;
+        const LoadingComponent = loadingState.data.default ??
+          loadingState.data.RouteLoading;
+        if (typeof LoadingComponent === "function") {
+          return LoadingComponent(matchWithRouter) as VNode;
+        }
       }
     }
     if (props.showLoading === true) {
@@ -381,8 +390,11 @@ export function RoutePage(props: {
     if (loadingGetter) {
       const loadingState = loadingGetter();
       if (!loadingState.loading && loadingState.data) {
-        const LoadingComponent = loadingState.data.default;
-        return LoadingComponent(matchWithRouter) as VNode;
+        const LoadingComponent = loadingState.data.default ??
+          loadingState.data.RouteLoading;
+        if (typeof LoadingComponent === "function") {
+          return LoadingComponent(matchWithRouter) as VNode;
+        }
       }
     }
     if (props.showLoading === true) {

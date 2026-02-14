@@ -1,9 +1,10 @@
 /**
- * 路由懒加载时的占位（约定 _loading.tsx，路由扫描自动屏蔽）：显示加载中
+ * 路由懒加载时的占位（约定 _loading.tsx，路由扫描自动屏蔽）：显示加载中。
+ * RoutePage 使用 default 导出并调用 (match) => VNode。
  */
 import type { VNode } from "@dreamer/view";
 
-export function RouteLoading(): VNode {
+export default function RouteLoading(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-16 flex flex-col items-center justify-center min-h-[280px]">
       <div

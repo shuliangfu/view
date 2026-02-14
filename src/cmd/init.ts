@@ -325,11 +325,11 @@ export function Layout(props: LayoutProps): VNode {
   // src/views/_loading.tsx（约定加载占位，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const loadingTsx = `/**
- * 路由懒加载占位（约定 _loading.tsx）
+ * 路由懒加载占位（约定 _loading.tsx）。RoutePage 会取 default 导出并调用 (match) => VNode。
  */
 import type { VNode } from "@dreamer/view";
 
-export function RouteLoading(): VNode {
+export default function RouteLoading(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
       <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
