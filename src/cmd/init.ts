@@ -61,6 +61,8 @@ export async function main(
   // ---------------------------------------------------------------------------
   const viewConfigTs = `/**
  * view 项目配置：dev / build / start 会读取此文件
+ * - build.dev：仅 dev 模式生效，覆盖顶层 build（如不压缩、保留 sourcemap）
+ * - build.prod：仅 prod 模式生效，覆盖顶层 build
  */
 const config = {
   server: {
@@ -81,6 +83,10 @@ const config = {
     minify: true,
     sourcemap: true,
     splitting: true,
+    /** dev 模式覆盖：不压缩、保留 sourcemap，便于调试 */
+    dev: { minify: false, sourcemap: true },
+    /** prod 模式覆盖 */
+    prod: { minify: true, sourcemap: true },
   },
 };
 
@@ -471,7 +477,7 @@ export default function Home(): VNode {
             −
           </button>
           <span className="min-w-12 text-center text-2xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
-            {count()}
+            {count}
           </span>
           <button
             type="button"

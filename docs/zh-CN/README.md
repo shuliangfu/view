@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-201%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-247%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -103,6 +103,87 @@ deno add jsr:@dreamer/view/compiler
 | **浏览器** | 现代 (ES2020+) | ✅ CSR、Hydration                                       |
 | **服务端** | -              | ✅ SSR、流式 SSR（无 DOM）                              |
 | **依赖**   | -              | 📦 可选：happy-dom 用于测试；@dreamer/test 用于测试运行 |
+
+---
+
+## 📁 项目结构与约定（view-cli）
+
+使用 **view-cli init [dir]**
+创建项目后，会采用以下结构与约定。了解本节有助于理解各文件作用、如何新增路由或修改布局。
+
+### view init 会生成什么
+
+执行 `view-cli init` 后，除其他文件外会得到：
+
+- **view.config.ts** — 项目配置，供 dev/build/start 读取（见下文
+  [view.config](#viewconfig)）。
+- **deno.json** —
+  编译选项（jsx、jsxImportSource）、imports（@dreamer/view）、tasks（dev、build、start）。
+- **jsx.d.ts** — JSX 的 TypeScript 类型声明（deno.json 中引用），TSX
+  类型检查需要。
+- **src/main.tsx** — 入口：创建 router，将 `<App />` 挂载到 `#root`。
+- **src/views/** — 基于文件的路由与约定文件。
+- **src/router/router.ts** — 路由工厂（createAppRouter）。
+- **src/router/routers.tsx** — 由 `src/views` **自动生成**；请勿手改；已加入
+  .gitignore。
+
+### src/views 下的约定文件（下划线前缀）
+
+以 **下划线 `_` 开头**的文件为**约定特殊文件**，**不参与普通路由扫描**。其中只有
+`_404.tsx` 会作为 notFound 路由（path `*`）。
+
+| 文件             | 用途                                                          | 是否路由 |
+| ---------------- | ------------------------------------------------------------- | -------- |
+| **_app.tsx**     | 根组件：使用 router，渲染 Layout + 当前页。                   | 否       |
+| **_layout.tsx**  | 布局包装（如导航 + 主内容）。可导出 `inheritLayout = false`。 | 否       |
+| **_loading.tsx** | 懒加载路由的加载占位；**仅对当前目录生效**（子目录不继承）。  | 否       |
+| **_404.tsx**     | 404 页；作为唯一的 notFound 路由（path `*`）。                | 是 (*)   |
+| **_error.tsx**   | 错误兜底（如给 ErrorBoundary 用）。                           | 否       |
+
+- **_layout 与 inheritLayout**：在任意 `_layout.tsx` 中可写
+  `export const inheritLayout = false`，则该目录下的路由**不继承**父级布局。布局可多层嵌套。
+- **_loading 作用域**：某目录下的 `_loading.tsx`
+  只对该目录内的路由生效；子目录不继承（子目录可有自己的 `_loading.tsx`）。
+
+### 普通路由文件（非下划线）
+
+- **路径映射**：`src/views` 下（递归，最多 5
+  层）的文件会变成路由。路径规则：`home.tsx` 或 `index.tsx` 或 `home/index.tsx`
+  → `/`；`about.tsx` → `/about`；`blog/post.tsx` → `/blog/post`。特殊文件名
+  `not-found` / `404`（可带 `/index`）→ path `*`（notFound）。
+- **默认导出**：每个路由文件**必须**默认导出页面组件（如
+  `export default function Home() { ... }`）。仅使用命名导出再
+  `export default Home` 可能导致运行时报错「data.default
+  不是一个函数」；请使用单一、直接的默认导出。
+- **export meta**：可在路由文件中导出 `meta`
+  对象（title、description、keywords、author、og）；生成 `routers.tsx`
+  时会合并进该路由的 meta。未写 `export meta` 时，`title` 由文件路径推断。
+
+### view.config
+
+CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
+**view.config.json**。
+
+| 配置块          | 主要字段                                             | 说明                                                         |
+| --------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
+| **server.dev**  | port、host、dev.hmr、dev.watch                       | 开发服务器及 HMR / 监听配置。                                |
+| **server.prod** | port、host                                           | 生产服务器（start 命令）。                                   |
+| **build**       | entry、outDir、outFile、minify、sourcemap、splitting | 构建入口与输出；splitting 启用按路由分块。                   |
+| **build.dev**   | 与 build 同结构                                      | 仅 dev 模式生效的覆盖（如 minify: false、sourcemap: true）。 |
+| **build.prod**  | 与 build 同结构                                      | 仅 prod 模式生效的覆盖。                                     |
+
+- **server.dev.port** / **server.prod.port**：默认 8787，可由环境变量 `PORT`
+  覆盖。
+- **server.dev.dev.hmr**：如 `{ enabled: true, path: "/__hmr" }`。
+- **build.entry**：默认 `"src/main.tsx"`。**build.outDir**：默认
+  `"dist"`。**build.outFile**：默认 `"main.js"`。
+- **build.dev** / **build.prod**：与 **build** 同结构；CLI 在 dev 模式下会合并
+  **build** 与 **build.dev**（prod 模式下合并 **build.prod**），例如可设置
+  `dev: { minify: false, sourcemap: true }` 便于调试，`prod: { minify: true }`
+  用于生产。
+
+每次 dev 构建会根据 `src/views` 重新生成
+`src/router/routers.tsx`；不要提交该文件（已加入 .gitignore）。
 
 ---
 
@@ -731,9 +812,10 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 beforeRoute/afterRoute、notFound。
 
 **路由文件与 `export meta`（view-cli）：** 使用 `view-cli dev` 时，会按
-`src/views` 目录 递归扫描（最多 5 层）自动生成
-`src/router/routers.tsx`。路由文件可导出 `meta` 对象，生成 时会合并进该路由的
-meta 配置：
+`src/views` 递归扫描（最多 5 层）自动生成
+`src/router/routers.tsx`。约定文件（_app、_layout、_loading、_404、_error）、路径映射与
+view.config 的完整说明见上文 **项目结构与约定（view-cli）**。路由文件可导出
+`meta` 对象，生成时会合并进该路由的 meta 配置：
 
 ```tsx
 // src/views/home/index.tsx（或任意路由文件）
@@ -791,12 +873,12 @@ init：路由页模板改为直接默认导出；文档：路由页须默认导�
 
 | 项目     | 值         |
 | -------- | ---------- |
-| 测试日期 | 2026-02-12 |
-| 总用例数 | 201        |
-| 通过     | 201 ✅     |
+| 测试日期 | 2026-02-13 |
+| 总用例数 | 247        |
+| 通过     | 247 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
-| 耗时     | ~1m 15s    |
+| 耗时     | ~1m 29s    |
 
 详见 [TEST_REPORT.md](./TEST_REPORT.md)。
 

@@ -5,6 +5,8 @@
  * - server.dev：dev 命令使用的 port、host、hmr
  * - server.prod：start 命令使用的 port、host
  * - build：对齐 @dreamer/esbuild 客户端编译选项，由 BuilderBundle.build() 使用
+ * - build.dev：仅 dev 模式生效，覆盖顶层 build（如不压缩、保留 sourcemap）
+ * - build.prod：仅 prod 模式生效，覆盖顶层 build
  */
 
 import type { ViewConfig } from "../src/cmd/config.ts";
@@ -33,15 +35,20 @@ const config: ViewConfig = {
     outFile: "main.js",
     minify: true,
     sourcemap: true,
-    format: "esm",
-    platform: "browser",
-    target: "es2020",
-    jsx: "automatic",
-    jsxImportSource: "@dreamer/view",
-    browserMode: false,
     splitting: true,
     /** 是否开启 BuilderClient 调试日志（resolver / onLoad 等），便于排查构建问题 */
     // debug: true,
+
+    /** dev 模式下的覆盖：不压缩、保留 sourcemap，便于调试 */
+    dev: {
+      minify: false,
+      sourcemap: true,
+    },
+    /** prod 模式下的覆盖：压缩、可关闭 sourcemap 减小体积 */
+    prod: {
+      minify: true,
+      sourcemap: true,
+    },
   },
 };
 

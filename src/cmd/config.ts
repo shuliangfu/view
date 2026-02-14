@@ -57,6 +57,7 @@ export interface SplittingStrategy {
  * 编译配置（build / dev 时生效）
  *
  * 对齐 @dreamer/esbuild 的 BuilderBundle 客户端打包选项，CLI 读取后传给 bundler.build()。
+ * build.dev / build.prod 可与顶层 build 同结构，在 dev 或 prod 模式下覆盖顶层配置。
  */
 export interface ViewBuildConfig {
   /** 入口文件路径（相对项目根），默认 "src/main.tsx" */
@@ -75,10 +76,17 @@ export interface ViewBuildConfig {
   /** 是否开启 BuilderClient 调试日志（resolver / onLoad 等），便于排查构建问题 */
   debug?: boolean;
   // @dreamer/esbuild ClientPlugin
-  plugins: BuildPlugin[];
-  //
+  plugins?: BuildPlugin[];
+  /** 产出 chunk 命名模板，默认 "[name]-[hash]" */
   chunkNames?: string;
+  /** 仅 dev 模式生效：与顶层 build 同结构，覆盖顶层配置（如 minify: false、sourcemap: true） */
+  dev?: ViewBuildOverride;
+  /** 仅 prod 模式生效：与顶层 build 同结构，覆盖顶层配置 */
+  prod?: ViewBuildOverride;
 }
+
+/** 与 ViewBuildConfig 同结构的可选覆盖（用于 build.dev / build.prod） */
+export type ViewBuildOverride = Partial<Omit<ViewBuildConfig, "dev" | "prod">>;
 
 /**
  * view 项目完整配置（view.config.ts 的 default export 类型）
@@ -181,7 +189,7 @@ function mergeConfig(
     build: {
       ...defaults.build,
       ...user.build,
-      plugins: user.build?.plugins ?? [],
+      plugins: user.build?.plugins ?? defaults.build?.plugins ?? [],
     },
   };
 }
@@ -198,5 +206,24 @@ function defaultsDeep(config: ViewConfig): ViewConfig {
       }
       : undefined,
     build: config.build ? { ...config.build } : undefined,
+  };
+}
+
+/**
+ * 按模式（dev / prod）合并 build 与 build.dev 或 build.prod，供 CLI 构建使用
+ * @param config 已加载的 view 配置
+ * @param mode "dev" 时用 build.dev 覆盖，"prod" 时用 build.prod 覆盖
+ * @returns 合并后的 build 配置，保证 plugins 为数组
+ */
+export function getBuildConfigForMode(
+  config: ViewConfig,
+  mode: "dev" | "prod",
+): ViewBuildConfig {
+  const base = config.build ?? {};
+  const overrides = mode === "dev" ? config.build?.dev : config.build?.prod;
+  return {
+    ...base,
+    ...overrides,
+    plugins: overrides?.plugins ?? base?.plugins ?? [],
   };
 }
