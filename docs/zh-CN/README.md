@@ -731,12 +731,12 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 beforeRoute/afterRoute、notFound。
 
 **路由文件与 `export meta`（view-cli）：** 使用 `view-cli dev` 时，会按
-`src/routes` 目录 递归扫描（最多 5 层）自动生成
+`src/views` 目录 递归扫描（最多 5 层）自动生成
 `src/router/routers.tsx`。路由文件可导出 `meta` 对象，生成 时会合并进该路由的
 meta 配置：
 
 ```tsx
-// src/routes/home/index.tsx（或任意路由文件）
+// src/views/home/index.tsx（或任意路由文件）
 export const meta = {
   title: "首页",
   description: "首页描述",

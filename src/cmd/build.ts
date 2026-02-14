@@ -201,7 +201,8 @@ export function toRequestPath(
 
 /**
  * 根据变更文件路径从输出文件名中匹配对应 chunk（esbuild chunkNames: [name]-[hash]）
- * 路由 chunk 通常以目录名命名（如 home/index.tsx -> home-XXX.js），故同时用文件名与父目录名匹配。
+ * 路由 chunk 可能以目录名或文件名命名（home/index.tsx -> home-XXX 或 index-XXX）；router/index.tsx 也会产生 index-XXX，
+ * 若先按 name===index 匹配会错误命中 router 的 chunk。故先按目录名 parentName 匹配，再按文件名 name 匹配。
  */
 function getChunkRequestPathForChangedPath(
   changedPath: string,
@@ -213,25 +214,37 @@ function getChunkRequestPathForChangedPath(
   const jsPaths = outputRequestPaths.filter(
     (p) => p.endsWith(".js") && !p.endsWith(".map"),
   );
-  for (const p of jsPaths) {
+  const match = (p: string): boolean => {
     const base = basename(p, ".js");
     const segment = base.split("-")[0];
-    if (
+    return (
+      segment === parentName ||
+      base === parentName ||
       segment === name ||
       segment === nameAlt ||
       base === name ||
-      base === nameAlt ||
-      segment === parentName ||
-      base === parentName
-    ) {
+      base === nameAlt
+    );
+  };
+  // 先找目录名匹配（如 home），避免 home/index.tsx 命中 router 的 index-xxx.js
+  for (const p of jsPaths) {
+    const base = basename(p, ".js");
+    const segment = base.split("-")[0];
+    if (segment === parentName || base === parentName) {
       return p.startsWith("/") ? p : "/" + p;
     }
+  }
+  // 文件名为 index 时不再按 index 匹配，否则会命中 router/index 的 index-xxx，导致第 N 次 HMR 错页
+  const isIndexFile = name === "index" || nameAlt === "index";
+  if (isIndexFile) return undefined;
+  for (const p of jsPaths) {
+    if (match(p)) return p.startsWith("/") ? p : "/" + p;
   }
   return undefined;
 }
 
 /**
- * 根据变更文件路径推断对应路由 path（约定：routes/home|index -> "/"，其余 -> "/{segment}"）
+ * 根据变更文件路径推断对应路由 path（约定：views/home|index -> "/"，其余 -> "/{segment}"）
  * 供 HMR 下发 routePath，客户端用 chunkUrl 仅更新该路由。
  * @internal 供 prepareDevBuild 与单元测试使用
  */
@@ -239,10 +252,10 @@ export function getRoutePathForChangedPath(
   changedPath: string,
 ): string | undefined {
   const normalized = changedPath.replace(/\\/g, "/");
-  const routesIdx = normalized.indexOf("/routes/");
-  if (routesIdx < 0) return undefined;
-  const afterRoutes = normalized.slice(routesIdx + "/routes/".length);
-  let segment = afterRoutes.split("/")[0];
+  const viewsIdx = normalized.indexOf("/views/");
+  if (viewsIdx < 0) return undefined;
+  const afterViews = normalized.slice(viewsIdx + "/views/".length);
+  let segment = afterViews.split("/")[0];
   if (!segment) return undefined;
   // 去掉扩展名，使 route path 为纯路径（如 about.tsx -> about）
   if (segment.includes(".")) segment = segment.split(".")[0];
@@ -293,8 +306,8 @@ export async function prepareDevBuild(
   devServeOutputs: DevServeOutput[];
   rebuild: (options?: { changedPath?: string }) => Promise<HmrRebuildResult>;
 }> {
-  // dev 时先根据 src/routes 自动生成 src/router/routers.tsx（动态 import），再构建
-  await generateRoutersFile(root, "src/routes", "src/router/routers.tsx");
+  // dev 时先根据 src/views 自动生成 src/router/routers.tsx（动态 import），再构建
+  await generateRoutersFile(root, "src/views", "src/router/routers.tsx");
 
   // 仅用于首次构建与 createContext；热更新时 watcher 只把监听到的文件路径作为 changedPath 传进 rebuild() 做增量编译
   const entry = config.build?.entry ?? "src/main.tsx";
@@ -369,10 +382,10 @@ export async function prepareDevBuild(
   const rebuild = async (
     options?: { changedPath?: string },
   ): Promise<HmrRebuildResult> => {
-    // 若变更文件在 routes 目录下，先重新生成 routers.tsx 再构建
+    // 若变更文件在 views 目录下，先重新生成 routers.tsx 再构建
     const p = options?.changedPath ?? "";
-    if (p.replace(/\\/g, "/").includes("/routes/")) {
-      await generateRoutersFile(root, "src/routes", "src/router/routers.tsx");
+    if (p.replace(/\\/g, "/").includes("/views/")) {
+      await generateRoutersFile(root, "src/views", "src/router/routers.tsx");
     }
     if (!cachedDevBuilder) {
       const full = await builder.build({ mode: "dev", write: false });
@@ -426,7 +439,6 @@ export async function prepareDevBuild(
     const routePath = options?.changedPath
       ? getRoutePathForChangedPath(options.changedPath)
       : undefined;
-
     return {
       outputFiles,
       chunkUrl,

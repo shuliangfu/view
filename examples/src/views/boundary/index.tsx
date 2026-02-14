@@ -5,9 +5,9 @@
  * - Suspense：children 为 Promise 或 getter 返回 Promise 时先显示 fallback，resolve 后显示内容
  */
 
+import type { VNode } from "@dreamer/view";
 import { createSignal } from "@dreamer/view";
 import { ErrorBoundary, Suspense } from "@dreamer/view/boundary";
-import type { VNode } from "@dreamer/view";
 
 export const meta = {
   title: "Boundary",

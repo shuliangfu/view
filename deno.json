@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.0-beta.29",
+  "version": "1.0.0-beta.30",
   "license": "MIT",
   "workspace": [
     "examples"
@@ -27,11 +27,11 @@
     "./meta": "./src/meta.ts",
     "./scheduler": "./src/scheduler.ts",
     "./route-page": "./src/route-page.tsx",
+    "./hmr": "./src/hmr.ts",
     "./proxy": "./src/proxy.ts"
   },
   "imports": {
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
-
     "@dreamer/test": "jsr:@dreamer/test@^1.0.5",
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.5",
     "@dreamer/console": "jsr:@dreamer/console@^1.0.6",

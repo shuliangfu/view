@@ -4,7 +4,7 @@
  * 轻量响应式模板引擎主入口，仅导出核心 API，按需从子路径导入以减小主包体积。
  *
  * **本模块导出：**
- * - 响应式：`createSignal`、`createEffect`、`createMemo`、`onCleanup`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`
+ * - 响应式：`createSignal`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`
  * - 渲染：`createRoot`、`render`、`renderToString`、`hydrate`、`generateHydrationScript`
  * - 类型：`HydrationScriptOptions`、`EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`isDOMEnvironment`
  *
@@ -24,7 +24,7 @@ export {
   isSignalGetter,
   setCurrentEffect,
 } from "./signal.ts";
-export { createEffect, createMemo, onCleanup } from "./effect.ts";
+export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
 export {
   createRoot,
   generateHydrationScript,

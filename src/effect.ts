@@ -6,6 +6,7 @@
  * **本模块导出：**
  * - `createEffect(fn)`：创建副作用，返回 dispose 函数
  * - `createMemo(fn)`：创建派生值（只读 signal）
+ * - `untrack(fn)`：不登记依赖地执行 fn，用于「只读不订阅」场景
  * - `onCleanup(fn)`：在 effect/memo 内登记清理函数
  * - `setCurrentScope(scope)`：设置当前 EffectScope（runtime 用）
  * - 类型：`EffectScope`
@@ -50,6 +51,29 @@ export function getCurrentScope(): EffectScope | null {
  */
 export function setCurrentScope(scope: EffectScope | null): void {
   currentScope = scope;
+}
+
+/**
+ * 不登记依赖地执行函数：在 fn 内读到的 signal 不会把当前 effect 登记为订阅者。
+ * 用于「只读一次、不随其变化重跑」的场景，例如判断是否有 loading 再启动定时器。
+ *
+ * @param fn - 要执行的函数
+ * @returns fn 的返回值
+ *
+ * @example
+ * createEffect(() => {
+ *   const hasLoading = untrack(() => props.match.loading);
+ *   if (hasLoading) startTimer(); // effect 不会因 props 重跑
+ * });
+ */
+export function untrack<T>(fn: () => T): T {
+  const prev = getCurrentEffect();
+  setCurrentEffect(null);
+  try {
+    return fn();
+  } finally {
+    setCurrentEffect(prev);
+  }
 }
 
 /**

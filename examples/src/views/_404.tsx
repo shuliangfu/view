@@ -1,5 +1,5 @@
 /**
- * 404 视图：兜底页，居中提示 + 返回首页 CTA
+ * 404 视图（约定 _404.tsx，作为 path * 的 notFound 路由）：兜底页，居中提示 + 返回首页 CTA
  */
 
 import type { VNode } from "@dreamer/view";
@@ -9,7 +9,7 @@ export const meta = {
   description: "页面未找到",
 };
 
-export function NotFound(): VNode {
+export default function NotFound(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg backdrop-blur text-center dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-16">
       <p className="mb-2 text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -43,4 +43,3 @@ export function NotFound(): VNode {
     </section>
   );
 }
-export default NotFound;

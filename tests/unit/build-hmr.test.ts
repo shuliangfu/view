@@ -6,29 +6,29 @@ import { describe, expect, it } from "@dreamer/test";
 import { getRoutePathForChangedPath } from "../../src/cmd/build.ts";
 
 describe("getRoutePathForChangedPath", () => {
-  it('路径含 /routes/home 或 /routes/index 应返回 "/"', () => {
-    expect(getRoutePathForChangedPath("src/routes/home/index.tsx")).toBe("/");
-    expect(getRoutePathForChangedPath("examples/src/routes/home/index.tsx"))
+  it('路径含 /views/home 或 /views/index 应返回 "/"', () => {
+    expect(getRoutePathForChangedPath("src/views/home/index.tsx")).toBe("/");
+    expect(getRoutePathForChangedPath("examples/src/views/home/index.tsx"))
       .toBe("/");
-    expect(getRoutePathForChangedPath("/abs/routes/home/page.tsx")).toBe("/");
-    expect(getRoutePathForChangedPath("proj/routes/index.tsx")).toBe("/");
-    expect(getRoutePathForChangedPath("proj/routes/index/foo.tsx")).toBe("/");
+    expect(getRoutePathForChangedPath("/abs/views/home/page.tsx")).toBe("/");
+    expect(getRoutePathForChangedPath("proj/views/index.tsx")).toBe("/");
+    expect(getRoutePathForChangedPath("proj/views/index/foo.tsx")).toBe("/");
   });
 
-  it('路径含 /routes/{segment} 应返回 "/{segment}"', () => {
-    expect(getRoutePathForChangedPath("src/routes/signal/index.tsx")).toBe(
+  it('路径含 /views/{segment} 应返回 "/{segment}"', () => {
+    expect(getRoutePathForChangedPath("src/views/signal/index.tsx")).toBe(
       "/signal",
     );
-    expect(getRoutePathForChangedPath("src/routes/about.tsx")).toBe("/about");
-    expect(getRoutePathForChangedPath("src/routes/user/profile.tsx")).toBe(
+    expect(getRoutePathForChangedPath("src/views/about.tsx")).toBe("/about");
+    expect(getRoutePathForChangedPath("src/views/user/profile.tsx")).toBe(
       "/user",
     );
-    expect(getRoutePathForChangedPath("/proj/routes/docs/readme.tsx")).toBe(
+    expect(getRoutePathForChangedPath("/proj/views/docs/readme.tsx")).toBe(
       "/docs",
     );
   });
 
-  it("路径不含 /routes/ 应返回 undefined", () => {
+  it("路径不含 /views/ 应返回 undefined", () => {
     expect(getRoutePathForChangedPath("src/components/Button.tsx"))
       .toBeUndefined();
     expect(getRoutePathForChangedPath("dist/main.js")).toBeUndefined();
@@ -36,10 +36,10 @@ describe("getRoutePathForChangedPath", () => {
   });
 
   it("Windows 风格反斜杠应被归一化并正确解析", () => {
-    expect(getRoutePathForChangedPath("src\\routes\\home\\index.tsx")).toBe(
+    expect(getRoutePathForChangedPath("src\\views\\home\\index.tsx")).toBe(
       "/",
     );
-    expect(getRoutePathForChangedPath("src\\routes\\signal\\index.tsx")).toBe(
+    expect(getRoutePathForChangedPath("src\\views\\signal\\index.tsx")).toBe(
       "/signal",
     );
   });

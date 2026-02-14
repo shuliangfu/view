@@ -2,7 +2,7 @@
  * init 命令：按示例项目结构初始化新项目
  * 使用 @dreamer/runtime-adapter 做文件与路径操作，兼容 Deno / Bun。
  * 版本号通过 version.ts 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
- * 生成 routes/home.tsx、routes/about.tsx 及布局与路由，风格参考 view/examples。
+ * 生成 views 下约定特殊文件 _app.tsx、_layout.tsx、_loading.tsx、_404.tsx、_error.tsx（路由扫描自动屏蔽）与路由页 home/about，风格参考 view/examples。
  */
 
 import {
@@ -43,7 +43,7 @@ export async function main(
   await ensureDir(targetDir);
   await ensureDir(join(targetDir, "src"));
   await ensureDir(join(targetDir, "src", "router"));
-  await ensureDir(join(targetDir, "src", "routes"));
+  await ensureDir(join(targetDir, "src", "views"));
   await ensureDir(join(targetDir, "src", "stores"));
   await ensureDir(join(targetDir, "src", "hooks"));
   await ensureDir(join(targetDir, "src", "utils"));
@@ -69,7 +69,7 @@ const config = {
       host: "127.0.0.1",
       dev: {
         hmr: { enabled: true, path: "/__hmr" },
-        watch: { paths: ["./src"], ignore: ["node_modules", ".git", "dist"] },
+        watch: { paths: ["./src"], ignore: ["node_modules", ".git", "dist", "routers.tsx"] },
       },
     },
     prod: { port: 8787, host: "127.0.0.1" },
@@ -179,7 +179,7 @@ export {};
  */
 import { createRoot } from "@dreamer/view";
 import { createAppRouter } from "./router/router.ts";
-import { App } from "./routes/app.tsx";
+import { App } from "./views/_app.tsx";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 
 const container = document.getElementById("root");
@@ -193,27 +193,18 @@ if (container) {
   addFile("src/main.tsx");
 
   // ---------------------------------------------------------------------------
-  // src/routes/app.tsx（根组件：订阅路由 + Layout + RoutePage）
+  // src/views/_app.tsx（约定根组件，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const appTsx = `/**
- * 根组件：订阅路由，根据当前匹配渲染 Layout + 当前页（与 examples 一致：从 routers 导入 routes，使用 @dreamer/view/router 的 RoutePage）
+ * 根组件（约定 _app.tsx）：使用 router.getCurrentRouteSignal() 响应当前路由，渲染 Layout + 当前页
  */
-import { createEffect, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 import { RoutePage, type Router } from "@dreamer/view/router";
 import { routes } from "../router/routers.tsx";
-import { Layout } from "./layout.tsx";
+import { Layout } from "./_layout.tsx";
 
 export function App(props: { router: Router }): VNode {
-  const [match, setMatch] = createSignal(props.router.getCurrentRoute());
-  createEffect(() => {
-    setMatch(props.router.getCurrentRoute());
-    const unsub = props.router.subscribe(() =>
-      setMatch(props.router.getCurrentRoute())
-    );
-    return unsub;
-  });
-  const current = match();
+  const current = props.router.getCurrentRouteSignal()();
   if (!current) {
     return (
       <Layout routes={routes} currentPath="">
@@ -229,21 +220,25 @@ export function App(props: { router: Router }): VNode {
   if (typeof globalThis.document !== "undefined" && globalThis.document.title !== pageTitle) {
     globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
   }
+  const routePage = (
+    <RoutePage match={current} router={props.router} labels={{ errorTitle: "Load failed", retryText: "Retry", loadingText: "Loading…" }} />
+  );
+  if (current.inheritLayout === false) return routePage;
   return (
     <Layout routes={routes} currentPath={current.path}>
-      <RoutePage match={current} router={props.router} labels={{ errorTitle: "Load failed", retryText: "Retry", loadingText: "Loading…" }} />
+      {routePage}
     </Layout>
   );
 }
 `;
-  await writeTextFile(join(targetDir, "src", "routes", "app.tsx"), appTsx);
-  addFile("src/routes/app.tsx");
+  await writeTextFile(join(targetDir, "src", "views", "_app.tsx"), appTsx);
+  addFile("src/views/_app.tsx");
 
   // ---------------------------------------------------------------------------
-  // src/routes/layout.tsx（顶部导航 + 主题切换）
+  // src/views/_layout.tsx（约定布局，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const layoutTsx = `/**
- * 布局：顶部导航栏 + 主内容区，支持主题切换
+ * 布局（约定 _layout.tsx）：顶部导航栏 + 主内容区，支持主题切换
  */
 import type { VNode } from "@dreamer/view";
 import type { RouteConfig } from "@dreamer/view/router";
@@ -321,13 +316,105 @@ export function Layout(props: LayoutProps): VNode {
 }
 `;
   await writeTextFile(
-    join(targetDir, "src", "routes", "layout.tsx"),
+    join(targetDir, "src", "views", "_layout.tsx"),
     layoutTsx,
   );
-  addFile("src/routes/layout.tsx");
+  addFile("src/views/_layout.tsx");
 
   // ---------------------------------------------------------------------------
-  // src/routes/home.tsx（首页：Hero + 简介，美化）
+  // src/views/_loading.tsx（约定加载占位，路由扫描自动屏蔽）
+  // ---------------------------------------------------------------------------
+  const loadingTsx = `/**
+ * 路由懒加载占位（约定 _loading.tsx）
+ */
+import type { VNode } from "@dreamer/view";
+
+export function RouteLoading(): VNode {
+  return (
+    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
+      <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        加载中…
+      </p>
+    </section>
+  );
+}
+`;
+  await writeTextFile(
+    join(targetDir, "src", "views", "_loading.tsx"),
+    loadingTsx,
+  );
+  addFile("src/views/_loading.tsx");
+
+  // ---------------------------------------------------------------------------
+  // src/views/_404.tsx（约定 404 页，作为 path * 的 notFound 路由）
+  // ---------------------------------------------------------------------------
+  const notFoundTsxContent = `/**
+ * 404 页面（约定 _404.tsx）：作为 path * 的 notFound 路由
+ */
+import type { VNode } from "@dreamer/view";
+
+export const meta = {
+  title: "404",
+  description: "页面未找到",
+};
+
+export default function NotFound(): VNode {
+  return (
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
+      <p className="mt-2 text-slate-600 dark:text-slate-300">您访问的路径不存在。</p>
+      <a
+        href="/"
+        className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+      >
+        返回首页
+      </a>
+    </section>
+  );
+}
+`;
+
+  // ---------------------------------------------------------------------------
+  // src/views/_error.tsx（约定错误兜底，路由扫描自动屏蔽）
+  // ---------------------------------------------------------------------------
+  const errorTsx = `/**
+ * 错误兜底（约定 _error.tsx）：用于 ErrorBoundary 等
+ */
+import type { VNode } from "@dreamer/view";
+
+interface ErrorViewProps {
+  error?: unknown;
+  onRetry?: () => void;
+}
+
+export function ErrorView(props: ErrorViewProps): VNode {
+  const message = props.error instanceof Error ? props.error.message : String(props.error ?? "未知错误");
+  return (
+    <section className="rounded-2xl border border-red-200/80 bg-white p-12 shadow-xl text-center dark:border-red-800/80 dark:bg-slate-800/95">
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">加载失败</h2>
+      <p className="mt-2 text-slate-600 dark:text-slate-300 wrap-break-word">{message}</p>
+      {props.onRetry && (
+        <button type="button" onClick={() => props.onRetry?.()} className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+          重试
+        </button>
+      )}
+    </section>
+  );
+}
+`;
+  await writeTextFile(
+    join(targetDir, "src", "views", "_404.tsx"),
+    notFoundTsxContent,
+  );
+  addFile("src/views/_404.tsx");
+  await writeTextFile(
+    join(targetDir, "src", "views", "_error.tsx"),
+    errorTsx,
+  );
+  addFile("src/views/_error.tsx");
+
+  // ---------------------------------------------------------------------------
+  // src/views/home.tsx（首页：Hero + 简介，美化）
   // ---------------------------------------------------------------------------
   const homeTsx = `/**
  * 首页：欢迎与简介
@@ -346,8 +433,8 @@ export default function Home(): VNode {
         </h1>
         <p className="max-w-xl text-slate-600 dark:text-slate-300 leading-relaxed">
           这是一个由 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">view init</code> 生成的项目。
-          编辑 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/home.tsx</code> 和{" "}
-          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/routes/about.tsx</code> 开始开发。
+          编辑 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/views/home.tsx</code> 和{" "}
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/views/about.tsx</code> 开始开发。
         </p>
         <a
           href="/about"
@@ -361,11 +448,11 @@ export default function Home(): VNode {
   );
 }
 `;
-  await writeTextFile(join(targetDir, "src", "routes", "home.tsx"), homeTsx);
-  addFile("src/routes/home.tsx");
+  await writeTextFile(join(targetDir, "src", "views", "home.tsx"), homeTsx);
+  addFile("src/views/home.tsx");
 
   // ---------------------------------------------------------------------------
-  // src/routes/about.tsx（关于页，美化）
+  // src/views/about.tsx（关于页，美化）
   // ---------------------------------------------------------------------------
   const aboutTsx = `/**
  * 关于页
@@ -400,37 +487,8 @@ export default function About(): VNode {
   );
 }
 `;
-  await writeTextFile(join(targetDir, "src", "routes", "about.tsx"), aboutTsx);
-  addFile("src/routes/about.tsx");
-
-  // ---------------------------------------------------------------------------
-  // src/routes/not-found.tsx（404）
-  // ---------------------------------------------------------------------------
-  const notFoundTsx = `/**
- * 404 页面
- */
-import type { VNode } from "@dreamer/view";
-
-export default function NotFound(): VNode {
-  return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
-      <p className="mt-2 text-slate-600 dark:text-slate-300">您访问的路径不存在。</p>
-      <a
-        href="/"
-        className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
-      >
-        返回首页
-      </a>
-    </section>
-  );
-}
-`;
-  await writeTextFile(
-    join(targetDir, "src", "routes", "not-found.tsx"),
-    notFoundTsx,
-  );
-  addFile("src/routes/not-found.tsx");
+  await writeTextFile(join(targetDir, "src", "views", "about.tsx"), aboutTsx);
+  addFile("src/views/about.tsx");
 
   // ---------------------------------------------------------------------------
   // src/router/router.ts
@@ -496,22 +554,22 @@ export function createAppRouter(opts: {
   addFile("src/router/router.ts");
 
   // ---------------------------------------------------------------------------
-  // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/routes 自动重新生成，勿提交）
+  // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/views 自动重新生成，勿提交）
   // ---------------------------------------------------------------------------
   const routersTsx = `/**
  * 路由表（自动生成）：path → component，使用动态 import 实现按需加载
- * 请勿手动编辑；dev 时会根据 src/routes 目录自动重新生成
+ * 请勿手动编辑；dev 时会根据 src/views 目录自动重新生成
  */
 import type { RouteConfig } from "@dreamer/view/router";
 
 export const routes: RouteConfig[] = [
-  { path: "/", component: () => import("../routes/home.tsx"), meta: { title: "首页" } },
-  { path: "/about", component: () => import("../routes/about.tsx"), meta: { title: "关于" } },
+  { path: "/", component: () => import("../views/home.tsx"), meta: { title: "首页" } },
+  { path: "/about", component: () => import("../views/about.tsx"), meta: { title: "关于" } },
 ];
 
 export const notFoundRoute: RouteConfig = {
   path: "*",
-  component: () => import("../routes/not-found.tsx"),
+  component: () => import("../views/_404.tsx"),
   meta: { title: "404" },
 };
 `;

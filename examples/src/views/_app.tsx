@@ -1,35 +1,25 @@
 /**
- * @dreamer/view 多页面示例 — 根组件
+ * @dreamer/view 多页面示例 — 根组件（约定 _app.tsx，路由扫描自动屏蔽）
  *
- * 订阅 router 变化，根据当前路由渲染对应页面；Layout 提供顶部 Navbar。
+ * 使用 router.getCurrentRouteSignal() 响应当前路由，Layout 提供顶部 Navbar。
  * 链接直接写 href="/path"，由 router 拦截实现无刷新跳转。
- * 当前页由 @dreamer/view/router 导出的 RoutePage 渲染（懒加载 + 按 path 缓存）。
+ * 当前页由 RoutePage 渲染（懒加载 + 按 path 缓存）。
  */
 
 import type { VNode } from "@dreamer/view";
-import { createEffect, createSignal } from "@dreamer/view";
 import { RoutePage, type Router } from "@dreamer/view/router";
 import { routes } from "../router/routers.tsx";
-import { Layout } from "./layout.tsx";
+import { Layout } from "./_layout.tsx";
 
 interface AppProps {
   router: Router;
 }
 
-/** 根组件：订阅路由，渲染 Layout + 当前页 */
+/** 根组件：根据当前路由渲染 Layout + 当前页 */
 export function App(props: AppProps): VNode {
   const { router } = props;
-  const [match, setMatch] = createSignal(router.getCurrentRoute());
-
-  createEffect(() => {
-    setMatch(router.getCurrentRoute());
-    const unsub = router.subscribe(() => {
-      setMatch(router.getCurrentRoute());
-    });
-    return unsub;
-  });
-
-  const current = match();
+  const current = router.getCurrentRouteSignal()();
+  
   if (!current) {
     return (
       <Layout routes={routes} currentPath="">
@@ -46,17 +36,23 @@ export function App(props: AppProps): VNode {
     );
   }
 
+  const routePage = (
+    <RoutePage
+      match={current}
+      router={router}
+      labels={{
+        errorTitle: "加载页面失败",
+        retryText: "重试",
+        loadingText: "加载中…",
+      }}
+    />
+  );
+  if (current.inheritLayout === false) {
+    return routePage;
+  }
   return (
     <Layout routes={routes} currentPath={current.path}>
-      <RoutePage
-        match={current}
-        router={router}
-        labels={{
-          errorTitle: "加载页面失败",
-          retryText: "重试",
-          loadingText: "加载中…",
-        }}
-      />
+      {routePage}
     </Layout>
   );
 }

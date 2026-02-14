@@ -7,17 +7,17 @@
  * - `createRouter(options)`：创建路由器，返回 Router 实例；需调用 start() 后才会监听 popstate 与拦截链接
  * - 类型：`RouteGuardResult`、`RouteGuard`、`RouteGuardAfter`、`RouteConfig`、`RouteMatch`、`CreateRouterOptions`、`Router`
  *
- * **Router 方法：** getCurrentRoute、href、navigate、replace、back、forward、go、subscribe、start、stop
+ * **Router 方法：** getCurrentRoute、getCurrentRouteSignal、href、navigate、replace、back、forward、go、subscribe、start、stop
  *
  * @example
- * import { createRouter } from "jsr:@dreamer/view/router";
  * const router = createRouter({ routes: [{ path: "/", component: () => <Home /> }] });
  * router.start();
- * router.subscribe(() => setMatch(router.getCurrentRoute()));
+ * // 根组件中：const current = router.getCurrentRouteSignal()(); 即可随路由变化重渲染
  */
 
 import type { VNode } from "./types.ts";
 import { applyMetaToHead } from "./meta.ts";
+import { createSignal } from "./signal.ts";
 
 /**
  * 前置守卫返回值：false 取消导航，string 重定向到该路径，true/void 放行；支持 Promise。
@@ -63,6 +63,11 @@ function hasHistory(): boolean {
  */
 export type RouteComponentModule = { default: (match?: RouteMatch) => VNode };
 
+/** 布局组件模块：default 接收 { children } 包裹子内容 */
+export type LayoutComponentModule = {
+  default: (props: { children: VNode | VNode[] }) => VNode;
+};
+
 /**
  * 单条路由配置：path 支持动态参数 :param，可选 meta 供守卫或布局使用。
  * component 支持同步（返回 VNode）或懒加载（返回 Promise<{ default: (match?) => VNode }>）。
@@ -82,6 +87,21 @@ export interface RouteConfig {
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 路由元信息，如 title、requiresAuth，供守卫或布局读取 */
   meta?: Record<string, unknown>;
+  /**
+   * 是否继承父级 Layout；当前目录 _layout 中 export const inheritLayout = false 时不继承，支持不限层级的布局嵌套。
+   * 仅由 view-cli 根据 src/views 目录扫描生成。
+   */
+  inheritLayout?: boolean;
+  /**
+   * 子布局链（不含根）：按从外到内顺序，每项为 () => import("...")，用于嵌套 _layout 继承。
+   * 仅由 view-cli 根据 src/views 目录扫描生成。
+   */
+  layouts?: (() => Promise<LayoutComponentModule>)[];
+  /**
+   * 该路由所在目录下的 _loading.tsx 懒加载；作用域仅当前目录，子目录不继承。
+   * 仅由 view-cli 根据 src/views 目录扫描生成。
+   */
+  loading?: () => Promise<RouteComponentModule>;
 }
 
 /**
@@ -103,6 +123,12 @@ export interface RouteMatch {
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 该路由的 meta（若配置了） */
   meta?: Record<string, unknown>;
+  /** 是否继承父级 Layout（见 RouteConfig.inheritLayout） */
+  inheritLayout?: boolean;
+  /** 子布局链（见 RouteConfig.layouts） */
+  layouts?: (() => Promise<LayoutComponentModule>)[];
+  /** 当前目录 _loading 组件（见 RouteConfig.loading），作用域仅当前目录 */
+  loading?: () => Promise<RouteComponentModule>;
 }
 
 export interface CreateRouterOptions {
@@ -178,6 +204,11 @@ function getCurrentPathAndQuery(options: { basePath: string }): {
 export interface Router {
   /** 获取当前路由匹配结果，无匹配且未配置 notFound 时返回 null */
   getCurrentRoute(): RouteMatch | null;
+  /**
+   * 根据给定的 pathname + search（如 location.pathname / location.search）解析出 RouteMatch。
+   * 供 RoutePage 在 HMR 时用刚读到的 location 解析 match，避免用可能未更新的 getCurrentRoute()。
+   */
+  getMatchForLocation(pathname: string, search?: string): RouteMatch | null;
   /** 将 path 转为完整 href（basePath + path），用于 <a href> */
   href(path: string): string;
   /** 导航到 path（默认 pushState），会执行前置/后置守卫，返回 Promise */
@@ -190,6 +221,10 @@ export interface Router {
   forward(): void;
   /** 浏览器前进/后退步数 */
   go(delta: number): void;
+  /**
+   * 返回当前路由的响应式 getter：在组件中调用 getCurrentRouteSignal()() 即可随路由变化重渲染，无需手动 subscribe。
+   */
+  getCurrentRouteSignal(): () => RouteMatch | null;
   /** 订阅路由变化（navigate / 浏览器前进后退），返回取消订阅函数 */
   subscribe(callback: () => void): () => void;
   /** 启动：监听 popstate，可选拦截同源 <a> 点击 */
@@ -212,9 +247,7 @@ export interface Router {
  *   ],
  * });
  * router.start();
- * // 在 createRoot 中：const [match, setMatch] = createSignal(router.getCurrentRoute());
- * // router.subscribe(() => setMatch(router.getCurrentRoute()));
- * // 根组件根据 match() 渲染 match()?.component(match()!)
+ * // 根组件：const current = router.getCurrentRouteSignal()(); 根据 current 渲染 RoutePage 或 Layout
  */
 export function createRouter(options: CreateRouterOptions): Router {
   const {
@@ -271,6 +304,9 @@ export function createRouter(options: CreateRouterOptions): Router {
         fullPath: path + (search ? search : ""),
         component: r.component,
         meta: r.meta,
+        inheritLayout: r.inheritLayout,
+        layouts: r.layouts,
+        loading: r.loading,
       };
     }
     if (notFoundConfig) {
@@ -281,6 +317,9 @@ export function createRouter(options: CreateRouterOptions): Router {
         fullPath: path + (search ? search : ""),
         component: notFoundConfig.component,
         meta: notFoundConfig.meta,
+        inheritLayout: notFoundConfig.inheritLayout,
+        layouts: notFoundConfig.layouts,
+        loading: notFoundConfig.loading,
       };
     }
     return null;
@@ -291,7 +330,27 @@ export function createRouter(options: CreateRouterOptions): Router {
     return matchPath(path, search);
   }
 
+  const [currentRoute, setCurrentRoute] = createSignal<RouteMatch | null>(
+    getCurrentRoute(),
+  );
+
+  /** 根据传入的 pathname/search 解析 match（与 getCurrentRoute 逻辑一致，但用传入值而非读 location） */
+  function getMatchForLocation(
+    pathname: string,
+    search = "",
+  ): RouteMatch | null {
+    let path = (pathname || "/").replace(/\?.*$/, "").replace(/#.*$/, "") ||
+      "/";
+    const base = basePath.replace(/\/$/, "");
+    if (base && path.startsWith(base)) {
+      path = path.slice(base.length) || "/";
+    }
+    const searchNorm = (search || "").replace(/^\?/, "");
+    return matchPath(path, searchNorm ? "?" + searchNorm : "");
+  }
+
   function notify(): void {
+    setCurrentRoute(getCurrentRoute());
     subscribers.forEach((cb) => cb());
   }
 
@@ -459,6 +518,8 @@ export function createRouter(options: CreateRouterOptions): Router {
 
   return {
     getCurrentRoute,
+    getCurrentRouteSignal: () => currentRoute,
+    getMatchForLocation,
     href,
     navigate,
     replace,

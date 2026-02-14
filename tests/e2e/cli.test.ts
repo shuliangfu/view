@@ -79,13 +79,13 @@ describe("CLI：init", () => {
       const viewConfigPath = join(INIT_OUT_DIR, "view.config.ts");
       const denoJsonPath = join(INIT_OUT_DIR, "deno.json");
       const mainTsxPath = join(INIT_OUT_DIR, "src", "main.tsx");
-      const routesDir = join(INIT_OUT_DIR, "src", "routes");
+      const viewsDir = join(INIT_OUT_DIR, "src", "views");
       const routerDir = join(INIT_OUT_DIR, "src", "router");
 
       expect(existsSync(viewConfigPath)).toBe(true);
       expect(existsSync(denoJsonPath)).toBe(true);
       expect(existsSync(mainTsxPath)).toBe(true);
-      expect(existsSync(routesDir)).toBe(true);
+      expect(existsSync(viewsDir)).toBe(true);
       expect(existsSync(routerDir)).toBe(true);
 
       const viewConfigContent = await readTextFile(viewConfigPath);
