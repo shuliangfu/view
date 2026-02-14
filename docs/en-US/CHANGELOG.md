@@ -8,6 +8,37 @@ and this project adheres to
 
 ---
 
+## [1.0.3] - 2026-02-13
+
+### Added
+
+- **mount(container, fn, options?)** — Unified mount API for CSR, hybrid, and
+  full entry. `container` may be a CSS selector (e.g. `"#root"`) or an
+  `Element`. In hybrid/full: if container has child nodes → hydrate, else →
+  render. Options: `hydrate` (force hydrate or render), `noopIfNotFound` (return
+  empty Root when selector does not match). Exported from main,
+  `@dreamer/view/csr`, and `@dreamer/view/hybrid`. Reduces branching and mental
+  load for client entry.
+- **MountOptions** type — `hydrate?: boolean`, `noopIfNotFound?: boolean`.
+- **resolveMountContainer** (internal) — Resolve selector to Element; throw or
+  return null when not found per `noopIfNotFound`.
+- **forceRender** on Root — `Root` returned by `createRoot`/`render` (and from
+  `mount`) now exposes **forceRender()** to force one re-run of the root effect
+  and re-render the tree; for use with external routers or other non-reactive
+  state sources.
+
+### Changed
+
+- **createRoot / render:** After first append, `removeCloak(container)` is
+  called so that `data-view-cloak` is removed automatically; no need to remove
+  it in app code. Same behavior for hydrate path (already did removeCloak).
+- **Tests:** Added 6 unit tests for mount (Element, selector, noopIfNotFound,
+  throw when selector missing, hydrate path, render path). Total tests: 262.
+- **Docs:** README (en/zh) and TEST_REPORT (en/zh) updated with mount API,
+  MountOptions, and 262-test summary.
+
+---
+
 ## [1.0.2] - 2026-02-14
 
 ### Added

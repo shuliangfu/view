@@ -197,4 +197,5 @@ effect 重新执行一次，实现整树重算。`createRoot` / `render` 返回�
   判断」显著简化外部调用；再辅以文档与可选
   `getHydrationData`，外部框架接入成本会明显降低，且无需改动现有底层 API。
 - **外部 Router**：建议用 `createReactiveRoot` 并传入路由对应的 getter，由 View
-  响应式更新页面主体；无法接入 signal 时可用 `root.forceRender()` 在路由变更后手动触发根重跑。
+  响应式更新页面主体；无法接入 signal 时可用 `root.forceRender()`
+  在路由变更后手动触发根重跑。

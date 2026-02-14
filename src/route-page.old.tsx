@@ -15,7 +15,6 @@ import {
   KEY_HMR_CLEAR_ROUTE_CACHE,
 } from "./constants.ts";
 import { createEffect, untrack } from "./effect.ts";
-import { FragmentType } from "./dom/shared.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
 import { jsx as runtimeJsx } from "./jsx-runtime.ts";

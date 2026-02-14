@@ -13,11 +13,11 @@
 
 ## Test Results
 
-- **Total tests**: 256
-- **Passed**: 256
+- **Total tests**: 262
+- **Passed**: 262
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 56s
+- **Duration**: ~2m
 
 ### Test File Summary
 
@@ -39,7 +39,7 @@
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
 | unit/router.test.ts              | 14    | ✅ All passed |
-| unit/runtime.test.ts             | 20    | ✅ All passed |
+| unit/runtime.test.ts             | 26    | ✅ All passed |
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
@@ -154,16 +154,21 @@
 - ✅ beforeRoute: false cancels, redirect path, true continues
 - ✅ afterRoute, notFound and meta
 
-### 13. Runtime (unit/runtime.test.ts) - 20 tests
+### 13. Runtime (unit/runtime.test.ts) - 26 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children
 - ✅ generateHydrationScript: no args, data, scriptSrc
 - ✅ createRoot / render: mount, root signal dependency updates DOM, empty
   Fragment, container with existing children, set after unmount does not throw
-- ✅ **forceRender**: root.forceRender() triggers root effect re-run (e.g. external router integration)
+- ✅ **forceRender**: root.forceRender() triggers root effect re-run (e.g.
+  external router integration)
 - ✅ **createReactiveRoot**: initial mount and Root return; getState as signal
   triggers patch update (number and object state); unmount clears container;
   edge: set state after unmount does not throw and does not update DOM
+- ✅ **mount**: mount(container, fn) with Element same as render;
+  mount(selector, fn) resolves and mounts; noopIfNotFound returns empty Root;
+  missing selector without noopIfNotFound throws; has children → hydrate path
+  (remove cloak); no children → render path
 - ✅ hydrate: reuse children and activate, remove cloak
 
 ### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
@@ -216,12 +221,12 @@
 
 ## Test Coverage Analysis
 
-| Category          | Coverage                                                                                                                                                                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API methods       | createSignal, createEffect, createMemo, createRoot, **createReactiveRoot**, createReactive, createStore, createRouter, createResource, createContext, JSX, directives, Boundary, Runtime/SSR, scheduler, meta, proxy, compiler, stream covered by tests |
-| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, etc.                                                                                                                                                                 |
-| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                |
-| Integration & E2E | createRoot + events + signal, v-model, createReactive form, fine-grained update, CLI init/build/start, browser multi-page and navigation                                                                                                                |
+| Category          | Coverage                                                                                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API methods       | createSignal, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, directives, Boundary, Runtime/SSR, scheduler, meta, proxy, compiler, stream covered by tests |
+| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, etc.                                                                                                                                                                            |
+| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                           |
+| Integration & E2E | createRoot + events + signal, v-model, createReactive form, fine-grained update, CLI init/build/start, browser multi-page and navigation                                                                                                                           |
 
 ## Advantages
 
@@ -231,9 +236,9 @@
 
 ## Conclusion
 
-All 256 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 262 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, scheduler, router, resource, context, directives, runtime
-and SSR (createRoot, render, **createReactiveRoot**, hydrate, renderToString),
-store, reactive, boundary, meta, proxy, compiler, stream, build/HMR, CLI
-(init/build/start), and browser example flows, suitable for release and
-documentation.
+and SSR (createRoot, render, **mount**, **createReactiveRoot**, hydrate,
+renderToString), store, reactive, boundary, meta, proxy, compiler, stream,
+build/HMR, CLI (init/build/start), and browser example flows, suitable for
+release and documentation.

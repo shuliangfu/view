@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-256%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-262%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -202,9 +202,10 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
   - `createRoot` / `render` — mount reactive root; fine-grained DOM patch, no
     full tree replace.
   - `mount(container, fn, options?)` — unified entry: `container` may be a
-    selector (e.g. `"#root"`) or `Element`; if container has children, **hydrate**
-    (hybrid/full), else **render**. Options: `hydrate` (force), `noopIfNotFound`
-    (return empty Root when selector misses). Reduces branching and mental load.
+    selector (e.g. `"#root"`) or `Element`; if container has children,
+    **hydrate** (hybrid/full), else **render**. Options: `hydrate` (force),
+    `noopIfNotFound` (return empty Root when selector misses). Reduces branching
+    and mental load.
   - `createReactiveRoot` — mount a **state-driven** root: you pass
     `(container, getState, buildTree)`; when `getState()` changes (e.g. a
     signal), the tree is rebuilt and patched in place. Use for SPA shells where
@@ -446,7 +447,12 @@ its tracked signals change. After each route (or other external) change, call
 `Root` from `createRoot`/`render` includes `forceRender` for this case.
 
 ```ts
-import { createReactiveRoot, createRoot, createSignal, render } from "jsr:@dreamer/view";
+import {
+  createReactiveRoot,
+  createRoot,
+  createSignal,
+  render,
+} from "jsr:@dreamer/view";
 
 // Option A: route state is a signal → createReactiveRoot (auto patch on change)
 const [pageState, setPageState] = createSignal({ route: "home", id: null });
@@ -731,23 +737,23 @@ These match `deno.json` exports; import from the listed subpaths as needed.
 
 Core reactive and rendering API.
 
-| Export                                      | Description                                                                                 |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **createSignal**                            | Returns `[getter, setter]`; getter in effect registers dependency                           |
-| **createEffect**                            | Runs once, then re-runs when deps change (microtask); returns dispose                       |
-| **createMemo**                              | Cached derived getter                                                                       |
-| **onCleanup**                               | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                   |
-| **getCurrentEffect** / **setCurrentEffect** | Current effect (internal)                                                                   |
-| **isSignalGetter**                          | Detect signal getter                                                                        |
-| **createRoot**                              | Create reactive root; returns Root with **unmount** and **forceRender** (for external router integration) |
-| **createReactiveRoot**                      | Create state-driven root: `(container, getState, buildTree)`; state changes trigger patch   |
-| **render**                                  | Mount root: `render(() => <App />, container)`                                              |
+| Export                                      | Description                                                                                                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **createSignal**                            | Returns `[getter, setter]`; getter in effect registers dependency                                                                                           |
+| **createEffect**                            | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                       |
+| **createMemo**                              | Cached derived getter                                                                                                                                       |
+| **onCleanup**                               | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                   |
+| **getCurrentEffect** / **setCurrentEffect** | Current effect (internal)                                                                                                                                   |
+| **isSignalGetter**                          | Detect signal getter                                                                                                                                        |
+| **createRoot**                              | Create reactive root; returns Root with **unmount** and **forceRender** (for external router integration)                                                   |
+| **createReactiveRoot**                      | Create state-driven root: `(container, getState, buildTree)`; state changes trigger patch                                                                   |
+| **render**                                  | Mount root: `render(() => <App />, container)`                                                                                                              |
 | **mount**                                   | Unified mount: `mount(container, fn, options?)`; container = selector or Element; has children → hydrate, else render; options: `hydrate`, `noopIfNotFound` |
-| **renderToString**                          | SSR: root to HTML string                                                                    |
-| **hydrate**                                 | Activate server-rendered HTML in the browser                                                |
-| **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                 |
-| **Types**                                   | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions |
-| **isDOMEnvironment**                        | Whether in DOM environment                                                                  |
+| **renderToString**                          | SSR: root to HTML string                                                                                                                                    |
+| **hydrate**                                 | Activate server-rendered HTML in the browser                                                                                                                |
+| **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                                                                                 |
+| **Types**                                   | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions                                                   |
+| **isDOMEnvironment**                        | Whether in DOM environment                                                                                                                                  |
 
 ### CSR entry `jsr:@dreamer/view/csr`
 
@@ -903,23 +909,26 @@ gitignored and should not be committed.
 
 ## 📚 API quick reference
 
-| Area       | API                                                                                                                                         | Import                        |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Area       | API                                                                                                                                                | Import                        |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
-| Store      | createStore, withGetters, withActions                                                                                                       | `jsr:@dreamer/view/store`     |
-| Reactive   | createReactive                                                                                                                              | `jsr:@dreamer/view/reactive`  |
-| Context    | createContext                                                                                                                               | `jsr:@dreamer/view/context`   |
-| Resource   | createResource                                                                                                                              | `jsr:@dreamer/view/resource`  |
-| Router     | createRouter                                                                                                                                | `jsr:@dreamer/view/router`    |
-| Boundary   | Suspense, ErrorBoundary                                                                                                                     | `jsr:@dreamer/view/boundary`  |
-| Directives | registerDirective, hasDirective, getDirective, …                                                                                            | `jsr:@dreamer/view/directive` |
-| Stream     | renderToStream                                                                                                                              | `jsr:@dreamer/view/stream`    |
+| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`     |
+| Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`  |
+| Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`   |
+| Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`  |
+| Router     | createRouter                                                                                                                                       | `jsr:@dreamer/view/router`    |
+| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`  |
+| Directives | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive` |
+| Stream     | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`    |
 
 **Core:** createSignal returns `[getter, setter]`; createEffect runs once then
 re-runs when deps change (microtask); createMemo returns cached getter.
-**Rendering:** createRoot/render mount root; **mount(container, fn, options?)** accepts selector or Element and auto hydrate/render (has children → hydrate); createReactiveRoot for state-driven roots; renderToString for SSR; hydrate + generateHydrationScript for hybrid.
-**Directives:** vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak (camelCase in
-JSX). **Types:** VNode, Root, SignalGetter, SignalSetter, EffectDispose.
+**Rendering:** createRoot/render mount root; **mount(container, fn, options?)**
+accepts selector or Element and auto hydrate/render (has children → hydrate);
+createReactiveRoot for state-driven roots; renderToString for SSR; hydrate +
+generateHydrationScript for hybrid. **Directives:** vIf, vElse, vElseIf, vFor,
+vShow, vOnce, vCloak (camelCase in JSX). **Types:** VNode, Root, SignalGetter,
+SignalSetter, EffectDispose.
 
 More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 [docs/en-US](./docs/en-US/) (English).
@@ -928,9 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.2** (2026-02-14) — Added
-`createReactiveRoot(container, getState, buildTree)` for state-driven roots with
-in-place patch; tests and docs updated. See
+**v1.0.3** (2026-02-13) — Added **mount(container, fn, options?)** (selector or
+Element; hydrate/render by children), **MountOptions**, **Root.forceRender()**;
+createRoot/render auto-remove `data-view-cloak`. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
@@ -940,8 +949,8 @@ in-place patch; tests and docs updated. See
 | Metric      | Value      |
 | ----------- | ---------- |
 | Test date   | 2026-02-13 |
-| Total tests | 256        |
-| Passed      | 256 ✅     |
+| Total tests | 262        |
+| Passed      | 262 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
 | Duration    | ~1m 35s    |

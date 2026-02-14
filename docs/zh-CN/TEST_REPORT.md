@@ -13,11 +13,11 @@
 
 ## 测试结果
 
-- **总测试数**：256
-- **通过**：256
+- **总测试数**：262
+- **通过**：262
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 56 秒
+- **执行时间**：约 2 分钟
 
 ### 测试文件统计
 
@@ -39,7 +39,7 @@
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
 | unit/router.test.ts              | 14     | ✅ 全部通过 |
-| unit/runtime.test.ts             | 20     | ✅ 全部通过 |
+| unit/runtime.test.ts             | 26     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
@@ -142,7 +142,7 @@
 - ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
 - ✅ afterRoute、notFound 与 meta
 
-### 13. Runtime (unit/runtime.test.ts) - 20 tests
+### 13. Runtime (unit/runtime.test.ts) - 26 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点
 - ✅ generateHydrationScript：无参/传入 data/scriptSrc
@@ -152,6 +152,10 @@
 - ✅ **createReactiveRoot**：初始挂载与 Root 返回值；getState 为 signal
   时数字/对象 状态变更后 patch 更新 DOM；unmount 后容器清空；边界：unmount 后再
   set state 不抛错且不更新 DOM
+- ✅ **mount**：mount(container, fn) 传入 Element 与 render
+  一致；mount(selector, fn) 选择器解析并挂载；noopIfNotFound 时查不到返回空
+  Root；未设 noopIfNotFound 时查不到抛错；有子节点走 hydrate 路径（移除
+  cloak）；无子节点走 render 路径
 - ✅ hydrate：复用子节点并激活、移除 cloak
 
 ### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
@@ -200,12 +204,12 @@
 
 ## 测试覆盖分析
 
-| 类别       | 覆盖说明                                                                                                                                                                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 接口方法   | createSignal、createEffect、createMemo、createRoot、**createReactiveRoot**、createReactive、createStore、createRouter、createResource、createContext、JSX、指令、Boundary、Runtime/SSR、scheduler、meta、proxy、compiler、stream 等均有用例 |
-| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空等                                                                                                                                                                     |
-| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                    |
-| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、CLI init/build/start、浏览器多页与导航                                                                                                                                |
+| 类别       | 覆盖说明                                                                                                                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 接口方法   | createSignal、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、指令、Boundary、Runtime/SSR、scheduler、meta、proxy、compiler、stream 等均有用例 |
+| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空等                                                                                                                                                                                |
+| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                               |
+| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、CLI init/build/start、浏览器多页与导航                                                                                                                                           |
 
 ## 优点
 
@@ -215,6 +219,6 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 256 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 262 个用例，全部通过，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
-SSR（createRoot、render、**createReactiveRoot**、hydrate、renderToString）、Store、Reactive、Boundary、meta、proxy、compiler、stream、build/HMR、CLI（init/build/start）及浏览器示例流程，满足发布与文档展示需求。
+SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString）、Store、Reactive、Boundary、meta、proxy、compiler、stream、build/HMR、CLI（init/build/start）及浏览器示例流程，满足发布与文档展示需求。
