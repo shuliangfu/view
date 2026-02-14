@@ -438,6 +438,7 @@ import type { VNode } from "@dreamer/view";
 
 export default function Home(): VNode {
   const [count, setCount] = createSignal(0);
+
   return (
     <div className="space-y-10">
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">

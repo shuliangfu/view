@@ -7,6 +7,21 @@
 
 ---
 
+## [1.0.4] - 2026-02-14
+
+### 变更
+
+- **Init 模板 (home.tsx)：** 计数器使用模块顶层 `createSignal` 与 `{count}`
+  展示（与示例项目一致），根 effect 不订阅 count，计数正常。
+- **组件返回函数：** 组件返回 `() => VNode` 时，该槽位在独立 effect
+  中渲染（expandVNode + createElement），组件体只执行一次，组件内 state（如
+  createSignal）得以保持。
+- **响应式 v-if：** 条件请用 getter，例如 `vIf={() => count() <= 2}`，仅 v-if 的
+  effect 订阅 signal；使用 `vIf={count() <= 2}`
+  会让根订阅并在更新时可能重置组件状态。
+
+---
+
 ## [1.0.3] - 2026-02-13
 
 ### 新增

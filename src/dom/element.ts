@@ -478,8 +478,18 @@ export function createElement(
     const binding = getContextBinding(type, props);
     if (binding) pushContext(binding.id, binding.value);
     try {
-      const result: VNode | VNode[] | null = type(props);
+      const result: VNode | VNode[] | (() => VNode) | null = type(props);
       if (result == null) return doc.createTextNode("");
+      if (typeof result === "function") {
+        const placeholder = createDynamicSpan(doc);
+        appendDynamicChild(
+          placeholder,
+          result as () => unknown,
+          parentNamespace,
+          ifContext,
+        );
+        return placeholder;
+      }
       const nodes = Array.isArray(result) ? result : [result];
       if (nodes.length === 0) return doc.createTextNode("");
       if (isErrorBoundary(type)) {
@@ -713,9 +723,13 @@ export function expandVNode(vnode: VNode): ExpandedRoot {
     const binding = getContextBinding(type, props);
     if (binding) pushContext(binding.id, binding.value);
     try {
-      const result: VNode | VNode[] | null = type(props);
+      const result: VNode | VNode[] | (() => VNode) | null = type(props);
       if (result == null) {
         return createTextVNode("");
+      }
+      // 组件返回函数时视为「渲染 thunk」：该槽位作为动态子节点在独立 effect 中运行，组件体只执行一次，signal 状态得以保持
+      if (typeof result === "function") {
+        return [result as () => unknown];
       }
       const nodes = Array.isArray(result) ? result : [result];
       if (nodes.length === 0) {
