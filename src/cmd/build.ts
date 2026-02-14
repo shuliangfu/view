@@ -15,6 +15,7 @@ import {
   join,
   mkdir,
   readFile,
+  relative,
   resolve,
   setEnv,
   writeFile,
@@ -478,6 +479,16 @@ export async function run(): Promise<number> {
   const builder = new BuilderClient(clientConfig);
   console.log("[view] Building...");
   const result = await builder.build("prod");
+  if (result.outputFiles?.length) {
+    const sorted = [...result.outputFiles].sort();
+    for (const absPath of sorted) {
+      const relPath = relative(root, absPath);
+      const displayPath = relPath.startsWith("..")
+        ? `${outDir}/${basename(absPath)}`
+        : relPath;
+      console.log(displayPath);
+    }
+  }
   console.log(
     `[view] Build complete in ${result.duration}ms → ${outDir}`,
   );
