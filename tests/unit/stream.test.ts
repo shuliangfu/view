@@ -42,4 +42,60 @@ describe("renderToStream", () => {
     const html = [...gen].join("");
     expect(html).toContain("hello");
   });
+
+  /** 流式 SSR 下子节点为普通函数时，应渲染函数返回值而非函数源码（与 renderToString 一致） */
+  it("子节点为普通函数时流式输出应渲染返回值而非函数源码", () => {
+    const vnode: VNode = {
+      type: "div",
+      props: {
+        children: () =>
+          ({
+            type: "span",
+            props: {},
+            children: [{
+              type: "#text",
+              props: { nodeValue: "stream-fn" },
+              key: null,
+            }],
+          }) as VNode,
+      },
+      key: null,
+    };
+    const gen = renderToStream(() => vnode);
+    const html = [...gen].join("");
+    expect(html).toContain("stream-fn");
+    expect(html).toContain("<span>");
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 流式 SSR 下带 key 子节点输出 data-view-keyed */
+  it("带 key 子节点时流式输出含 data-view-keyed", () => {
+    const vnode: VNode = {
+      type: "div",
+      props: {
+        children: [{
+          type: "span",
+          props: {},
+          key: "k1",
+          children: [{ type: "#text", props: { nodeValue: "x" }, key: null }],
+        }],
+      },
+      key: null,
+    };
+    const html = [...renderToStream(() => vnode)].join("");
+    expect(html).toContain("data-view-keyed");
+    expect(html).toContain('data-key="k1"');
+    expect(html).toContain("x");
+  });
+
+  /** 流式 SSR 下 void 元素无闭合标签 */
+  it("void 元素流式输出无闭合标签", () => {
+    const html = [...renderToStream(() => ({
+      type: "br",
+      props: {},
+      key: null,
+    } as VNode))].join("");
+    expect(html).toMatch(/<br[\s>]/);
+    expect(html).not.toContain("</br>");
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

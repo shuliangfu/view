@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-262%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-290%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -937,9 +937,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.7** (2026-02-13) — Fixed: appendDynamicChild unkeyed path uses reconcile
-so controlled inputs in dynamic getters keep focus; patchNode handles Fragment,
-component, and ContextScope so context/Provider updates apply. See
+**v1.0.8** (2026-02-13) — Fixed: SSR no longer outputs JS function source as
+HTML (plain function children are invoked in normalizeChildrenForSSR); input
+keeps focus when getter returns single Fragment (Fragment expanded in
+appendDynamicChild so reconcile matches DOM slots). Added tests for SSR branches
+and Fragment input focus (290 tests). See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
@@ -949,11 +951,11 @@ component, and ContextScope so context/Provider updates apply. See
 | Metric      | Value      |
 | ----------- | ---------- |
 | Test date   | 2026-02-13 |
-| Total tests | 262        |
-| Passed      | 262 ✅     |
+| Total tests | 290        |
+| Passed      | 290 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
-| Duration    | ~1m 35s    |
+| Duration    | ~1m 37s    |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 

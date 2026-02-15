@@ -7,6 +7,26 @@
 
 ---
 
+## [1.0.8] - 2026-02-13
+
+### 修复
+
+- **SSR：子节点为普通函数。** 在 `normalizeChildrenForSSR`（stringify.ts）中，
+  当子节点为普通函数（非 signal getter）时改为先执行再对返回值做规范化，不再
+  直接字符串化。修复了 hybrid/SSR 首屏把 JS 函数源码当 HTML 输出的问题。
+- **getter 返回单个 Fragment 时 input 不丢焦点。** 在 `appendDynamicChild`
+  （element.ts）中，当规范化后的动态子节点仅有一项且为 Fragment 时，将该
+  Fragment 展开为多项再参与 reconcile，使 lastItems 与 DOM 槽位一致，不再误删 /
+  替换含 input 的节点，输入框保持焦点。
+
+### 新增
+
+- **测试：** 扩展 renderToString / renderToStream 的 SSR 分支与边界用例；集成
+  测试：getter 返回 Fragment 内 input 在 signal 更新后仍为同一 DOM 节点（不丢
+  焦点）。测试报告与 README 已更新为 290 条、约 1m37s。
+
+---
+
 ## [1.0.7] - 2026-02-13
 
 ### 修复

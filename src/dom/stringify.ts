@@ -64,6 +64,9 @@ function normalizeChildrenForSSR(children: unknown): VNode[] {
   if (isSignalGetter(children)) {
     return normalizeChildrenForSSR((children as () => unknown)());
   }
+  if (typeof children === "function") {
+    return normalizeChildrenForSSR((children as () => unknown)());
+  }
   if (Array.isArray(children)) {
     const out: VNode[] = [];
     for (const c of children) {
