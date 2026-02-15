@@ -7,6 +7,22 @@
 
 ---
 
+## [1.0.11] - 2026-02-15
+
+### 修复
+
+- **子节点：** JSX 子节点中的布尔值 `false` 和空字符串 `""`
+  此前会被渲染成文本（"false" 或空文本节点），现已视为空并跳过，不再输出 DOM。
+
+### 新增
+
+- **isEmptyChild(value)：** `dom/shared.ts` 中的辅助函数；对
+  `null`、`undefined`、`false`、`""` 返回 true，供客户端
+  `normalizeChildren`（element.ts）与 SSR
+  `normalizeChildrenForSSR`（stringify.ts）统一过滤，不再转为文本节点。
+
+---
+
 ## [1.0.10] - 2026-02-15
 
 ### 变更

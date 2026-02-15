@@ -40,6 +40,7 @@ import type { IfContext } from "./shared.ts";
 import {
   createDynamicSpan,
   createTextVNode,
+  isEmptyChild,
   isFragment as checkFragment,
   isVNodeLike,
 } from "./shared.ts";
@@ -124,7 +125,7 @@ function resolveNamespace(
  * @returns 规范化后的子项数组（VNode 或 getter）
  */
 export function normalizeChildren(children: unknown): ChildItem[] {
-  if (children == null) return [];
+  if (isEmptyChild(children)) return [];
   if (isSignalGetter(children)) {
     return [children as () => unknown];
   }

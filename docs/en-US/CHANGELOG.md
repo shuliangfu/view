@@ -8,6 +8,23 @@ and this project adheres to
 
 ---
 
+## [1.0.11] - 2026-02-15
+
+### Fixed
+
+- **Child nodes:** Boolean `false` and empty string `""` in JSX children were
+  rendered as text ("false" or empty DOM text). They are now treated as empty
+  and skipped (no DOM output) in both client and SSR.
+
+### Added
+
+- **isEmptyChild(value):** Helper in `dom/shared.ts`; returns true for `null`,
+  `undefined`, `false`, and `""`. Used by `normalizeChildren` (element.ts) and
+  `normalizeChildrenForSSR` (stringify.ts) so these values are not turned into
+  text nodes.
+
+---
+
 ## [1.0.10] - 2026-02-15
 
 ### Changed

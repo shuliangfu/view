@@ -23,7 +23,12 @@ import {
 } from "../directive.ts";
 import { getContextBinding, popContext, pushContext } from "../context.ts";
 import type { IfContext, SSROptions } from "./shared.ts";
-import { createTextVNode, isFragment, isVNodeLike } from "./shared.ts";
+import {
+  createTextVNode,
+  isEmptyChild,
+  isFragment,
+  isVNodeLike,
+} from "./shared.ts";
 
 /** 自闭合标签，不生成闭合标签 */
 const voidElements = new Set([
@@ -60,7 +65,7 @@ function escapeAttr(s: string): string {
 
 /** SSR 专用：将 children 规范化为 VNode 数组，getter 会调用一次取当前值；单次遍历收集减少 flatMap 中间数组 */
 function normalizeChildrenForSSR(children: unknown): VNode[] {
-  if (children == null) return [];
+  if (isEmptyChild(children)) return [];
   if (isSignalGetter(children)) {
     return normalizeChildrenForSSR((children as () => unknown)());
   }

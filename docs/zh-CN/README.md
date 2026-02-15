@@ -917,8 +917,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.10**（2026-02-15）— 变更：将 `@dreamer/esbuild` 升级至 `^1.0.24`（Windows
-CI 解析器修复）。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.11**（2026-02-15）— 修复：JSX 子节点中的 `false`、`""` 不再参与渲染；新增
+`dom/shared.ts` 中的 `isEmptyChild(value)`。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
