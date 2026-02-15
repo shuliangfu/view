@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.0.7] - 2026-02-13
+
+### Fixed
+
+- **appendDynamicChild (unkeyed):** Uses reconcile with `lastItems` instead of
+  full `replaceChildren` on every getter run. Controlled inputs (e.g.
+  `value={input()}`) inside dynamic getters no longer lose focus when typing.
+- **patchNode:** Fragment-vs-Fragment now reconciles children on the parent.
+  Component (function type) nodes are replaced so they re-run and read latest
+  context/signals. ContextScope nodes are replaced so Provider value updates
+  (e.g. theme switch) correctly update consumer DOM.
+
+---
+
 ## [1.0.6] - 2026-02-13
 
 ### Fixed
