@@ -5,7 +5,7 @@
 | Item            | Description                                        |
 | --------------- | -------------------------------------------------- |
 | Package         | @dreamer/view                                      |
-| Version         | 1.0.0                                              |
+| Version         | 1.0.8                                              |
 | Test framework  | @dreamer/test ^1.0.5                               |
 | Test date       | 2026-02-13                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E) |
@@ -13,11 +13,11 @@
 
 ## Test Results
 
-- **Total tests**: 262
-- **Passed**: 262
+- **Total tests**: 290
+- **Passed**: 290
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~2m
+- **Duration**: ~1m 37s
 
 ### Test File Summary
 
@@ -25,7 +25,7 @@
 | -------------------------------- | ----- | ------------- |
 | e2e/cli.test.ts                  | 6     | ✅ All passed |
 | e2e/view-example-browser.test.ts | 51    | ✅ All passed |
-| integration/integration.test.ts  | 11    | ✅ All passed |
+| integration/integration.test.ts  | 12    | ✅ All passed |
 | unit/boundary.test.ts            | 13    | ✅ All passed |
 | unit/build-hmr.test.ts           | 5     | ✅ All passed |
 | unit/compiler.test.ts            | 7     | ✅ All passed |
@@ -39,12 +39,12 @@
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
 | unit/router.test.ts              | 14    | ✅ All passed |
-| unit/runtime.test.ts             | 26    | ✅ All passed |
+| unit/runtime.test.ts             | 50    | ✅ All passed |
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
 | unit/store.test.ts               | 14    | ✅ All passed |
-| unit/stream.test.ts              | 4     | ✅ All passed |
+| unit/stream.test.ts              | 7     | ✅ All passed |
 
 ## Feature Test Details
 
@@ -109,7 +109,7 @@
 - ✅ createMemo: non-function throws, getter and cache, recompute on dependency
   change, read in effect, undefined/null return edge
 
-### 7. Integration (integration/integration.test.ts) - 11 tests
+### 7. Integration (integration/integration.test.ts) - 12 tests
 
 - ✅ createRoot + event + signal: button onClick updates signal, DOM updates
   with signal
@@ -119,7 +119,8 @@
 - ✅ createReactive form: vModel binding, input updates model, multi-field and
   model sync
 - ✅ Fine-grained update: patch without full tree replace, DOM node identity
-  preserved, input not re-mounted
+  preserved, input not re-mounted; **getter returning Fragment**: input inside
+  Fragment remains same DOM node after signal update (no focus loss)
 
 ### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
 
@@ -154,9 +155,14 @@
 - ✅ beforeRoute: false cancels, redirect path, true continues
 - ✅ afterRoute, notFound and meta
 
-### 13. Runtime (unit/runtime.test.ts) - 26 tests
+### 13. Runtime (unit/runtime.test.ts) - 50 tests
 
-- ✅ renderToString: root HTML, Fragment and multiple children
+- ✅ renderToString: root HTML, Fragment and multiple children; **SSR branch
+  coverage**: null/undefined children, signal getter as child, plain function as
+  child (no function source output), array with function, function returning
+  null/array/Fragment, number/string/escape text, keyed children, void elements,
+  htmlFor/style/vCloak, options, root null throws, ErrorBoundary fallback;
+  **Fragment root** with function child
 - ✅ generateHydrationScript: no args, data, scriptSrc
 - ✅ createRoot / render: mount, root signal dependency updates DOM, empty
   Fragment, container with existing children, set after unmount does not throw
@@ -169,7 +175,8 @@
   mount(selector, fn) resolves and mounts; noopIfNotFound returns empty Root;
   missing selector without noopIfNotFound throws; has children → hydrate path
   (remove cloak); no children → render path
-- ✅ hydrate: reuse children and activate, remove cloak
+- ✅ hydrate: reuse children and activate, remove cloak; state change after
+  hydrate uses patch (same DOM reference for input)
 
 ### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
 
@@ -197,10 +204,11 @@
 - ✅ getters derived and state update, getters return undefined, action throw
   edge
 
-### 18. Stream (unit/stream.test.ts) - 4 tests
+### 18. Stream (unit/stream.test.ts) - 7 tests
 
 - ✅ renderToStream: returns generator; simple div yields HTML; text children
-  escaped
+  escaped; **plain function as child** renders return value (no source code);
+  keyed children output data-view-keyed; void elements no closing tag
 
 ### 19. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
@@ -236,9 +244,10 @@
 
 ## Conclusion
 
-All 262 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 290 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, scheduler, router, resource, context, directives, runtime
 and SSR (createRoot, render, **mount**, **createReactiveRoot**, hydrate,
-renderToString), store, reactive, boundary, meta, proxy, compiler, stream,
-build/HMR, CLI (init/build/start), and browser example flows, suitable for
-release and documentation.
+renderToString with full branch coverage, renderToStream), store, reactive,
+boundary, meta, proxy, compiler, stream, build/HMR, CLI (init/build/start),
+browser example flows, and **integration**: getter-returning-Fragment input
+focus preservation, suitable for release and documentation.

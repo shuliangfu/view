@@ -7,6 +7,7 @@ import { describe, expect, it } from "@dreamer/test";
 import { createRoot, createSignal } from "@dreamer/view";
 import { createReactive } from "@dreamer/view/reactive";
 import type { VNode } from "@dreamer/view";
+import { FragmentType } from "../../src/dom/shared.ts";
 
 function text(s: string): VNode {
   return { type: "#text", props: { nodeValue: s }, children: [] };
@@ -508,6 +509,90 @@ describe("集成：细粒度更新（patch 非整树替换）", () => {
         '[data-testid="focusable"]',
       );
       expect(inputStillSame).toBe(input);
+      root.unmount();
+    },
+    { sanitizeOps: false, sanitizeResources: false },
+  );
+
+  /**
+   * 验证：动态 getter 返回 Fragment（如 () => ( <> ... <input /> ... </> )）时，
+   * signal 更新后 input 仍为同一 DOM 节点，不因 reconcile 误删/重建而丢失焦点。
+   * 对应 appendDynamicChild 内对单 Fragment 展开为 children 的修复。
+   */
+  it(
+    "getter 返回 Fragment 内 input 在 signal 更新后仍为同一 DOM 节点（表单不丢焦点）",
+    async () => {
+      const container = document.createElement("div");
+      const [getCount, setCount] = createSignal(0);
+      const root = createRoot(
+        () =>
+          ({
+            type: "div",
+            props: {},
+            children: [
+              () =>
+                ({
+                  type: FragmentType,
+                  props: {
+                    children: [
+                      {
+                        type: "div",
+                        props: {},
+                        children: [{
+                          type: "input",
+                          props: {
+                            type: "text",
+                            "data-testid": "focus-input",
+                          },
+                          children: [],
+                        }],
+                      },
+                      {
+                        type: "div",
+                        props: {},
+                        children: [{
+                          type: "button",
+                          props: {
+                            type: "button",
+                            onClick: () => setCount(getCount() + 1),
+                          },
+                          children: [text("+1")],
+                        }],
+                      },
+                      {
+                        type: "span",
+                        props: { "data-testid": "count" },
+                        children: [text(String(getCount()))],
+                      },
+                    ],
+                  },
+                  children: [],
+                }) as VNode,
+            ],
+          }) as unknown as VNode,
+        container,
+      );
+
+      await Promise.resolve();
+      await Promise.resolve();
+      const inputRef = container.querySelector(
+        '[data-testid="focus-input"]',
+      ) as HTMLInputElement;
+      const countSpan = container.querySelector('[data-testid="count"]');
+      expect(inputRef).not.toBeNull();
+      expect(countSpan?.textContent).toBe("0");
+
+      inputRef.focus();
+      (container.querySelector("button") as HTMLButtonElement).click();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(countSpan?.textContent).toBe("1");
+      expect(container.contains(inputRef)).toBe(true);
+      const inputStillSame = container.querySelector(
+        '[data-testid="focus-input"]',
+      );
+      expect(inputStillSame).toBe(inputRef);
+
       root.unmount();
     },
     { sanitizeOps: false, sanitizeResources: false },

@@ -221,7 +221,17 @@ export function appendDynamicChild(
 
   const dispose = createEffect(() => {
     const value = getter();
-    const items = normalizeChildren(value);
+    let items = normalizeChildren(value);
+    // getter 返回单个 Fragment（如 () => ( <> ... </> )）时展开为其 children，使 lastItems/DOM 槽位一致，避免 reconcile 误删节点导致 input 失焦
+    if (
+      items.length === 1 &&
+      !isSignalGetter(items[0]) &&
+      typeof items[0] !== "function" &&
+      checkFragment(items[0] as VNode)
+    ) {
+      const frag = items[0] as VNode;
+      items = normalizeChildren(frag.props?.children ?? frag.children ?? []);
+    }
     const ctx = ifContext ?? { lastVIf: true };
     if (items.length > 0 && hasAnyKey(items)) {
       reconcileKeyedChildren(

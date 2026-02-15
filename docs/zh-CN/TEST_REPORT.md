@@ -5,7 +5,7 @@
 | 项目     | 说明                                         |
 | -------- | -------------------------------------------- |
 | 测试包   | @dreamer/view                                |
-| 版本     | 1.0.0                                        |
+| 版本     | 1.0.8                                        |
 | 测试框架 | @dreamer/test ^1.0.5                         |
 | 测试时间 | 2026-02-13                                   |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E） |
@@ -13,11 +13,11 @@
 
 ## 测试结果
 
-- **总测试数**：262
-- **通过**：262
+- **总测试数**：290
+- **通过**：290
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 2 分钟
+- **执行时间**：约 1 分 37 秒
 
 ### 测试文件统计
 
@@ -25,7 +25,7 @@
 | -------------------------------- | ------ | ----------- |
 | e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
 | e2e/view-example-browser.test.ts | 51     | ✅ 全部通过 |
-| integration/integration.test.ts  | 11     | ✅ 全部通过 |
+| integration/integration.test.ts  | 12     | ✅ 全部通过 |
 | unit/boundary.test.ts            | 13     | ✅ 全部通过 |
 | unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
 | unit/compiler.test.ts            | 7      | ✅ 全部通过 |
@@ -39,12 +39,12 @@
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
 | unit/router.test.ts              | 14     | ✅ 全部通过 |
-| unit/runtime.test.ts             | 26     | ✅ 全部通过 |
+| unit/runtime.test.ts             | 50     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
 | unit/store.test.ts               | 14     | ✅ 全部通过 |
-| unit/stream.test.ts              | 4      | ✅ 全部通过 |
+| unit/stream.test.ts              | 7      | ✅ 全部通过 |
 
 ## 功能测试详情
 
@@ -102,7 +102,7 @@
 - ✅ createMemo：非函数抛错、getter 与缓存、依赖变更重算、effect 中读取
   memo、返回 undefined/null 边界
 
-### 7. 集成 (integration/integration.test.ts) - 11 tests
+### 7. 集成 (integration/integration.test.ts) - 12 tests
 
 - ✅ createRoot + 事件 + signal：按钮 onClick 更新 signal、DOM 随 signal 更新
 - ✅ 多事件类型：onClick 与 onChange 等绑定
@@ -110,7 +110,8 @@
 - ✅ v-model：input text 初始值/输入/set 同步、checkbox checked 双向同步
 - ✅ createReactive 表单：vModel 绑定后输入更新 model、多字段与 model 同步
 - ✅ 细粒度更新：patch 非整树替换、未依赖 signal 的 DOM
-  节点保持同一引用、输入框未重挂
+  节点保持同一引用、输入框未重挂；**getter 返回 Fragment**：Fragment 内 input 在
+  signal 更新后仍为同一 DOM 节点（表单不丢焦点）
 
 ### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
 
@@ -142,9 +143,14 @@
 - ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
 - ✅ afterRoute、notFound 与 meta
 
-### 13. Runtime (unit/runtime.test.ts) - 26 tests
+### 13. Runtime (unit/runtime.test.ts) - 50 tests
 
-- ✅ renderToString：根组件 HTML、Fragment 与多子节点
+- ✅ renderToString：根组件 HTML、Fragment 与多子节点；**SSR 分支覆盖**：
+  null/undefined 子节点、signal getter
+  子节点、普通函数子节点（不输出函数源码）、 数组含函数、函数返回
+  null/数组/Fragment、数字/字符串/转义文本、keyed 子节点、 void
+  元素、htmlFor/style/vCloak、options、根返回 null 抛错、ErrorBoundary
+  fallback；**Fragment 根** 与函数子节点
 - ✅ generateHydrationScript：无参/传入 data/scriptSrc
 - ✅ createRoot / render：挂载、根依赖 signal 后更新 DOM、空 Fragment、container
   已有子节点、unmount 后 set 不抛错
@@ -156,7 +162,8 @@
   一致；mount(selector, fn) 选择器解析并挂载；noopIfNotFound 时查不到返回空
   Root；未设 noopIfNotFound 时查不到抛错；有子节点走 hydrate 路径（移除
   cloak）；无子节点走 render 路径
-- ✅ hydrate：复用子节点并激活、移除 cloak
+- ✅ hydrate：复用子节点并激活、移除 cloak；hydrate 后状态变更走 patch（input
+  保持同一 DOM 引用）
 
 ### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
 
@@ -183,9 +190,11 @@
 - ✅ actions、persist 自定义 storage、persist.key 空串边界
 - ✅ getters 派生与 state 更新、getters 返回 undefined、actions 内抛错边界
 
-### 18. Stream (unit/stream.test.ts) - 4 tests
+### 18. Stream (unit/stream.test.ts) - 7 tests
 
-- ✅ renderToStream：返回生成器；简单 div 输出 HTML；文本子节点转义
+- ✅ renderToStream：返回生成器；简单 div 输出 HTML；文本子节点转义；**普通
+  函数子节点** 输出返回值（非源码）；keyed 子节点输出 data-view-keyed；void
+  元素无闭合标签
 
 ### 19. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
@@ -219,6 +228,9 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 262 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 290 个用例，全部通过，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
-SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString）、Store、Reactive、Boundary、meta、proxy、compiler、stream、build/HMR、CLI（init/build/start）及浏览器示例流程，满足发布与文档展示需求。
+SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString
+全分支覆盖、renderToStream）、Store、Reactive、Boundary、meta、proxy、compiler、
+stream、build/HMR、CLI（init/build/start）、浏览器示例流程，以及**集成**：getter
+返回 Fragment 时 input 焦点保持，满足发布与文档展示需求。

@@ -8,6 +8,32 @@ and this project adheres to
 
 ---
 
+## [1.0.8] - 2026-02-13
+
+### Fixed
+
+- **SSR: plain function as child.** In `normalizeChildrenForSSR` (stringify.ts),
+  when a child is a plain function (not a signal getter), it is now invoked and
+  the return value is normalized instead of being stringified. This fixes
+  hybrid/SSR output where JS function source code was rendered as HTML on first
+  paint.
+- **Input focus when getter returns single Fragment.** In `appendDynamicChild`
+  (element.ts), when the normalized dynamic children contain exactly one
+  Fragment, that Fragment’s children are expanded into `items` so that
+  `lastItems` matches the actual DOM slots. Reconcile no longer removes or
+  replaces the wrong nodes, so inputs inside such a getter (e.g.
+  `() => ( <> <input /> ... </> )`) keep focus when other signals update.
+
+### Added
+
+- **Tests:** Extended `renderToString` and `renderToStream` for SSR branch
+  coverage (null/undefined/function/signal getter children, keyed, void,
+  ErrorBoundary, etc.). Integration test: getter returning Fragment with input
+  preserves same DOM node (no focus loss). Test report and README updated for
+  290 tests (~1m 37s).
+
+---
+
 ## [1.0.7] - 2026-02-13
 
 ### Fixed

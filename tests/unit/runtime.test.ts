@@ -45,6 +45,421 @@ describe("renderToString", () => {
     expect(html).toContain("a");
     expect(html).toContain("b");
   });
+
+  /**
+   * SSR 时子节点为「普通函数」应被调用并渲染其返回值，而不是把函数源码当文本输出。
+   * 对应 hybrid 场景下 { () => ( <> ... </> ) } 写法，修复前会看到 _jsx/=> 等 JS 代码。
+   */
+  it("子节点为普通函数时 SSR 应渲染函数返回值而非函数源码", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: () =>
+          ({
+            type: "span",
+            props: {},
+            children: [{
+              type: "#text",
+              props: { nodeValue: "from-function" },
+              children: [] as VNode[],
+            }],
+          }) as VNode,
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("from-function");
+    expect(html).toContain("<span>");
+    // 若未对函数做“调用再展开”，会输出函数源码，HTML 中会出现 "() =>" 或 "function"
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 边界：children 为 null 或 undefined 时输出空，不报错 */
+  it("children 为 null 时输出空子节点", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: { children: null },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("<div>");
+    expect(html).toContain("</div>");
+  });
+
+  it("children 为 undefined 时输出空子节点", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {},
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("<div>");
+    expect(html).toContain("</div>");
+  });
+
+  /** SSR 时 signal getter 作为子节点应调用一次取当前值并渲染 */
+  it("子节点为 signal getter 时 SSR 应渲染当前值", () => {
+    const [getVal] = createSignal("signal-value");
+    const html = renderToString(() => ({
+      type: "div",
+      props: { children: getVal },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("signal-value");
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 数组子节点中含函数时，函数应被调用并展开 */
+  it("子节点为数组且含函数时，函数被调用并展开", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: [
+          { type: "#text", props: { nodeValue: "before" }, children: [] },
+          () =>
+            ({
+              type: "span",
+              props: {},
+              children: [{
+                type: "#text",
+                props: { nodeValue: "mid" },
+                children: [] as VNode[],
+              }],
+            }) as VNode,
+          { type: "#text", props: { nodeValue: "after" }, children: [] },
+        ],
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("before");
+    expect(html).toContain("mid");
+    expect(html).toContain("after");
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 子节点为普通函数且返回 null 时，该位置输出空 */
+  it("子节点为函数且返回 null 时输出空", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: () => null as unknown as VNode,
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("<div>");
+    expect(html).toContain("</div>");
+  });
+
+  /** 子节点为数字或字符串时，转为文本节点输出 */
+  it("子节点为数字时转为文本输出", () => {
+    const html = renderToString(() => ({
+      type: "span",
+      props: { children: 42 },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("42");
+  });
+
+  it("子节点为字符串时转为文本输出", () => {
+    const html = renderToString(() => ({
+      type: "span",
+      props: { children: "plain-text" },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("plain-text");
+  });
+
+  /** 子节点为字符串且含 < > & 时应转义，避免注入 */
+  it("子节点字符串中的 < > & 应转义输出", () => {
+    const html = renderToString(() => ({
+      type: "span",
+      props: { children: "<script>&" },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("&lt;script&gt;&amp;");
+    expect(html).not.toContain("<script>");
+  });
+
+  /** 子节点为函数且返回 VNode 数组（非 Fragment）时，全部渲染 */
+  it("子节点为函数且返回 VNode 数组时全部渲染", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: () =>
+          [
+            {
+              type: "span",
+              props: {},
+              children: [{
+                type: "#text",
+                props: { nodeValue: "a" },
+                children: [] as VNode[],
+              }],
+            },
+            {
+              type: "span",
+              props: {},
+              children: [{
+                type: "#text",
+                props: { nodeValue: "b" },
+                children: [] as VNode[],
+              }],
+            },
+          ] as unknown as VNode,
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("a");
+    expect(html).toContain("b");
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 子节点为函数且返回多子节点（Fragment 结构）时，应全部渲染 */
+  it("子节点为函数且返回多子节点时全部渲染", async () => {
+    const { FragmentType } = await import("../../src/dom/shared.ts");
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: () =>
+          ({
+            type: FragmentType,
+            props: {
+              children: [
+                { type: "#text", props: { nodeValue: "one" }, children: [] },
+                { type: "#text", props: { nodeValue: "two" }, children: [] },
+              ],
+            },
+            children: [] as VNode[],
+          }) as VNode,
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("one");
+    expect(html).toContain("two");
+    expect(html).not.toContain("() =>");
+  });
+
+  /** 根为 Fragment、children 为函数时，应调用函数并渲染其返回值 */
+  it("根为 Fragment 且 children 为函数时 SSR 正常渲染", async () => {
+    const { FragmentType } = await import("../../src/dom/shared.ts");
+    const html = renderToString(() =>
+      ({
+        type: FragmentType,
+        props: {
+          children: () =>
+            ({
+              type: "span",
+              props: {},
+              children: [{
+                type: "#text",
+                props: { nodeValue: "fragment-root" },
+                children: [] as VNode[],
+              }],
+            }) as VNode,
+        },
+        children: [] as VNode[],
+      }) as VNode
+    );
+    expect(html).toContain("fragment-root");
+    expect(html).toContain("<span>");
+    expect(html).not.toContain("() =>");
+  });
+
+  // ---------- 分支覆盖：函数组件、keyed、void、attributes、options ----------
+
+  /** 根为函数组件时，SSR 调用组件并渲染其返回值 */
+  it("根为函数组件时 SSR 渲染组件返回值", () => {
+    const Comp = (_props: Record<string, unknown>) =>
+      ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: "from-component" },
+          children: [] as VNode[],
+        }],
+      }) as VNode;
+    const html = renderToString(() => ({
+      type: Comp,
+      props: {},
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("from-component");
+    expect(html).toContain("<span>");
+  });
+
+  /** 函数组件返回 null 时输出空字符串 */
+  it("函数组件返回 null 时输出空", () => {
+    const Comp = (_props: Record<string, unknown>) => null as unknown as VNode;
+    const html = renderToString(() => ({
+      type: Comp,
+      props: {},
+      children: [] as VNode[],
+    }));
+    expect(html).toBe("");
+  });
+
+  /** 函数组件返回 VNode 数组时全部渲染 */
+  it("函数组件返回 VNode 数组时全部渲染", () => {
+    const Comp = (_props: Record<string, unknown>) =>
+      [
+        {
+          type: "span",
+          props: {},
+          children: [{
+            type: "#text",
+            props: { nodeValue: "c1" },
+            children: [],
+          }],
+        },
+        {
+          type: "span",
+          props: {},
+          children: [{
+            type: "#text",
+            props: { nodeValue: "c2" },
+            children: [],
+          }],
+        },
+      ] as unknown as VNode;
+    const html = renderToString(() => ({
+      type: Comp,
+      props: {},
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("c1");
+    expect(html).toContain("c2");
+  });
+
+  /** 子节点带 key 时输出 data-view-keyed 包裹与 data-key */
+  it("带 key 的子节点输出 data-view-keyed 与 data-key", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: [
+          {
+            type: "span",
+            props: {},
+            key: "k1",
+            children: [{
+              type: "#text",
+              props: { nodeValue: "a" },
+              children: [],
+            }],
+          },
+        ],
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("data-view-keyed");
+    expect(html).toContain('data-key="k1"');
+    expect(html).toContain("a");
+  });
+
+  /** void 元素（如 br）无闭合标签、无 inner 内容 */
+  it("void 元素无闭合标签且无 inner", () => {
+    const html = renderToString(() => ({
+      type: "br",
+      props: {},
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("<br");
+    expect(html).not.toContain("</br>");
+    expect(html).not.toContain("><");
+  });
+
+  /** 数组 children 含 null 时仅渲染非 null 项 */
+  it("数组 children 含 null 时仅渲染非 null 项", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: {
+        children: [
+          null,
+          { type: "#text", props: { nodeValue: "only" }, children: [] },
+          undefined,
+        ],
+      },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("only");
+  });
+
+  /** htmlFor 输出为 for 属性 */
+  it("htmlFor 输出为 for 属性", () => {
+    const html = renderToString(() => ({
+      type: "label",
+      props: { htmlFor: "input-id" },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain('for="input-id"');
+  });
+
+  /** style 对象输出为 style 字符串 */
+  it("style 对象输出为 style 字符串", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: { style: { color: "red", marginTop: "8px" } },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("color");
+    expect(html).toContain("red");
+    expect(html).toContain("margin-top");
+    expect(html).toContain("8px");
+  });
+
+  /** vCloak 输出 data-view-cloak（SSR 时用于 FOUC 隐藏） */
+  it("vCloak 输出 data-view-cloak", () => {
+    const html = renderToString(() => ({
+      type: "div",
+      props: { vCloak: true },
+      children: [] as VNode[],
+    }));
+    expect(html).toContain("data-view-cloak");
+  });
+
+  /** renderToString 传入 options 不报错 */
+  it("传入 options 不报错", () => {
+    const html = renderToString(
+      () => ({
+        type: "div",
+        props: {},
+        children: [] as VNode[],
+      }),
+      { allowRawHtml: false },
+    );
+    expect(html).toContain("<div>");
+  });
+
+  /** 根返回 null 时 createElementToString 会访问 null.type 导致抛错；renderToString 行为明确 */
+  it("根返回 null 时抛错", () => {
+    expect(() => renderToString(() => null as unknown as VNode)).toThrow();
+  });
+
+  /** ErrorBoundary：子组件抛错时 SSR 渲染 fallback */
+  it("ErrorBoundary 子组件抛错时 SSR 渲染 fallback", async () => {
+    const { ErrorBoundary } = await import("../../src/boundary.ts");
+    function ThrowComp(_props: Record<string, unknown>): VNode {
+      throw new Error("child throw");
+    }
+    const fallbackVNode = (e: unknown) =>
+      ({
+        type: "span",
+        props: {},
+        children: [{
+          type: "#text",
+          props: { nodeValue: `caught: ${(e as Error).message}` },
+          children: [] as VNode[],
+        }],
+      }) as VNode;
+    const html = renderToString(() =>
+      ({
+        type: ErrorBoundary,
+        props: {
+          fallback: fallbackVNode,
+          children: { type: ThrowComp, props: {}, children: [] as VNode[] },
+        },
+        children: [] as VNode[],
+      }) as unknown as VNode
+    );
+    expect(html).toContain("caught: child throw");
+  });
 }, { sanitizeOps: false, sanitizeResources: false });
 
 describe("generateHydrationScript", () => {
