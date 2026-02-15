@@ -917,9 +917,10 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.6**（2026-02-13）— 修复：组件返回函数时 hydrate 按动态槽处理，避免 「vIf
-in undefined」报错；hasStructuralDirective 对 null/undefined props
-安全处理。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.7**（2026-02-13）— 修复：appendDynamicChild 无 key 路径改为
+reconcile，动态 getter 内受控 input 不再失焦；patchNode 正确处理
+Fragment/组件/ContextScope，context 与 Provider 更新生效。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

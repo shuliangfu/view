@@ -216,6 +216,9 @@ export function appendDynamicChild(
   const placeholder = createDynamicSpan(doc);
   parent.appendChild(placeholder);
 
+  /** 上一轮 getter 展开结果，用于与本次做 reconcile，避免整块 replaceChildren 导致 input 等失焦 */
+  let lastItems: ChildItem[] = [];
+
   const dispose = createEffect(() => {
     const value = getter();
     const items = normalizeChildren(value);
@@ -227,20 +230,39 @@ export function appendDynamicChild(
         parentNamespace,
         ctx,
       );
+      lastItems = items;
       return;
     }
-    const frag = doc.createDocumentFragment();
-    for (const v of items) {
-      if (isSignalGetter(v)) {
-        const inner = createDynamicSpan(doc);
-        frag.appendChild(inner);
-        appendDynamicChild(inner, v as () => unknown, parentNamespace, ctx);
-      } else {
-        frag.appendChild(createElement(v as VNode, parentNamespace, ctx));
-      }
+    if (items.length === 0) {
+      runDirectiveUnmountOnChildren(placeholder);
+      placeholder.replaceChildren();
+      lastItems = [];
+      return;
     }
-    runDirectiveUnmountOnChildren(placeholder);
-    placeholder.replaceChildren(frag);
+    if (lastItems.length === 0) {
+      const frag = doc.createDocumentFragment();
+      for (const v of items) {
+        if (isSignalGetter(v)) {
+          const inner = createDynamicSpan(doc);
+          frag.appendChild(inner);
+          appendDynamicChild(inner, v as () => unknown, parentNamespace, ctx);
+        } else {
+          frag.appendChild(createElement(v as VNode, parentNamespace, ctx));
+        }
+      }
+      runDirectiveUnmountOnChildren(placeholder);
+      placeholder.replaceChildren(frag);
+      lastItems = items;
+      return;
+    }
+    reconcileChildren(
+      placeholder as Element,
+      lastItems,
+      items,
+      parentNamespace,
+      ctx,
+    );
+    lastItems = items;
   });
   // 占位节点被 replaceChild/移除时 dispose effect，避免旧 effect 继续更新已脱离文档的节点
   registerDirectiveUnmount(placeholder as Element, dispose);
@@ -943,6 +965,35 @@ function patchNode(
   parentNamespace: string | null,
   ifContext: IfContext,
 ): void {
+  if (checkFragment(oldV) && checkFragment(newV)) {
+    const parent = dom.parentNode as Element | null;
+    if (!parent) return;
+    const oldChildren = normalizeChildren(
+      oldV.props?.children ?? oldV.children ?? [],
+    );
+    const newChildren = normalizeChildren(
+      newV.props?.children ?? newV.children ?? [],
+    );
+    reconcileChildren(
+      parent,
+      oldChildren,
+      newChildren,
+      parentNamespace,
+      ifContext,
+    );
+    return;
+  }
+  if (
+    oldV.type === CONTEXT_SCOPE_TYPE &&
+    newV.type === CONTEXT_SCOPE_TYPE
+  ) {
+    const parent = dom.parentNode;
+    if (!parent) return;
+    const next = createElement(newV, parentNamespace, ifContext);
+    parent.replaceChild(next, dom);
+    runDirectiveUnmount(dom);
+    return;
+  }
   if (oldV.type === "#text" && newV.type === "#text") {
     const newVal = String(
       (newV.props as { nodeValue?: unknown }).nodeValue ?? "",
@@ -952,6 +1003,16 @@ function patchNode(
   }
 
   if (oldV.type !== newV.type || String(oldV.key) !== String(newV.key)) {
+    const parent = dom.parentNode;
+    if (!parent) return;
+    const next = createElement(newV, parentNamespace, ifContext);
+    parent.replaceChild(next, dom);
+    runDirectiveUnmount(dom);
+    return;
+  }
+
+  // 组件节点：必须重新执行以读取最新 context/signal，再替换子树
+  if (typeof newV.type === "function") {
     const parent = dom.parentNode;
     if (!parent) return;
     const next = createElement(newV, parentNamespace, ifContext);

@@ -937,9 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.6** (2026-02-13) — Fixed: Hydrate when component returns a function
-(dynamic slot) now treated as dynamic slot, avoiding "vIf in undefined" error;
-hasStructuralDirective safely handles null/undefined props. See
+**v1.0.7** (2026-02-13) — Fixed: appendDynamicChild unkeyed path uses reconcile
+so controlled inputs in dynamic getters keep focus; patchNode handles Fragment,
+component, and ContextScope so context/Provider updates apply. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---

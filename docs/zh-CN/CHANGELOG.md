@@ -7,6 +7,20 @@
 
 ---
 
+## [1.0.7] - 2026-02-13
+
+### 修复
+
+- **appendDynamicChild（无 key）：** 改为用 `lastItems` 做 reconcile，不再每次
+  getter 重跑都整块 `replaceChildren`。动态 getter 内的受控 input（如
+  `value={input()}`）输入时不再丢失焦点。
+- **patchNode：** Fragment 对 Fragment 时在父节点上做子节点 reconcile；组件
+  （function type）节点改为替换以重新执行并读取最新 context/signal；
+  ContextScope 节点改为替换，使 Provider value 更新（如主题切换）能正确更新
+  消费者 DOM。
+
+---
+
 ## [1.0.6] - 2026-02-13
 
 ### 修复
