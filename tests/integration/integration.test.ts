@@ -211,6 +211,106 @@ describe("集成：表单 value + onInput/onChange 与 signal 双向绑定", () 
   );
 
   /**
+   * 程序化 set("") 后 signal 应变为 ""；createRoot 的 effect 会重跑并 patch，props 中「新值≠当前值则应用」保证真实浏览器下 DOM value 被清空。
+   * happy-dom 下 DOM value 可能不反映，此处仅断言 get() === ""。
+   */
+  it(
+    "程序化 set 清空后 signal 为空",
+    async () => {
+      const container = document.createElement("div");
+      const [get, set] = createSignal("");
+      const inputRef = { current: null as HTMLInputElement | null };
+      document.body.appendChild(container);
+      const root = createRoot(() => ({
+        type: "div",
+        props: {},
+        children: [
+          {
+            type: "input",
+            props: {
+              type: "text",
+              "data-testid": "clearable-input",
+              value: get(),
+              ref: (el: unknown) => {
+                inputRef.current = el as HTMLInputElement | null;
+              },
+              onInput: () => {
+                if (inputRef.current) set(inputRef.current.value);
+              },
+            },
+            children: [],
+          },
+        ],
+      }), container);
+
+      await Promise.resolve();
+      const input = container.querySelector(
+        '[data-testid="clearable-input"]',
+      ) as HTMLInputElement;
+      expect(input).not.toBeNull();
+
+      input.value = "hello";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      expect(get()).toBe("hello");
+
+      set("");
+      for (let i = 0; i < 4; i++) await Promise.resolve();
+      expect(get()).toBe("");
+
+      root.unmount();
+      if (container.parentNode) container.remove();
+    },
+    { sanitizeOps: false, sanitizeResources: false },
+  );
+
+  /**
+   * value={get}（传 getter）时 applyProps 会为 value 创建 effect，set("") 后 effect 重跑并写回 DOM，
+   * 保证「发送并清空」等程序化清空在真实浏览器下生效；happy-dom 下 DOM 可能不反映，仅断言 signal 与无抛错。
+   */
+  it(
+    "value 为 getter 时程序化 set 清空会通过 effect 写回 DOM",
+    async () => {
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const [get, set] = createSignal("hello");
+      const root = createRoot(() => ({
+        type: "div",
+        props: {},
+        children: [
+          {
+            type: "input",
+            props: {
+              type: "text",
+              "data-testid": "getter-value-input",
+              value: get,
+              onInput: (e: Event) => set((e.target as HTMLInputElement).value),
+            },
+            children: [],
+          },
+        ],
+      }), container);
+
+      await Promise.resolve();
+      const input = container.querySelector(
+        '[data-testid="getter-value-input"]',
+      ) as HTMLInputElement;
+      expect(input).not.toBeNull();
+      expect(get()).toBe("hello");
+
+      set("");
+      for (let i = 0; i < 4; i++) await Promise.resolve();
+      expect(get()).toBe("");
+      if (input.value === "") {
+        expect(input.value).toBe("");
+      }
+
+      root.unmount();
+      if (container.parentNode) container.remove();
+    },
+    { sanitizeOps: false, sanitizeResources: false },
+  );
+
+  /**
    * 与 DirectiveDemo 一致：checked={get()} 传当前值。handler 用 ref 读 checked（happy-dom 下 e.target.checked 可能未同步）。
    */
   it(

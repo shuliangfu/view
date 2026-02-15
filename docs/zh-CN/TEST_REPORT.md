@@ -13,28 +13,29 @@
 
 ## 测试结果
 
-- **总测试数**：290
-- **通过**：290
+- **总测试数**：381
+- **通过**：381
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 37 秒
+- **执行时间**：约 2 分钟
 
 ### 测试文件统计
 
 | 测试文件                         | 测试数 | 状态        |
 | -------------------------------- | ------ | ----------- |
 | e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts | 51     | ✅ 全部通过 |
-| integration/integration.test.ts  | 12     | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts | 52     | ✅ 全部通过 |
+| integration/integration.test.ts  | 14     | ✅ 全部通过 |
 | unit/boundary.test.ts            | 13     | ✅ 全部通过 |
 | unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
-| unit/compiler.test.ts            | 7      | ✅ 全部通过 |
+| unit/compiler.test.ts            | 13     | ✅ 全部通过 |
 | unit/context.test.ts             | 8      | ✅ 全部通过 |
 | unit/directive.test.ts           | 25     | ✅ 全部通过 |
 | unit/effect.test.ts              | 15     | ✅ 全部通过 |
 | unit/hmr.test.ts                 | 3      | ✅ 全部通过 |
 | unit/jsx-runtime.test.ts         | 6      | ✅ 全部通过 |
-| unit/meta.test.ts                | 9      | ✅ 全部通过 |
+| unit/meta.test.ts                | 21     | ✅ 全部通过 |
+| unit/props.test.ts               | 55     | ✅ 全部通过 |
 | unit/proxy.test.ts               | 5      | ✅ 全部通过 |
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
@@ -43,7 +44,7 @@
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
-| unit/store.test.ts               | 14     | ✅ 全部通过 |
+| unit/store.test.ts               | 29     | ✅ 全部通过 |
 | unit/stream.test.ts              | 7      | ✅ 全部通过 |
 
 ## 功能测试详情
@@ -117,24 +118,35 @@
 
 - ✅ jsx / jsxs：type/props/children、key 提取与第三参覆盖、Fragment 为 Symbol
 
-### 9. Meta (unit/meta.test.ts) - 9 tests
+### 9. Meta (unit/meta.test.ts) - 21 tests
 
 - ✅ getMetaHeadFragment：title、titleSuffix、fallbackTitle、name 类 meta、og 类
-  meta、HTML 转义
+  meta、HTML 转义；边界：meta 为 null、空 title、value 为 null/空/非字符串、og
+  数组或 key 无前缀
+- ✅ applyMetaToHead：document.title 与 meta、fallbackTitle、titleSuffix、og
+  property；边界：meta 为 undefined、name 类 value 为空或仅空格
 
-### 10. Reactive (unit/reactive.test.ts) - 7 tests
+### 10. Props (unit/props.test.ts) - 55 tests
+
+- ✅ applyProps：表单 value（清空、新值差异、blur）；ref（null、回调、{ current
+  }、signal getter、无
+  current）；vShow/vCloak；dangerouslySetInnerHTML；value/checked
+  响应式；事件（onClick、替换监听器、null、onChange）；class/className、style、innerHTML；布尔与通用
+  attribute、select/textarea；children/key/指令跳过；自定义指令（mounted、unmounted、updated）。
+
+### 11. Reactive (unit/reactive.test.ts) - 7 tests
 
 - ✅ createReactive：代理初始属性、不修改入参、set 后 get 返回新值
 - ✅ createEffect 内读取 reactive 属性，属性变更后 effect 再次执行（微任务后）
 - ✅ 嵌套代理、多字段赋值触发曾读取过的 effect
 
-### 11. Resource (unit/resource.test.ts) - 8 tests
+### 12. Resource (unit/resource.test.ts) - 8 tests
 
 - ✅ createResource 无 source：loading/data/error、refetch、fetcher 抛错与非
   Promise 边界
 - ✅ createResource 有 source：source 变化时重新请求
 
-### 12. Router (unit/router.test.ts) - 14 tests
+### 13. Router (unit/router.test.ts) - 14 tests
 
 - ✅
   createRouter：getCurrentRoute、navigate、replace、subscribe、start、stop、back/forward/go
@@ -143,7 +155,7 @@
 - ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
 - ✅ afterRoute、notFound 与 meta
 
-### 13. Runtime (unit/runtime.test.ts) - 50 tests
+### 14. Runtime (unit/runtime.test.ts) - 50 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点；**SSR 分支覆盖**：
   null/undefined 子节点、signal getter
@@ -165,23 +177,23 @@
 - ✅ hydrate：复用子节点并激活、移除 cloak；hydrate 后状态变更走 patch（input
   保持同一 DOM 引用）
 
-### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
+### 15. Scheduler (unit/scheduler.test.ts) - 5 tests
 
 - ✅ schedule：任务在微任务中执行；同一 tick 多次 schedule 批量执行
 - ✅ unschedule：flush 前取消则不执行；只移除指定任务
 
-### 15. Signal (unit/signal.test.ts) - 14 tests
+### 16. Signal (unit/signal.test.ts) - 14 tests
 
 - ✅ createSignal：[getter, setter]、初始值、setter 与 updater、Object.is
   相同值不更新
 - ✅ 边界：初始值为 undefined/null
 - ✅ isSignalGetter、markSignalGetter
 
-### 16. SSR 指令 (unit/ssr-directives.test.ts) - 6 tests
+### 17. SSR 指令 (unit/ssr-directives.test.ts) - 6 tests
 
 - ✅ SSR vIf / vElseIf / vElse、vFor、vShow
 
-### 17. Store (unit/store.test.ts) - 14 tests
+### 18. Store (unit/store.test.ts) - 29 tests
 
 - ✅ createStore：仅 state 时 [get, set]、空 state、get() 响应式、set
   updater、嵌套属性
@@ -189,25 +201,33 @@
   属性；默认返回对象支持直接赋值 store.xxx = value 更新 state
 - ✅ actions、persist 自定义 storage、persist.key 空串边界
 - ✅ getters 派生与 state 更新、getters 返回 undefined、actions 内抛错边界
+- ✅ withGetters/withActions 辅助；仅 getters 或仅 actions 的 asObject
+  true/false；getters+actions asObject false
+- ✅ Persist：storage 为 null、自定义 serialize/deserialize、getItem
+  null/空、deserialize 抛错、setItem 抛错
+- ✅ 同一 key 返回已有实例（状态共享）；setState updater；getters/actions
+  非函数项跳过；Proxy ownKeys/展开
 
-### 18. Stream (unit/stream.test.ts) - 7 tests
+### 19. Stream (unit/stream.test.ts) - 7 tests
 
 - ✅ renderToStream：返回生成器；简单 div 输出 HTML；文本子节点转义；**普通
   函数子节点** 输出返回值（非源码）；keyed 子节点输出 data-view-keyed；void
   元素无闭合标签
 
-### 19. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
+### 20. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
 - ✅ getRoutePathForChangedPath：/views/home → "/"、/views/{segment} →
   "/{segment}"、Windows 路径
 - ✅ getHmrVersionGetter / **VIEW_HMR_BUMP**：版本 getter 与 bump
 
-### 20. Compiler (unit/compiler.test.ts) - 7 tests
+### 21. Compiler (unit/compiler.test.ts) - 13 tests
 
-- ✅ optimize：常量折叠（数字、比较、字符串拼接）、空/无效代码
-- ✅ createOptimizePlugin：name 与 setup、自定义 filter 与 readFile
+- ✅ optimize：常量折叠（数字、比较、字符串拼接）、空/无效代码；边界：除数为
+  0/取模为 0 不折叠、一元加号折叠、乘除折叠、fileName .tsx 解析
+- ✅ createOptimizePlugin：name 与 setup、自定义 filter 与 readFile；onLoad
+  readFile 失败时 catch 返回空字符串
 
-### 21. Proxy (unit/proxy.test.ts) - 5 tests
+### 22. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy：get/set 与 target 一致、嵌套代理、proxyCache 复用
 
@@ -228,9 +248,11 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 290 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 381 个用例，全部通过，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString
-全分支覆盖、renderToStream）、Store、Reactive、Boundary、meta、proxy、compiler、
-stream、build/HMR、CLI（init/build/start）、浏览器示例流程，以及**集成**：getter
+全分支覆盖、renderToStream）、**applyProps**（ref、vShow/vCloak、dangerouslySetInnerHTML、value/checked
+响应式、事件、class、style、attribute、自定义指令）、Store（persist、getters/actions、边界）、Reactive、Boundary、meta（getMetaHeadFragment、applyMetaToHead、边界）、proxy、compiler（常量折叠边界、插件
+onLoad
+catch）、stream、build/HMR、CLI（init/build/start）、浏览器示例流程，以及**集成**：getter
 返回 Fragment 时 input 焦点保持，满足发布与文档展示需求。

@@ -28,6 +28,8 @@ const [show, setShow] = createSignal(true);
 const [list, setList] = createSignal(["苹果", "香蕉", "橙子"]);
 const [vModelText, setVModelText] = createSignal("");
 const [vModelChecked, setVModelChecked] = createSignal(false);
+/** 清空 input 示例用独立 signal，便于单独演示「发送并清空」 */
+const [clearInputText, setClearInputText] = createSignal("");
 /** v-focus 演示用输入框引用，用于「再次聚焦」按钮 */
 let focusInputEl: HTMLInputElement | null = null;
 
@@ -157,6 +159,30 @@ export function DirectiveDemo(): VNode {
             />
             <span>→ 当前值：{() => vModelText() || "(空)"}</span>
           </p>
+          {/* 清空 input 示例：发送后 setClearInputText("")，有焦点时 View 会应用「新值≠当前值」从而正确清空 DOM */}
+          <p className="mb-2 flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-300">
+            {/* value={clearInputText()} 让根 effect 订阅，set("") 后根重跑、patch 时 applyProps(value:"") 写回 DOM；懒加载页内 value getter 的 effect 可能被 dispose 导致不触发 */}
+            <input
+              type="text"
+              className={inputCls}
+              placeholder="输入后点「发送并清空」"
+              data-testid="clear-demo-input"
+              value={clearInputText()}
+              onInput={(e: Event) =>
+                setClearInputText((e.target as HTMLInputElement).value)}
+            />
+            <button
+              type="button"
+              className={btn}
+              data-testid="send-and-clear-btn"
+              onClick={() => setClearInputText("")}
+            >
+              发送并清空
+            </button>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              点击后 input 会被清空（程序化 set("") 会写回 DOM）
+            </span>
+          </p>
           <p className="flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-300">
             <label className="flex cursor-pointer items-center gap-2">
               <input
@@ -197,7 +223,8 @@ export function DirectiveDemo(): VNode {
         <div className={block}>
           <h3 className={subTitle}>自定义指令 v-copy</h3>
           <p className="mb-2 text-slate-600 dark:text-slate-300">
-            点击按钮将指定内容复制到剪贴板，可多次点击；页面重渲染后仍可复制（mounted 仅执行一次，监听一直有效）。
+            点击按钮将指定内容复制到剪贴板，可多次点击；页面重渲染后仍可复制（mounted
+            仅执行一次，监听一直有效）。
           </p>
           <p className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
             <button type="button" className={btn} vCopy="Hello v-copy">

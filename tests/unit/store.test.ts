@@ -1,9 +1,14 @@
 /**
- * @fileoverview Store 单元测试：createStore、get/set、actions、getters
+ * @fileoverview Store 单元测试：createStore、get/set、actions、getters、persist、边界与分支全覆盖
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createStore, withActions } from "@dreamer/view/store";
+import {
+  createStore,
+  type CreateStoreConfig,
+  withActions,
+  withGetters,
+} from "@dreamer/view/store";
 
 describe("createStore", () => {
   it("仅 state 时应返回 [get, set]", () => {
@@ -90,7 +95,7 @@ type CountActions = {
 
 describe("createStore with actions", () => {
   it("config.actions 应返回第三项为 actions 对象", () => {
-    const [get, set, actions] = createStore("t-actions", {
+    const [get, _set, actions] = createStore("t-actions", {
       state: { count: 0 },
       actions: withActions<{ count: number }, CountActions>()({
         increment() {
@@ -218,5 +223,286 @@ describe("createStore with getters", () => {
     });
     expect(() => (actions as { throwAction: () => void }).throwAction())
       .toThrow("action error");
+  });
+});
+
+describe("createStore withGetters / withActions 辅助", () => {
+  it("withGetters 返回 getters 不变便于类型推断", () => {
+    type S = { n: number };
+    const getters = withGetters<S, { double(this: S): number }>()({
+      double() {
+        return this.n * 2;
+      },
+    });
+    expect(typeof getters.double).toBe("function");
+    expect(getters.double.call({ n: 3 })).toBe(6);
+  });
+});
+
+describe("createStore 仅 getters 形态", () => {
+  it("仅 getters、asObject: true 时返回对象可读 state 与 getter", async () => {
+    // 实现支持「仅 getters + asObject:true」，调用实现签名以通过类型检查
+    const store = (
+      createStore as (
+        key: string,
+        config: CreateStoreConfig<
+          { count: number },
+          { double(this: { count: number }): number }
+        >,
+      ) => unknown
+    )("t-getters-obj", {
+      state: { count: 2 },
+      getters: {
+        double() {
+          return this.count * 2;
+        },
+      },
+      asObject: true,
+    }) as {
+      count: number;
+      double: number;
+      setState: (v: { count: number }) => void;
+    };
+    expect(store.count).toBe(2);
+    expect(store.double).toBe(4);
+    store.setState({ count: 5 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.double).toBe(10);
+  });
+
+  it("仅 getters、asObject: false 时返回 [get, set, getters]", async () => {
+    const [get, set, getters] = createStore("t-getters-tuple", {
+      state: { x: 1 },
+      getters: {
+        triple() {
+          return this.x * 3;
+        },
+      },
+      asObject: false,
+    });
+    expect(get().x).toBe(1);
+    expect((getters as { triple: () => number }).triple()).toBe(3);
+    set({ x: 2 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect((getters as { triple: () => number }).triple()).toBe(6);
+  });
+});
+
+describe("createStore 仅 actions、asObject: false", () => {
+  it("仅 actions、asObject: false 时返回 [get, set, actions]", () => {
+    const [get, _set, actions] = createStore("t-actions-tuple", {
+      state: { v: 0 },
+      actions: {
+        add(n: number) {
+          this.v = this.v + n;
+        },
+      },
+      asObject: false,
+    });
+    expect(get().v).toBe(0);
+    (actions as { add: (n: number) => void }).add(10);
+    expect(get().v).toBe(10);
+  });
+});
+
+describe("createStore getters + actions、asObject: false", () => {
+  it("getters + actions、asObject: false 时返回 [get, set, getters, actions]", async () => {
+    const [get, _set, getters, actions] = createStore("t-both-tuple", {
+      state: { n: 1 },
+      getters: {
+        squared() {
+          return this.n * this.n;
+        },
+      },
+      actions: {
+        inc() {
+          this.n++;
+        },
+      },
+      asObject: false,
+    });
+    expect(get().n).toBe(1);
+    expect((getters as { squared: () => number }).squared()).toBe(1);
+    (actions as { inc: () => void }).inc();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(get().n).toBe(2);
+    expect((getters as { squared: () => number }).squared()).toBe(4);
+  });
+});
+
+describe("createStore persist 边界与分支", () => {
+  it("persist.key 有值但 storage 为 null 时不抛错、不持久化", () => {
+    const [get, set] = createStore("t-persist-no-storage", {
+      state: { a: 0 },
+      persist: { key: "k", storage: null },
+      asObject: false,
+    });
+    set({ ...get(), a: 1 });
+    expect(get().a).toBe(1);
+  });
+
+  it("persist 自定义 serialize/deserialize", () => {
+    const stored: Record<string, string> = {};
+    const storage = {
+      getItem(k: string) {
+        return stored[k] ?? null;
+      },
+      setItem(k: string, v: string) {
+        stored[k] = v;
+      },
+    };
+    const [get, set] = createStore("t-persist-custom", {
+      state: { count: 10 },
+      persist: {
+        key: "custom",
+        storage,
+        serialize(s) {
+          return `c=${(s as { count: number }).count}`;
+        },
+        deserialize(raw) {
+          const n = parseInt(raw.replace("c=", ""), 10);
+          return { count: n } as { count: number };
+        },
+      },
+      asObject: false,
+    });
+    set({ ...get(), count: 20 });
+    expect(stored["custom"]).toBe("c=20");
+    const [get2] = createStore("t-persist-custom", {
+      state: { count: 0 },
+      persist: {
+        key: "custom",
+        storage,
+        deserialize(raw) {
+          const n = parseInt(raw.replace("c=", ""), 10);
+          return { count: n } as { count: number };
+        },
+      },
+      asObject: false,
+    });
+    expect(get2().count).toBe(20);
+  });
+
+  it("persist 恢复时 getItem 返回 null 或空字符串不覆盖 state", () => {
+    const storage = {
+      getItem: () => null,
+      setItem: () => {},
+    };
+    const [get] = createStore("t-persist-empty-raw", {
+      state: { x: 42 },
+      persist: { key: "empty", storage },
+      asObject: false,
+    });
+    expect(get().x).toBe(42);
+  });
+
+  it("persist 恢复时 deserialize 抛错被忽略、使用初始 state", () => {
+    const storage = {
+      getItem: () => "invalid-json{{{",
+      setItem: () => {},
+    };
+    const [get] = createStore("t-persist-bad-parse", {
+      state: { v: 1 },
+      persist: { key: "bad", storage },
+      asObject: false,
+    });
+    expect(get().v).toBe(1);
+  });
+
+  it("persist setter 时 setItem 抛错被忽略", () => {
+    const storage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("setItem fail");
+      },
+    };
+    const [get, set] = createStore("t-persist-setitem-throw", {
+      state: { n: 0 },
+      persist: { key: "throw", storage },
+      asObject: false,
+    });
+    set({ ...get(), n: 1 });
+    expect(get().n).toBe(1);
+  });
+});
+
+describe("createStore 同一 key 返回已有实例", () => {
+  it("同一 key 再次 createStore 返回已注册的同一 store，状态共享", () => {
+    const [_get1, set1] = createStore("t-same-key", {
+      state: { id: 1 },
+      asObject: false,
+    });
+    const [get2] = createStore("t-same-key", {
+      state: { id: 99 },
+      asObject: false,
+    });
+    expect(get2().id).toBe(1);
+    set1({ id: 2 });
+    expect(get2().id).toBe(2);
+  });
+});
+
+describe("createStore 对象形态 setState updater", () => {
+  it("store.setState 接受 updater 函数", () => {
+    const store = createStore("t-setstate-updater", {
+      state: { count: 0 },
+    });
+    (store as {
+      setState: (v: (p: { count: number }) => { count: number }) => void;
+    })
+      .setState((p) => ({ ...p, count: p.count + 1 }));
+    expect((store as { count: number }).count).toBe(1);
+  });
+});
+
+describe("createStore getters/actions 中非函数项被跳过", () => {
+  it("getters 中非函数项不挂到 gettersObj", () => {
+    const [_get, , getters] = createStore("t-getters-skip", {
+      state: { n: 0 },
+      getters: {
+        ok() {
+          return this.n;
+        },
+        notFn: "ignored" as unknown as () => number,
+      },
+      asObject: false,
+    });
+    expect((getters as { ok: () => number }).ok()).toBe(0);
+    expect((getters as Record<string, unknown>).notFn).toBeUndefined();
+  });
+
+  it("actions 中非函数项不挂到 actionsObj", () => {
+    const [, , actions] = createStore("t-actions-skip", {
+      state: { x: 0 },
+      actions: {
+        doIt() {
+          this.x = 1;
+        },
+        notFn: 0 as unknown as () => void,
+      },
+      asObject: false,
+    });
+    (actions as { doIt: () => void }).doIt();
+    expect((actions as Record<string, unknown>).notFn).toBeUndefined();
+  });
+});
+
+describe("createStore Proxy ownKeys / 展开", () => {
+  it("get() 返回的代理支持 Object.keys 与展开", () => {
+    const [get, set] = createStore("t-ownkeys", {
+      state: { a: 1, b: 2 } as Record<string, number>,
+      asObject: false,
+    });
+    const keys = Object.keys(get());
+    expect(keys).toContain("a");
+    expect(keys).toContain("b");
+    const spread = { ...get() };
+    expect(spread.a).toBe(1);
+    expect(spread.b).toBe(2);
+    set({ ...get(), c: 3 });
+    expect(Object.keys(get())).toContain("c");
   });
 });

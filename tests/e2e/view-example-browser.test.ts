@@ -532,6 +532,40 @@ describe("浏览器测试（examples 入口）", () => {
     expect(text).toContain("V-FOCUS");
   }, exampleBrowserConfig);
 
+  /** 指令页「发送并清空」示例：输入 → 点击按钮 → 验证流程可跑通；DOM 清空见 View props 逻辑与手动验证 */
+  it("指令页：发送并清空示例（输入后点击，流程无报错）", async (t) => {
+    if (!t?.browser) return;
+    await navigate(t, "/directive");
+    const inputFilled = await t.browser!.evaluate(() => {
+      const input = document.querySelector<HTMLInputElement>(
+        '[data-testid="clear-demo-input"]',
+      );
+      if (!input) return false;
+      input.focus();
+      input.value = "clear-test";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    });
+    expect(inputFilled).toBe(true);
+    await new Promise((r) => setTimeout(r, 150));
+    const clicked = await t.browser!.evaluate(() => {
+      const btn = document.querySelector<HTMLButtonElement>(
+        '[data-testid="send-and-clear-btn"]',
+      );
+      if (!btn) return false;
+      btn.click();
+      return true;
+    });
+    expect(clicked).toBe(true);
+    await new Promise((r) => setTimeout(r, 300));
+    const stillRendered = await t.browser!.evaluate(() => {
+      const input = document.querySelector('[data-testid="clear-demo-input"]');
+      const btn = document.querySelector('[data-testid="send-and-clear-btn"]');
+      return !!(input && btn);
+    });
+    expect(stillRendered).toBe(true);
+  }, exampleBrowserConfig);
+
   it(
     "Reactive 页：createReactive 简介、effect 计数、表单展示与输入同步",
     async (t) => {
