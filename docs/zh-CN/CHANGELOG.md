@@ -7,13 +7,23 @@
 
 ---
 
+## [1.0.10] - 2026-02-15
+
+### 变更
+
+- **依赖：** 将 `@dreamer/esbuild` 升级至 `^1.0.24`（Windows CI
+  解析器修复：`deno info` 使用相对入口路径与原生 cwd）。
+
+---
+
 ## [1.0.9] - 2026-02-15
 
 ### 修复
 
-- **vIf/vShow 指令导致的 input/textarea value 问题。** 在 `applySingleProp`（props.ts）中，
-  表单 `value` 改为在通用的 `value == null` 分支之前处理。vIf/vShow 切换时 patch 传入
-  `undefined` 或 `null` 时，会正确清空 DOM 输入框的值，而不会跳过 value 分支导致仍显示旧值。
+- **vIf/vShow 指令导致的 input/textarea value 问题。** 在
+  `applySingleProp`（props.ts）中， 表单 `value` 改为在通用的 `value == null`
+  分支之前处理。vIf/vShow 切换时 patch 传入 `undefined` 或 `null` 时，会正确清空
+  DOM 输入框的值，而不会跳过 value 分支导致仍显示旧值。
 
 ### 新增
 

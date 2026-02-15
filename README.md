@@ -937,11 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.9** (2026-02-15) — Fixed: Input/textarea value issue caused by vIf/vShow
-(form value applied before null check so clearing works when directives toggle). Added: Extended unit tests
-for applyProps (55), store (29), meta (21), compiler (13); 381 tests, all
-passing (~2m). Changed: Removed debug logs and unused helper from props.ts. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.10** (2026-02-15) — Changed: Bump `@dreamer/esbuild` to `^1.0.24`
+(Windows CI resolver fix). See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
+full details.
 
 ---
 

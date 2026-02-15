@@ -8,6 +8,15 @@ and this project adheres to
 
 ---
 
+## [1.0.10] - 2026-02-15
+
+### Changed
+
+- **Dependencies:** Bump `@dreamer/esbuild` to `^1.0.24` (Windows CI resolver
+  fix: relative entry path and native cwd for `deno info`).
+
+---
+
 ## [1.0.9] - 2026-02-15
 
 ### Fixed
@@ -15,8 +24,8 @@ and this project adheres to
 - **Input/textarea value issue caused by vIf/vShow directives.** In
   `applySingleProp` (props.ts), form `value` is now applied before the generic
   `value == null` branch. When vIf/vShow toggles and patch passes `undefined` or
-  `null`, the DOM input value is correctly cleared instead of skipping the
-  value branch and leaving the old value on the element.
+  `null`, the DOM input value is correctly cleared instead of skipping the value
+  branch and leaving the old value on the element.
 
 ### Added
 

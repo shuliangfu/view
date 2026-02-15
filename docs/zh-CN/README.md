@@ -917,8 +917,8 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.9**（2026-02-15）— 修复：vIf/vShow 导致的 input/textarea value 问题（表单 value 在 null 判断前应用，指令切换时清空生效）。新增：扩展 applyProps、store、meta、compiler 单元测试，381 条全部通过。变更：移除 props.ts 中调试 log 与未使用函数。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.10**（2026-02-15）— 变更：将 `@dreamer/esbuild` 升级至 `^1.0.24`（Windows
+CI 解析器修复）。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
