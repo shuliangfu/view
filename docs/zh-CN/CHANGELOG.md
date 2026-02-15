@@ -7,6 +7,19 @@
 
 ---
 
+## [1.0.6] - 2026-02-13
+
+### 修复
+
+- **Hydrate 时组件返回函数：** 当组件返回函数（如为细粒度更新写的
+  `() => ( <> ... </> )`）时，hydrate 现将其视为动态槽：创建占位节点、替换 对应
+  DOM 并调用 `appendDynamicChild`，而不再当作 VNode 递归，从而避免 HYDRATE
+  渲染时报错 "Cannot use 'in' operator to search for 'vIf' in undefined"。
+- **hasStructuralDirective：** 对 `null` 或非对象 `props`（如 hydrate 路径下
+  传入的“函数 vnode”）安全处理，返回 `null` 而非抛错。
+
+---
+
 ## [1.0.5] - 2026-02-14
 
 ### 新增

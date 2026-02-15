@@ -8,6 +8,22 @@ and this project adheres to
 
 ---
 
+## [1.0.6] - 2026-02-13
+
+### Fixed
+
+- **Hydrate when component returns a function:** When a component returns a
+  function (e.g. `() => ( <> ... </> )` for fine-grained updates), hydrate now
+  treats it as a dynamic slot: creates a placeholder, replaces the corresponding
+  DOM node, and calls `appendDynamicChild`, instead of recursing into it as a
+  VNode. This prevents "Cannot use 'in' operator to search for 'vIf' in
+  undefined" during HYDRATE render.
+- **hasStructuralDirective:** Safely handles `null` or non-object `props` (e.g.
+  when passed from hydrate path with a function "vnode"); returns `null` instead
+  of throwing.
+
+---
+
 ## [1.0.5] - 2026-02-14
 
 ### Added

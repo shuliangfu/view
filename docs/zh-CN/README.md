@@ -917,9 +917,9 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.5**（2026-02-14）— Init 模板：新增 v-if 演示区块，getter 形式
-`vIf`/`vElseIf`/`vElse`，配翠绿/琥珀/灰标签。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.6**（2026-02-13）— 修复：组件返回函数时 hydrate 按动态槽处理，避免 「vIf
+in undefined」报错；hasStructuralDirective 对 null/undefined props
+安全处理。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
