@@ -937,9 +937,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.10** (2026-02-15) — Changed: Bump `@dreamer/esbuild` to `^1.0.24`
-(Windows CI resolver fix). See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
-full details.
+**v1.0.11** (2026-02-15) — Fixed: Skip rendering `false` and `""` in JSX
+children (use `isEmptyChild()` in client and SSR). Added: `isEmptyChild(value)`
+in `dom/shared.ts`. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full
+details.
 
 ---
 

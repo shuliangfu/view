@@ -4,10 +4,22 @@
  * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element / stringify / hydrate 复用。
  *
  * **本模块导出：**
- * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`createTextVNode(value)`、`createDynamicSpan(doc)`
+ * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`、`createDynamicSpan(doc)`
  */
 
 import type { VNode } from "../types.ts";
+
+/**
+ * 判断子节点是否为空（不参与渲染）。
+ * 对 null、undefined、false、"" 返回 true，其余返回 false。
+ * 用于 normalizeChildren / normalizeChildrenForSSR 中统一过滤，避免渲染出 "false" 或空字符串占位。
+ *
+ * @param value - 子节点值
+ * @returns 若为空则 true，否则 false
+ */
+export function isEmptyChild(value: unknown): boolean {
+  return value == null || value === false || value === "";
+}
 
 /**
  * Fragment 的 type 标记 Symbol。
