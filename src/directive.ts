@@ -200,12 +200,13 @@ export function createBinding(
 /**
  * 检查 props 是否包含结构性指令 vIf 或 vFor（需在 createElement 中优先处理）。
  *
- * @param props - 节点 props
+ * @param props - 节点 props（hydrate 时组件返回函数会被当作子节点传入，props 可能为 undefined，需防御）
  * @returns "vIf" | "vFor" | null
  */
 export function hasStructuralDirective(
-  props: Record<string, unknown>,
+  props: Record<string, unknown> | null | undefined,
 ): "vIf" | "vFor" | null {
+  if (props == null || typeof props !== "object") return null;
   if ("vIf" in props || "v-if" in props) return "vIf";
   if ("vFor" in props || "v-for" in props) return "vFor";
   return null;

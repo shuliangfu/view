@@ -937,8 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.5** (2026-02-14) — Init template: v-if demo section with getter-based
-`vIf`/`vElseIf`/`vElse` and styled badges (emerald/amber/slate). See
+**v1.0.6** (2026-02-13) — Fixed: Hydrate when component returns a function
+(dynamic slot) now treated as dynamic slot, avoiding "vIf in undefined" error;
+hasStructuralDirective safely handles null/undefined props. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---

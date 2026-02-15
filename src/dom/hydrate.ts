@@ -33,7 +33,21 @@ function hydrateFromList(
   parentNamespace: string | null,
   ifContext?: IfContext,
 ): number {
+  // 组件可能返回函数（动态槽），此时不能当作 VNode 递归；与 createElement 一致，用占位 + appendDynamicChild
+  if (typeof vnode === "function") {
+    const doc = (globalThis as { document: Document }).document;
+    const wrap = createDynamicSpan(doc);
+    if (nodes[index]) {
+      (nodes[index] as Node).parentNode?.replaceChild(wrap, nodes[index]);
+    }
+    const ctx = ifContext ?? { lastVIf: true };
+    appendDynamicChild(wrap, vnode as () => unknown, parentNamespace, ctx);
+    return index + 1;
+  }
   const props = vnode.props;
+  if (props == null || typeof props !== "object") {
+    return index;
+  }
   const structural = hasStructuralDirective(props);
   if (hasDirective(props, "vElse")) {
     if (ifContext && !getVElseShow(ifContext.lastVIf)) return index;
