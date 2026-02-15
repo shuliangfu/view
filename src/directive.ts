@@ -139,15 +139,15 @@ const BUILTIN_DIRECTIVE_PROPS = new Set([
 ]);
 
 /**
- * 判断给定 prop 键名是否为指令类（内置或 v- 开头等）。
- *
- * @param propKey - props 中的键名
- * @returns 若为指令 prop 则为 true
+ * 判断给定 prop 键名是否为指令类（内置或 v- 开头、或 vXxx 驼峰如 vIf/vShow）。
+ * 必须排除原生 prop「value」「viewBox」等：仅当第二字符为大写或为 '-' 时才视为指令（vIf、v-show），否则 value 会被误判并跳过，导致 input value 无法写回。
  */
 export function isDirectiveProp(propKey: string): boolean {
-  return BUILTIN_DIRECTIVE_PROPS.has(propKey) ||
-    (propKey.startsWith("v") && propKey.length > 1) ||
-    propKey.startsWith("v-");
+  if (BUILTIN_DIRECTIVE_PROPS.has(propKey)) return true;
+  if (propKey.startsWith("v-")) return true;
+  // vXxx 驼峰指令：第二字符为大写（vIf/vShow/vFor），排除 value、viewBox 等
+  return propKey.startsWith("v") && propKey.length > 1 &&
+    propKey[1] === propKey[1].toUpperCase();
 }
 
 /**

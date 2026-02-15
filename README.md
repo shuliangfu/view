@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-290%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-381%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -937,11 +937,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.8** (2026-02-13) — Fixed: SSR no longer outputs JS function source as
-HTML (plain function children are invoked in normalizeChildrenForSSR); input
-keeps focus when getter returns single Fragment (Fragment expanded in
-appendDynamicChild so reconcile matches DOM slots). Added tests for SSR branches
-and Fragment input focus (290 tests). See
+**v1.0.9** (2026-02-15) — Fixed: Input/textarea value issue caused by vIf/vShow
+(form value applied before null check so clearing works when directives toggle). Added: Extended unit tests
+for applyProps (55), store (29), meta (21), compiler (13); 381 tests, all
+passing (~2m). Changed: Removed debug logs and unused helper from props.ts. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
@@ -951,11 +950,11 @@ and Fragment input focus (290 tests). See
 | Metric      | Value      |
 | ----------- | ---------- |
 | Test date   | 2026-02-13 |
-| Total tests | 290        |
-| Passed      | 290 ✅     |
+| Total tests | 381        |
+| Passed      | 381 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
-| Duration    | ~1m 37s    |
+| Duration    | ~2m        |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 

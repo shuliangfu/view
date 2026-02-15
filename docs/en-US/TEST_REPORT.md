@@ -13,28 +13,29 @@
 
 ## Test Results
 
-- **Total tests**: 290
-- **Passed**: 290
+- **Total tests**: 381
+- **Passed**: 381
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 37s
+- **Duration**: ~2m
 
 ### Test File Summary
 
 | Test file                        | Tests | Status        |
 | -------------------------------- | ----- | ------------- |
 | e2e/cli.test.ts                  | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts | 51    | ✅ All passed |
-| integration/integration.test.ts  | 12    | ✅ All passed |
+| e2e/view-example-browser.test.ts | 52    | ✅ All passed |
+| integration/integration.test.ts  | 14    | ✅ All passed |
 | unit/boundary.test.ts            | 13    | ✅ All passed |
 | unit/build-hmr.test.ts           | 5     | ✅ All passed |
-| unit/compiler.test.ts            | 7     | ✅ All passed |
+| unit/compiler.test.ts            | 13    | ✅ All passed |
 | unit/context.test.ts             | 8     | ✅ All passed |
 | unit/directive.test.ts           | 25    | ✅ All passed |
 | unit/effect.test.ts              | 15    | ✅ All passed |
 | unit/hmr.test.ts                 | 3     | ✅ All passed |
 | unit/jsx-runtime.test.ts         | 6     | ✅ All passed |
-| unit/meta.test.ts                | 9     | ✅ All passed |
+| unit/meta.test.ts                | 21    | ✅ All passed |
+| unit/props.test.ts               | 55    | ✅ All passed |
 | unit/proxy.test.ts               | 5     | ✅ All passed |
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
@@ -43,7 +44,7 @@
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
-| unit/store.test.ts               | 14    | ✅ All passed |
+| unit/store.test.ts               | 29    | ✅ All passed |
 | unit/stream.test.ts              | 7     | ✅ All passed |
 
 ## Feature Test Details
@@ -127,12 +128,24 @@
 - ✅ jsx / jsxs: type/props/children, key extraction and third-arg override,
   Fragment as Symbol
 
-### 9. Meta (unit/meta.test.ts) - 9 tests
+### 9. Meta (unit/meta.test.ts) - 21 tests
 
 - ✅ getMetaHeadFragment: title, titleSuffix, fallbackTitle, name meta, og meta,
-  HTML escaping
+  HTML escaping; edge: meta null, empty title, value null/empty/non-string, og
+  array or key without prefix
+- ✅ applyMetaToHead: document.title and meta, fallbackTitle, titleSuffix, og
+  property; edge: undefined meta, empty/whitespace name values
 
-### 10. Reactive (unit/reactive.test.ts) - 7 tests
+### 10. Props (unit/props.test.ts) - 55 tests
+
+- ✅ applyProps: form value (clear, new value diff, blur); ref (null, callback,
+  { current }, signal getter, no current); vShow/vCloak;
+  dangerouslySetInnerHTML; value/checked reactive (getter, function); events
+  (onClick, replace, null, onChange); class/className, style, innerHTML; boolean
+  and generic attributes, select/textarea; children/key/directive skip; custom
+  directives (mounted, unmounted, updated).
+
+### 11. Reactive (unit/reactive.test.ts) - 7 tests
 
 - ✅ createReactive: proxy initial props, does not mutate initial, get after set
   returns new value
@@ -140,13 +153,13 @@
   microtask)
 - ✅ Nested proxy, multi-field set triggers effects that read those fields
 
-### 11. Resource (unit/resource.test.ts) - 8 tests
+### 12. Resource (unit/resource.test.ts) - 8 tests
 
 - ✅ createResource (no source): loading/data/error, refetch, fetcher throw and
   non-Promise edge
 - ✅ createResource (with source): re-request when source changes
 
-### 12. Router (unit/router.test.ts) - 14 tests
+### 13. Router (unit/router.test.ts) - 14 tests
 
 - ✅ createRouter: getCurrentRoute, navigate, replace, subscribe, start, stop,
   back/forward/go
@@ -155,7 +168,7 @@
 - ✅ beforeRoute: false cancels, redirect path, true continues
 - ✅ afterRoute, notFound and meta
 
-### 13. Runtime (unit/runtime.test.ts) - 50 tests
+### 14. Runtime (unit/runtime.test.ts) - 50 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children; **SSR branch
   coverage**: null/undefined children, signal getter as child, plain function as
@@ -178,23 +191,23 @@
 - ✅ hydrate: reuse children and activate, remove cloak; state change after
   hydrate uses patch (same DOM reference for input)
 
-### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
+### 15. Scheduler (unit/scheduler.test.ts) - 5 tests
 
 - ✅ schedule: tasks run in microtask; multiple schedules in same tick batch
 - ✅ unschedule: before flush cancels task; only specified task removed
 
-### 15. Signal (unit/signal.test.ts) - 14 tests
+### 16. Signal (unit/signal.test.ts) - 14 tests
 
 - ✅ createSignal: [getter, setter], initial value, setter and updater, same
   value (Object.is) no update
 - ✅ Edge: initial undefined/null
 - ✅ isSignalGetter, markSignalGetter
 
-### 16. SSR Directives (unit/ssr-directives.test.ts) - 6 tests
+### 17. SSR Directives (unit/ssr-directives.test.ts) - 6 tests
 
 - ✅ SSR vIf / vElseIf / vElse, vFor, vShow
 
-### 17. Store (unit/store.test.ts) - 14 tests
+### 18. Store (unit/store.test.ts) - 29 tests
 
 - ✅ createStore: [get, set] for state only, empty state, get() reactive, set
   updater, nested props
@@ -203,26 +216,34 @@
 - ✅ actions, persist custom storage, persist.key empty string edge
 - ✅ getters derived and state update, getters return undefined, action throw
   edge
+- ✅ withGetters / withActions helpers; getters-only or actions-only asObject
+  true/false; getters + actions asObject false
+- ✅ Persist: storage null, custom serialize/deserialize, getItem null/empty,
+  deserialize throw, setItem throw
+- ✅ Same key returns existing instance (state shared); setState updater;
+  getters/actions non-function entries skipped; Proxy ownKeys / spread
 
-### 18. Stream (unit/stream.test.ts) - 7 tests
+### 19. Stream (unit/stream.test.ts) - 7 tests
 
 - ✅ renderToStream: returns generator; simple div yields HTML; text children
   escaped; **plain function as child** renders return value (no source code);
   keyed children output data-view-keyed; void elements no closing tag
 
-### 19. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
+### 20. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
 - ✅ getRoutePathForChangedPath: /views/home → "/", /views/{segment} →
   "/{segment}", Windows path
 - ✅ getHmrVersionGetter / **VIEW_HMR_BUMP**: version getter and bump
 
-### 20. Compiler (unit/compiler.test.ts) - 7 tests
+### 21. Compiler (unit/compiler.test.ts) - 13 tests
 
 - ✅ optimize: constant folding (numeric, comparison, string concat),
-  empty/invalid code
-- ✅ createOptimizePlugin: name and setup, custom filter and readFile
+  empty/invalid code; edge: divide/modulo by zero (no fold), unary plus fold,
+  multiply/divide fold, fileName .tsx parsing
+- ✅ createOptimizePlugin: name and setup, custom filter and readFile; onLoad
+  readFile failure catch returns empty string
 
-### 21. Proxy (unit/proxy.test.ts) - 5 tests
+### 22. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy: get/set consistent with target, nested proxy, proxyCache
   reuse
@@ -244,10 +265,14 @@
 
 ## Conclusion
 
-All 290 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 381 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, scheduler, router, resource, context, directives, runtime
 and SSR (createRoot, render, **mount**, **createReactiveRoot**, hydrate,
-renderToString with full branch coverage, renderToStream), store, reactive,
-boundary, meta, proxy, compiler, stream, build/HMR, CLI (init/build/start),
-browser example flows, and **integration**: getter-returning-Fragment input
-focus preservation, suitable for release and documentation.
+renderToString with full branch coverage, renderToStream), **applyProps** (ref,
+vShow/vCloak, dangerouslySetInnerHTML, value/checked reactive, events, class,
+style, attributes, custom directives), store (persist, getters/actions, edge
+cases), reactive, boundary, meta (getMetaHeadFragment, applyMetaToHead, edge
+cases), proxy, compiler (constant folding edge cases, plugin onLoad catch),
+stream, build/HMR, CLI (init/build/start), browser example flows, and
+**integration**: getter-returning-Fragment input focus preservation, suitable
+for release and documentation.

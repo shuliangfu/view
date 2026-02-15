@@ -7,15 +7,15 @@
  * - `applyProps(el, props, vnode)`：向 DOM 元素应用 props（ref、事件、class、style、指令等）
  */
 
-import { createEffect } from "../effect.ts";
-import { isSignalGetter } from "../signal.ts";
-import { type ElementWithViewData, isDOMEnvironment } from "../types.ts";
 import {
   applyDirectives,
   getVShowValue,
   hasDirective,
   isDirectiveProp,
 } from "../directive.ts";
+import { createEffect } from "../effect.ts";
+import { isSignalGetter } from "../signal.ts";
+import { type ElementWithViewData, isDOMEnvironment } from "../types.ts";
 import { registerDirectiveUnmount } from "./unmount.ts";
 
 /** 应用 ref：支持回调 (el) => void 与 Ref 对象 { current } */
@@ -100,18 +100,22 @@ export function applyProps(
       continue;
     }
 
-    if (isSignalGetter(value)) {
-      createEffect(() => {
-        applySingleProp(el, key, (value as () => unknown)());
-      });
-      continue;
-    }
-    // value 支持两种写法：value={value} 直接应用（走下方 applySingleProp）；value={() => value} 在 effect 中求值、细粒度更新
-    if (key === "value" && typeof value === "function") {
-      createEffect(() => {
-        applySingleProp(el, key, (value as () => unknown)());
-      });
-      continue;
+    // 表单 value：若为 getter/函数会 createEffect 并 continue，不会走到下方 applySingleProp，故「清空」时若 effect 已被 dispose 则永远不会写回 DOM
+    if (key === "value") {
+      const isGetter = isSignalGetter(value);
+      const isFn = typeof value === "function";
+      if (isGetter) {
+        createEffect(() => {
+          applySingleProp(el, key, (value as () => unknown)());
+        });
+        continue;
+      }
+      if (isFn) {
+        createEffect(() => {
+          applySingleProp(el, key, (value as () => unknown)());
+        });
+        continue;
+      }
     }
     // checked 支持两种写法：checked={bool} 直接应用；checked={() => bool} 在 effect 中求值、细粒度更新
     if (key === "checked" && typeof value === "function") {
@@ -129,17 +133,6 @@ export function applyProps(
 
 /** 存在元素上的事件监听器 key 前缀，用于替换时 remove 旧监听 */
 const VIEW_EVENT_KEY_PREFIX = "__view$on:";
-
-/**
- * 判断当前获得焦点的是否为指定表单元素（或其内部元素）。
- * 用于在应用 value 时跳过正在编辑的输入框，避免重渲染覆盖用户输入。
- */
-function isFocusedFormElement(el: Element): boolean {
-  if (typeof globalThis.document === "undefined") return false;
-  const active = globalThis.document.activeElement;
-  if (!active) return false;
-  return active === el || el.contains(active);
-}
 
 /**
  * 设置单个 prop：事件、className、style、布尔/表单属性、通用 attribute
@@ -162,6 +155,7 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     }
     return;
   }
+
   // class（HTML/经典 JSX）与 className（React 风格）统一落到 DOM 的 class
   if (key === "class" || key === "className") {
     const classVal = value == null ? "" : String(value);
@@ -172,6 +166,7 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     }
     return;
   }
+
   if (key === "style" && value != null) {
     const style = (el as HTMLElement).style;
     if (typeof value === "string") {
@@ -185,9 +180,21 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     }
     return;
   }
+
   // innerHTML 作为普通 prop：原始 HTML 注入，仅限信任内容，禁止未 sanitize 用户输入
   if (key === "innerHTML") {
     (el as HTMLElement).innerHTML = value == null ? "" : String(value);
+    return;
+  }
+
+  // 表单 value 必须在 value==null 判断之前处理：patch 时可能传入 undefined，若先走 removeAttribute 会 return，导致永远进不了下面的 key==="value" 分支，清空不生效
+  if (key === "value") {
+    const formEl = el as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement;
+    const str = value == null ? "" : String(value);
+    formEl.value = str;
     return;
   }
   if (value == null || value === false) {
@@ -211,15 +218,6 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     return;
   }
   const str = String(value);
-  if (key === "value") {
-    const formEl = el as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | HTMLSelectElement;
-    if (isFocusedFormElement(el)) return;
-    formEl.value = str;
-    return;
-  }
   if (key === "checked" || key === "selected") {
     viewEl[key] = Boolean(value);
     el.setAttribute(key, str);

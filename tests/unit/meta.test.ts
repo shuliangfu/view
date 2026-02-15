@@ -1,9 +1,10 @@
 /**
- * @fileoverview meta 单元测试：getMetaHeadFragment（SEO head 片段）
+ * @fileoverview meta 单元测试：getMetaHeadFragment、applyMetaToHead，含边界与参数覆盖
  */
 
+import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { getMetaHeadFragment } from "../../src/meta.ts";
+import { applyMetaToHead, getMetaHeadFragment } from "../../src/meta.ts";
 
 describe("getMetaHeadFragment", () => {
   it("有 title 时应输出 <title> 标签", () => {
@@ -78,5 +79,101 @@ describe("getMetaHeadFragment", () => {
     expect(html).toContain("&lt;");
     expect(html).toContain("&gt;");
     expect(html).toContain("&amp;");
+  });
+
+  it("边界：meta 为 null 时 title 用 fallbackTitle", () => {
+    const html = getMetaHeadFragment(
+      null as unknown as Record<string, unknown>,
+      "",
+      "Fallback",
+    );
+    expect(html).toContain("Fallback");
+  });
+
+  it("边界：title 与 fallbackTitle 均为空时无 title 标签", () => {
+    const html = getMetaHeadFragment({}, "", "");
+    expect(html).not.toContain("<title>");
+  });
+
+  it("边界：name 类 value 为 null 或空字符串时不输出该 meta", () => {
+    const html = getMetaHeadFragment({
+      title: "T",
+      description: "",
+      keywords: null,
+      author: "  ",
+    });
+    expect(html).not.toContain('name="description"');
+    expect(html).not.toContain('name="keywords"');
+    expect(html).not.toContain('name="author"');
+  });
+
+  it("边界：name 类 value 为非字符串时转 String 输出", () => {
+    const html = getMetaHeadFragment({
+      title: "T",
+      num: 42 as unknown,
+    });
+    expect(html).toContain('name="num"');
+    expect(html).toContain("42");
+  });
+
+  it("边界：og 为数组时跳过不遍历", () => {
+    const html = getMetaHeadFragment({
+      title: "T",
+      og: ["a"] as unknown as Record<string, unknown>,
+    });
+    expect(html).not.toContain('property="og:');
+  });
+
+  it("边界：og 的 key 无 og: 前缀时自动加 og:", () => {
+    const html = getMetaHeadFragment({
+      title: "T",
+      og: { image: "url" },
+    });
+    expect(html).toContain('property="og:image"');
+  });
+});
+
+describe("applyMetaToHead", () => {
+  it("有 document.head 时设置 title 与 meta", () => {
+    applyMetaToHead(
+      { title: "ApplyTitle", description: "ApplyDesc" },
+      "",
+      "",
+    );
+    expect(typeof document.title).toBe("string");
+    if (document.title) {
+      expect(document.title).toBe("ApplyTitle");
+    }
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) {
+      expect(meta.getAttribute("content")).toBe("ApplyDesc");
+    }
+  });
+
+  it("无 meta.title 时使用 fallbackTitle", () => {
+    applyMetaToHead({}, "", "FallbackApply");
+    expect(document.title).toBe("FallbackApply");
+  });
+
+  it("titleSuffix 拼接到 document.title", () => {
+    applyMetaToHead({ title: "Page" }, " | Site", "");
+    expect(document.title).toBe("Page | Site");
+  });
+
+  it("og 字段写入 property 类 meta", () => {
+    applyMetaToHead({
+      title: "T",
+      og: { "og:image": "https://x.com/img.png" },
+    });
+    const el = document.querySelector('meta[property="og:image"]');
+    if (el) expect(el.getAttribute("content")).toBe("https://x.com/img.png");
+  });
+
+  it("边界：applyMetaToHead 传入 undefined 时不抛错", () => {
+    applyMetaToHead(undefined);
+  });
+
+  it("边界：name 类 value 为空或仅空格时不抛错", () => {
+    applyMetaToHead({ title: "T", empty: "", spaces: "   " });
   });
 });

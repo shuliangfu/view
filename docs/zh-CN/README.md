@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-290%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-381%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -917,10 +917,7 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.8**（2026-02-13）— 修复：SSR 不再把 JS 函数源码当 HTML 输出（普通函数子
-节点在 normalizeChildrenForSSR 中先执行再规范化）；getter 返回单个 Fragment 时
-input 保持焦点（appendDynamicChild 中展开 Fragment 使 reconcile 与 DOM 槽位
-一致）。新增 SSR 分支与 Fragment 内 input 焦点测试（290 条）。完整历史见
+**v1.0.9**（2026-02-15）— 修复：vIf/vShow 导致的 input/textarea value 问题（表单 value 在 null 判断前应用，指令切换时清空生效）。新增：扩展 applyProps、store、meta、compiler 单元测试，381 条全部通过。变更：移除 props.ts 中调试 log 与未使用函数。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
@@ -930,11 +927,11 @@ input 保持焦点（appendDynamicChild 中展开 Fragment 使 reconcile 与 DOM
 | 项目     | 值         |
 | -------- | ---------- |
 | 测试日期 | 2026-02-13 |
-| 总用例数 | 290        |
-| 通过     | 290 ✅     |
+| 总用例数 | 381        |
+| 通过     | 381 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
-| 耗时     | ~1m 37s    |
+| 耗时     | ~2m        |
 
 详见 [TEST_REPORT.md](./TEST_REPORT.md)。
 

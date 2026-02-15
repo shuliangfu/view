@@ -8,6 +8,33 @@ and this project adheres to
 
 ---
 
+## [1.0.9] - 2026-02-15
+
+### Fixed
+
+- **Input/textarea value issue caused by vIf/vShow directives.** In
+  `applySingleProp` (props.ts), form `value` is now applied before the generic
+  `value == null` branch. When vIf/vShow toggles and patch passes `undefined` or
+  `null`, the DOM input value is correctly cleared instead of skipping the
+  value branch and leaving the old value on the element.
+
+### Added
+
+- **Tests:** Extended unit tests for **applyProps** (ref, vShow/vCloak,
+  value/checked reactive, events, class, style, attributes, custom directives —
+  55 tests), **store** (persist edge cases, getters/actions, same-key instance,
+  setState updater, Proxy ownKeys — 29 tests), **meta** (getMetaHeadFragment and
+  applyMetaToHead edge cases — 21 tests), **compiler** (constant folding
+  divisor/modulo zero, unary plus, .tsx, onLoad catch — 13 tests). Integration
+  count 14, E2E browser 52. Total **381 tests**, all passing (~2m).
+
+### Changed
+
+- **props.ts:** Removed debug logs and unused `_isFocusedFormElement`. Test
+  report and README updated to 381 tests.
+
+---
+
 ## [1.0.8] - 2026-02-13
 
 ### Fixed

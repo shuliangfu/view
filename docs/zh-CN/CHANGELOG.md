@@ -7,6 +7,31 @@
 
 ---
 
+## [1.0.9] - 2026-02-15
+
+### 修复
+
+- **vIf/vShow 指令导致的 input/textarea value 问题。** 在 `applySingleProp`（props.ts）中，
+  表单 `value` 改为在通用的 `value == null` 分支之前处理。vIf/vShow 切换时 patch 传入
+  `undefined` 或 `null` 时，会正确清空 DOM 输入框的值，而不会跳过 value 分支导致仍显示旧值。
+
+### 新增
+
+- **测试：** 扩展单元测试：**applyProps**（ref、vShow/vCloak、value/checked
+  响应式、事件、class、style、attribute、自定义指令 — 55
+  条），**store**（persist 边界、getters/actions、同一 key 实例、setState
+  updater、Proxy ownKeys — 29 条），**meta**（getMetaHeadFragment 与
+  applyMetaToHead 边界 — 21 条），**compiler**（常量折叠除数为 0/取模为
+  0、一元加号、.tsx、onLoad catch — 13 条）。集成 14 条、E2E 浏览器 52 条。合计
+  **381 条**，全部通过（约 2 分钟）。
+
+### 变更
+
+- **props.ts：** 移除调试 log 与未使用的 `_isFocusedFormElement`。测试报告与
+  README 已更新为 381 条。
+
+---
+
 ## [1.0.8] - 2026-02-13
 
 ### 修复

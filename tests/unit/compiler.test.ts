@@ -29,6 +29,35 @@ describe("optimize", () => {
     const out = optimize("", "empty.ts");
     expect(typeof out).toBe("string");
   });
+
+  it("边界：除数为 0 时不折叠，保留原表达式", () => {
+    const code = "const x = 1 / 0;";
+    const out = optimize(code, "test.ts");
+    expect(out).toMatch(/1\s*\/\s*0/);
+  });
+
+  it("边界：取模除数为 0 时不折叠", () => {
+    const code = "const x = 5 % 0;";
+    const out = optimize(code, "test.ts");
+    expect(out).toMatch(/5\s*%\s*0/);
+  });
+
+  it("一元加号可折叠为数字字面量", () => {
+    const code = "const x = +1;";
+    const out = optimize(code, "test.ts");
+    expect(out).toContain("1");
+  });
+
+  it("乘除运算应被折叠", () => {
+    const out = optimize("const x = 2 * 3; const y = 10 / 2;", "test.ts");
+    expect(out).toContain("6");
+    expect(out).toContain("5");
+  });
+
+  it("fileName 以 .tsx 结尾时按 TSX 解析", () => {
+    const out = optimize("const x = 1 + 2;", "App.tsx");
+    expect(out).toContain("3");
+  });
 });
 
 describe("createOptimizePlugin", () => {
@@ -41,8 +70,27 @@ describe("createOptimizePlugin", () => {
   it("可传入自定义 filter 与 readFile", () => {
     const plugin = createOptimizePlugin(
       /\.tsx$/,
-      async () => "const x = 1 + 2;",
+      () => Promise.resolve("const x = 1 + 2;"),
     );
     expect(plugin.setup).toBeDefined();
+  });
+
+  it("setup 内 onLoad 读文件失败时 catch 返回空字符串不抛错", async () => {
+    const plugin = createOptimizePlugin(/\.tsx$/, () => {
+      return Promise.reject(new Error("read fail"));
+    });
+    let capturedCallback:
+      | ((args: { path: string }) => Promise<{ contents: string }>)
+      | null = null;
+    plugin.setup(
+      {
+        onLoad(_opts, callback) {
+          capturedCallback = callback;
+        },
+      } as Parameters<typeof plugin.setup>[0],
+    );
+    expect(capturedCallback).not.toBeNull();
+    const result = await capturedCallback!({ path: "/fake.tsx" });
+    expect(typeof result.contents).toBe("string");
   });
 });
