@@ -1,16 +1,13 @@
 /**
- * @module @dreamer/view/transition
- * @description
- * 轻量过渡工具：仅做 class 的添加与移除，不内置具体动画实现。列表/块显隐时配合 CSS 动画实现 enter/leave 过渡。
+ * 轻量过渡组件：根据 show 控制子节点挂载/卸载，挂载时添加 enter class，卸载前添加 leave class 并等待 duration。不内置动画，由 CSS 配合 class 实现。
  *
- * **本模块导出：**
- * - `Transition`：组件，根据 show 控制子节点挂载/卸载，并在挂载时添加 enter class、卸载前添加 leave class 并等待 duration
- * - `TransitionOptions`：可选配置类型
+ * @module @dreamer/view/transition
+ * @packageDocumentation
+ *
+ * **导出：** Transition 组件、TransitionOptions 类型
  *
  * @example
- * import { Transition } from "jsr:@dreamer/view/transition";
  * // CSS: .enter { opacity: 0; } .enter-active { transition: opacity 0.2s; opacity: 1; }
- * //      .leave { opacity: 1; } .leave-active { transition: opacity 0.2s; opacity: 0; }
  * <Transition show={() => visible()} enter="enter enter-active" leave="leave leave-active" duration={200}>
  *   <div>内容</div>
  * </Transition>
@@ -58,6 +55,7 @@ function normalizeTransitionChildren(
  * @param props.duration - leave 后等待毫秒再卸载，默认 0
  * @param props.tag - 包裹元素的标签，默认 "div"
  * @param props.children - 子节点
+ * @returns 无参 getter，返回当前应渲染的 VNode 或 null（phase 为 left 时）
  */
 export function Transition(
   props: TransitionOptions & {

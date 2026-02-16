@@ -7,6 +7,25 @@
 
 ---
 
+## [1.0.15] - 2026-02-17
+
+### 新增
+
+- **文档 – 链接拦截：** README（中英文）与 router 模块 JSDoc 现明确说明
+  `interceptLinks: true` 时哪些 `<a>` 点击会被拦截、哪些不会：不拦截情形包括
+  `target` ≠ `_self`、`download`、`data-native`、同页锚点（pathname+search
+  相同且仅 hash）、hash 模式下 `#section`（与 `#/path`
+  区分）、修饰键或非左键、跨域或非 http(s)、无效或空 `href`。中英文 README
+  均增加表格与说明。
+
+### 变更
+
+- **测试报告与 README：** 更新为 435 个用例（router 40、integration 14）；英文与
+  中文 README 的测试徽章与摘要表更新为 435 通过；测试日期 2026-02-17，
+  报告内版本为 1.0.15。
+
+---
+
 ## [1.0.14] - 2026-02-16
 
 ### 变更

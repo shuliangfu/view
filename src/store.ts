@@ -1,24 +1,22 @@
 /**
+ * 响应式 Store：将 state 变为嵌套 Proxy，任意层级读写与 createEffect 联动；支持 getters、actions、持久化（如 localStorage）。
+ *
  * @module @dreamer/view/store
- * @description
- * 响应式 Store：将 state 对象变为嵌套 Proxy，任意层级读写与 createEffect 联动；支持 getters（派生只读）、actions（方法）、持久化（如 localStorage）。
+ * @packageDocumentation
  *
- * **本模块导出：**
- * - `createStore(key, config)`：创建 store，key 用于跨 bundle 共享同一实例
- * - 类型：`StorageLike`、`PersistOptions`、`StoreGetters`、`StoreActions`、`CreateStoreConfig`
+ * **导出函数：** createStore、unregisterStore、withGetters、withActions
  *
- * **与 signal 区别：** store 是「一整棵可读写对象树」+ getters/actions/persist；signal 是单值 [get, set]。
+ * **导出类型：** StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig、
+ * StoreActionContextBase、StoreActionContext、WithGettersContext、WithActionsContext、
+ * StoreAsObjectStateOnly、StoreAsObjectWithGetters、StoreAsObject、StoreAsObjectWithGettersAndActions
+ *
+ * 与 signal 区别：store 是「可读写对象树」+ getters/actions/persist；signal 是单值 [get, set]。
  *
  * @example
- * import { createStore } from "jsr:@dreamer/view/store";
- * const [get, set, actions] = createStore({
+ * const [get, set, actions] = createStore("my", {
  *   state: { count: 0 },
  *   getters: { double() { return this.count * 2; } },
- *   actions: {
- *     increment(step = 1) { this.count = this.count + step; },
- *     reset() { this.count = 0; },
- *     addTwo() { this.increment(2); },
- *   },
+ *   actions: { increment(step = 1) { this.count += step; } },
  * });
  */
 

@@ -1,18 +1,18 @@
 /**
- * @module @dreamer/view/directive
- * @description
  * 指令系统：内置 v-if/v-else/v-else-if、v-for、v-show、v-once、v-cloak，以及用户通过 registerDirective 注册的自定义指令。
  *
- * **本模块导出：**
- * - 类型：`DirectiveBinding`、`DirectiveHooks`
- * - 注册与查询：`registerDirective`、`getDirective`、`directiveNameToCamel`、`directiveNameToKebab`、`isDirectiveProp`、`hasDirective`
- * - 取值与绑定：`getDirectiveValue`、`createBinding`、`hasStructuralDirective`、`getVIfValue`、`getVElseShow`、`getVElseIfValue`、`resolveVForFactory`、`getVForListAndFactory`、`getVShowValue`
- * - 应用：`applyDirectives`（dom 层在 applyProps 时调用）
+ * @module @dreamer/view/directive
+ * @packageDocumentation
  *
- * **表单双向绑定：** 使用 createReactive 或 createSignal，在 input/textarea/select 上写 `value={...}` + `onInput`/`onChange` 即可，无需 v-model 指令。
+ * **导出类型：** DirectiveBinding、DirectiveHooks
+ *
+ * **导出函数：** registerDirective、getDirective、directiveNameToCamel、directiveNameToKebab、isDirectiveProp、
+ * hasDirective、getDirectiveValue、createBinding、hasStructuralDirective、getVIfValue、getVElseShow、
+ * getVElseIfValue、resolveVForFactory、getVForListAndFactory、getVShowValue、applyDirectives
+ *
+ * 表单双向绑定：使用 createReactive 或 createSignal，在 input 上写 value={...} + onInput 即可，无需 v-model。
  *
  * @example
- * import { registerDirective } from "jsr:@dreamer/view/directive";
  * registerDirective("v-focus", { mounted(el) { (el as HTMLInputElement).focus(); } });
  */
 

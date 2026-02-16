@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-412%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-435%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -987,6 +987,25 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 beforeRoute/afterRoute、notFound。**scroll**：`'top'` 在导航完成后滚动到
 (0,0)；`'restore'` 恢复该路径上次滚动位置；`false`（默认）不处理。
 
+**链接拦截（interceptLinks）：** 当 `interceptLinks: true`（默认）且已调用
+**start()** 时，路由器会监听 `<a>` 的点击，对同源链接做客户端导航。以下情况
+**不拦截**（交给浏览器默认行为）：
+
+| 条件                                                               | 不拦截（浏览器默认）     |
+| ------------------------------------------------------------------ | ------------------------ |
+| `target="_blank"` 或任意 `target` ≠ `_self`                        | 新标签/新窗口打开        |
+| 存在 `download` 属性                                               | 下载资源                 |
+| 存在 `data-native` 属性                                            | 显式不拦截，使用原生导航 |
+| History 模式：pathname+search 相同且链接仅带 hash（如 `#section`） | 页内锚点滚动             |
+| Hash 模式：链接为 `#section`（单个 `#`，非 `#/path`）              | 页内锚点                 |
+| 修饰键（Ctrl、Meta、Shift）或非左键点击                            | 如新标签打开等           |
+| 跨域或非 `http:`/`https:` 的 URL                                   | 外链                     |
+| `href` 无效或为空                                                  | 不导航                   |
+
+仅当**左键**点击同源 `http:`/`https:` 链接且不满足上表任一条件时才会拦截并 触发
+`navigate()`（及守卫）。在 createRouter 的 options 中设置
+`interceptLinks: false` 可完全关闭链接拦截。
+
 **路由文件与 `export meta`（view-cli）：** 使用 `view-cli dev` 时，会按
 `src/views` 递归扫描（最多 5 层）自动生成
 `src/router/routers.tsx`。约定文件（_app、_layout、_loading、_404、_error）、路径映射与
@@ -1041,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.14**（2026-02-16）— 变更：Store/router/version/DOM
-重构与渲染性能优化（keyed 列表原地 patch、props 未变跳过写、指令
-queueMicrotask、根 vnode 跳过）。 完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.15**（2026-02-17）— 新增：链接拦截（interceptLinks）文档：说明哪些 `<a>`
+点击会拦截、哪些不拦截（README 中英文 + router JSDoc）。变更：测试 报告与 README
+更新为 435 用例。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -1051,9 +1070,9 @@ queueMicrotask、根 vnode 跳过）。 完整历史见 [CHANGELOG.md](./CHANGEL
 
 | 项目     | 值         |
 | -------- | ---------- |
-| 测试日期 | 2026-02-16 |
-| 总用例数 | 412        |
-| 通过     | 412 ✅     |
+| 测试日期 | 2026-02-17 |
+| 总用例数 | 435        |
+| 通过     | 435 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
 | 耗时     | ~2m        |

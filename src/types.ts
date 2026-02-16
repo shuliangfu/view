@@ -1,11 +1,14 @@
 /**
- * @module @dreamer/view/types
- * @description
- * View 模板引擎 — 公共类型。定义 Signal、Effect、VNode、渲染结果等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
+ * View 模板引擎 — 公共类型定义。
  *
- * **本模块导出：**
- * - 类型：`SignalGetter`、`SignalSetter`、`SignalTuple`、`EffectDispose`、`VNode`、`Root`、`ElementWithViewData`
- * - 工具：`isDOMEnvironment()`
+ * @module @dreamer/view/types
+ * @packageDocumentation
+ *
+ * 定义 Signal、Effect、VNode、Root、MountOptions 等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
+ *
+ * **导出类型：** SignalGetter、SignalSetter、SignalTuple、EffectDispose、VNode、MountOptions、Root、ElementWithViewData
+ *
+ * **导出函数：** isDOMEnvironment
  */
 
 /**
@@ -29,18 +32,21 @@ export type SignalTuple<T> = [getter: SignalGetter<T>, setter: SignalSetter<T>];
 export type EffectDispose = () => void;
 
 /**
- * VNode 描述符：JSX 编译后的节点描述，供 render / renderToString / hydrate 消费。
- * - type 为字符串：原生 DOM 标签名
- * - type 为函数：组件，接收 props 返回 VNode 或 VNode[] 或 null
- * - type 为 Symbol（如 Fragment）：占位/片段，不生成真实 DOM 节点
+ * 虚拟节点描述符：JSX 编译后的节点描述，供 render / renderToString / hydrate 消费。
  */
 export type VNode = {
+  /**
+   * 节点类型：字符串为原生标签名；函数为组件 (props) => VNode | VNode[] | null；Symbol（如 Fragment）为占位/片段
+   */
   type:
     | string
     | symbol
     | ((props: Record<string, unknown>) => VNode | VNode[] | null);
+  /** 属性与子节点（children 可能在此或单独在 children 字段） */
   props: Record<string, unknown>;
+  /** 可选 key，用于列表 diff 时的稳定性 */
   key?: string | number | null;
+  /** 子节点列表（部分场景由 type 与 props 推导，此处可显式提供） */
   children?: VNode[];
 };
 

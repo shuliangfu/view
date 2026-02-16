@@ -1,9 +1,12 @@
 #!/usr/bin/env -S deno run -A
 
 /**
+ * view-cli 全局命令安装脚本：执行 deno install 将 view CLI 安装为全局命令 view-cli。
+ *
  * @module @dreamer/view/setup
- * @description
- * view-cli 全局命令安装脚本：执行 deno install 将 view CLI 安装为全局命令 view-cli，支持从 JSR 或本地运行。安装后可在任意目录执行 view-cli init、dev、build、start。
+ * @packageDocumentation
+ *
+ * 支持从 JSR 或本地运行。安装后可在任意目录执行 view-cli init、dev、build、start。
  *
  * @example
  * ```bash

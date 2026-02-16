@@ -1,13 +1,15 @@
 /**
+ * 客户端 Hybrid 入口：含 createRoot、render、hydrate、mount，不含 renderToString、generateHydrationScript。体积介于 csr 与主包之间。
+ *
  * @module @dreamer/view/hybrid
- * @description
- * 客户端 Hybrid 入口：createRoot、render、hydrate、mount，不含 renderToString、generateHydrationScript。
- * 服务端用主包或 @dreamer/view/stream 出 HTML，客户端用本入口激活，体积介于 core 与全量之间。
- * mount(container, fn, options?) 支持选择器与 Element，有子节点则 hydrate 否则 render；容器查不到时可 noopIfNotFound。
+ * @packageDocumentation
+ *
+ * **导出：** createSignal、createEffect、createMemo、onCleanup、createRoot、render、hydrate、mount、getCurrentEffect、setCurrentEffect、isSignalGetter、isDOMEnvironment；类型同 csr
+ *
+ * 服务端用主包或 stream 出 HTML，客户端用本入口激活。mount 有子节点则 hydrate，否则 render。
  *
  * @example
- * // 服务端：renderToString(() => <App />) + generateHydrationScript({ scriptSrc: "/client.js" })
- * // 客户端：mount("#root", () => <App />);  // 有 SSR 内容则 hydrate，否则 render
+ * mount("#root", () => <App />);  // 有 SSR 内容则 hydrate，否则 render
  */
 
 export {

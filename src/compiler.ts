@@ -216,11 +216,11 @@ function staticHoist(
 }
 
 /**
- * 对源码执行常量折叠与静态提升，返回优化后的代码字符串
+ * 对源码执行常量折叠与静态提升，返回优化后的代码字符串。
  *
- * @param code 源文件内容（可为 TS/JSX）
- * @param fileName 文件名，用于 SourceMap 与诊断，默认 "source.tsx"
- * @returns 优化后的源码
+ * @param code - 源文件内容（可为 TS/JSX）
+ * @param fileName - 文件名，用于 SourceMap 与诊断，默认 "source.tsx"
+ * @returns 优化后的源码字符串
  */
 export function optimize(code: string, fileName = "source.tsx"): string {
   const sf = ts.createSourceFile(
@@ -238,6 +238,8 @@ export function optimize(code: string, fileName = "source.tsx"): string {
 
 /**
  * esbuild onLoad 回调的参数（createOptimizePlugin 内部使用）。
+ * @property path - 当前加载的文件路径
+ * @property namespace - 可选的 namespace
  */
 export type OnLoadArgs = { path: string; namespace?: string };
 
@@ -255,7 +257,7 @@ type EsbuildPluginBuild = {
  *
  * @param filter - 正则，匹配需要优化的文件路径，默认 /\.(tsx?|jsx?)$/
  * @param readFile - 可选，自定义读文件函数 (path) => Promise<string>
- * @returns esbuild 插件对象 { name, setup }
+ * @returns esbuild 插件对象 { name, setup }，在 build.onLoad 中对匹配文件执行 optimize 后返回 contents
  */
 export function createOptimizePlugin(
   filter: RegExp = /\.(tsx?|jsx?)$/,

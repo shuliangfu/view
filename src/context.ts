@@ -1,17 +1,16 @@
 /**
+ * 跨层数据注入（Context）：createContext 创建上下文，Provider 在树中注入值，useContext 在任意子组件中读取。
+ *
  * @module @dreamer/view/context
- * @description
- * 跨层数据注入（Context）：createContext 创建上下文，Provider 在树中注入值，useContext 在任意子组件中读取。渲染时 dom 层进入 Provider 即 push、退出即 pop，保证子树读到当前层级的 value。
+ * @packageDocumentation
  *
- * **本模块导出：**
- * - `createContext(defaultValue)`：返回 { Provider, useContext, registerProviderAlias }
- * - 类型：`ContextValue<T>`
- * - 内部 API（dom 层使用）：`pushContext`、`popContext`、`getContext`、`getProviderContextId`、`getContextBinding`
+ * **导出函数：** createContext、pushContext、popContext、getContext、getProviderContextId、getContextBinding
  *
- * **registerProviderAlias：** 可注册别名组件（如 RouterProvider(router)）直接注入同一 context，无需内层再包 Provider。
+ * **导出类型/常量：** ProviderBinding、ContextValue、CONTEXT_SCOPE_TYPE
+ *
+ * createContext 返回 { Provider, useContext, registerProviderAlias }。registerProviderAlias 可注册别名组件（如 RouterProvider）直接注入同一 context。
  *
  * @example
- * import { createContext } from "jsr:@dreamer/view/context";
  * const ThemeContext = createContext<"light" | "dark">("light");
  * <ThemeContext.Provider value={theme()}><App /></ThemeContext.Provider>
  * // 子组件：const theme = ThemeContext.useContext();
@@ -30,9 +29,14 @@ import type { VNode } from "./types.ts";
 type GlobalContextStacks = Map<symbol, unknown[]>;
 /** context 默认值：id -> defaultValue */
 type GlobalContextDefaults = Map<symbol, unknown>;
-/** Provider 绑定：组件 -> { id, getValue } */
+/**
+ * Provider 绑定：将组件与 context id、getValue 关联，供 dom 层在渲染时 pushContext。
+ * @internal 主要由 dom 层使用
+ */
 export type ProviderBinding = {
+  /** context 的 id（createContext 内部生成） */
   id: symbol;
+  /** 从组件 props 中取得当前要注入的 value */
   getValue: (props: Record<string, unknown>) => unknown;
 };
 type GlobalProviderBindings = Map<

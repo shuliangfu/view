@@ -1,16 +1,14 @@
 /**
- * @module @dreamer/view/boundary
- * @description
  * 边界组件：Suspense（异步边界）与 ErrorBoundary（错误边界）。条件/列表渲染请使用指令 v-if、v-else、v-for。
  *
- * **本模块导出：**
- * - `Suspense`：children 为 Promise 或 getter 返回 Promise 时先显示 fallback，resolve 后显示内容；可与 createResource 配合
- * - `ErrorBoundary`：捕获子树渲染中的同步错误，渲染 fallback(error)
- * - `isErrorBoundary(component)`：判断组件是否为 ErrorBoundary（dom 层使用）
- * - `getErrorBoundaryFallback(props)`：从 props 取出并规范 fallback 函数（dom 层使用）
+ * @module @dreamer/view/boundary
+ * @packageDocumentation
+ *
+ * **导出组件：** Suspense、ErrorBoundary
+ *
+ * **导出函数：** isErrorBoundary、getErrorBoundaryFallback（供 dom 层使用）
  *
  * @example
- * import { Suspense, ErrorBoundary } from "jsr:@dreamer/view/boundary";
  * <ErrorBoundary fallback={(e) => <div>Error: {e.message}</div>}>
  *   <Suspense fallback={<Spinner />}>{resource()}</Suspense>
  * </ErrorBoundary>

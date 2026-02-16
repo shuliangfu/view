@@ -2,10 +2,12 @@
  * @fileoverview 内置 SPA 路由单元测试（不依赖 @dreamer/router/client）
  */
 
-import { describe, expect, it } from "@dreamer/test";
+import { afterEach, describe, expect, it } from "@dreamer/test";
 import type { VNode } from "@dreamer/view";
 import {
+  buildPath,
   createRouter,
+  type NavigateTo,
   type RouteConfig,
   type RouteMatch,
 } from "@dreamer/view/router";
@@ -520,5 +522,615 @@ describe("router scroll 选项", () => {
       g.scrollY = origScrollY;
       g.scrollTo = origScrollTo;
     }
+  });
+});
+
+describe("router mode (history / hash)", () => {
+  const g = globalThis as unknown as {
+    location?: {
+      pathname: string;
+      search: string;
+      hash: string;
+      origin: string;
+    };
+    history?: {
+      pushState: (a: unknown, b: string, c: string) => void;
+      replaceState: (a: unknown, b: string, c: string) => void;
+    };
+  };
+
+  function restore(): void {
+    g.location = undefined;
+    g.history = undefined;
+  }
+
+  it("默认 mode 为 history，从 pathname+search 读当前路由", () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/about",
+        search: "?tab=info",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({ routes });
+      const match = router.getCurrentRoute();
+      expect(match?.path).toBe("/about");
+      expect(match?.query?.tab).toBe("info");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 时从 location.hash 解析 path 与 query", () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "#/about",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({ routes, mode: "hash" });
+      const match = router.getCurrentRoute();
+      expect(match?.path).toBe("/about");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 时 hash 带 query 能正确解析", () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "#/user/42?tab=profile",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({ routes, mode: "hash" });
+      const match = router.getCurrentRoute();
+      expect(match?.path).toBe("/user/:id");
+      expect(match?.params.id).toBe("42");
+      expect(match?.query?.tab).toBe("profile");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 时 href(path) 返回带 # 的字符串", () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const routerHistory = createRouter({ routes, mode: "history" });
+      const routerHash = createRouter({ routes, mode: "hash" });
+      expect(routerHistory.href("/about")).toBe("/about");
+      expect(routerHash.href("/about")).toBe("#/about");
+      expect(routerHash.href("about")).toBe("#/about");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 且 basePath 时 href 与 getCurrentRoute 均考虑 basePath", () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "#/app/user/1",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({
+        routes,
+        mode: "hash",
+        basePath: "/app",
+      });
+      const match = router.getCurrentRoute();
+      expect(match?.path).toBe("/user/:id");
+      expect(match?.params.id).toBe("1");
+      expect(router.href("/user/1")).toBe("#/app/user/1");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 时 navigate 写入 location.hash", async () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({ routes, mode: "hash" });
+      await router.navigate("/about");
+      expect(g.location?.hash).toBe("#/about");
+      await router.navigate("/user/99");
+      expect(g.location?.hash).toBe("#/user/99");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("mode: 'hash' 时 replace 使用 replaceState 且 URL 含目标 hash", async () => {
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "#/",
+        origin: "http://localhost",
+      };
+      let replaceStateUrl: string | null = null;
+      g.history = {
+        pushState: () => {},
+        replaceState: (_: unknown, __: string, url: string) => {
+          replaceStateUrl = url;
+          if (g.location && url.includes("#")) {
+            g.location.hash = url.slice(url.indexOf("#"));
+          }
+        },
+      };
+      const router = createRouter({ routes, mode: "hash" });
+      await router.replace("/about");
+      expect(replaceStateUrl).toContain("#/about");
+      expect(router.getCurrentRoute()?.path).toBe("/about");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+});
+
+describe("buildPath 与 navigate/href/replace 的 params、query 参数", () => {
+  it("buildPath 仅 path 时返回规范化路径", () => {
+    expect(buildPath("/user/:id")).toBe("/user/");
+    expect(buildPath("/about")).toBe("/about");
+    expect(buildPath("about")).toBe("/about");
+  });
+
+  it("buildPath 带 params 时替换 :param", () => {
+    expect(buildPath("/user/:id", { id: "123" })).toBe("/user/123");
+    expect(buildPath("/post/:id/comment/:cid", { id: "1", cid: "2" })).toBe(
+      "/post/1/comment/2",
+    );
+  });
+
+  it("buildPath 仅 query 时返回 path + search", () => {
+    expect(buildPath("/search", undefined, { q: "hello" })).toBe(
+      "/search?q=hello",
+    );
+    expect(buildPath("/list", undefined, { page: "1", size: "10" })).toBe(
+      "/list?page=1&size=10",
+    );
+  });
+
+  it("buildPath 同时带 params 与 query", () => {
+    expect(
+      buildPath("/user/:id", { id: "42" }, { tab: "profile" }),
+    ).toBe("/user/42?tab=profile");
+  });
+
+  it("buildPath 对 params 和 query 值做 encodeURIComponent", () => {
+    expect(buildPath("/user/:id", { id: "a/b" })).toBe("/user/a%2Fb");
+    expect(buildPath("/s", undefined, { q: "a&b" })).toBe("/s?q=a%26b");
+  });
+
+  it("navigate 接受 NavigateTo 对象并正确跳转", async () => {
+    const g = globalThis as unknown as {
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
+      history?: {
+        pushState: (a: unknown, b: string, c: string) => void;
+        replaceState: (a: unknown, b: string, c: string) => void;
+      };
+    };
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      let pushStateUrl: string | null = null;
+      g.history = {
+        pushState: (_: unknown, __: string, url: string) => {
+          pushStateUrl = url;
+        },
+        replaceState: () => {},
+      };
+      const router = createRouter({ routes });
+      const to: NavigateTo = {
+        path: "/user/:id",
+        params: { id: "99" },
+        query: { tab: "posts" },
+      };
+      await router.navigate(to);
+      expect(pushStateUrl).toContain("/user/99");
+      expect(pushStateUrl).toContain("tab=posts");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("href 接受 NavigateTo 对象返回带 params、query 的 href", () => {
+    const g = globalThis as unknown as {
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
+      history?: {
+        pushState: (a: unknown, b: string, c: string) => void;
+        replaceState: (a: unknown, b: string, c: string) => void;
+      };
+    };
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = { pushState: () => {}, replaceState: () => {} };
+      const router = createRouter({ routes });
+      const to: NavigateTo = {
+        path: "/user/:id",
+        params: { id: "1" },
+        query: { from: "home" },
+      };
+      expect(router.href(to)).toBe("/user/1?from=home");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+
+  it("replace 接受 NavigateTo 对象", async () => {
+    type HistoryMock = {
+      pushState: (a: unknown, b: string, c: string) => void;
+      replaceState: (a: unknown, b: string, c: string) => void;
+    };
+    const g = globalThis as unknown as {
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
+      history?: HistoryMock;
+    };
+    const orig = { location: g.location, history: g.history };
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      let replaceStateUrl: string | null = null;
+      g.history = {
+        pushState: () => {},
+        replaceState: (_: unknown, __: string, url: string) => {
+          replaceStateUrl = url;
+        },
+      } as HistoryMock;
+      const router = createRouter({ routes });
+      await router.replace({
+        path: "/about",
+        query: { ref: "nav" },
+      });
+      expect(replaceStateUrl).toContain("/about");
+      expect(replaceStateUrl).toContain("ref=nav");
+    } finally {
+      g.location = orig.location;
+      g.history = orig.history;
+    }
+  });
+});
+
+describe("router 链接拦截 (interceptLinks)", () => {
+  type LocationLike = {
+    pathname: string;
+    search: string;
+    hash: string;
+    origin: string;
+    href?: string;
+  };
+
+  let savedClickHandler: ((e: Event) => void) | null = null;
+  const mockDocument = {
+    addEventListener(type: string, fn: (e: Event) => void) {
+      if (type === "click") savedClickHandler = fn;
+    },
+    removeEventListener(_type: string, _fn: () => void) {
+      savedClickHandler = null;
+    },
+  };
+
+  const g = globalThis as unknown as {
+    location?: LocationLike;
+    history?: {
+      pushState: (a: unknown, b: string, c: string) => void;
+      replaceState: (a: unknown, b: string, c: string) => void;
+    };
+    document?: typeof mockDocument;
+  };
+
+  function createAnchor(attrs: {
+    href: string;
+    target?: string;
+    download?: boolean;
+    dataNative?: boolean;
+  }) {
+    const a = {
+      getAttribute(name: string): string | null {
+        if (name === "href") return attrs.href;
+        if (name === "target") return attrs.target ?? null;
+        return null;
+      },
+      hasAttribute(name: string): boolean {
+        if (name === "download") return attrs.download ?? false;
+        if (name === "data-native") return attrs.dataNative ?? false;
+        return false;
+      },
+      closest(_sel: string) {
+        return a;
+      },
+    };
+    return a;
+  }
+
+  function dispatchClick(
+    anchor: ReturnType<typeof createAnchor>,
+    options: {
+      ctrlKey?: boolean;
+      metaKey?: boolean;
+      shiftKey?: boolean;
+      button?: number;
+    } = {},
+  ): { preventDefaultCalled: boolean } {
+    let preventDefaultCalled = false;
+    const ev = {
+      preventDefault: () => {
+        preventDefaultCalled = true;
+      },
+      target: anchor,
+      ctrlKey: options.ctrlKey ?? false,
+      metaKey: options.metaKey ?? false,
+      shiftKey: options.shiftKey ?? false,
+      button: options.button ?? 0,
+    } as unknown as MouseEvent;
+    savedClickHandler?.(ev as Event);
+    return { preventDefaultCalled };
+  }
+
+  const origGlobals = {
+    location: g.location,
+    history: g.history,
+    document: g.document,
+  };
+
+  afterEach(() => {
+    savedClickHandler = null;
+    g.location = origGlobals.location;
+    g.history = origGlobals.history;
+    g.document = origGlobals.document;
+  });
+
+  it('interceptLinks: true 时同源 <a href="/about"> 点击应拦截并 navigate', () => {
+    let pushStateUrl: string | null = null;
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = {
+      pushState: (_: unknown, __: string, url: string) => {
+        pushStateUrl = url;
+      },
+      replaceState: () => {},
+    };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: true });
+    router.start();
+
+    const anchor = createAnchor({ href: "/about" });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(true);
+    expect(pushStateUrl).toContain("/about");
+  });
+
+  it("interceptLinks: true 时 target=_blank 不拦截", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: true });
+    router.start();
+
+    const anchor = createAnchor({ href: "/about", target: "_blank" });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(false);
+    router.stop();
+  });
+
+  it("interceptLinks: true 时带 download 属性不拦截", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: true });
+    router.start();
+
+    const anchor = createAnchor({ href: "/about", download: true });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(false);
+    router.stop();
+  });
+
+  it("interceptLinks: true 时带 data-native 不拦截", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: true });
+    router.start();
+
+    const anchor = createAnchor({ href: "/about", dataNative: true });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(false);
+    router.stop();
+  });
+
+  it("history 模式下仅 hash 锚点 (#section) 不拦截", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({
+      routes,
+      interceptLinks: true,
+      mode: "history",
+    });
+    router.start();
+
+    const anchor = createAnchor({ href: "#section" });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(false);
+    router.stop();
+  });
+
+  it('hash 模式下 <a href="#/about"> 应拦截并 navigate', () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "#/",
+      origin: "http://localhost",
+      href: "http://localhost/#/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({
+      routes,
+      interceptLinks: true,
+      mode: "hash",
+    });
+    router.start();
+
+    const anchor = createAnchor({ href: "#/about" });
+    const { preventDefaultCalled } = dispatchClick(anchor);
+
+    expect(preventDefaultCalled).toBe(true);
+    expect(g.location?.hash).toBe("#/about");
+    router.stop();
+  });
+
+  it("修饰键或非左键点击不拦截", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: true });
+    router.start();
+
+    const anchor = createAnchor({ href: "/about" });
+    expect(dispatchClick(anchor, { ctrlKey: true }).preventDefaultCalled).toBe(
+      false,
+    );
+    expect(dispatchClick(anchor, { metaKey: true }).preventDefaultCalled).toBe(
+      false,
+    );
+    expect(dispatchClick(anchor, { shiftKey: true }).preventDefaultCalled).toBe(
+      false,
+    );
+    expect(dispatchClick(anchor, { button: 1 }).preventDefaultCalled).toBe(
+      false,
+    );
+    router.stop();
+  });
+
+  it("interceptLinks: false 时不注册 click 监听", () => {
+    g.location = {
+      pathname: "/",
+      search: "",
+      hash: "",
+      origin: "http://localhost",
+      href: "http://localhost/",
+    };
+    g.history = { pushState: () => {}, replaceState: () => {} };
+    g.document = mockDocument as typeof g.document;
+
+    const router = createRouter({ routes, interceptLinks: false });
+    router.start();
+
+    expect(savedClickHandler).toBeNull();
+    router.stop();
   });
 });
