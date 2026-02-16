@@ -937,10 +937,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.11** (2026-02-15) — Fixed: Skip rendering `false` and `""` in JSX
-children (use `isEmptyChild()` in client and SSR). Added: `isEmptyChild(value)`
-in `dom/shared.ts`. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full
-details.
+**v1.0.12** (2026-02-16) — Fixed: view-cli upgrade and setup use stdout/stderr
+`"null"` so the install subprocess does not block and the CLI exits after
+installation. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
