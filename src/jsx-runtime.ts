@@ -1,17 +1,14 @@
 /**
- * @module @dreamer/view/jsx-runtime
- * @description
  * JSX 运行时，与 React 17+ automatic runtime 兼容。编译器将 JSX 转为对 jsx/jsxs 的调用，产出 VNode 供 render/renderToString/hydrate 消费。
  *
- * **本模块导出：**
- * - `jsx(type, props, maybeKey)`：单子节点场景的 JSX 转换入口
- * - `jsxs(type, props, maybeKey)`：静态多子节点场景的 JSX 转换入口
- * - `Fragment`：Fragment 标记（<>...</> 或 <Fragment>...</Fragment>），不生成真实 DOM
+ * @module @dreamer/view/jsx-runtime
+ * @packageDocumentation
  *
- * **使用：** 在 deno.json / tsconfig 中配置 `"jsx": "react-jsx"` 与 `"jsxImportSource": "@dreamer/view"`，无需在业务代码中显式导入本模块。
+ * **导出：** jsx、jsxs、Fragment
+ *
+ * 在 deno.json / tsconfig 中配置 "jsx": "react-jsx" 与 "jsxImportSource": "@dreamer/view" 后，无需在业务代码中显式导入本模块。
  *
  * @example
- * // 配置后可直接写 JSX，编译器会从本模块解析 jsx、jsxs、Fragment
  * const vnode = <div class="foo">{count()}</div>;
  */
 

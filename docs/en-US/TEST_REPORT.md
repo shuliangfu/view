@@ -5,16 +5,16 @@
 | Item            | Description                                        |
 | --------------- | -------------------------------------------------- |
 | Package         | @dreamer/view                                      |
-| Version         | 1.0.13                                             |
+| Version         | 1.0.15                                             |
 | Test framework  | @dreamer/test ^1.0.6                               |
-| Test date       | 2026-02-16                                         |
+| Test date       | 2026-02-17                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E) |
 | Command         | `deno test -A tests/`                              |
 
 ## Test Results
 
-- **Total tests**: 412
-- **Passed**: 412
+- **Total tests**: 435
+- **Passed**: 435
 - **Failed**: 0
 - **Pass rate**: 100%
 - **Duration**: ~2m
@@ -41,7 +41,7 @@
 | unit/proxy.test.ts               | 5     | ✅ All passed |
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
-| unit/router.test.ts              | 17    | ✅ All passed |
+| unit/router.test.ts              | 40    | ✅ All passed |
 | unit/runtime.test.ts             | 50    | ✅ All passed |
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
@@ -113,7 +113,7 @@
 - ✅ createMemo: non-function throws, getter and cache, recompute on dependency
   change, read in effect, undefined/null return edge
 
-### 7. Integration (integration/integration.test.ts) - 12 tests
+### 7. Integration (integration/integration.test.ts) - 14 tests
 
 - ✅ createRoot + event + signal: button onClick updates signal, DOM updates
   with signal
@@ -162,14 +162,21 @@
   non-Promise edge
 - ✅ createResource (with source): re-request when source changes
 
-### 13. Router (unit/router.test.ts) - 14 tests
+### 13. Router (unit/router.test.ts) - 40 tests
 
 - ✅ createRouter: getCurrentRoute, navigate, replace, subscribe, start, stop,
   back/forward/go
 - ✅ No location/history does not throw, empty routes array edge
-- ✅ Path matching: basePath, dynamic :id
-- ✅ beforeRoute: false cancels, redirect path, true continues
-- ✅ afterRoute, notFound and meta
+- ✅ Path matching: basePath, dynamic :id; beforeRoute: false cancels, redirect
+  path, true continues
+- ✅ afterRoute, notFound and metadata; scroll: top / false / restore
+- ✅ mode (history / hash): pathname+search, hash path+query, href with #,
+  navigate/replace
+- ✅ buildPath and navigate/href/replace with params and query;
+  encodeURIComponent
+- ✅ interceptLinks: same-origin &lt;a&gt; intercept,
+  target=_blank/download/data-native skip, hash anchor, modifier/right-click
+  skip, interceptLinks: false
 
 ### 14. Runtime (unit/runtime.test.ts) - 50 tests
 
@@ -268,7 +275,7 @@
 
 ## Conclusion
 
-All 381 tests for @dreamer/view pass (100% pass rate). Coverage includes
+All 435 tests for @dreamer/view pass (100% pass rate). Coverage includes
 signals, reactivity, scheduler, router, resource, context, directives, runtime
 and SSR (createRoot, render, **mount**, **createReactiveRoot**, hydrate,
 renderToString with full branch coverage, renderToStream), **applyProps** (ref,

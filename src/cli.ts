@@ -1,18 +1,19 @@
 #!/usr/bin/env -S deno run -A
 
 /**
- * @module @dreamer/view/cli
- * @description
  * view-cli 入口：init、dev、build、start、upgrade、update；支持 version/-v 显示版本。
- * 使用 @dreamer/console 的 Command 注册子命令，usage/help 由 console 自动实现；子命令由 cmd/* 动态导入执行。
+ *
+ * @module @dreamer/view/cli
+ * @packageDocumentation
+ *
+ * 使用 @dreamer/console 的 Command 注册子命令，子命令由 cmd/* 动态导入执行。
+ *
+ * **导出函数：** createCLI(version) — 创建并返回 CLI Command 实例
  *
  * @example
  * deno run -A jsr:@dreamer/view/cli dev
- * deno run -A jsr:@dreamer/view/cli build
- * view-cli --version   # 或 -v 显示版本
- * view-cli upgrade    # 升级到最新稳定版
- * view-cli upgrade --beta  # 可升级到 beta
- * view-cli update     # 更新项目依赖与 lockfile
+ * view-cli --version
+ * view-cli upgrade --beta
  */
 
 import { Command } from "@dreamer/console";
@@ -31,8 +32,10 @@ Version: ${version}
 }
 
 /**
- * 创建 view-cli 命令实例并注册子命令
- * @param version 框架版本号（由 getViewVersion() 获取），用于 setVersion 与 --version/-v
+ * 创建 view-cli 命令实例并注册子命令（init、dev、build、start、upgrade、update、version 等）。
+ *
+ * @param version - 框架版本号（由 getViewVersion() 获取），用于 setVersion 与 --version/-v 输出
+ * @returns Command 实例，可调用 .parse() 等执行
  */
 export function createCLI(version: string): Command {
   const cli = new Command(

@@ -1,9 +1,12 @@
 /**
+ * 仅 CSR 的轻量入口：不含 renderToString、hydrate、generateHydrationScript，bundle 更小。
+ *
  * @module @dreamer/view/csr
- * @description
- * 仅 CSR 的轻量入口：createSignal、createEffect、createRoot、render、mount，不含 renderToString / hydrate / generateHydrationScript。
- * 不需要 SSR 或 hydrate 时从此入口引入可得到更小的 bundle。
- * mount(container, fn, options?) 支持选择器与 Element，始终 render；容器查不到时可 noopIfNotFound 静默返回。
+ * @packageDocumentation
+ *
+ * **导出：** createSignal、createEffect、createMemo、onCleanup、createRoot、render、mount、getCurrentEffect、setCurrentEffect、isSignalGetter、isDOMEnvironment；类型 MountOptions、Root、SignalGetter、SignalSetter、SignalTuple、VNode、EffectDispose
+ *
+ * mount(container, fn, options?) 支持选择器与 Element，始终 render；noopIfNotFound 时容器查不到则静默返回。
  *
  * @example
  * import { createSignal, mount } from "jsr:@dreamer/view/csr";

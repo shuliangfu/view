@@ -1,20 +1,32 @@
 /**
+ * 内置 SPA 路由模块：基于 History API 或 location.hash 的客户端路由，不依赖 @dreamer/router/client。
+ *
  * @module @dreamer/view/router
- * @description
- * 内置 SPA 路由：基于 History API 的客户端路由，不依赖 @dreamer/router/client。支持无刷新跳转、路由订阅、同源 <a> 点击拦截、前置/后置守卫、404 兜底、back/forward/go、路由 meta；仅 history 模式。
+ * @packageDocumentation
  *
- * **本模块导出：**
- * - `createRouter(options)`：创建路由器，返回 Router 实例；需调用 start() 后才会监听 popstate 与拦截链接
- * - 类型：`RouteGuardResult`、`RouteGuard`、`RouteGuardAfter`、`RouteConfig`、`RouteMatch`、`GetState`、`RoutePageMatch`、`CreateRouterOptions`、`Router`
+ * 支持无刷新跳转、路由订阅、同源 <a> 点击拦截、前置/后置守卫、404 兜底、back/forward/go、路由 meta；
+ * 支持 history 与 hash 两种模式。
  *
- * **Router 方法：** getCurrentRoute、getCurrentRouteSignal、href、navigate、replace、back、forward、go、subscribe、start、stop
+ * **链接拦截（interceptLinks）：** 仅左键、同源 http(s) 链接会拦截；不拦截：target≠_self、download、data-native、
+ * 同页锚点（pathname+search 相同且仅 hash）、hash 模式下 #section（非 #/path）、修饰键/非左键、跨域或无效 href。
  *
- * **scroll 选项：** options.scroll 为 `'top'` 时导航完成后 scrollTo(0,0)；为 `'restore'` 时恢复该路由上次滚动位置；`false` 不处理。与 afterRoute 配合执行。
+ * **导出函数：** createRouter、buildPath
+ *
+ * **导出类型：** RouteGuardResult、RouteGuard、RouteGuardAfter、RouteConfig、RouteMatch、GetState、
+ * RoutePageMatch、NavigateTo、CreateRouterOptions、Router、RouteMatchWithRouter、RouteComponentModule、LayoutComponentModule
+ *
+ * **Router 实例方法：** getCurrentRoute、getMatchForLocation、href、navigate、replace、back、forward、go、
+ * getCurrentRouteSignal、subscribe、start、stop
+ *
+ * **scroll 选项：** options.scroll 为 `'top'` 时导航完成后 scrollTo(0,0)；为 `'restore'` 时恢复该路由上次滚动位置；`false` 不处理。
  *
  * @example
+ * ```ts
+ * import { createRouter } from "@dreamer/view/router";
  * const router = createRouter({ routes: [{ path: "/", component: () => <Home /> }] });
  * router.start();
  * // 根组件中：const current = router.getCurrentRouteSignal()(); 即可随路由变化重渲染
+ * ```
  */
 
 import type { VNode } from "./types.ts";
@@ -22,7 +34,11 @@ import { applyMetaToHead } from "./meta.ts";
 import { createSignal } from "./signal.ts";
 
 /**
- * 前置守卫返回值：false 取消导航，string 重定向到该路径，true/void 放行；支持 Promise。
+ * 前置守卫（beforeRoute）的返回值。
+ * - `false`：取消本次导航
+ * - `string`：重定向到该路径（会再次经过前置守卫，受 maxRedirects 限制）
+ * - `true` 或 `void`：放行
+ * 支持返回 Promise。
  */
 export type RouteGuardResult =
   | boolean
@@ -31,7 +47,10 @@ export type RouteGuardResult =
   | Promise<boolean | string | void>;
 
 /**
- * 前置守卫：导航前执行，(to, from) => 放行/取消/重定向。
+ * 前置守卫：在每次导航前执行，可放行、取消或重定向。
+ * @param to - 即将进入的路由匹配结果（目标）
+ * @param from - 当前/离开的路由匹配结果
+ * @returns RouteGuardResult：false 取消、string 重定向、true/void 放行；可为 Promise
  */
 export type RouteGuard = (
   to: RouteMatch | null,
@@ -39,7 +58,10 @@ export type RouteGuard = (
 ) => RouteGuardResult;
 
 /**
- * 后置守卫：导航完成后执行，用于埋点、改 title 等；支持异步。
+ * 后置守卫：在导航完成（history/hash 已更新、订阅已通知）后执行，用于埋点、改 title 等。
+ * @param to - 当前进入的路由匹配结果
+ * @param from - 离开的路由匹配结果
+ * @returns void 或 Promise<void>；支持异步
  */
 export type RouteGuardAfter = (
   to: RouteMatch | null,
@@ -61,18 +83,26 @@ function hasHistory(): boolean {
 }
 
 /**
- * 懒加载路由模块：动态 import 返回的模块形状，RoutePage 会取 default 并传入 match 渲染
+ * 懒加载路由模块：动态 import 返回的模块形状。
+ * RoutePage 会取 default 并传入 match 渲染；用于 route 配置中的 component: () => import("...")。
  */
-export type RouteComponentModule = { default: (match?: RouteMatch) => VNode };
+export type RouteComponentModule = {
+  /** 接收可选 RouteMatch，返回该页面的 VNode */
+  default: (match?: RouteMatch) => VNode;
+};
 
-/** 布局组件模块：default 接收 { children } 包裹子内容 */
+/**
+ * 布局组件模块：用于嵌套布局，default 接收 { children } 包裹子内容。
+ */
 export type LayoutComponentModule = {
+  /** 接收 children（当前路由渲染的 VNode），返回包裹后的 VNode */
   default: (props: { children: VNode | VNode[] }) => VNode;
 };
 
 /**
  * 单条路由配置：path 支持动态参数 :param，可选 metadata 供守卫或布局使用。
  * component 支持同步（返回 VNode）或懒加载（返回 Promise<{ default: (match?) => VNode }>）。
+ *
  * @example
  * { path: "/", component: () => <Home />, metadata: { title: "首页" } }
  * { path: "/user/:id", component: (match) => <User id={match.params.id} /> }
@@ -107,8 +137,13 @@ export interface RouteConfig {
 }
 
 /**
- * 由 RoutePage 注入的按 path+key 稳定的 state getter。
- * 页面组件通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]，在组件体内写状态也可响应点击。
+ * 由 RoutePage 注入的、按 path+key 稳定的状态 getter。
+ * 页面组件通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]。
+ *
+ * @typeParam T - 状态值的类型
+ * @param key - 状态键，同一 path 下相同 key 复用同一状态
+ * @param initial - 初始值
+ * @returns 二元组 [getter, setter]；setter 可传值或 (prev) => newValue
  */
 export type GetState = <T>(
   key: string,
@@ -116,13 +151,14 @@ export type GetState = <T>(
 ) => [() => T, (v: T | ((p: T) => T)) => void];
 
 /**
- * 路由页组件首参类型：RoutePage 渲染时会传入带 getState 的 match，非 RoutePage 场景（如单测、单独挂载）可为 undefined。
- * 仅需 getState 的页面可直接用此类型约束首参并导入使用。
+ * 路由页组件首参类型。
+ * RoutePage 渲染时会传入带 getState 的 match；非 RoutePage 场景（如单测、单独挂载）可为 undefined。
  */
 export type RoutePageMatch = { getState?: GetState } | undefined;
 
 /**
- * 当前路由匹配结果，供 component 与守卫使用。
+ * 当前路由匹配结果，供路由组件与 beforeRoute/afterRoute 使用。
+ * 包含匹配到的 path 模式、params、query、fullPath、component、metadata 等；
  * component 与 RouteConfig 一致，可为同步或懒加载（RoutePage 内会统一处理）。
  */
 export interface RouteMatch {
@@ -148,11 +184,19 @@ export interface RouteMatch {
   loading?: () => Promise<RouteComponentModule>;
 }
 
+/**
+ * 创建路由器时的配置项。
+ * 用于 createRouter(options)，定义路由表、模式、守卫、滚动行为等。
+ */
 export interface CreateRouterOptions {
-  /** 路由表，按顺序匹配，第一个匹配成功即返回 */
+  /** 路由表，按顺序匹配，第一个匹配成功即返回；path 支持 :param 动态段 */
   routes: RouteConfig[];
-  /** 基础路径，默认为 ""；所有 path 会与此拼接后再匹配 */
+  /** 基础路径，默认为 ""；所有 path 会与此拼接后再匹配，匹配时先 strip 掉 basePath */
   basePath?: string;
+  /**
+   * 路由模式：'history' 使用 pathname+search（History API），'hash' 使用 location.hash（如 #/about），默认 'history'
+   */
+  mode?: "history" | "hash";
   /** 是否在 start() 时拦截同源 <a> 点击做客户端导航，默认 true */
   interceptLinks?: boolean;
   /** 无匹配时使用的兜底路由（404 页），path 建议设为 "*" */
@@ -202,6 +246,74 @@ function parseQuery(search: string): Record<string, string> {
   return out;
 }
 
+/**
+ * 带 params、query 的导航目标，用于 navigate、href、replace 的对象形式入参。
+ * path 为路由模式（如 "/user/:id"），params 填入路径占位符，query 序列化为查询串。
+ *
+ * @example
+ * { path: "/user/:id", params: { id: "123" }, query: { tab: "profile" } }
+ * // => 路径 "/user/123?tab=profile"
+ */
+export interface NavigateTo {
+  /** 路由 path 模式，支持 :param（如 /user/:id、/post/:id/comment/:cid） */
+  path: string;
+  /** 路径参数，key 对应 path 中的 :param 名，值会经 encodeURIComponent 后填入 */
+  params?: Record<string, string>;
+  /** 查询参数，会序列化为 ?key=value&...，键与值均会 encodeURIComponent */
+  query?: Record<string, string>;
+}
+
+/**
+ * 根据路由 path 模式、params 与 query 构建完整路径（pathname + search）。
+ * 用于 navigate、href、replace 等需要带参数跳转的场景。
+ *
+ * @param pattern - 路由模式，如 "/user/:id"、"/post/:id/comment/:cid"
+ * @param params - 路径参数，:id 取 params.id，值会做 encodeURIComponent
+ * @param query - 查询参数，会序列化为 ?a=1&b=2
+ * @returns 完整路径，如 "/user/123?tab=profile"
+ *
+ * @example
+ * buildPath("/user/:id", { id: "123" }, { tab: "profile" }) // => "/user/123?tab=profile"
+ * buildPath("/user/:id", { id: "123" }) // => "/user/123"
+ * buildPath("/search", undefined, { q: "hello" }) // => "/search?q=hello"
+ */
+export function buildPath(
+  pattern: string,
+  params?: Record<string, string>,
+  query?: Record<string, string>,
+): string {
+  const segments = (pattern.startsWith("/") ? pattern : "/" + pattern).split(
+    "/",
+  );
+  const pathSegs = segments.map((seg) => {
+    if (seg.startsWith(":")) {
+      const name = seg.slice(1);
+      const value = params?.[name] ?? "";
+      return encodeURIComponent(value);
+    }
+    return seg;
+  });
+  const pathOnly = pathSegs.join("/") || "/";
+  if (!query || Object.keys(query).length === 0) {
+    return pathOnly;
+  }
+  const search = "?" +
+    Object.entries(query)
+      .map(
+        ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v ?? "")}`,
+      )
+      .join("&");
+  return pathOnly + search;
+}
+
+/** 将 string | NavigateTo 解析为完整 path 字符串，供 navigate/href/replace 内部使用 */
+function resolvePathOrTo(pathOrTo: string | NavigateTo): string {
+  if (typeof pathOrTo === "string") {
+    return pathOrTo;
+  }
+  return buildPath(pathOrTo.path, pathOrTo.params, pathOrTo.query);
+}
+
 /** 根据路由配置与 path/query/search/params 构建 RouteMatch，避免 matchPath 内两处重复结构 */
 function buildMatch(
   r: Pick<
@@ -226,18 +338,35 @@ function buildMatch(
   };
 }
 
-/** 从当前 location 获取要匹配的路径与查询串（基于 pathname，history 模式） */
-function getCurrentPathAndQuery(options: { basePath: string }): {
-  path: string;
-  search: string;
-} {
+/**
+ * 从当前 location 获取要匹配的路径与查询串。
+ * history 模式：基于 pathname + search；hash 模式：从 location.hash 解析（#/path 或 #/path?query）。
+ */
+function getCurrentPathAndQuery(options: {
+  basePath: string;
+  mode?: "history" | "hash";
+}): { path: string; search: string } {
   const g = globalThis as unknown as {
-    location?: { pathname: string; search: string };
+    location?: { pathname: string; search: string; hash: string };
   };
   if (!g.location) return { path: "", search: "" };
+  const mode = options.mode ?? "history";
+  const base = options.basePath.replace(/\/$/, "");
+
+  if (mode === "hash") {
+    const raw = (g.location.hash || "").slice(1);
+    const [pathPart, ...searchParts] = raw.split("?");
+    const pathOnly = pathPart || "/";
+    const search = searchParts.length ? "?" + searchParts.join("?") : "";
+    let path = pathOnly;
+    if (base && path.startsWith(base)) {
+      path = path.slice(base.length) || "/";
+    }
+    return { path, search };
+  }
+
   let path = g.location.pathname || "/";
   const search = g.location.search || "";
-  const base = options.basePath.replace(/\/$/, "");
   if (base && path.startsWith(base)) {
     path = path.slice(base.length) || "/";
   }
@@ -246,53 +375,125 @@ function getCurrentPathAndQuery(options: { basePath: string }): {
 
 /**
  * 路由器实例：由 createRouter 返回，提供导航、订阅、启动/停止等能力。
+ * 所有方法均可在浏览器外调用（无 location/history 时部分方法为 no-op）。
  */
 export interface Router {
-  /** 获取当前路由匹配结果，无匹配且未配置 notFound 时返回 null */
-  getCurrentRoute(): RouteMatch | null;
   /**
-   * 根据给定的 pathname + search（如 location.pathname / location.search）解析出 RouteMatch。
-   * 供 RoutePage 在 HMR 时用刚读到的 location 解析 match，避免用可能未更新的 getCurrentRoute()。
+   * 获取当前路由匹配结果。
+   * 根据当前 location（history 模式用 pathname+search，hash 模式用 location.hash）与路由表匹配，
+   * 无匹配且未配置 notFound 时返回 null。
+   * @returns 当前匹配的 RouteMatch，或 null
+   */
+  getCurrentRoute(): RouteMatch | null;
+
+  /**
+   * 根据给定的 pathname 与可选 search 解析出 RouteMatch。
+   * 不依赖当前全局 location，适用于 HMR 或服务端用已知 pathname/search 解析 match。
+   * 会应用 basePath 剥离后再匹配路由表。
+   * @param pathname - 路径名，如 "/user/123" 或 "/about"
+   * @param search - 可选查询串，如 "?tab=profile" 或 "tab=profile"
+   * @returns 匹配到的 RouteMatch，或 null
    */
   getMatchForLocation(pathname: string, search?: string): RouteMatch | null;
-  /** 将 path 转为完整 href（basePath + path），用于 <a href> */
-  href(path: string): string;
-  /** 导航到 path（默认 pushState），会执行前置/后置守卫，返回 Promise */
-  navigate(path: string, replace?: boolean): Promise<void>;
-  /** 替换当前历史记录并导航（等价于 navigate(path, true)） */
-  replace(path: string): Promise<void>;
-  /** 浏览器后退 */
-  back(): void;
-  /** 浏览器前进 */
-  forward(): void;
-  /** 浏览器前进/后退步数 */
-  go(delta: number): void;
+
   /**
-   * 返回当前路由的响应式 getter：在组件中调用 getCurrentRouteSignal()() 即可随路由变化重渲染，无需手动 subscribe。
+   * 将路径或带 params/query 的目标转为完整 href，用于 <a href={router.href(...)}>。
+   * 传字符串时返回 basePath + 路径（hash 模式会加 "#" 前缀）；传 NavigateTo 时内部调用 buildPath 再拼接。
+   * @param pathOrTo - 完整路径字符串（如 "/user/123?tab=profile"）或 NavigateTo 对象（path + params + query）
+   * @returns history 模式为 basePath+path，hash 模式为 "#"+basePath+path
+   * @example
+   * router.href("/about")           // => "/about" 或 "#/about"（hash）
+   * router.href({ path: "/user/:id", params: { id: "1" }, query: { tab: "info" } })  // => "/user/1?tab=info"
+   */
+  href(pathOrTo: string | NavigateTo): string;
+
+  /**
+   * 导航到指定路径或带 params/query 的目标。
+   * 会依次执行：前置守卫（beforeRoute）→ 更新 history/hash → 通知订阅 → 后置守卫（afterRoute）→ 可选滚动与 meta。
+   * 前置守卫返回 false 则取消导航，返回 string 则重定向到该路径（受 maxRedirects 限制）。
+   * @param pathOrTo - 完整路径字符串（可含 query），或 NavigateTo 对象（path、params、query）
+   * @param replace - 为 true 时使用 replaceState 替换当前历史记录，不新增一条
+   * @returns Promise，在导航流程结束后 resolve；若无 location/history 或守卫取消则提前结束
+   * @example
+   * await router.navigate("/about");
+   * await router.navigate({ path: "/user/:id", params: { id: "1" }, query: { tab: "posts" } });
+   * await router.navigate("/home", true);  // 替换当前记录
+   */
+  navigate(pathOrTo: string | NavigateTo, replace?: boolean): Promise<void>;
+
+  /**
+   * 替换当前历史记录并导航到指定路径或目标。
+   * 等价于 navigate(pathOrTo, true)。
+   * @param pathOrTo - 完整路径字符串或 NavigateTo 对象
+   * @returns Promise，在导航流程结束后 resolve
+   */
+  replace(pathOrTo: string | NavigateTo): Promise<void>;
+
+  /**
+   * 浏览器后退一页。
+   * 依赖 history.back()；无 history 环境为 no-op。
+   */
+  back(): void;
+
+  /**
+   * 浏览器前进一页。
+   * 依赖 history.forward()；无 history 环境为 no-op。
+   */
+  forward(): void;
+
+  /**
+   * 在历史栈中前进或后退指定步数。
+   * 正数前进，负数后退；依赖 history.go(delta)。
+   * @param delta - 步数，正数前进、负数后退
+   */
+  go(delta: number): void;
+
+  /**
+   * 返回当前路由的响应式 getter。
+   * 在组件中调用 getCurrentRouteSignal()() 即可在路由变化时得到最新 RouteMatch，便于触发重渲染；
+   * 无需手动 subscribe。
+   * @returns 无参函数，每次调用返回当前 RouteMatch 或 null
    */
   getCurrentRouteSignal(): () => RouteMatch | null;
-  /** 订阅路由变化（navigate / 浏览器前进后退），返回取消订阅函数 */
+
+  /**
+   * 订阅路由变化（navigate、replace、浏览器前进/后退导致的地址变化）。
+   * 每次路由更新后会调用 callback；start() 后 hash 模式监听 hashchange，history 模式监听 popstate。
+   * @param callback - 路由变化时调用的无参函数
+   * @returns 取消订阅函数，调用后不再触发该 callback
+   */
   subscribe(callback: () => void): () => void;
-  /** 启动：监听 popstate，可选拦截同源 <a> 点击 */
+
+  /**
+   * 启动路由器：根据 mode 监听 popstate 或 hashchange，并可选拦截同源 <a> 点击做客户端导航。
+   * 若存在 document，会对当前路由应用一次 meta（title 等）。需在应用挂载前或挂载时调用。
+   */
   start(): void;
-  /** 停止：移除所有监听与链接拦截 */
+
+  /**
+   * 停止路由器：移除 popstate/hashchange 监听与 document 上的点击拦截。
+   * 调用后前进/后退与链接点击不再触发路由更新与订阅回调。
+   */
   stop(): void;
 }
 
 /**
- * 当前路由匹配结果 + router + getState，即 RoutePage 传入页面组件的 match 对象。
- * 与 RouteMatch 统一为交叉类型，避免 route-page 与 router 两处重复描述字段。
+ * 当前路由匹配结果与 router、getState 的组合类型，即 RoutePage 传入页面组件的 match 对象。
+ * 在 RouteMatch 基础上增加 router 与 getState，便于在页面内导航与维护局部状态。
  */
 export type RouteMatchWithRouter = RouteMatch & {
+  /** 路由器实例，用于 navigate、href、replace 等 */
   router: Router;
+  /** 按 path+key 稳定的状态 getter，见 GetState */
   getState: GetState;
 };
 
 /**
- * 创建 SPA 路由器实例（基于 History API，不依赖 @dreamer/router/client）。
+ * 创建 SPA 路由器实例（基于 History API 或 hash，不依赖 @dreamer/router/client）。
+ * 返回的 Router 需调用 start() 后才会监听 popstate/hashchange 与（可选）拦截同源 <a> 点击。
  *
- * @param options - 路由表、basePath、守卫、notFound、拦截链接等配置
- * @returns Router 实例，需调用 start() 后才会监听 popstate 与拦截 <a> 点击
+ * @param options - 路由表、basePath、mode、守卫、notFound、拦截链接、滚动等配置，见 CreateRouterOptions
+ * @returns Router 实例，提供 getCurrentRoute、navigate、href、replace、back、forward、go、subscribe、start、stop 等方法
  *
  * @example
  * const router = createRouter({
@@ -308,6 +509,7 @@ export function createRouter(options: CreateRouterOptions): Router {
   const {
     routes,
     basePath = "",
+    mode = "history",
     interceptLinks = true,
     notFound: notFoundOption,
     beforeRoute: beforeRouteOption,
@@ -337,11 +539,12 @@ export function createRouter(options: CreateRouterOptions): Router {
   const subscribers: Array<() => void> = [];
   let clickHandler: ((e: Event) => void) | null = null;
   let popstateHandler: (() => void) | null = null;
+  let hashchangeHandler: (() => void) | null = null;
   /** 按路径保存的滚动位置，供 scroll: 'restore' 使用 */
   const scrollRestoreMap = new Map<string, { x: number; y: number }>();
 
   function getPathAndQuery(): { path: string; search: string } {
-    return getCurrentPathAndQuery({ basePath });
+    return getCurrentPathAndQuery({ basePath, mode });
   }
 
   function matchPath(pathname: string, search: string): RouteMatch | null {
@@ -398,13 +601,14 @@ export function createRouter(options: CreateRouterOptions): Router {
   }
 
   async function navigate(
-    path: string,
+    pathOrTo: string | NavigateTo,
     replace = false,
     redirectDepth = 0,
   ): Promise<void> {
     if (!hasHistory()) return;
     if (redirectDepth > maxRedirects) return;
 
+    const path = resolvePathOrTo(pathOrTo);
     const from = getCurrentRoute();
     const pathNorm = path.startsWith("/") ? path : "/" + path;
     const to = resolveMatch(pathNorm, "");
@@ -423,13 +627,17 @@ export function createRouter(options: CreateRouterOptions): Router {
         pushState: (a: unknown, b: string, c: string) => void;
         replaceState: (a: unknown, b: string, c: string) => void;
       };
-      location?: { pathname: string; origin: string; search: string };
+      location?: {
+        pathname: string;
+        origin: string;
+        search: string;
+        hash: string;
+      };
       scrollX?: number;
       scrollY?: number;
       scrollTo?: (x: number, y: number) => void;
     };
     const base = basePath.replace(/\/$/, "") || "";
-    const url = `${g.location?.origin ?? ""}${base}${pathNorm}`;
 
     if (scrollOption === "restore" && from?.fullPath != null) {
       scrollRestoreMap.set(from.fullPath, {
@@ -439,10 +647,29 @@ export function createRouter(options: CreateRouterOptions): Router {
     }
 
     try {
-      if (replace) {
-        g.history?.replaceState(null, "", url);
+      if (mode === "hash") {
+        const hashValue = base ? `${base}${pathNorm}` : pathNorm;
+        const hashWithSharp = hashValue.startsWith("#")
+          ? hashValue
+          : "#" + hashValue;
+        if (replace && g.location != null) {
+          g.history?.replaceState(
+            null,
+            "",
+            (g.location.pathname ?? "") + (g.location.search ?? "") +
+              hashWithSharp,
+          );
+        } else {
+          const loc = g.location as { hash?: string };
+          if (loc) loc.hash = hashWithSharp;
+        }
       } else {
-        g.history?.pushState(null, "", url);
+        const url = `${g.location?.origin ?? ""}${base}${pathNorm}`;
+        if (replace) {
+          g.history?.replaceState(null, "", url);
+        } else {
+          g.history?.pushState(null, "", url);
+        }
       }
       notify();
 
@@ -476,15 +703,20 @@ export function createRouter(options: CreateRouterOptions): Router {
     }
   }
 
-  /** 将 path 转为完整 href（basePath + path） */
-  function href(path: string): string {
+  /** 将 path 或 NavigateTo 转为完整 href（history 为 basePath+path，hash 为 #+basePath+path） */
+  function href(pathOrTo: string | NavigateTo): string {
+    const path = resolvePathOrTo(pathOrTo);
     const pathNorm = path.startsWith("/") ? path : "/" + path;
     const base = basePath.replace(/\/$/, "") || "";
-    return `${base}${pathNorm}`;
+    const full = `${base}${pathNorm}`;
+    if (mode === "hash") {
+      return full.startsWith("#") ? full : "#" + full;
+    }
+    return full;
   }
 
-  function replace(path: string): Promise<void> {
-    return navigate(path, true);
+  function replace(pathOrTo: string | NavigateTo): Promise<void> {
+    return navigate(pathOrTo, true);
   }
 
   function back(): void {
@@ -530,8 +762,13 @@ export function createRouter(options: CreateRouterOptions): Router {
       };
     };
 
-    popstateHandler = () => notify();
-    g.addEventListener?.("popstate", popstateHandler);
+    if (mode === "hash") {
+      hashchangeHandler = () => notify();
+      g.addEventListener?.("hashchange", hashchangeHandler);
+    } else {
+      popstateHandler = () => notify();
+      g.addEventListener?.("popstate", popstateHandler);
+    }
 
     if (interceptLinks && g.document) {
       clickHandler = (e: Event) => {
@@ -542,15 +779,37 @@ export function createRouter(options: CreateRouterOptions): Router {
           (e as MouseEvent).shiftKey || (e as MouseEvent).button !== 0
         ) return;
         const href = a.getAttribute("href");
-        if (!href || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        if (!href || href.trim() === "") return;
+        const targetAttr = a.getAttribute("target");
+        if (targetAttr && targetAttr !== "_self") return;
+        if (a.hasAttribute?.("download")) return;
+        if (a.hasAttribute?.("data-native")) return;
+        const hrefTrim = href.trim();
+        // hash 模式：#/path 为路由链接需拦截，#section 为锚点不拦截
+        if (hrefTrim.startsWith("#")) {
+          if (mode === "hash" && hrefTrim.startsWith("#/")) {
+            e.preventDefault();
+            navigate(
+              hrefTrim.slice(1).startsWith("/")
+                ? hrefTrim.slice(1)
+                : "/" + hrefTrim.slice(1),
+            );
+          }
           return;
         }
-        if (href.startsWith("#")) return; // 锚点不拦截
         try {
           const url = new URL(href, globalThis.location?.href);
+          if (url.protocol !== "http:" && url.protocol !== "https:") return;
           if (url.origin !== globalThis.location?.origin) return;
+          // 同页锚点（pathname+search 相同且链接带 hash）不拦截，交给浏览器滚动
+          const loc = globalThis.location;
+          if (
+            url.pathname === loc?.pathname &&
+            url.search === loc?.search &&
+            url.hash
+          ) return;
           e.preventDefault();
-          const path = url.pathname + url.search;
+          const path = url.pathname + url.search + url.hash;
           navigate(path.startsWith("/") ? path : "/" + path);
         } catch {
           // 无效 URL 不拦截
@@ -570,6 +829,10 @@ export function createRouter(options: CreateRouterOptions): Router {
     if (popstateHandler) {
       g.removeEventListener?.("popstate", popstateHandler);
       popstateHandler = null;
+    }
+    if (hashchangeHandler) {
+      g.removeEventListener?.("hashchange", hashchangeHandler);
+      hashchangeHandler = null;
     }
     if (clickHandler && g.document) {
       g.document.removeEventListener("click", clickHandler);
@@ -593,7 +856,17 @@ export function createRouter(options: CreateRouterOptions): Router {
   };
 }
 
-/** 懒加载路由页组件（按 path 缓存 resource，支持动态 import）及可选文案/样式类型；从本模块直接导出使用 */
+/**
+ * 懒加载路由页组件与配套类型，从 route-page 统一导出便于从 router 入口使用。
+ *
+ * - **RoutePage**：接收 match、router、showLoading、labels、classes、styles，渲染加载中/错误/页面内容三态
+ * - **RoutePageClasses**：错误态、加载态、过渡容器等 class 名
+ * - **RoutePageStyles**：对应内联 style
+ * - **RoutePageLabels**：错误标题、重试按钮、加载中文案
+ * - **RoutePageStyle**：内联样式对象类型
+ *
+ * 完整实现与参数说明见 `src/route-page.tsx`。
+ */
 export {
   RoutePage,
   type RoutePageClasses,

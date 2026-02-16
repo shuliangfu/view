@@ -1,17 +1,16 @@
 /**
- * @module @dreamer/view/resource
- * @description
  * 异步数据源（Resource）：基于 Promise 的 getter，在 effect/组件中调用返回 { data, loading, error, refetch }，Promise 完成时自动触发依赖更新。
  *
- * **本模块导出：**
- * - `createResource(fetcher)`：无 source，单次或手动 refetch
- * - `createResource(source, fetcher)`：source 变化时自动重新请求
- * - 类型：`ResourceResult<T>`（data、loading、error、refetch）
+ * @module @dreamer/view/resource
+ * @packageDocumentation
  *
- * **与 Suspense：** resource().loading 时可用 Suspense 的 fallback 显示加载态；有 data 时显示内容。
+ * **导出函数：** createResource（支持无 source 或带 source 两种重载）
+ *
+ * **导出类型：** ResourceResult、CreateResourceOptions
+ *
+ * 与 Suspense 配合：resource().loading 时可用 Suspense 的 fallback 显示加载态；有 data 时显示内容。
  *
  * @example
- * import { createResource } from "jsr:@dreamer/view/resource";
  * const [id, setId] = createSignal(1);
  * const user = createResource(id, (id) => fetch(`/api/user/${id}`).then((r) => r.json()));
  * createEffect(() => { const { data, loading } = user(); if (data) console.log(data); });

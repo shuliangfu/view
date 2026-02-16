@@ -1,17 +1,18 @@
 /**
- * @module @dreamer/view
- * @description
  * 轻量响应式模板引擎主入口，仅导出核心 API，按需从子路径导入以减小主包体积。
  *
- * **本模块导出：**
- * - 响应式：`createSignal`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`
- * - 渲染：`createRoot`、`render`、`mount`、`renderToString`、`hydrate`、`generateHydrationScript`
- * - 环境：`getDocument`（SSR 下会抛错，用于避免服务端误用 document）
- * - 类型：`HydrationScriptOptions`、`EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`isDOMEnvironment`
+ * @module @dreamer/view
+ * @packageDocumentation
  *
- * **JSX：** 在 deno.json / tsconfig 中设置 `jsxImportSource: "@dreamer/view"`，并从 `@dreamer/view/jsx-runtime` 解析 jsx/jsxs/Fragment。
+ * **响应式：** createSignal、createEffect、createMemo、onCleanup、untrack、getCurrentEffect、setCurrentEffect、isSignalGetter
  *
- * **按需子路径：** `@dreamer/view/store`、`@dreamer/view/reactive`、`@dreamer/view/boundary`、`@dreamer/view/directive`、`@dreamer/view/resource`、`@dreamer/view/context`、`@dreamer/view/compiler`、`@dreamer/view/stream`、`@dreamer/view/router`
+ * **渲染：** createRoot、render、mount、renderToString、hydrate、generateHydrationScript
+ *
+ * **环境：** getDocument、isDOMEnvironment
+ *
+ * **类型：** HydrationScriptOptions、EffectDispose、MountOptions、Root、SignalGetter、SignalSetter、SignalTuple、VNode
+ *
+ * **按需子路径：** ./store、./reactive、./boundary、./directive、./resource、./context、./compiler、./stream、./router、./types、./jsx-runtime
  *
  * @example
  * import { createSignal, createEffect, render } from "jsr:@dreamer/view";

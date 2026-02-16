@@ -8,6 +8,26 @@ and this project adheres to
 
 ---
 
+## [1.0.15] - 2026-02-17
+
+### Added
+
+- **Docs – Link interception:** README (en/zh) and router module JSDoc now
+  document which `<a>` clicks are intercepted when `interceptLinks: true` and
+  which are not: not intercepted are `target` ≠ `_self`, `download`,
+  `data-native`, same-page hash (pathname+search equal + hash only), hash mode
+  `#section` (vs `#/path`), modifier keys or non-left click, cross-origin or
+  non-http(s) URL, invalid or empty `href`. Table and summary added in both
+  READMEs.
+
+### Changed
+
+- **Test report & README:** Updated to 435 tests (router 40, integration 14);
+  test badge and summary tables in README and zh-CN README set to 435 passed.
+  Test date 2026-02-17; report version 1.0.15.
+
+---
+
 ## [1.0.14] - 2026-02-16
 
 ### Changed

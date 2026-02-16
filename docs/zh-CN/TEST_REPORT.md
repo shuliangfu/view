@@ -5,16 +5,16 @@
 | 项目     | 说明                                         |
 | -------- | -------------------------------------------- |
 | 测试包   | @dreamer/view                                |
-| 版本     | 1.0.13                                       |
+| 版本     | 1.0.15                                       |
 | 测试框架 | @dreamer/test ^1.0.6                         |
-| 测试时间 | 2026-02-16                                   |
+| 测试时间 | 2026-02-17                                   |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E） |
 | 运行命令 | `deno test -A tests/`                        |
 
 ## 测试结果
 
-- **总测试数**：412
-- **通过**：412
+- **总测试数**：435
+- **通过**：435
 - **失败**：0
 - **通过率**：100%
 - **执行时间**：约 2 分钟
@@ -41,7 +41,7 @@
 | unit/proxy.test.ts               | 5      | ✅ 全部通过 |
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
-| unit/router.test.ts              | 17     | ✅ 全部通过 |
+| unit/router.test.ts              | 40     | ✅ 全部通过 |
 | unit/runtime.test.ts             | 50     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
@@ -106,7 +106,7 @@
 - ✅ createMemo：非函数抛错、getter 与缓存、依赖变更重算、effect 中读取
   memo、返回 undefined/null 边界
 
-### 7. 集成 (integration/integration.test.ts) - 12 tests
+### 7. 集成 (integration/integration.test.ts) - 14 tests
 
 - ✅ createRoot + 事件 + signal：按钮 onClick 更新 signal、DOM 随 signal 更新
 - ✅ 多事件类型：onClick 与 onChange 等绑定
@@ -149,14 +149,19 @@
   Promise 边界
 - ✅ createResource 有 source：source 变化时重新请求
 
-### 13. Router (unit/router.test.ts) - 14 tests
+### 13. Router (unit/router.test.ts) - 40 tests
 
 - ✅
   createRouter：getCurrentRoute、navigate、replace、subscribe、start、stop、back/forward/go
 - ✅ 无 location/history 不抛错、routes 为空数组边界
-- ✅ 路径匹配：basePath、动态参数 :id
-- ✅ beforeRoute：返回 false 取消导航、返回重定向 path、返回 true 继续
-- ✅ afterRoute、notFound 与 meta
+- ✅ 路径匹配：basePath、动态参数 :id；beforeRoute：返回 false 取消、返回重定向
+  path、true 继续
+- ✅ afterRoute、notFound 与 metadata；scroll: top / false / restore
+- ✅ mode (history / hash)：pathname+search、hash path+query、href 带
+  #、navigate/replace
+- ✅ buildPath 与 navigate/href/replace 的 params、query；encodeURIComponent
+- ✅ interceptLinks：同源 &lt;a&gt; 拦截、target=_blank/download/data-native
+  不拦截、hash 锚点、修饰键/右键不拦截、interceptLinks: false
 
 ### 14. Runtime (unit/runtime.test.ts) - 50 tests
 
@@ -251,7 +256,7 @@
 
 ## 结论
 
-当前 @dreamer/view 测试共 381 个用例，全部通过，通过率
+当前 @dreamer/view 测试共 435 个用例，全部通过，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString
 全分支覆盖、renderToStream）、**applyProps**（ref、vShow/vCloak、dangerouslySetInnerHTML、value/checked
