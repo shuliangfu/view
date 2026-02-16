@@ -1087,10 +1087,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.13** (2026-02-16) — Added: RoutePage `match.getState(key, initial)` for
-path-stable page state; router exports `GetState` and `RoutePageMatch`. Fixed:
-createContext example in README (theme → themeValue) to avoid Tailwind linter
-false positive. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.14** (2026-02-16) — Changed: Store/router/version/DOM refactors and
+render perf (keyed list patch-in-place, props skip unchanged writes, directive
+queueMicrotask, root vnode skip). See [CHANGELOG.md](./docs/en-US/CHANGELOG.md)
+for full details.
 
 ---
 

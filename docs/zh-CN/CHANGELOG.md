@@ -19,17 +19,15 @@
 - **Router：** 新增 `buildMatch` 辅助函数，在 `matchPath` 中统一构建
   `RouteMatch`，去掉匹配与 notFound 两处重复的对象字面量。
 - **DOM（element）：** 新增 `registerPlaceholderEffect` 与 `getItemKey`；
-  `reconcileKeyedChildren` 现接受 `oldItems`，当 key 相同且存在旧 VNode 时
-  对 wrapper 子节点做原地 `patchNode`，不再整块替换，减少 keyed 列表的
-  DOM 变动。
+  `reconcileKeyedChildren` 现接受 `oldItems`，当 key 相同且存在旧 VNode 时 对
+  wrapper 子节点做原地 `patchNode`，不再整块替换，减少 keyed 列表的 DOM 变动。
 - **DOM（props）：** 在 `applySingleProp` 中，当 className、style（字符串与
   对象）、表单 value、checked/selected 及通用 attribute 的值与当前 DOM
   一致时跳过写入。
-- **Directive：** 自定义指令的 `mounted` 在支持时改为通过
-  `queueMicrotask` 执行（否则回退到 `setTimeout(..., 0)`），在元素入文档后
-  更早执行。
-- **Runtime：** 根 effect 在根 VNode 引用未变（如 memo 或稳定引用）时跳过
-  expand 与 patch，避免重复计算。
+- **Directive：** 自定义指令的 `mounted` 在支持时改为通过 `queueMicrotask`
+  执行（否则回退到 `setTimeout(..., 0)`），在元素入文档后 更早执行。
+- **Runtime：** 根 effect 在根 VNode 引用未变（如 memo 或稳定引用）时跳过 expand
+  与 patch，避免重复计算。
 
 ---
 
