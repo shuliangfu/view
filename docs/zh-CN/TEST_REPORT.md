@@ -5,16 +5,16 @@
 | 项目     | 说明                                         |
 | -------- | -------------------------------------------- |
 | 测试包   | @dreamer/view                                |
-| 版本     | 1.0.8                                        |
-| 测试框架 | @dreamer/test ^1.0.5                         |
-| 测试时间 | 2026-02-13                                   |
+| 版本     | 1.0.13                                       |
+| 测试框架 | @dreamer/test ^1.0.6                         |
+| 测试时间 | 2026-02-16                                   |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E） |
 | 运行命令 | `deno test -A tests/`                        |
 
 ## 测试结果
 
-- **总测试数**：381
-- **通过**：381
+- **总测试数**：412
+- **通过**：412
 - **失败**：0
 - **通过率**：100%
 - **执行时间**：约 2 分钟
@@ -24,7 +24,7 @@
 | 测试文件                         | 测试数 | 状态        |
 | -------------------------------- | ------ | ----------- |
 | e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts | 52     | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts | 63     | ✅ 全部通过 |
 | integration/integration.test.ts  | 14     | ✅ 全部通过 |
 | unit/boundary.test.ts            | 13     | ✅ 全部通过 |
 | unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
@@ -32,20 +32,23 @@
 | unit/context.test.ts             | 8      | ✅ 全部通过 |
 | unit/directive.test.ts           | 25     | ✅ 全部通过 |
 | unit/effect.test.ts              | 15     | ✅ 全部通过 |
+| unit/globals.test.ts             | 5      | ✅ 全部通过 |
 | unit/hmr.test.ts                 | 3      | ✅ 全部通过 |
 | unit/jsx-runtime.test.ts         | 6      | ✅ 全部通过 |
 | unit/meta.test.ts                | 21     | ✅ 全部通过 |
+| unit/portal.test.ts              | 5      | ✅ 全部通过 |
 | unit/props.test.ts               | 55     | ✅ 全部通过 |
 | unit/proxy.test.ts               | 5      | ✅ 全部通过 |
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
-| unit/router.test.ts              | 14     | ✅ 全部通过 |
+| unit/router.test.ts              | 17     | ✅ 全部通过 |
 | unit/runtime.test.ts             | 50     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
 | unit/store.test.ts               | 29     | ✅ 全部通过 |
 | unit/stream.test.ts              | 7      | ✅ 全部通过 |
+| unit/transition.test.ts          | 7      | ✅ 全部通过 |
 
 ## 功能测试详情
 
@@ -63,7 +66,7 @@
 - ✅ examples 目录下 view build：产出 dist/ 且含 main.js
 - ✅ build 后 view start：启动服务并用浏览器打开首页（多页面示例）
 
-### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 51 tests
+### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 63 tests
 
 - ✅ 首页挂载与多页面入口、各卡片进入
   Signal/Store/Boundary/指令/Reactive/Resource/Context/Runtime/Router 页

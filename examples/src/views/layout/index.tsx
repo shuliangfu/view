@@ -7,7 +7,7 @@
 
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Layout",
   description: "嵌套 _layout、inheritLayout 示例",
   keywords: "Layout, _layout, inheritLayout, 布局",

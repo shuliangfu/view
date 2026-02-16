@@ -10,7 +10,7 @@ import { createSignal } from "@dreamer/view";
 
 /** v-focus、v-copy 已在 main.tsx 注册 */
 
-export const meta = {
+export const metadata = {
   title: "Directive",
   description: "内置 vIf/vFor/vShow 与自定义指令 v-focus 示例",
   keywords: "vIf, vFor, vShow, v-focus, 指令",

@@ -4,7 +4,7 @@
 
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "404",
   description: "页面未找到",
 };

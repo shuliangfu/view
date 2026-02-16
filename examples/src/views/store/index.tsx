@@ -24,7 +24,7 @@ type DemoActions = {
   setName(_name: string): void;
 };
 
-export const meta = {
+export const metadata = {
   title: "Store",
   description: "createStore + getters + actions + persist 示例",
   keywords: "createStore, getters, actions, persist",

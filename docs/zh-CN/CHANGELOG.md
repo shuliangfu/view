@@ -7,6 +7,29 @@
 
 ---
 
+## [1.0.13] - 2026-02-16
+
+### 新增
+
+- **RoutePage match.getState(key, initial)：** 按 path 稳定的页面状态，页面组件
+  可在组件体内使用 getState 写状态，点击仍能触发更新（无需缓存页面 VNode）。
+  路由 path 变化时清理上一 path 的状态。
+- **Router 类型：** 从 `@dreamer/view/router` 导出 `GetState` 与
+  `RoutePageMatch`， 供使用 `match.getState` 的页面组件导入。
+- **Portal 与 Transition：** 文档中补充并突出 Portal（渲染到指定容器）与
+  Transition（显隐 + enter/leave class 与 duration）。
+- **视图文件导入 CSS：** 视图与组件文件中可导入 CSS（如
+  `import "../../assets/index.css"`）；默认内联进 JS，或配置
+  `cssImport.extract: true` 产出独立 .css。
+
+### 修复
+
+- **文档：** README 与中文 README 的 createContext 示例将 `theme()` 改为
+  `themeValue()`，避免 Tailwind 工具解析代码块时报 “'' does not exist in your
+  theme config”。
+
+---
+
 ## [1.0.12] - 2026-02-16
 
 ### 修复

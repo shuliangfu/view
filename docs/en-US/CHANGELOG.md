@@ -8,6 +8,30 @@ and this project adheres to
 
 ---
 
+## [1.0.13] - 2026-02-16
+
+### Added
+
+- **RoutePage match.getState(key, initial):** Path-stable page state so
+  components can use state inside the component body and clicks still trigger
+  updates (without caching page VNode). When the route path changes, the
+  previous path’s state is cleared.
+- **Router types:** Exported `GetState` and `RoutePageMatch` from
+  `@dreamer/view/router` for page components that use `match.getState`.
+- **Portal & Transition:** Documented and highlighted Portal (render into a
+  container) and Transition (show/hide with enter/leave classes and duration).
+- **CSS import in view files:** View and component files can import CSS (e.g.
+  `import "../../assets/index.css"`); build inlines styles by default or
+  extracts to `.css` when `cssImport.extract: true`.
+
+### Fixed
+
+- **Docs:** createContext example in README (en/zh) changed `theme()` to
+  `themeValue()` so Tailwind tooling does not report “'' does not exist in your
+  theme config” when parsing the snippet.
+
+---
+
 ## [1.0.12] - 2026-02-16
 
 ### Fixed

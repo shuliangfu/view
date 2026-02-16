@@ -28,8 +28,7 @@ export function createPortal(
   children: VNode | (() => VNode),
   container?: Element,
 ): Root {
-  const target =
-    container ??
+  const target = container ??
     (typeof globalThis !== "undefined" &&
       (globalThis as { document?: { body?: Element } }).document?.body);
   if (!target) {

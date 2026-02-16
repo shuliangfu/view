@@ -12,7 +12,7 @@ type Theme = "light" | "dark";
 
 const ThemeContext = createContext<Theme>("light");
 
-export const meta = {
+export const metadata = {
   title: "Context",
   description: "createContext、Provider、useContext 跨层注入示例",
   keywords: "Context, Provider, useContext",

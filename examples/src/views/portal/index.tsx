@@ -10,7 +10,7 @@ import { createSignal } from "@dreamer/view";
 import { createPortal } from "@dreamer/view/portal";
 import type { Root } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Portal",
   description: "createPortal 将内容挂载到 body 或指定容器，弹窗/抽屉/toast 示例",
   keywords: "createPortal, Portal, modal, overlay, body",

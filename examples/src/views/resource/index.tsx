@@ -11,7 +11,7 @@ import { createResource } from "@dreamer/view/resource";
 import { Suspense } from "@dreamer/view/boundary";
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Resource",
   description: "createResource 异步数据与 Suspense 示例",
   keywords: "createResource, Suspense, 异步数据",

@@ -304,6 +304,8 @@ export function toClientConfig(
     entry: entryPath,
     output: outputDir,
     engine: "view",
+    /** 默认内联模式：CSS 打包进 JS，运行时自动注入 <style>；extract: true 时产出 .css 并由 serve 注入 index.html */
+    cssImport: buildConfig?.cssImport ?? { enabled: true, extract: false },
     plugins: resolvePlugins(buildConfig, forProduction),
     debug: buildConfig?.debug,
     bundle: {

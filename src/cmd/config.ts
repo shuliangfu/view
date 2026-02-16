@@ -84,6 +84,16 @@ export interface ViewBuildConfig {
   optimize?: boolean;
   /** 产出 chunk 命名模板，默认 "[name]-[hash]" */
   chunkNames?: string;
+  /**
+   * CSS 导入处理（@dreamer/esbuild BuilderClient）。
+   * 默认 { enabled: true, extract: false }：import "*.css" 打包进 JS，模块加载时自动注入 <style>。
+   * extract: true 时产出独立 .css 文件，需在 index.html 中注入 <link>（dev 时 serve 会自动注入）。
+   */
+  cssImport?: {
+    enabled?: boolean;
+    extract?: boolean;
+    cssOnly?: boolean;
+  };
   /** 仅 dev 模式生效：与顶层 build 同结构，覆盖顶层配置（如 minify: false、sourcemap: true） */
   dev?: ViewBuildOverride;
   /** 仅 prod 模式生效：与顶层 build 同结构，覆盖顶层配置 */
