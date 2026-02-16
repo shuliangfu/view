@@ -1,0 +1,44 @@
+# Deno 相关
+.deno/
+deno.lock
+*.so
+*.dylib
+*.dll
+
+# 依赖
+node_modules
+package.json
+bun.lock
+
+# 构建输出
+build/
+dist
+out/
+
+# 自动生成（dev 时根据 src/routes 生成，勿提交）
+src/router/routers.tsx
+
+# 环境变量
+.env
+.env.local
+
+# IDE
+.cursor
+.idea
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 测试数据
+tests/data/
+tests/output/
+tests/**/data/
+.snapshots/
+.npmrc
+
+# 测试覆盖率
+coverage/
+
+# 分析报告
+analysis

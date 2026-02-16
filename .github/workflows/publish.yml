@@ -1,0 +1,32 @@
+# 推送 v* tag 时自动发布到 JSR；发布前执行 check/lint 以在 CI 层兜底
+name: Publish
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5
+
+      - name: Cache dependencies
+        run: deno cache src/mod.ts src/cli.ts src/setup.ts
+
+      - name: Check
+        run: deno check .
+
+      - name: Lint
+        run: deno lint
+
+      - name: Publish to JSR
+        run: npx jsr publish --no-check
