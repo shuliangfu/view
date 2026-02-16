@@ -125,6 +125,7 @@ export function createCreateRoot(
     const [getTrigger, setTrigger] = createRenderTriggerSignal();
     let mounted: Node | null = null;
     let lastExpanded: ExpandedRoot | null = null;
+    let lastVnodeRef: VNode | null = null;
     let disposed = false;
     const disposers: Array<() => void> = [];
     const { runDisposers, getScopeForRun } = createRunDisposersCollector();
@@ -143,6 +144,7 @@ export function createCreateRoot(
         }
         mounted = null;
         lastExpanded = null;
+        lastVnodeRef = null;
       },
       forceRender() {
         setTrigger((t) => t + 1);
@@ -155,6 +157,15 @@ export function createCreateRoot(
       setCurrentScope(getScopeForRun());
       try {
         const vnode = fn();
+        // 根 VNode 引用未变且已挂载时跳过 expand/patch，减少无意义重算（如 memo 或稳定引用）
+        if (
+          vnode === lastVnodeRef &&
+          mounted != null &&
+          container.contains(mounted)
+        ) {
+          return;
+        }
+        lastVnodeRef = vnode;
         const newExpanded = expandVNode(vnode);
         if (mounted == null || !container.contains(mounted)) {
           mounted = createNodeFromExpanded(newExpanded);

@@ -339,8 +339,12 @@ export function applyDirectives(
         mountedRanByElement.set(el, ran);
       }
       ran.add(key);
-      // 延后到下一任务执行，确保元素已插入文档（applyProps 在 createElement 时调用）
-      globalThis.setTimeout(() => directive.mounted!(el, binding), 0);
+      // 延后到微任务执行，确保元素已插入文档且比 setTimeout(0) 更早，利于首屏/更新后指令挂载
+      if (typeof globalThis.queueMicrotask !== "undefined") {
+        globalThis.queueMicrotask(() => directive.mounted!(el, binding));
+      } else {
+        globalThis.setTimeout(() => directive.mounted!(el, binding), 0);
+      }
     }
     if (directive.updated && isSignalGetter(value)) {
       effectFn(() => {

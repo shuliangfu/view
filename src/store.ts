@@ -22,12 +22,12 @@
  * });
  */
 
+import { DEFAULT_STORE_KEY, KEY_STORE_REGISTRY } from "./constants.ts";
 import { createMemo } from "./effect.ts";
+import { getGlobalOrDefault } from "./globals.ts";
 import { createNestedProxy } from "./proxy.ts";
 import { schedule } from "./scheduler.ts";
 import { getCurrentEffect } from "./signal.ts";
-import { DEFAULT_STORE_KEY, KEY_STORE_REGISTRY } from "./constants.ts";
-import { getGlobalOrDefault } from "./globals.ts";
 import type { SignalTuple } from "./types.ts";
 
 function getGlobalStoreRegistry(): Map<string, unknown> {
@@ -45,6 +45,17 @@ function getGlobalStore(key?: string): unknown {
 /** 将 store 注册到全局，供 code-split 后的 chunk 通过 getGlobalStore(key) 取到同一引用 */
 function setGlobalStore(key: string, store: unknown): void {
   getGlobalStoreRegistry().set(key, store);
+}
+
+/**
+ * 从全局注册表中移除指定 key 的 store。
+ * 当使用动态 key（如按 id 创建的 store）且实例不再需要时调用，避免注册表无限增长。
+ * 调用后，该 key 下次 createStore(key, config) 会创建新实例。
+ *
+ * @param key - 创建 store 时使用的 key
+ */
+export function unregisterStore(key: string): void {
+  getGlobalStoreRegistry().delete(key);
 }
 
 const STORE_INTERNAL = Symbol.for("view.store.internal");
@@ -286,6 +297,74 @@ function getDefaultStorage(): StorageLike | null {
   return null;
 }
 
+/** action 上下文 Proxy：get/set/ownKeys 统一逻辑，供 hasActions 与 hasGetters+hasActions 复用 */
+function makeActionContextProxy<
+  T extends Record<string, unknown>,
+  A extends StoreActions<T>,
+>(
+  getter: () => T,
+  setter: (v: T | ((p: T) => T)) => void,
+  actionsObj: Record<string, (...args: unknown[]) => unknown>,
+): StoreActionContext<T, A> {
+  return new Proxy({} as StoreActionContext<T, A>, {
+    get(_, key: string | symbol) {
+      if (key === "setState") return setter;
+      if (
+        typeof key === "string" &&
+        Object.prototype.hasOwnProperty.call(actionsObj, key)
+      ) return actionsObj[key];
+      return (getter() as Record<string, unknown>)[key as string];
+    },
+    set(_, key: string | symbol, value: unknown) {
+      if (
+        key === "setState" ||
+        (typeof key === "string" &&
+          Object.prototype.hasOwnProperty.call(actionsObj, key))
+      ) return true;
+      setter({ ...(getter() as Record<string, unknown>), [key]: value } as T);
+      return true;
+    },
+    ownKeys() {
+      return Reflect.ownKeys(getter());
+    },
+  });
+}
+
+/** 对外 store 对象 Proxy：get/set 统一逻辑，供 asObject 四种形态复用 */
+function makeStoreObjectProxy(
+  getter: () => Record<string, unknown>,
+  setter: (v: unknown) => void,
+  gettersObj?: Record<string, () => unknown>,
+  actionsObj?: Record<string, (...args: unknown[]) => unknown>,
+): unknown {
+  const has = (o: Record<string, unknown> | undefined, k: string) =>
+    o && Object.prototype.hasOwnProperty.call(o, k);
+  return new Proxy({}, {
+    get(_, key: string | symbol) {
+      if (key === "setState") return setter;
+      if (
+        typeof key === "string" &&
+        has(actionsObj as Record<string, unknown>, key)
+      ) return (actionsObj as Record<string, () => unknown>)[key];
+      if (
+        typeof key === "string" &&
+        has(gettersObj as Record<string, unknown>, key)
+      ) return (gettersObj as Record<string, () => unknown>)[key]();
+      return getter()[key as string];
+    },
+    set(_, key: string | symbol, value: unknown) {
+      if (
+        key === "setState" ||
+        (typeof key === "string" &&
+          (has(actionsObj as Record<string, unknown>, key) ||
+            has(gettersObj as Record<string, unknown>, key)))
+      ) return true;
+      setter({ ...getter(), [key]: value });
+      return true;
+    },
+  });
+}
+
 /**
  * 创建响应式 store（嵌套 Proxy，与 createEffect 协作）。
  *
@@ -511,104 +590,10 @@ export function createStore<
 
   const hasGetters = !!gettersConfig && Object.keys(gettersConfig).length > 0;
   const hasActions = !!actionsConfig && Object.keys(actionsConfig).length > 0;
-
-  if (hasGetters && hasActions) {
-    const gettersObj: Record<string, () => unknown> = {};
-    for (const [k, fn] of Object.entries(gettersConfig!)) {
-      if (typeof fn === "function") {
-        gettersObj[k] = createMemo(() =>
-          (fn as (this: T) => unknown).call(getter())
-        );
-      }
-    }
-    const actionsObj: Record<string, (...args: unknown[]) => unknown> = {};
-    const createActionContext = (): StoreActionContext<T, A> =>
-      new Proxy({} as StoreActionContext<T, A>, {
-        get(_, key: string | symbol) {
-          if (key === "setState") return setter;
-          if (
-            typeof key === "string" &&
-            Object.prototype.hasOwnProperty.call(actionsObj, key)
-          ) {
-            return actionsObj[key];
-          }
-          return (getter() as Record<string, unknown>)[key as string];
-        },
-        set(_, key: string | symbol, value: unknown) {
-          if (
-            key === "setState" ||
-            (typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(actionsObj, key))
-          ) {
-            return true;
-          }
-          const state = getter() as Record<string, unknown>;
-          setter({ ...state, [key]: value } as T);
-          return true;
-        },
-        ownKeys() {
-          return Reflect.ownKeys(getter());
-        },
-      });
-    for (const [k, fn] of Object.entries(actionsConfig!)) {
-      if (typeof fn === "function") {
-        actionsObj[k] = (...args: unknown[]) =>
-          (fn as (this: StoreActionContext<T, A>, ...a: unknown[]) => unknown)
-            .call(createActionContext(), ...args);
-      }
-    }
-    if ((config as CreateStoreConfig<T, G, A>).asObject !== false) {
-      return registerIf(
-        new Proxy({} as StoreAsObjectWithGettersAndActions<T, G, A>, {
-          get(_t, key: string | symbol) {
-            if (key === "setState") return setter;
-            if (
-              typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(actionsObj, key)
-            ) {
-              return actionsObj[key];
-            }
-            if (
-              typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(gettersObj, key)
-            ) {
-              return (gettersObj[key] as () => unknown)();
-            }
-            return (getter() as Record<string, unknown>)[key as string];
-          },
-          set(_t, key: string | symbol, value: unknown) {
-            if (
-              key === "setState" ||
-              (typeof key === "string" &&
-                (Object.prototype.hasOwnProperty.call(actionsObj, key) ||
-                  Object.prototype.hasOwnProperty.call(gettersObj, key)))
-            ) {
-              return true;
-            }
-            const state = getter() as Record<string, unknown>;
-            setter({ ...state, [key]: value } as T);
-            return true;
-          },
-        }),
-      ) as StoreAsObjectWithGettersAndActions<T, G, A>;
-    }
-    return registerIf([
-      getter,
-      setter,
-      gettersObj as { [K in keyof G]: () => ReturnType<G[K]> },
-      actionsObj as {
-        [K in keyof A]: (...args: unknown[]) => ReturnType<A[K]>;
-      },
-    ]) as [
-      typeof getter,
-      typeof setter,
-      { [K in keyof G]: () => ReturnType<G[K]> },
-      { [K in keyof A]: (...args: unknown[]) => ReturnType<A[K]> },
-    ];
-  }
-
+  let gettersObj: Record<string, () => unknown> | undefined;
+  let actionsObj: Record<string, (...args: unknown[]) => unknown> | undefined;
   if (hasGetters) {
-    const gettersObj: Record<string, () => unknown> = {};
+    gettersObj = {};
     for (const [k, fn] of Object.entries(gettersConfig!)) {
       if (typeof fn === "function") {
         gettersObj[k] = createMemo(() =>
@@ -616,140 +601,51 @@ export function createStore<
         );
       }
     }
-    if ((config as CreateStoreConfig<T, G, A>).asObject !== false) {
-      return registerIf(
-        new Proxy({} as StoreAsObjectWithGetters<T, G>, {
-          get(_t, key: string | symbol) {
-            if (key === "setState") return setter;
-            if (
-              typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(gettersObj, key)
-            ) {
-              return (gettersObj[key] as () => unknown)();
-            }
-            return (getter() as Record<string, unknown>)[key as string];
-          },
-          set(_t, key: string | symbol, value: unknown) {
-            if (
-              key === "setState" ||
-              (typeof key === "string" &&
-                Object.prototype.hasOwnProperty.call(gettersObj, key))
-            ) {
-              return true;
-            }
-            const state = getter() as Record<string, unknown>;
-            setter({ ...state, [key]: value } as T);
-            return true;
-          },
-        }),
-      ) as StoreAsObjectWithGetters<T, G>;
+  }
+  if (hasActions) {
+    actionsObj = {};
+    const ctx = () => makeActionContextProxy<T, A>(getter, setter, actionsObj!);
+    for (const [k, fn] of Object.entries(actionsConfig!)) {
+      if (typeof fn === "function") {
+        actionsObj[k] = (...args: unknown[]) =>
+          (fn as (this: StoreActionContext<T, A>, ...a: unknown[]) => unknown)
+            .call(ctx(), ...args);
+      }
     }
-    return registerIf([
-      getter,
-      setter,
-      gettersObj as { [K in keyof G]: () => ReturnType<G[K]> },
-    ]) as [
+  }
+  const asObj = (config as CreateStoreConfig<T, G, A>).asObject !== false;
+  const get = getter as () => Record<string, unknown>;
+  const set = setter as (v: unknown) => void;
+  if (asObj) {
+    const proxy = makeStoreObjectProxy(get, set, gettersObj, actionsObj);
+    if (hasGetters && hasActions) {
+      return registerIf(proxy) as StoreAsObjectWithGettersAndActions<T, G, A>;
+    }
+    if (hasGetters) return registerIf(proxy) as StoreAsObjectWithGetters<T, G>;
+    if (hasActions) return registerIf(proxy) as StoreAsObject<T, A>;
+    return registerIf(proxy) as StoreAsObjectStateOnly<T>;
+  }
+  if (hasGetters && hasActions) {
+    return registerIf([getter, setter, gettersObj!, actionsObj!]) as [
+      typeof getter,
+      typeof setter,
+      { [K in keyof G]: () => ReturnType<G[K]> },
+      { [K in keyof A]: (...args: unknown[]) => ReturnType<A[K]> },
+    ];
+  }
+  if (hasGetters) {
+    return registerIf([getter, setter, gettersObj!]) as [
       typeof getter,
       typeof setter,
       { [K in keyof G]: () => ReturnType<G[K]> },
     ];
   }
-
   if (hasActions) {
-    const actionsObj: Record<string, (...args: unknown[]) => unknown> = {};
-    const createActionContext = (): StoreActionContext<T, A> =>
-      new Proxy({} as StoreActionContext<T, A>, {
-        get(_, key: string | symbol) {
-          if (key === "setState") return setter;
-          if (
-            typeof key === "string" &&
-            Object.prototype.hasOwnProperty.call(actionsObj, key)
-          ) {
-            return actionsObj[key];
-          }
-          return (getter() as Record<string, unknown>)[key as string];
-        },
-        set(_, key: string | symbol, value: unknown) {
-          if (
-            key === "setState" ||
-            (typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(actionsObj, key))
-          ) {
-            return true;
-          }
-          const state = getter() as Record<string, unknown>;
-          setter({ ...state, [key]: value } as T);
-          return true;
-        },
-        ownKeys() {
-          return Reflect.ownKeys(getter());
-        },
-      });
-    for (const [k, fn] of Object.entries(actionsConfig!)) {
-      if (typeof fn === "function") {
-        actionsObj[k] = (...args: unknown[]) =>
-          (fn as (this: StoreActionContext<T, A>, ...a: unknown[]) => unknown)
-            .call(createActionContext(), ...args);
-      }
-    }
-    if (
-      (config as CreateStoreConfig<T, StoreGetters<T>, A>).asObject !== false
-    ) {
-      return registerIf(
-        new Proxy({} as StoreAsObject<T, A>, {
-          get(_t, key: string | symbol) {
-            if (key === "setState") return setter;
-            if (
-              typeof key === "string" &&
-              Object.prototype.hasOwnProperty.call(actionsObj, key)
-            ) {
-              return actionsObj[key];
-            }
-            return (getter() as Record<string, unknown>)[key as string];
-          },
-          set(_t, key: string | symbol, value: unknown) {
-            if (
-              key === "setState" ||
-              (typeof key === "string" &&
-                Object.prototype.hasOwnProperty.call(actionsObj, key))
-            ) {
-              return true;
-            }
-            const state = getter() as Record<string, unknown>;
-            setter({ ...state, [key]: value } as T);
-            return true;
-          },
-        }),
-      ) as StoreAsObject<T, A>;
-    }
-    return registerIf([
-      getter,
-      setter,
-      actionsObj as {
-        [K in keyof A]: (...args: unknown[]) => ReturnType<A[K]>;
-      },
-    ]) as [
+    return registerIf([getter, setter, actionsObj!]) as [
       typeof getter,
       typeof setter,
       { [K in keyof A]: (...args: unknown[]) => ReturnType<A[K]> },
     ];
-  }
-
-  if ((config as CreateStoreConfig<T, G, A>).asObject !== false) {
-    return registerIf(
-      new Proxy({} as StoreAsObjectStateOnly<T>, {
-        get(_t, key: string | symbol) {
-          if (key === "setState") return setter;
-          return (getter() as Record<string, unknown>)[key as string];
-        },
-        set(_t, key: string | symbol, value: unknown) {
-          if (key === "setState") return true;
-          const state = getter() as Record<string, unknown>;
-          setter({ ...state, [key]: value } as T);
-          return true;
-        },
-      }),
-    ) as StoreAsObjectStateOnly<T>;
   }
   return registerIf([getter, setter]) as SignalTuple<T>;
 }

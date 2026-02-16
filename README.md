@@ -252,8 +252,8 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
     signal), the tree is rebuilt and patched in place. Use for SPA shells where
     “page state” is owned outside View (e.g. router) and View only renders from
     that state.
-  - `renderToString` — SSR/SSG HTML; optional `allowRawHtml: false` for
-    dangerouslySetInnerHTML escaping.
+  - `renderToString` — SSR/SSG HTML; optional `allowRawHtml: false` for escaping
+    raw HTML (see [Security](#-security)).
   - `hydrate` — activate server-rendered markup; `generateHydrationScript` for
     hybrid apps.
 - **Store** (`@dreamer/view/store`)
@@ -779,6 +779,14 @@ Store provides a reactive state tree plus getters, actions, and optional
 persistence (e.g. localStorage). It works with createEffect for global state
 (user, theme, cart).
 
+**Store key:** Use a **fixed key** (e.g. `"app"`, `"theme"`) so the same
+instance is reused across chunks. Avoid **dynamic keys** (e.g.
+`` `user-${id}` ``) when the store is created and destroyed over time: the
+global registry does not remove entries automatically, so dynamic keys can cause
+unbounded memory growth. When a store instance is no longer needed (e.g. a modal
+or route-scoped store), call **`unregisterStore(key)`** to remove it from the
+registry.
+
 ### Import and create
 
 ```ts
@@ -914,9 +922,9 @@ deno.json so the compiler injects from `jsr:@dreamer/view` (or
 
 ### Store `jsr:@dreamer/view/store`
 
-See **Store (detailed)** above. Exports: **createStore**, **withGetters**,
-**withActions**, and StorageLike, PersistOptions, StoreGetters, StoreActions,
-CreateStoreConfig, StoreAsObject* types.
+See **Store (detailed)** above. Exports: **createStore**, **unregisterStore**,
+**withGetters**, **withActions**, and StorageLike, PersistOptions, StoreGetters,
+StoreActions, CreateStoreConfig, StoreAsObject* types.
 
 ### Reactive `jsr:@dreamer/view/reactive`
 
@@ -1001,11 +1009,11 @@ Streaming SSR.
 
 Built-in SPA router (History API).
 
-| Export                    | Description                                                                         |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| **createRouter(options)** | Create router; call **start()** to listen to popstate and intercept links           |
-| **Router methods**        | getCurrentRoute, href, navigate, replace, back, forward, go, subscribe, start, stop |
-| **Types**                 | RouteConfig, RouteMatch, RouteGuard, RouteGuardAfter, CreateRouterOptions           |
+| Export                    | Description                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| **createRouter(options)** | Create router; call **start()** to listen to popstate and intercept links                       |
+| **Router methods**        | getCurrentRoute, href, navigate, replace, back, forward, go, subscribe, start, stop             |
+| **Types**                 | RouteConfig, RouteMatch, RouteMatchWithRouter, RouteGuard, RouteGuardAfter, CreateRouterOptions |
 
 Routes: path supports `:param`; component receives match; optional meta.
 beforeRoute/afterRoute, notFound supported. **scroll**: `'top'` scrolls to (0,0)
@@ -1052,7 +1060,7 @@ gitignored and should not be committed.
 | Area       | API                                                                                                                                                | Import                         |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`            |
-| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`      |
+| Store      | createStore, unregisterStore, withGetters, withActions                                                                                             | `jsr:@dreamer/view/store`      |
 | Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`   |
 | Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`    |
 | Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`   |
@@ -1111,6 +1119,18 @@ See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
 - **Type safety**: Full TypeScript support; VNode, Root, and effect/signal types
   exported.
+
+---
+
+## 🔒 Security
+
+- **dangerouslySetInnerHTML / innerHTML**: Any use of `dangerouslySetInnerHTML`
+  or `innerHTML` (in DOM props or SSR stringify) must receive **only trusted or
+  sanitized content**. Never insert unsanitized user input, or you risk XSS.
+- **SSR**: Prefer **`allowRawHtml: false`** when calling `renderToString` or
+  `renderToStream` (or equivalent options) so that raw HTML is escaped by
+  default and server output is safer. Use raw HTML only when you control the
+  source.
 
 ---
 

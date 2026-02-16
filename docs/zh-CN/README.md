@@ -239,8 +239,8 @@ CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
     `(container, getState, buildTree)`；当 `getState()` 的返回值变化（如 signal
     更新）时，会按新状态重新建树并在原地 patch，不整树卸载。适用于 SPA
     外壳由外部维护「页面状态」（如路由），View 只根据该状态渲染的场景。
-  - `renderToString` — SSR/SSG 输出 HTML；可选 `allowRawHtml: false` 对
-    dangerouslySetInnerHTML 转义。
+  - `renderToString` — SSR/SSG 输出 HTML；可选 `allowRawHtml: false` 对 原始
+    HTML 转义（见 [安全](#-安全)）。
   - `hydrate` — 激活服务端 HTML；`generateHydrationScript` 用于混合应用。
 - **Store**（`@dreamer/view/store`）
   - `createStore` — 响应式 store：state、getters、actions，可选 persist（如
@@ -757,6 +757,12 @@ actions.increment();
 Store 提供「整棵可读写状态树」+ 派生 getters + 方法 actions + 可选持久化，与
 createEffect 联动，适合全局状态（如用户信息、主题、购物车）。
 
+**Store key：** 请使用**固定 key**（如 `"app"`、`"theme"`），以便同一实例在 多个
+chunk 间复用。避免在「会反复创建与销毁」的场景下使用**动态 key**（如
+`` `user-${id}` ``）：全局注册表不会自动移除条目，动态 key 会导致内存持续
+增长。当某个 store 实例不再需要时（如弹窗或路由级 store），可调用
+**`unregisterStore(key)`** 将其从注册表移除。
+
 ### 导入与创建
 
 ```ts
@@ -894,7 +900,7 @@ Element；有子节点→hydrate，否则→render。
 ### Store `jsr:@dreamer/view/store`
 
 见上文 **Store
-详解**。导出：**createStore**、**withGetters**、**withActions**，以及
+详解**。导出：**createStore**、**unregisterStore**、**withGetters**、**withActions**，以及
 StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig、StoreAsObject*
 等类型。
 
@@ -971,11 +977,11 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 
 内置 SPA 路由（基于 History API）。
 
-| 导出                      | 说明                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| **createRouter(options)** | 创建路由器；需调用 **start()** 后才监听 popstate 与拦截链接                         |
-| **Router 方法**           | getCurrentRoute、href、navigate、replace、back、forward、go、subscribe、start、stop |
-| **类型**                  | RouteConfig、RouteMatch、RouteGuard、RouteGuardAfter、CreateRouterOptions 等        |
+| 导出                      | 说明                                                                                               |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| **createRouter(options)** | 创建路由器；需调用 **start()** 后才监听 popstate 与拦截链接                                        |
+| **Router 方法**           | getCurrentRoute、href、navigate、replace、back、forward、go、subscribe、start、stop                |
+| **类型**                  | RouteConfig、RouteMatch、RouteMatchWithRouter、RouteGuard、RouteGuardAfter、CreateRouterOptions 等 |
 
 路由配置：path 支持动态参数 `:param`；component 接收 match；可选 meta。支持
 beforeRoute/afterRoute、notFound。**scroll**：`'top'` 在导航完成后滚动到
@@ -1018,7 +1024,7 @@ export const metadata = {
 | 模块       | 主要 API                                                                                                                                           | 导入                           |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | 核心       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`            |
-| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`      |
+| Store      | createStore, unregisterStore, withGetters, withActions                                                                                             | `jsr:@dreamer/view/store`      |
 | Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`   |
 | Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`    |
 | Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`   |
@@ -1067,6 +1073,18 @@ themeValue）避免 Tailwind 误报。完整历史见 [CHANGELOG.md](./CHANGELOG
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"`。
 - **类型安全**：完整 TypeScript 支持；导出 VNode、Root 及 effect/signal
   相关类型。
+
+---
+
+## 🔒 安全
+
+- **dangerouslySetInnerHTML / innerHTML**：凡使用 `dangerouslySetInnerHTML` 或
+  `innerHTML`（在 DOM props 或 SSR stringify
+  中），必须**仅传入受信任或已消毒的内容**。禁止插入未消毒的用户输入，否则存在
+  XSS 风险。
+- **SSR**：建议在调用 `renderToString` 或 `renderToStream` 时使用
+  **`allowRawHtml: false`**（或等效选项），使原始 HTML
+  默认被转义，服务端输出更安全。仅在内容完全由你控制时再使用原始 HTML。
 
 ---
 

@@ -172,13 +172,16 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     return;
   }
 
-  // class（HTML/经典 JSX）与 className（React 风格）统一落到 DOM 的 class
+  // class（HTML/经典 JSX）与 className（React 风格）统一落到 DOM 的 class；相同则跳过写以减少 reflow
   if (key === "class" || key === "className") {
     const classVal = value == null ? "" : String(value);
     if (el.namespaceURI === "http://www.w3.org/2000/svg") {
-      el.setAttribute("class", classVal);
+      if (el.getAttribute("class") !== classVal) {
+        el.setAttribute("class", classVal);
+      }
     } else {
-      (el as HTMLElement).className = classVal;
+      const cur = (el as HTMLElement).className;
+      if (cur !== classVal) (el as HTMLElement).className = classVal;
     }
     return;
   }
@@ -186,12 +189,12 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
   if (key === "style" && value != null) {
     const style = (el as HTMLElement).style;
     if (typeof value === "string") {
-      style.cssText = value;
+      if (style.cssText !== value) style.cssText = value;
     } else if (typeof value === "object") {
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        (style as unknown as Record<string, string>)[k] = v == null
-          ? ""
-          : String(v);
+        const str = v == null ? "" : String(v);
+        const cur = (style as unknown as Record<string, string>)[k];
+        if (cur !== str) (style as unknown as Record<string, string>)[k] = str;
       }
     }
     return;
@@ -203,14 +206,14 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     return;
   }
 
-  // 表单 value 必须在 value==null 判断之前处理：patch 时可能传入 undefined，若先走 removeAttribute 会 return，导致永远进不了下面的 key==="value" 分支，清空不生效
+  // 表单 value 必须在 value==null 判断之前处理：patch 时可能传入 undefined，若先走 removeAttribute 会 return，导致永远进不了下面的 key==="value" 分支，清空不生效；相同则跳过写
   if (key === "value") {
     const formEl = el as
       | HTMLInputElement
       | HTMLTextAreaElement
       | HTMLSelectElement;
     const str = value == null ? "" : String(value);
-    formEl.value = str;
+    if (formEl.value !== str) formEl.value = str;
     return;
   }
   if (value == null || value === false) {
@@ -236,12 +239,12 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
   const str = String(value);
   if (key === "checked" || key === "selected") {
     viewEl[key] = Boolean(value);
-    el.setAttribute(key, str);
+    if (el.getAttribute(key) !== str) el.setAttribute(key, str);
     return;
   }
   if (key === "disabled" || key === "readOnly" || key === "multiple") {
     viewEl[key] = Boolean(value);
   }
   const attrName = key === "htmlFor" ? "for" : key;
-  el.setAttribute(attrName, str);
+  if (el.getAttribute(attrName) !== str) el.setAttribute(attrName, str);
 }

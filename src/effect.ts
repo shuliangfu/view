@@ -44,6 +44,28 @@ export function setCurrentScope(scope: EffectScope | null): void {
 }
 
 /**
+ * 创建「带 runDisposers 的 effect 作用域」：与 createRunDisposersCollector 的 scope 形态一致，
+ * 供 route-page 等按 key/path 缓存 scope 并统一清理时复用，减少重复的 disposers + runDisposers 写法。
+ *
+ * @param disposers - 可选，外部传入的数组则复用（供 createRunDisposersCollector 使用）；不传则新建
+ * @returns 具 addDisposer 与 runDisposers 的 scope，runDisposers() 执行后清空列表
+ */
+export function createScopeWithDisposers(
+  disposers?: Array<() => void>,
+): EffectScope & { runDisposers(): void } {
+  const list = disposers ?? [];
+  return {
+    addDisposer(d: () => void) {
+      list.push(d);
+    },
+    runDisposers() {
+      list.forEach((d) => d());
+      list.length = 0;
+    },
+  };
+}
+
+/**
  * 创建「按轮收集子 effect disposer」的收集器，供 createRoot / hydrate 复用。
  * 根 effect 每次 run 时先执行上一轮收集的 disposers、清空，再设置本轮 scope，避免子 effect 堆积。
  *
@@ -61,7 +83,7 @@ export function createRunDisposersCollector(): {
     getScopeForRun() {
       runDisposers.forEach((d) => d());
       runDisposers.length = 0;
-      return { addDisposer: (d) => runDisposers.push(d) };
+      return createScopeWithDisposers(runDisposers);
     },
   };
 }
