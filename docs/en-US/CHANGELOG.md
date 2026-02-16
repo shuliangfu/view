@@ -8,6 +8,18 @@ and this project adheres to
 
 ---
 
+## [1.0.12] - 2026-02-16
+
+### Fixed
+
+- **view-cli upgrade and setup:** The upgrade command and setup script ran
+  subprocesses (e.g. `deno install`) with `stdout`/`stderr` set to `"piped"` but
+  did not read the pipes, so the child could block when the pipe buffer filled
+  and the CLI appeared stuck. Both now use `stdout`/`stderr` `"null"` so output
+  is discarded and the process exits after installation without blocking.
+
+---
+
 ## [1.0.11] - 2026-02-15
 
 ### Fixed

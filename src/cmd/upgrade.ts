@@ -86,8 +86,8 @@ export async function main(
   const setupSpec = `jsr:@dreamer/view@${latest}/setup`;
   const cmd = createCommand(runtime, {
     args: getRunArgs(setupSpec),
-    stdout: "piped",
-    stderr: "piped",
+    stdout: "null",
+    stderr: "null",
     stdin: "inherit",
   });
   startSpinner("Installing...");

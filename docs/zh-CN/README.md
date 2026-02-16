@@ -917,8 +917,8 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.11**（2026-02-15）— 修复：JSX 子节点中的 `false`、`""` 不再参与渲染；新增
-`dom/shared.ts` 中的 `isEmptyChild(value)`。完整历史见
+**v1.0.12**（2026-02-16）— 修复：view-cli upgrade 与 setup 使用 stdout/stderr
+`"null"`，安装子进程不再阻塞，安装完成后 CLI 正常退出。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
