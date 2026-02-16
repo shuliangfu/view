@@ -202,6 +202,30 @@ function parseQuery(search: string): Record<string, string> {
   return out;
 }
 
+/** 根据路由配置与 path/query/search/params 构建 RouteMatch，避免 matchPath 内两处重复结构 */
+function buildMatch(
+  r: Pick<
+    RouteConfig,
+    "path" | "component" | "metadata" | "inheritLayout" | "layouts" | "loading"
+  >,
+  path: string,
+  query: Record<string, string>,
+  search: string,
+  params: Record<string, string>,
+): RouteMatch {
+  return {
+    path: r.path,
+    params,
+    query,
+    fullPath: path + (search ? search : ""),
+    component: r.component,
+    metadata: r.metadata,
+    inheritLayout: r.inheritLayout,
+    layouts: r.layouts,
+    loading: r.loading,
+  };
+}
+
 /** 从当前 location 获取要匹配的路径与查询串（基于 pathname，history 模式） */
 function getCurrentPathAndQuery(options: { basePath: string }): {
   path: string;
@@ -254,6 +278,15 @@ export interface Router {
   /** 停止：移除所有监听与链接拦截 */
   stop(): void;
 }
+
+/**
+ * 当前路由匹配结果 + router + getState，即 RoutePage 传入页面组件的 match 对象。
+ * 与 RouteMatch 统一为交叉类型，避免 route-page 与 router 两处重复描述字段。
+ */
+export type RouteMatchWithRouter = RouteMatch & {
+  router: Router;
+  getState: GetState;
+};
 
 /**
  * 创建 SPA 路由器实例（基于 History API，不依赖 @dreamer/router/client）。
@@ -314,7 +347,6 @@ export function createRouter(options: CreateRouterOptions): Router {
   function matchPath(pathname: string, search: string): RouteMatch | null {
     const path = pathname.replace(/\?.*$/, "").replace(/#.*$/, "") || "/";
     const query = parseQuery(search);
-
     for (const r of compiled) {
       const m = path.match(r.regex);
       if (!m) continue;
@@ -322,30 +354,10 @@ export function createRouter(options: CreateRouterOptions): Router {
       r.paramNames.forEach((name, i) => {
         params[name] = m[i + 1] ?? "";
       });
-      return {
-        path: r.path,
-        params,
-        query,
-        fullPath: path + (search ? search : ""),
-        component: r.component,
-        metadata: r.metadata,
-        inheritLayout: r.inheritLayout,
-        layouts: r.layouts,
-        loading: r.loading,
-      };
+      return buildMatch(r, path, query, search, params);
     }
     if (notFoundConfig) {
-      return {
-        path: notFoundConfig.path,
-        params: {},
-        query,
-        fullPath: path + (search ? search : ""),
-        component: notFoundConfig.component,
-        metadata: notFoundConfig.metadata,
-        inheritLayout: notFoundConfig.inheritLayout,
-        layouts: notFoundConfig.layouts,
-        loading: notFoundConfig.loading,
-      };
+      return buildMatch(notFoundConfig, path, query, search, {});
     }
     return null;
   }

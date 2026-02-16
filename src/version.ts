@@ -104,10 +104,6 @@ function getVersionCacheDir(): string {
   return join(home, ".dreamer", "view");
 }
 
-function getVersionCachePath(): string {
-  return join(getVersionCacheDir(), VERSION_CACHE_FILENAME);
-}
-
 /**
  * 从缓存文件读取 view 版本号
  * @returns 版本号，缓存不存在或无效时返回 null
@@ -116,7 +112,7 @@ export async function readVersionCache(): Promise<string | null> {
   try {
     const cacheDir = getVersionCacheDir();
     if (!cacheDir) return null;
-    const path = getVersionCachePath();
+    const path = join(cacheDir, VERSION_CACHE_FILENAME);
     if (!(await exists(path))) return null;
     const content = await readTextFile(path);
     const parsed = JSON.parse(content) as { version?: string };
@@ -136,8 +132,10 @@ export async function writeVersionCache(version: string): Promise<void> {
     const cacheDir = getVersionCacheDir();
     if (!cacheDir) return;
     await ensureDir(cacheDir);
-    const path = getVersionCachePath();
-    await writeTextFile(path, JSON.stringify({ version }, null, 2));
+    await writeTextFile(
+      join(cacheDir, VERSION_CACHE_FILENAME),
+      JSON.stringify({ version }, null, 2),
+    );
   } catch {
     // 忽略写入失败（如权限不足）
   }

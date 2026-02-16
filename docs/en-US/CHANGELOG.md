@@ -8,6 +8,33 @@ and this project adheres to
 
 ---
 
+## [1.0.14] - 2026-02-16
+
+### Changed
+
+- **Store:** Refactored `createStore` implementation: extracted
+  `makeActionContextProxy` and `makeStoreObjectProxy` to share Proxy logic
+  across getters/actions/asObject branches; all overloads and API unchanged.
+- **Version:** Inlined `getVersionCachePath` into `readVersionCache` and
+  `writeVersionCache`; removed the helper to reduce source size.
+- **Router:** Added `buildMatch` helper to construct `RouteMatch` in
+  `matchPath`, removing duplicated object literals for matched and notFound
+  cases.
+- **DOM (element):** Added `registerPlaceholderEffect` and `getItemKey`;
+  `reconcileKeyedChildren` now accepts `oldItems` and patches the wrapper’s
+  child in place when the same key exists (via `patchNode`) instead of
+  replacing inner content, reducing DOM churn for keyed lists.
+- **DOM (props):** In `applySingleProp`, skip DOM write when value is
+  unchanged for className, style (string and object), form value,
+  checked/selected, and generic attributes.
+- **Directive:** Custom directive `mounted` hook now runs via
+  `queueMicrotask` when available (fallback: `setTimeout(..., 0)`) so it runs
+  earlier after the element is in the document.
+- **Runtime:** Root effect skips expand and patch when the root VNode
+  reference is unchanged (e.g. memo or stable ref), avoiding redundant work.
+
+---
+
 ## [1.0.13] - 2026-02-16
 
 ### Added

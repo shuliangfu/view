@@ -14,13 +14,17 @@ import {
   KEY_HMR_CHUNK_FOR_PATH,
   KEY_HMR_CLEAR_ROUTE_CACHE,
 } from "./constants.ts";
-import type { EffectScope } from "./effect.ts";
-import { createEffect, untrack } from "./effect.ts";
+import { createEffect, createScopeWithDisposers, untrack } from "./effect.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
 import { jsx as runtimeJsx } from "./jsx-runtime.ts";
 import { createResource } from "./resource.ts";
-import type { LayoutComponentModule, RouteMatch, Router } from "./router.ts";
+import type {
+  LayoutComponentModule,
+  RouteMatch,
+  RouteMatchWithRouter,
+  Router,
+} from "./router.ts";
 import { createSignal } from "./signal.ts";
 import type { VNode } from "./types.ts";
 
@@ -103,22 +107,15 @@ function getPageState<T>(
  */
 const pathScopes = new Map<
   string,
-  EffectScope & { runDisposers(): void }
+  ReturnType<typeof createScopeWithDisposers>
 >();
 
-function getScopeForPath(path: string): EffectScope & { runDisposers(): void } {
+function getScopeForPath(
+  path: string,
+): ReturnType<typeof createScopeWithDisposers> {
   let scope = pathScopes.get(path);
   if (!scope) {
-    const disposers: Array<() => void> = [];
-    scope = {
-      addDisposer(d: () => void) {
-        disposers.push(d);
-      },
-      runDisposers() {
-        disposers.forEach((d) => d());
-        disposers.length = 0;
-      },
-    };
+    scope = createScopeWithDisposers();
     pathScopes.set(path, scope);
   }
   return scope;
@@ -281,11 +278,18 @@ export function RoutePage(props: {
   const path = props.match.path;
   const pathRef = { current: path };
   pathRef.current = path;
+  // path 变化时清理上一 path 的缓存与 scope，避免长时间 SPA 导航导致内存持续增长（见 ANALYSIS_REPORT 1.2）
   if (prevPathForState && prevPathForState !== path) {
-    pathStateStore.delete(prevPathForState);
+    const prev = prevPathForState;
+    pathStateStore.delete(prev);
+    pathScopes.get(prev)?.runDisposers();
+    pathScopes.delete(prev);
+    resourceCache.delete(prev);
+    loadingComponentCache.delete(prev);
+    minDelaySignalsByPath.delete(prev);
   }
   prevPathForState = path;
-  const matchWithRouter = {
+  const matchWithRouter: RouteMatchWithRouter = {
     ...props.match,
     router: props.router,
     /** 按 path+key 稳定的 state，页面内写 getState(key, initial) 即可在组件体内用「类 useState」且点击生效 */
@@ -325,6 +329,44 @@ export function RoutePage(props: {
   const cls = (key: keyof RoutePageClasses) =>
     classes[key] ?? DEFAULT_CLASSES[key];
   const sty = (key: keyof RoutePageStyles) => styles[key];
+
+  /** 若有 _loading 且已加载完成则返回其 VNode，否则返回 null（复用两处「未就绪 / minDelay 未到」分支） */
+  const tryCustomLoading = (): VNode | null => {
+    const loadingGetter = loadingComponentCache.get(path);
+    if (!loadingGetter) return null;
+    const loadingState = loadingGetter();
+    if (loadingState.loading || !loadingState.data) return null;
+    const Load = loadingState.data.default ?? loadingState.data.RouteLoading;
+    return typeof Load === "function" ? (Load(matchWithRouter) as VNode) : null;
+  };
+  /** 根据 showLoading 返回默认 loading 区块或过渡占位（复用两处分支，减少重复 JSX） */
+  const loadingOrPlaceholder = (show: boolean): VNode => {
+    if (show) {
+      return (
+        <section
+          className={cls("loadingSection")}
+          style={sty("loadingSection")}
+        >
+          <div
+            className={cls("loadingSpinner")}
+            style={sty("loadingSpinner")}
+            aria-hidden="true"
+          />
+          <p className={cls("loadingText")} style={sty("loadingText")}>
+            {loadingText}
+          </p>
+        </section>
+      );
+    }
+    ensureRoutePageTransitionStyle();
+    return (
+      <div
+        className={cls("transitionPlaceholder")}
+        style={sty("transitionPlaceholder")}
+        aria-hidden="true"
+      />
+    ) as VNode;
+  };
 
   /** HMR 时 version 变化使本组件重跑；若有该 path 的 chunk 待更新则清掉缓存，让下面重新 createResource 并走 loader 里的 override，避免继续用旧 resource 显示旧内容（如「核心 333」） */
   getHmrVersionGetter()();
@@ -426,84 +468,16 @@ export function RoutePage(props: {
 
   /* 页面组件未就绪：优先显示 _loading，否则默认 loading 或占位 */
   if (!pageReady) {
-    const loadingLoader = props.match.loading;
-    if (loadingLoader) {
-      const loadingGetter = loadingComponentCache.get(path);
-      if (loadingGetter) {
-        const loadingState = loadingGetter();
-        if (!loadingState.loading && loadingState.data) {
-          const LoadingComponent = loadingState.data.default ??
-            loadingState.data.RouteLoading;
-          if (typeof LoadingComponent === "function") {
-            return LoadingComponent(matchWithRouter) as VNode;
-          }
-        }
-      }
-    }
-    if (props.showLoading === true) {
-      return (
-        <section
-          className={cls("loadingSection")}
-          style={sty("loadingSection")}
-        >
-          <div
-            className={cls("loadingSpinner")}
-            style={sty("loadingSpinner")}
-            aria-hidden="true"
-          />
-          <p className={cls("loadingText")} style={sty("loadingText")}>
-            {loadingText}
-          </p>
-        </section>
-      );
-    }
-    ensureRoutePageTransitionStyle();
-    return (
-      <div
-        className={cls("transitionPlaceholder")}
-        style={sty("transitionPlaceholder")}
-        aria-hidden="true"
-      />
-    ) as VNode;
+    const custom = tryCustomLoading();
+    if (custom) return custom;
+    return loadingOrPlaceholder(props.showLoading === true);
   }
 
   /* 页面已就绪但 minDelay 未到：再显示一段 _loading 或默认 loading / 占位后切到内容 */
   if (pageReady && data && props.match.loading && !minDelayElapsed()) {
-    const loadingGetter = loadingComponentCache.get(path);
-    if (loadingGetter) {
-      const loadingState = loadingGetter();
-      if (!loadingState.loading && loadingState.data) {
-        const LoadingComponent = loadingState.data.default ??
-          loadingState.data.RouteLoading;
-        if (typeof LoadingComponent === "function") {
-          return LoadingComponent(matchWithRouter) as VNode;
-        }
-      }
-    }
-    if (props.showLoading === true) {
-      return (
-        <section
-          className={cls("loadingSection")}
-          style={sty("loadingSection")}
-        >
-          <div
-            className={cls("loadingSpinner")}
-            style={sty("loadingSpinner")}
-            aria-hidden="true"
-          />
-          <p className={cls("loadingText")} style={sty("loadingText")}>
-            {loadingText}
-          </p>
-        </section>
-      );
-    }
-    return (
-      <div
-        className={cls("transitionPlaceholder")}
-        style={sty("transitionPlaceholder")}
-        aria-hidden="true"
-      />
-    ) as VNode;
+    const custom = tryCustomLoading();
+    if (custom) return custom;
+    return loadingOrPlaceholder(props.showLoading === true);
   }
 
   /* 页面就绪且 minDelay 已过：显示内容并加过渡容器 */

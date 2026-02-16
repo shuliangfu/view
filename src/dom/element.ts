@@ -50,13 +50,25 @@ import {
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
 
+/** 在 placeholder 上创建 effect 并注册卸载时 dispose，供 v-if/v-for/动态子节点等多处复用 */
+function registerPlaceholderEffect(
+  placeholder: Element,
+  effectBody: () => void,
+): void {
+  registerDirectiveUnmount(placeholder, createEffect(effectBody));
+}
+
 /** SVG 命名空间，用于 createElementNS */
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /**
  * vIf/vElseIf/vElse 切换时 replaceChildren/appendChild 可能触发浏览器滚动锚定或焦点移动导致页面滚动。
  * 在更新 placeholder 前后保存并恢复滚动位置，避免用户感知到滚动。
+ * 同一帧内多次调用合并为单次 rAF，减少重复恢复（见 ANALYSIS_REPORT 2.2）。
  */
+let _pendingScroll: { x: number; y: number } | null = null;
+let _scrollRestoreScheduled = false;
+
 function preserveScrollAroundUpdate(update: () => void): void {
   const win = globalThis as {
     scrollX?: number;
@@ -66,8 +78,17 @@ function preserveScrollAroundUpdate(update: () => void): void {
   const x = typeof win.scrollX === "number" ? win.scrollX : 0;
   const y = typeof win.scrollY === "number" ? win.scrollY : 0;
   update();
-  if (typeof win.scrollTo === "function") {
-    requestAnimationFrame(() => win.scrollTo!(x, y));
+  if (typeof win.scrollTo !== "function") return;
+  _pendingScroll = { x, y };
+  if (!_scrollRestoreScheduled) {
+    _scrollRestoreScheduled = true;
+    requestAnimationFrame(() => {
+      _scrollRestoreScheduled = false;
+      if (_pendingScroll) {
+        win.scrollTo!(_pendingScroll.x, _pendingScroll.y);
+        _pendingScroll = null;
+      }
+    });
   }
 }
 
@@ -120,6 +141,7 @@ function resolveNamespace(
 /**
  * 规范化 children：支持单个 VNode、数组、signal getter、普通函数（动态子节点）或原始值（转为文本 VNode）。
  * 返回 ChildItem 数组，供 createElement 区分静态子节点与动态子节点。
+ * 对「已是数组且无空子节点、无嵌套数组」做快速路径，减少递归与分配（见 ANALYSIS_REPORT 2.2）。
  *
  * @param children - props.children 或 vnode.children（可能为任意合法子节点形式）
  * @returns 规范化后的子项数组（VNode 或 getter）
@@ -134,6 +156,33 @@ export function normalizeChildren(children: unknown): ChildItem[] {
     return [children as () => unknown];
   }
   if (Array.isArray(children)) {
+    let hasEmpty = false;
+    let hasNested = false;
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (isEmptyChild(c)) {
+        hasEmpty = true;
+        break;
+      }
+      if (Array.isArray(c)) {
+        hasNested = true;
+        break;
+      }
+    }
+    if (!hasEmpty && !hasNested) {
+      const out: ChildItem[] = [];
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i];
+        if (typeof c === "function" || isSignalGetter(c)) {
+          out.push(c as () => unknown);
+        } else if (isVNodeLike(c)) {
+          out.push(c as VNode);
+        } else {
+          out.push(createTextVNode(c));
+        }
+      }
+      return out;
+    }
     const out: ChildItem[] = [];
     for (const c of children) {
       const items = normalizeChildren(c);
@@ -153,11 +202,20 @@ function hasAnyKey(items: ChildItem[]): boolean {
   return false;
 }
 
+/** 从 ChildItem 取 key，供 keyed 协调时与旧列表对齐 */
+function getItemKey(item: ChildItem, index: number): string {
+  if (isSignalGetter(item) || typeof item === "function") return `@${index}`;
+  const k = (item as VNode).key;
+  return k != null ? String(k) : `@${index}`;
+}
+
 /**
- * 按 key 协调列表：复用已有 DOM 节点（同 key 仅更新内容），减少重挂
+ * 按 key 协调列表：复用已有 DOM 节点（同 key 时 patch 子节点而非整节点替换），减少重挂
+ * @param oldItems - 上一轮子项列表，传空数组时仅做创建/替换，不 patch
  */
 function reconcileKeyedChildren(
   container: Element,
+  oldItems: ChildItem[],
   items: ChildItem[],
   parentNamespace: string | null,
   ifContext?: IfContext,
@@ -167,6 +225,10 @@ function reconcileKeyedChildren(
   for (const child of Array.from(container.children)) {
     const key = (child as Element).getAttribute?.("data-key");
     if (key != null) keyToWrapper.set(key, child as Element);
+  }
+  const keyToOldItem = new Map<string, ChildItem>();
+  for (let i = 0; i < oldItems.length; i++) {
+    keyToOldItem.set(getItemKey(oldItems[i], i), oldItems[i]);
   }
   const resultNodes: Node[] = [];
   const ctx = ifContext ?? { lastVIf: true };
@@ -179,22 +241,37 @@ function reconcileKeyedChildren(
       continue;
     }
     const v = item as VNode;
-    const key = v.key != null ? String(v.key) : `@${i}`;
-    let wrapper = keyToWrapper.get(key);
-    if (wrapper) {
+    const key = getItemKey(v, i);
+    const wrapper = keyToWrapper.get(key);
+    const oldItem = keyToOldItem.get(key);
+    const canPatch = wrapper?.firstChild != null &&
+      oldItem != null &&
+      !isSignalGetter(oldItem) &&
+      typeof oldItem !== "function";
+    if (wrapper && canPatch) {
+      keyToWrapper.delete(key);
+      patchNode(
+        wrapper.firstChild as Node,
+        oldItem as VNode,
+        v,
+        parentNamespace,
+        ctx,
+      );
+      resultNodes.push(wrapper);
+    } else if (wrapper) {
       keyToWrapper.delete(key);
       runDirectiveUnmountOnChildren(wrapper);
       wrapper.replaceChildren(createElement(v, parentNamespace, ctx));
       resultNodes.push(wrapper);
     } else {
-      wrapper = doc.createElement("span");
-      wrapper.setAttribute(KEYED_WRAPPER_ATTR, "");
-      wrapper.setAttribute("data-key", key);
-      wrapper.appendChild(createElement(v, parentNamespace, ctx));
-      resultNodes.push(wrapper);
+      const newWrapper = doc.createElement("span");
+      newWrapper.setAttribute(KEYED_WRAPPER_ATTR, "");
+      newWrapper.setAttribute("data-key", key);
+      newWrapper.appendChild(createElement(v, parentNamespace, ctx));
+      resultNodes.push(newWrapper);
     }
   }
-  runDirectiveUnmountOnChildren(container);
+  for (const w of keyToWrapper.values()) runDirectiveUnmount(w);
   container.replaceChildren(...resultNodes);
 }
 
@@ -220,7 +297,7 @@ export function appendDynamicChild(
   /** 上一轮 getter 展开结果，用于与本次做 reconcile，避免整块 replaceChildren 导致 input 等失焦 */
   let lastItems: ChildItem[] = [];
 
-  const dispose = createEffect(() => {
+  registerPlaceholderEffect(placeholder as Element, () => {
     const value = getter();
     let items = normalizeChildren(value);
     // getter 返回单个 Fragment（如 () => ( <> ... </> )）时展开为其 children，使 lastItems/DOM 槽位一致，避免 reconcile 误删节点导致 input 失焦
@@ -237,6 +314,7 @@ export function appendDynamicChild(
     if (items.length > 0 && hasAnyKey(items)) {
       reconcileKeyedChildren(
         placeholder as Element,
+        lastItems,
         items,
         parentNamespace,
         ctx,
@@ -275,8 +353,6 @@ export function appendDynamicChild(
     );
     lastItems = items;
   });
-  // 占位节点被 replaceChild/移除时 dispose effect，避免旧 effect 继续更新已脱离文档的节点
-  registerDirectiveUnmount(placeholder as Element, dispose);
 }
 
 /**
@@ -357,7 +433,7 @@ function createVIfGroupPlaceholder(
   const placeholder = doc.createElement("span");
   placeholder.setAttribute(V_IF_GROUP_ATTR, "");
 
-  createEffect(() => {
+  registerPlaceholderEffect(placeholder, () => {
     let showIndex = -1;
     for (let i = 0; i < group.length; i++) {
       const v = group[i];
@@ -600,7 +676,7 @@ export function createElement(
     if (isReactiveVIf) {
       const placeholder = doc.createElement("span");
       placeholder.setAttribute(V_IF_ATTR, "");
-      createEffect(() => {
+      registerPlaceholderEffect(placeholder, () => {
         const show = getVIfValue(props);
         preserveScrollAroundUpdate(() => {
           runDirectiveUnmountOnChildren(placeholder);
@@ -640,7 +716,7 @@ export function createElement(
       const templateProps = { ...props, vFor: undefined, "v-for": undefined };
       const vForNs = resolveNamespace(tag, parentNamespace);
       const childNs = vForNs ?? (tag === "svg" ? SVG_NS : null);
-      createEffect(() => {
+      registerPlaceholderEffect(placeholder, () => {
         const resolved = typeof rawList === "function"
           ? (rawList as () => unknown)()
           : (rawList as () => unknown)();

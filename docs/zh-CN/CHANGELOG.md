@@ -7,6 +7,32 @@
 
 ---
 
+## [1.0.14] - 2026-02-16
+
+### 变更
+
+- **Store：** 重写 `createStore` 实现：抽出 `makeActionContextProxy` 与
+  `makeStoreObjectProxy`，在 getters/actions/asObject 各分支间复用 Proxy
+  逻辑；重载与 API 不变。
+- **Version：** 将 `getVersionCachePath` 内联到 `readVersionCache` 与
+  `writeVersionCache`，删除该辅助函数以减小源码体积。
+- **Router：** 新增 `buildMatch` 辅助函数，在 `matchPath` 中统一构建
+  `RouteMatch`，去掉匹配与 notFound 两处重复的对象字面量。
+- **DOM（element）：** 新增 `registerPlaceholderEffect` 与 `getItemKey`；
+  `reconcileKeyedChildren` 现接受 `oldItems`，当 key 相同且存在旧 VNode 时
+  对 wrapper 子节点做原地 `patchNode`，不再整块替换，减少 keyed 列表的
+  DOM 变动。
+- **DOM（props）：** 在 `applySingleProp` 中，当 className、style（字符串与
+  对象）、表单 value、checked/selected 及通用 attribute 的值与当前 DOM
+  一致时跳过写入。
+- **Directive：** 自定义指令的 `mounted` 在支持时改为通过
+  `queueMicrotask` 执行（否则回退到 `setTimeout(..., 0)`），在元素入文档后
+  更早执行。
+- **Runtime：** 根 effect 在根 VNode 引用未变（如 memo 或稳定引用）时跳过
+  expand 与 patch，避免重复计算。
+
+---
+
 ## [1.0.13] - 2026-02-16
 
 ### 新增
