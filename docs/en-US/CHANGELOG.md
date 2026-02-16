@@ -22,16 +22,16 @@ and this project adheres to
   cases.
 - **DOM (element):** Added `registerPlaceholderEffect` and `getItemKey`;
   `reconcileKeyedChildren` now accepts `oldItems` and patches the wrapper’s
-  child in place when the same key exists (via `patchNode`) instead of
-  replacing inner content, reducing DOM churn for keyed lists.
-- **DOM (props):** In `applySingleProp`, skip DOM write when value is
-  unchanged for className, style (string and object), form value,
-  checked/selected, and generic attributes.
-- **Directive:** Custom directive `mounted` hook now runs via
-  `queueMicrotask` when available (fallback: `setTimeout(..., 0)`) so it runs
-  earlier after the element is in the document.
-- **Runtime:** Root effect skips expand and patch when the root VNode
-  reference is unchanged (e.g. memo or stable ref), avoiding redundant work.
+  child in place when the same key exists (via `patchNode`) instead of replacing
+  inner content, reducing DOM churn for keyed lists.
+- **DOM (props):** In `applySingleProp`, skip DOM write when value is unchanged
+  for className, style (string and object), form value, checked/selected, and
+  generic attributes.
+- **Directive:** Custom directive `mounted` hook now runs via `queueMicrotask`
+  when available (fallback: `setTimeout(..., 0)`) so it runs earlier after the
+  element is in the document.
+- **Runtime:** Root effect skips expand and patch when the root VNode reference
+  is unchanged (e.g. memo or stable ref), avoiding redundant work.
 
 ---
 

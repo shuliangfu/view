@@ -1041,10 +1041,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.13**（2026-02-16）— 新增：RoutePage 提供 `match.getState(key, initial)`
-实现 按 path 稳定的页面状态；router 导出
-`GetState`、`RoutePageMatch`。修复：README 中 createContext 示例（theme →
-themeValue）避免 Tailwind 误报。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.14**（2026-02-16）— 变更：Store/router/version/DOM
+重构与渲染性能优化（keyed 列表原地 patch、props 未变跳过写、指令
+queueMicrotask、根 vnode 跳过）。 完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
