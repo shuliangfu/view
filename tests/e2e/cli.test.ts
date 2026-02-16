@@ -117,7 +117,9 @@ describe("CLI：build", () => {
       const stderr = new TextDecoder().decode(out.stderr ?? []);
       const stdout = new TextDecoder().decode(out.stdout ?? []);
       throw new Error(
-        `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${stdout || "(empty)"}`,
+        `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
+          stdout || "(empty)"
+        }`,
       );
     }
 
@@ -278,8 +280,7 @@ describe("CLI：start", () => {
         const main = document.querySelector("main");
         return main ? main.innerText : document.body?.innerText ?? "";
       })) as string;
-      const hasExpected =
-        mainText.includes("多页面示例") ||
+      const hasExpected = mainText.includes("多页面示例") ||
         mainText.includes("View 模板引擎") ||
         mainText.includes("view");
       if (!hasExpected) {

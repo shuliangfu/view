@@ -5,8 +5,10 @@
  * 使用 @dreamer/server 的 Http 提供 HTTP 服务，使用 @dreamer/plugins/static 提供静态资源，
  * 使用 @dreamer/runtime-adapter 的 readFile/upgradeWebSocket/getEnv 兼容 Deno/Bun。
  * 通过 options.mode 区分 dev/prod，使用 view.config 中的 server.dev / server.prod；dev 下可配置 HMR。
+ * 当 dev 构建产出 .css 文件（build.cssImport.extract: true）时，会在返回 index.html 时注入 <link> 标签。
  */
 
+import { injectCSSIntoHTML } from "@dreamer/esbuild/css-injector";
 import { existsSync, readFile, resolve } from "@dreamer/runtime-adapter";
 import {
   HttpContext,
@@ -90,13 +92,20 @@ export async function run(
     await next();
   });
 
-  /** 返回 index.html 内容（SPA fallback）；dev 且存在内存产出时重写 dist 为无前缀，使 /main.js 可用 */
+  /** 返回 index.html 内容（SPA fallback）；dev 且存在内存产出时重写 dist 为无前缀，使 /main.js 可用；若有 .css 产出则注入 <link> */
   async function serveIndexHtml(): Promise<Response> {
     try {
       const raw = await readFile(`${base}/index.html`);
-      const str = typeof raw === "string"
+      let str = typeof raw === "string"
         ? raw
         : new TextDecoder().decode(raw as Uint8Array);
+      const outputs = outputsGetter();
+      const cssPaths = outputs
+        .filter((o) => o.path.endsWith(".css"))
+        .map((o) => (o.path.startsWith("/") ? o.path : "/" + o.path));
+      if (cssPaths.length > 0) {
+        str = injectCSSIntoHTML(str, cssPaths, {});
+      }
       const out = initialOutputs.length > 0
         ? str.replace(/(["'])\.\/dist\//g, "$1./").replace(
           /(["'])\/dist\//g,
@@ -188,12 +197,16 @@ export async function run(
           return null;
         }
         const isMap = pathname.endsWith(".map");
+        const isCss = pathname.endsWith(".css");
+        const contentType = isMap
+          ? "application/json; charset=utf-8"
+          : isCss
+          ? "text/css; charset=utf-8"
+          : "application/javascript; charset=utf-8";
         return new Response(content, {
           status: 200,
           headers: {
-            "content-type": isMap
-              ? "application/json; charset=utf-8"
-              : "application/javascript; charset=utf-8",
+            "content-type": contentType,
             "cache-control": "no-store, no-cache, must-revalidate",
             "pragma": "no-cache",
           },

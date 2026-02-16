@@ -16,7 +16,7 @@ import {
   writeTextFile,
 } from "@dreamer/runtime-adapter";
 
-/** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 meta、布局继承 */
+/** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 metadata、布局继承 */
 export interface RouteEntry {
   /** 文件名（无扩展名），如 home、about、not-found */
   name: string;
@@ -26,10 +26,10 @@ export interface RouteEntry {
   path: string;
   /** 是否作为 notFound 路由（path 为 *） */
   isNotFound: boolean;
-  /** 用于 meta.title 的展示名（文件名推断，当文件中无 export meta 时使用） */
+  /** 用于 metadata.title 的展示名（文件名推断，当文件中无 export metadata 时使用） */
   title: string;
-  /** 从路由文件 export meta 中读取的元数据（title、description、keywords、author、og 等），会合并进生成的路由 meta */
-  meta?: Record<string, unknown>;
+  /** 从路由文件 export metadata 中读取的元数据（title、description、keywords、author、og 等），会合并进生成的路由 metadata */
+  metadata?: Record<string, unknown>;
   /** 是否继承父级 _layout；当前目录 _layout 中 export const inheritLayout = false 时为 false，支持不限层级嵌套 */
   inheritLayout?: boolean;
   /** 子布局 import 路径（不含根 _layout），从外到内，供生成 layouts: [ () => import(...), ... ] */
@@ -177,9 +177,9 @@ async function computeLayoutChain(
 }
 
 /**
- * 通过动态 import 加载路由文件并读取其 export 的 meta；不限制字段，仅过滤为可序列化值
+ * 通过动态 import 加载路由文件并读取其 export 的 metadata；不限制字段，仅过滤为可序列化值
  * @param fileAbs 路由文件绝对路径
- * @returns 解析出的 meta 对象（仅含可 JSON 序列化的结构），无或加载失败时返回 undefined
+ * @returns 解析出的 metadata 对象（仅含可 JSON 序列化的结构），无或加载失败时返回 undefined
  */
 async function extractMetaFromFile(
   fileAbs: string,
@@ -187,8 +187,8 @@ async function extractMetaFromFile(
   try {
     const url = pathToFileUrl(fileAbs);
     const mod = await import(url);
-    const raw = mod.meta ??
-      (mod.default as { meta?: unknown } | undefined)?.meta;
+    const raw = (mod as { metadata?: unknown }).metadata ??
+      (mod.default as { metadata?: unknown } | undefined)?.metadata;
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
     const serialized = toSerializableMeta(raw);
     if (
@@ -245,7 +245,7 @@ export async function scanRouteEntries(
               path: "*",
               isNotFound: true,
               title: "404",
-              meta: metaFromFile,
+              metadata: metaFromFile,
             };
           }
           continue;
@@ -282,7 +282,7 @@ export async function scanRouteEntries(
           path,
           isNotFound,
           title,
-          meta: metaFromFile,
+          metadata: metaFromFile,
           inheritLayout,
           layoutImportPaths: layoutImportPaths.length > 0
             ? layoutImportPaths
@@ -334,8 +334,8 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
   ];
 
   const metaToJson = (entry: RouteEntry): string => {
-    const base = entry.meta
-      ? { ...entry.meta, title: entry.title }
+    const base = entry.metadata
+      ? { ...entry.metadata, title: entry.title }
       : { title: entry.title };
     return JSON.stringify(base);
   };
@@ -358,7 +358,7 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
       ? `, loading: () => import("${e.loadingImportPath}")`
       : "";
     lines.push(
-      `  { path: "${e.path}", component: () => import("${e.importPath}"), meta: ${metaJson}${inheritProp}${layoutsProp}${loadingProp} },`,
+      `  { path: "${e.path}", component: () => import("${e.importPath}"), metadata: ${metaJson}${inheritProp}${layoutsProp}${loadingProp} },`,
     );
   }
   lines.push("];");
@@ -367,14 +367,14 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
   if (notFound) {
     lines.push("export const notFoundRoute: RouteConfig = {");
     lines.push(
-      `  path: "${notFound.path}", component: () => import("${notFound.importPath}"), meta: ${
+      `  path: "${notFound.path}", component: () => import("${notFound.importPath}"), metadata: ${
         metaToJson(notFound)
       }`,
     );
     lines.push("};");
   } else {
     lines.push(
-      'export const notFoundRoute: RouteConfig = { path: "*", component: () => Promise.resolve({ default: () => null as import("@dreamer/view").VNode }), meta: { title: "404" } };',
+      'export const notFoundRoute: RouteConfig = { path: "*", component: () => Promise.resolve({ default: () => null as import("@dreamer/view").VNode }), metadata: { title: "404" } };',
     );
   }
 

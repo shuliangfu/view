@@ -74,21 +74,25 @@ describe("Transition", () => {
     expect((v.children as VNode[]).length).toBe(2);
   });
 
-  it("show 从 true 改为 false 后进入 leaving 阶段（返回带 leave class 的 VNode）", async () => {
-    const [visible, setVisible] = createSignal(true);
-    const getter = Transition({
-      show: () => visible(),
-      enter: "enter",
-      leave: "leave",
-      duration: 10,
-      children: textVNode("d"),
-    });
-    expect(getter()).not.toBeNull();
-    setVisible(false);
-    await Promise.resolve();
-    await Promise.resolve();
-    const leaving = getter() as VNode | null;
-    expect(leaving).not.toBeNull();
-    expect((leaving as VNode).props?.class).toBe("leave");
-  }, noSanitize);
+  it(
+    "show 从 true 改为 false 后进入 leaving 阶段（返回带 leave class 的 VNode）",
+    async () => {
+      const [visible, setVisible] = createSignal(true);
+      const getter = Transition({
+        show: () => visible(),
+        enter: "enter",
+        leave: "leave",
+        duration: 10,
+        children: textVNode("d"),
+      });
+      expect(getter()).not.toBeNull();
+      setVisible(false);
+      await Promise.resolve();
+      await Promise.resolve();
+      const leaving = getter() as VNode | null;
+      expect(leaving).not.toBeNull();
+      expect((leaving as VNode).props?.class).toBe("leave");
+    },
+    noSanitize,
+  );
 });

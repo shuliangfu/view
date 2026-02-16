@@ -6,9 +6,10 @@
 
 import type { VNode } from "@dreamer/view";
 import { createSignal } from "@dreamer/view";
+import type { RoutePageMatch } from "@dreamer/view/router";
 import { Transition } from "@dreamer/view/transition";
 
-export const meta = {
+export const metadata = {
   title: "Transition",
   description: "Transition 组件 enter/leave class 与 duration 实现显隐过渡",
   keywords: "Transition, enter, leave, duration, 过渡, 动画",
@@ -21,9 +22,10 @@ const block =
 const subTitle =
   "mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
 
-/** Transition 示例页 */
-export function TransitionDemo(): VNode {
-  const [visible, setVisible] = createSignal(true);
+/** Transition 示例页：用 match.getState 时可在组件体内写 state，点击仍生效；无 match 时回退 createSignal */
+export function TransitionDemo(match?: RoutePageMatch): VNode {
+  const [visible, setVisible] = match?.getState?.("visible", true) ??
+    createSignal(true);
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">

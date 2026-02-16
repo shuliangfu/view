@@ -5,7 +5,7 @@
  *
  * **本模块导出：**
  * - `createRouter(options)`：创建路由器，返回 Router 实例；需调用 start() 后才会监听 popstate 与拦截链接
- * - 类型：`RouteGuardResult`、`RouteGuard`、`RouteGuardAfter`、`RouteConfig`、`RouteMatch`、`CreateRouterOptions`、`Router`
+ * - 类型：`RouteGuardResult`、`RouteGuard`、`RouteGuardAfter`、`RouteConfig`、`RouteMatch`、`GetState`、`RoutePageMatch`、`CreateRouterOptions`、`Router`
  *
  * **Router 方法：** getCurrentRoute、getCurrentRouteSignal、href、navigate、replace、back、forward、go、subscribe、start、stop
  *
@@ -71,12 +71,12 @@ export type LayoutComponentModule = {
 };
 
 /**
- * 单条路由配置：path 支持动态参数 :param，可选 meta 供守卫或布局使用。
+ * 单条路由配置：path 支持动态参数 :param，可选 metadata 供守卫或布局使用。
  * component 支持同步（返回 VNode）或懒加载（返回 Promise<{ default: (match?) => VNode }>）。
  * @example
- * { path: "/", component: () => <Home />, meta: { title: "首页" } }
+ * { path: "/", component: () => <Home />, metadata: { title: "首页" } }
  * { path: "/user/:id", component: (match) => <User id={match.params.id} /> }
- * { path: "/lazy", component: () => import("./LazyPage.tsx"), meta: { title: "懒加载" } }
+ * { path: "/lazy", component: () => import("./LazyPage.tsx"), metadata: { title: "懒加载" } }
  */
 export interface RouteConfig {
   /** 路径模式，支持 :param（如 /user/:id） */
@@ -88,7 +88,7 @@ export interface RouteConfig {
     | ((match: RouteMatch) => VNode)
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 路由元信息，如 title、requiresAuth，供守卫或布局读取 */
-  meta?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   /**
    * 是否继承父级 Layout；当前目录 _layout 中 export const inheritLayout = false 时不继承，支持不限层级的布局嵌套。
    * 仅由 view-cli 根据 src/views 目录扫描生成。
@@ -107,6 +107,21 @@ export interface RouteConfig {
 }
 
 /**
+ * 由 RoutePage 注入的按 path+key 稳定的 state getter。
+ * 页面组件通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]，在组件体内写状态也可响应点击。
+ */
+export type GetState = <T>(
+  key: string,
+  initial: T,
+) => [() => T, (v: T | ((p: T) => T)) => void];
+
+/**
+ * 路由页组件首参类型：RoutePage 渲染时会传入带 getState 的 match，非 RoutePage 场景（如单测、单独挂载）可为 undefined。
+ * 仅需 getState 的页面可直接用此类型约束首参并导入使用。
+ */
+export type RoutePageMatch = { getState?: GetState } | undefined;
+
+/**
  * 当前路由匹配结果，供 component 与守卫使用。
  * component 与 RouteConfig 一致，可为同步或懒加载（RoutePage 内会统一处理）。
  */
@@ -123,8 +138,8 @@ export interface RouteMatch {
   component:
     | ((match: RouteMatch) => VNode)
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
-  /** 该路由的 meta（若配置了） */
-  meta?: Record<string, unknown>;
+  /** 该路由的 metadata（若配置了） */
+  metadata?: Record<string, unknown>;
   /** 是否继承父级 Layout（见 RouteConfig.inheritLayout） */
   inheritLayout?: boolean;
   /** 子布局链（见 RouteConfig.layouts） */
@@ -313,7 +328,7 @@ export function createRouter(options: CreateRouterOptions): Router {
         query,
         fullPath: path + (search ? search : ""),
         component: r.component,
-        meta: r.meta,
+        metadata: r.metadata,
         inheritLayout: r.inheritLayout,
         layouts: r.layouts,
         loading: r.loading,
@@ -326,7 +341,7 @@ export function createRouter(options: CreateRouterOptions): Router {
         query,
         fullPath: path + (search ? search : ""),
         component: notFoundConfig.component,
-        meta: notFoundConfig.meta,
+        metadata: notFoundConfig.metadata,
         inheritLayout: notFoundConfig.inheritLayout,
         layouts: notFoundConfig.layouts,
         loading: notFoundConfig.loading,
@@ -425,7 +440,7 @@ export function createRouter(options: CreateRouterOptions): Router {
       }
       if (typeof globalThis.document !== "undefined" && toAfter) {
         applyMetaToHead(
-          toAfter.meta,
+          toAfter.metadata,
           documentTitleSuffix,
           toAfter.path,
         );
@@ -490,7 +505,7 @@ export function createRouter(options: CreateRouterOptions): Router {
     if (typeof globalThis.document !== "undefined") {
       const current = getCurrentRoute();
       if (current) {
-        applyMetaToHead(current.meta, documentTitleSuffix, current.path);
+        applyMetaToHead(current.metadata, documentTitleSuffix, current.path);
       }
     }
 

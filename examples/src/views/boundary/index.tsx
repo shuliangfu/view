@@ -9,7 +9,7 @@ import type { VNode } from "@dreamer/view";
 import { createEffect, createSignal } from "@dreamer/view";
 import { ErrorBoundary, Suspense } from "@dreamer/view/boundary";
 
-export const meta = {
+export const metadata = {
   title: "Boundary",
   description: "ErrorBoundary、Suspense 示例",
   keywords: "ErrorBoundary, Suspense, 错误边界",

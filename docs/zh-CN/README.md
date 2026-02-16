@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-381%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-412%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -168,23 +168,57 @@ deno add jsr:@dreamer/view/compiler
 CLI（dev / build / start）从项目根目录读取 **view.config.ts** 或
 **view.config.json**。
 
-| 配置块          | 主要字段                                             | 说明                                                         |
-| --------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
-| **server.dev**  | port、host、dev.hmr、dev.watch                       | 开发服务器及 HMR / 监听配置。                                |
-| **server.prod** | port、host                                           | 生产服务器（start 命令）。                                   |
-| **build**       | entry、outDir、outFile、minify、sourcemap、splitting、**optimize** | 构建入口与输出；splitting 启用按路由分块。**optimize**（生产默认 true）：对 .tsx 启用 createOptimizePlugin，设 `optimize: false` 可关闭。 |
-| **build.dev**   | 与 build 同结构                                      | 仅 dev 模式生效的覆盖（如 minify: false、sourcemap: true）。 |
-| **build.prod**  | 与 build 同结构                                      | 仅 prod 模式生效的覆盖。                                     |
+| 配置块          | 主要字段                                                                          | 说明                                                                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **server.dev**  | port、host、dev.hmr、dev.watch                                                    | 开发服务器及 HMR / 监听配置。                                                                                                                                                                         |
+| **server.prod** | port、host                                                                        | 生产服务器（start 命令）。                                                                                                                                                                            |
+| **build**       | entry、outDir、outFile、minify、sourcemap、splitting、**optimize**、**cssImport** | 构建入口与输出；splitting 启用按路由分块。**optimize**（生产默认 true）：对 .tsx 启用 createOptimizePlugin。**cssImport**：CSS 导入处理（见 [CSS 导入](#css-导入样式)），默认内联（运行时注入样式）。 |
+| **build.dev**   | 与 build 同结构                                                                   | 仅 dev 模式生效的覆盖（如 minify: false、sourcemap: true）。                                                                                                                                          |
+| **build.prod**  | 与 build 同结构                                                                   | 仅 prod 模式生效的覆盖。                                                                                                                                                                              |
 
 - **server.dev.port** / **server.prod.port**：默认 8787，可由环境变量 `PORT`
   覆盖。
 - **server.dev.dev.hmr**：如 `{ enabled: true, path: "/__hmr" }`。
 - **build.entry**：默认 `"src/main.tsx"`。**build.outDir**：默认
-  `"dist"`。**build.outFile**：默认 `"main.js"`。**build.optimize**：生产构建默认 true，对 .tsx 启用 createOptimizePlugin；设为 `false` 可关闭。
+  `"dist"`。**build.outFile**：默认
+  `"main.js"`。**build.optimize**：生产构建默认 true，对 .tsx 启用
+  createOptimizePlugin；设为 `false` 可关闭。
 - **build.dev** / **build.prod**：与 **build** 同结构；CLI 在 dev 模式下会合并
   **build** 与 **build.dev**（prod 模式下合并 **build.prod**），例如可设置
   `dev: { minify: false, sourcemap: true }` 便于调试，`prod: { minify: true }`
   用于生产。
+
+### CSS 导入（样式）
+
+可在任意视图或组件中通过 ES 模块导入 CSS 文件，构建（通过
+@dreamer/esbuild）会编译并在页面中注入样式。
+
+- **默认（内联模式）**：直接写 `import "相对路径.css"`，CSS 会打进
+  JS，模块加载时自动在 `document.head` 插入 `<style>`，无需改 `index.html`。
+
+  ```tsx
+  // 例如在 src/views/home/index.tsx
+  import "../../assets/index.css";
+
+  export default function Home() {
+    return <div class="page">...</div>;
+  }
+  ```
+
+- **提取模式**：若希望产出独立 `.css` 文件并在 `index.html` 中注入
+  `<link>`（便于缓存），可在 **view.config.ts** 中配置：
+
+  ```ts
+  build: {
+    cssImport: { enabled: true, extract: true },
+    // ... 其余 build 配置
+  },
+  ```
+
+  dev 时 CLI 会自动把构建出的 CSS 链接注入到返回的 `index.html` 中。
+
+导入路径相对于当前文件（例如从 `src/views/home/index.tsx` 引用
+`../../assets/index.css`）。
 
 每次 dev 构建会根据 `src/views` 重新生成
 `src/router/routers.tsx`；不要提交该文件（已加入 .gitignore）。
@@ -530,14 +564,20 @@ mount("#root", () => <App />);
 
 **SSR：安全访问 document**
 
-在可能于服务端执行的代码中，不要直接使用 `document`。请从主入口使用 `getDocument()`：在浏览器中返回 `document`，在 SSR（如 `renderToString` / `renderToStream`）执行时会抛出带说明的错误，便于排查，而不是得到 `document is undefined`。
+在可能于服务端执行的代码中，不要直接使用 `document`。请从主入口使用
+`getDocument()`：在浏览器中返回 `document`，在 SSR（如 `renderToString` /
+`renderToStream`）执行时会抛出带说明的错误，便于排查，而不是得到
+`document is undefined`。
 
 **开发体验（仅开发环境）**
 
 在开发构建下，运行时会针对常见写法给出提示（生产构建中关闭）：
 
-- **Hydration 不匹配**：若服务端输出的 HTML 与客户端首次渲染的节点结构或 key 不一致，会 `console.warn` 并附带节点路径或选择器，便于修复错位、白屏或闪烁。
-- **忘记 getter**：若在 JSX 中把 signal 的 getter 当作普通值使用（例如写了 `{count}` 而未写成 `{count()}`），会给出一次性提示，提醒调用 getter 以保持响应式更新。
+- **Hydration 不匹配**：若服务端输出的 HTML 与客户端首次渲染的节点结构或 key
+  不一致，会 `console.warn` 并附带节点路径或选择器，便于修复错位、白屏或闪烁。
+- **忘记 getter**：若在 JSX 中把 signal 的 getter 当作普通值使用（例如写了
+  `{count}` 而未写成 `{count()}`），会给出一次性提示，提醒调用 getter
+  以保持响应式更新。
 
 **createContext（Provider / useContext）**
 
@@ -545,8 +585,8 @@ mount("#root", () => <App />);
 import { createContext } from "jsr:@dreamer/view/context";
 
 const ThemeContext = createContext<"light" | "dark">("light");
-// 根或父级
-<ThemeContext.Provider value={theme()}>
+// 根或父级（themeValue 来自上层 signal/state）
+<ThemeContext.Provider value={themeValue()}>
   <App />
 </ThemeContext.Provider>;
 // 子组件内
@@ -591,7 +631,8 @@ router.start();
 
 **Portal（createPortal）**
 
-将子树渲染到指定 DOM 容器（如 `document.body`），弹窗、抽屉、toast 不受父级 `overflow` 或 `z-index` 影响。从 `jsr:@dreamer/view/portal` 引入。
+将子树渲染到指定 DOM 容器（如 `document.body`），弹窗、抽屉、toast 不受父级
+`overflow` 或 `z-index` 影响。从 `jsr:@dreamer/view/portal` 引入。
 
 ```tsx
 import { createPortal } from "jsr:@dreamer/view/portal";
@@ -604,7 +645,8 @@ const root = createPortal(() => <Modal />);
 
 **Transition（过渡）**
 
-轻量进入/离开过渡：仅切换 CSS class，具体动画由你的 CSS 实现。从 `jsr:@dreamer/view/transition` 引入。
+轻量进入/离开过渡：仅切换 CSS class，具体动画由你的 CSS 实现。从
+`jsr:@dreamer/view/transition` 引入。
 
 ```tsx
 import { createSignal } from "jsr:@dreamer/view";
@@ -669,7 +711,9 @@ for (const chunk of stream) {
 
 **Compiler：optimize / createOptimizePlugin**
 
-`view-cli build` 生产构建默认对 `.tsx` 启用 optimize 插件（常量折叠与静态提升）。在 view.config 中设置 `build.optimize: false` 可关闭。使用自定义打包器时需手动加入插件：
+`view-cli build` 生产构建默认对 `.tsx` 启用 optimize
+插件（常量折叠与静态提升）。在 view.config 中设置 `build.optimize: false`
+可关闭。使用自定义打包器时需手动加入插件：
 
 ```ts
 import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/compiler";
@@ -794,7 +838,9 @@ themeStore.toggleTheme();
 
 ### 主入口 `jsr:@dreamer/view`（`.`）
 
-核心响应式与渲染 API。主入口**不** re-export router、store、stream、boundary、portal、transition 等，请从子路径按需导入（如 `@dreamer/view/router`），未使用的模块不会打进 bundle（利于 tree-shake）。
+核心响应式与渲染 API。主入口**不** re-export
+router、store、stream、boundary、portal、transition 等，请从子路径按需导入（如
+`@dreamer/view/router`），未使用的模块不会打进 bundle（利于 tree-shake）。
 
 | 导出                                        | 说明                                                                                                                                       |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -811,7 +857,7 @@ themeStore.toggleTheme();
 | **renderToString**                          | SSR：将根组件渲染为 HTML 字符串                                                                                                            |
 | **hydrate**                                 | 在浏览器中激活服务端 HTML                                                                                                                  |
 | **generateHydrationScript**                 | 生成激活脚本标签（用于混合应用）                                                                                                           |
-| **getDocument**                             | 安全访问 document：在浏览器返回 `document`，在 SSR 下抛出明确错误（用于仅在客户端分支中访问，避免 `document is undefined`）                   |
+| **getDocument**                             | 安全访问 document：在浏览器返回 `document`，在 SSR 下抛出明确错误（用于仅在客户端分支中访问，避免 `document is undefined`）                |
 | **类型**                                    | VNode、Root、MountOptions、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions                                  |
 | **isDOMEnvironment**                        | 当前是否为 DOM 环境                                                                                                                        |
 
@@ -932,17 +978,18 @@ StorageLike、PersistOptions、StoreGetters、StoreActions、CreateStoreConfig�
 | **类型**                  | RouteConfig、RouteMatch、RouteGuard、RouteGuardAfter、CreateRouterOptions 等        |
 
 路由配置：path 支持动态参数 `:param`；component 接收 match；可选 meta。支持
-beforeRoute/afterRoute、notFound。**scroll**：`'top'` 在导航完成后滚动到 (0,0)；`'restore'` 恢复该路径上次滚动位置；`false`（默认）不处理。
+beforeRoute/afterRoute、notFound。**scroll**：`'top'` 在导航完成后滚动到
+(0,0)；`'restore'` 恢复该路径上次滚动位置；`false`（默认）不处理。
 
 **路由文件与 `export meta`（view-cli）：** 使用 `view-cli dev` 时，会按
 `src/views` 递归扫描（最多 5 层）自动生成
 `src/router/routers.tsx`。约定文件（_app、_layout、_loading、_404、_error）、路径映射与
 view.config 的完整说明见上文 **项目结构与约定（view-cli）**。路由文件可导出
-`meta` 对象，生成时会合并进该路由的 meta 配置：
+`metadata` 对象，生成时会合并进该路由的 metadata 配置：
 
 ```tsx
 // src/views/home/index.tsx（或任意路由文件）
-export const meta = {
+export const metadata = {
   title: "首页",
   description: "首页描述",
   keywords: "首页, 描述, 关键词",
@@ -968,19 +1015,19 @@ export const meta = {
 
 ## 📚 API 速查表
 
-| 模块     | 主要 API                                                                                                                                           | 导入                          |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 核心     | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
-| Store    | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`     |
-| Reactive | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`  |
-| Context  | createContext                                                                                                                                      | `jsr:@dreamer/view/context`   |
-| Resource | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`  |
-| Router     | createRouter（scroll: top/restore/false）                                                                                                          | `jsr:@dreamer/view/router`    |
-| Portal     | createPortal(children, container)                                                                                                                 | `jsr:@dreamer/view/portal`    |
+| 模块       | 主要 API                                                                                                                                           | 导入                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 核心       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`            |
+| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`      |
+| Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`   |
+| Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`    |
+| Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`   |
+| Router     | createRouter（scroll: top/restore/false）                                                                                                          | `jsr:@dreamer/view/router`     |
+| Portal     | createPortal(children, container)                                                                                                                  | `jsr:@dreamer/view/portal`     |
 | Transition | Transition（show、enter、leave、duration）                                                                                                         | `jsr:@dreamer/view/transition` |
-| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`  |
-| 指令       | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive` |
-| Stream   | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`    |
+| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`   |
+| 指令       | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive`  |
+| Stream     | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`     |
 
 更完整说明见上文 **Store 详解** 与 **模块与导出**。
 
@@ -988,9 +1035,10 @@ export const meta = {
 
 ## 📋 变更日志
 
-**v1.0.12**（2026-02-16）— 修复：view-cli upgrade 与 setup 使用 stdout/stderr
-`"null"`，安装子进程不再阻塞，安装完成后 CLI 正常退出。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.13**（2026-02-16）— 新增：RoutePage 提供 `match.getState(key, initial)`
+实现 按 path 稳定的页面状态；router 导出
+`GetState`、`RoutePageMatch`。修复：README 中 createContext 示例（theme →
+themeValue）避免 Tailwind 误报。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -998,9 +1046,9 @@ export const meta = {
 
 | 项目     | 值         |
 | -------- | ---------- |
-| 测试日期 | 2026-02-13 |
-| 总用例数 | 381        |
-| 通过     | 381 ✅     |
+| 测试日期 | 2026-02-16 |
+| 总用例数 | 412        |
+| 通过     | 412 ✅     |
 | 失败     | 0          |
 | 通过率   | 100%       |
 | 耗时     | ~2m        |

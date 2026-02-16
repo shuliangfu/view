@@ -9,7 +9,7 @@ import { createEffect, createSignal } from "@dreamer/view";
 import { createReactive } from "@dreamer/view/reactive";
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Reactive",
   description: "createReactive 响应式表单与双向绑定示例",
   keywords: "createReactive, 表单, 双向绑定",

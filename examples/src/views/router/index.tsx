@@ -10,7 +10,7 @@
 import type { VNode } from "@dreamer/view";
 import type { RouteMatchWithRouter } from "../../router/router.ts";
 
-export const meta = {
+export const metadata = {
   title: "Router",
   description: "路由说明、编程式导航、动态参数、href、守卫",
   keywords: "Router, navigate, beforeRoute, afterRoute",

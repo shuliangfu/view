@@ -4,8 +4,9 @@
  */
 
 import type { VNode } from "@dreamer/view";
+// import "../../assets/index.css";
 
-export const meta = {
+export const metadata = {
   title: "首页",
   description: "首页描述",
   keywords: "首页, 描述, 关键词",

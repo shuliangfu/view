@@ -15,7 +15,7 @@ import {
 } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Signal",
   description: "createSignal、createEffect、createMemo、onCleanup 核心 API 示例",
   keywords: "createSignal, createEffect, createMemo, onCleanup",

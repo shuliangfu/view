@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-381%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-412%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -175,24 +175,60 @@ notFound route (path `*`).
 The CLI (dev / build / start) reads **view.config.ts** or **view.config.json**
 from the project root.
 
-| Section         | Fields (main)                                        | Description                                                        |
-| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
-| **server.dev**  | port, host, dev.hmr, dev.watch                       | Dev server and HMR / watch options.                                |
-| **server.prod** | port, host                                           | Production server (start command).                                 |
-| **build**       | entry, outDir, outFile, minify, sourcemap, splitting, **optimize** | Build entry and output; splitting enables route chunks. **optimize** (default true for prod): enable `createOptimizePlugin` for .tsx. Set `optimize: false` to disable. |
-| **build.dev**   | same as build                                        | Overrides for dev mode only (e.g. minify: false, sourcemap: true). |
-| **build.prod**  | same as build                                        | Overrides for prod mode only.                                      |
+| Section         | Fields (main)                                                                     | Description                                                                                                                                                                                                                                                      |
+| --------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **server.dev**  | port, host, dev.hmr, dev.watch                                                    | Dev server and HMR / watch options.                                                                                                                                                                                                                              |
+| **server.prod** | port, host                                                                        | Production server (start command).                                                                                                                                                                                                                               |
+| **build**       | entry, outDir, outFile, minify, sourcemap, splitting, **optimize**, **cssImport** | Build entry and output; splitting enables route chunks. **optimize** (default true for prod): enable `createOptimizePlugin` for .tsx. **cssImport**: CSS import handling (see [CSS imports](#css-imports-styling)); default inline (styles injected at runtime). |
+| **build.dev**   | same as build                                                                     | Overrides for dev mode only (e.g. minify: false, sourcemap: true).                                                                                                                                                                                               |
+| **build.prod**  | same as build                                                                     | Overrides for prod mode only.                                                                                                                                                                                                                                    |
 
 - **server.dev.port** / **server.prod.port**: Default 8787; can be overridden by
   environment variable `PORT`.
 - **server.dev.dev.hmr**: e.g. `{ enabled: true, path: "/__hmr" }`.
 - **build.entry**: Default `"src/main.tsx"`. **build.outDir**: Default `"dist"`.
-  **build.outFile**: Default `"main.js"`. **build.optimize**: Default true for prod
-  build; enables `createOptimizePlugin` for `.tsx`. Set to `false` to disable.
+  **build.outFile**: Default `"main.js"`. **build.optimize**: Default true for
+  prod build; enables `createOptimizePlugin` for `.tsx`. Set to `false` to
+  disable.
 - **build.dev** / **build.prod**: Same shape as **build**; the CLI merges
   **build** with **build.dev** in dev mode (or **build.prod** in prod), so you
   can e.g. set `dev: { minify: false, sourcemap: true }` for debugging and
   `prod: { minify: true }` for production.
+
+### CSS imports (styling)
+
+You can import CSS files in any view or component. The build (via
+@dreamer/esbuild) compiles them and injects styles into the page.
+
+- **Default (inline mode)**: Use a normal ES module import; the CSS is bundled
+  into JS and a `<style>` tag is injected into `document.head` when the module
+  loads. No change to `index.html` is required.
+
+  ```tsx
+  // e.g. in src/views/home/index.tsx
+  import "../../assets/index.css";
+
+  export default function Home() {
+    return <div class="page">...</div>;
+  }
+  ```
+
+- **Extract mode**: To emit separate `.css` files and have `<link>` tags
+  injected into `index.html` (e.g. for cache-friendly assets), set in
+  **view.config.ts**:
+
+  ```ts
+  build: {
+    cssImport: { enabled: true, extract: true },
+    // ... rest of build
+  },
+  ```
+
+  In dev, the CLI automatically injects the built CSS links into the served
+  `index.html`.
+
+The path in the import is relative to the current file (e.g.
+`../../assets/index.css` from `src/views/home/index.tsx`).
 
 The generated `src/router/routers.tsx` is re-generated on each dev build from
 `src/views`; do not commit it (it is in .gitignore).
@@ -548,14 +584,23 @@ mount("#root", () => <App />);
 
 **SSR: safe document access**
 
-In code that may run on the server, avoid using `document` directly. Use `getDocument()` from the main entry instead: it returns `document` in the browser and throws a clear error during SSR (e.g. inside `renderToString` / `renderToStream`), so you get a helpful message instead of `document is undefined`.
+In code that may run on the server, avoid using `document` directly. Use
+`getDocument()` from the main entry instead: it returns `document` in the
+browser and throws a clear error during SSR (e.g. inside `renderToString` /
+`renderToStream`), so you get a helpful message instead of
+`document is undefined`.
 
 **Developer experience (development only)**
 
-In development builds, the runtime can warn you about common mistakes (these are disabled in production):
+In development builds, the runtime can warn you about common mistakes (these are
+disabled in production):
 
-- **Hydration mismatch**: If the structure or keys of server-rendered HTML and the first client render differ, a `console.warn` is emitted with context (e.g. node path or selector) to help fix layout shifts or white flashes.
-- **Forgot getter**: If you pass a signal getter as a static value in JSX (e.g. `{count}` instead of `{count()}`), a one-time warning reminds you to call the getter so the UI updates reactively.
+- **Hydration mismatch**: If the structure or keys of server-rendered HTML and
+  the first client render differ, a `console.warn` is emitted with context (e.g.
+  node path or selector) to help fix layout shifts or white flashes.
+- **Forgot getter**: If you pass a signal getter as a static value in JSX (e.g.
+  `{count}` instead of `{count()}`), a one-time warning reminds you to call the
+  getter so the UI updates reactively.
 
 **createContext (Provider / useContext)**
 
@@ -563,7 +608,7 @@ In development builds, the runtime can warn you about common mistakes (these are
 import { createContext } from "jsr:@dreamer/view/context";
 
 const ThemeContext = createContext<"light" | "dark">("light");
-// Root: <ThemeContext.Provider value={theme()}><App /></ThemeContext.Provider>
+// Root: <ThemeContext.Provider value={themeValue()}><App /></ThemeContext.Provider>
 // Child: const theme = ThemeContext.useContext();
 ```
 
@@ -605,7 +650,9 @@ router.start();
 
 **Portal (createPortal)**
 
-Render a subtree into a different DOM container (e.g. `document.body`) so modals, drawers, and toasts are not clipped by parent `overflow` or `z-index`. Import from `jsr:@dreamer/view/portal`.
+Render a subtree into a different DOM container (e.g. `document.body`) so
+modals, drawers, and toasts are not clipped by parent `overflow` or `z-index`.
+Import from `jsr:@dreamer/view/portal`.
 
 ```tsx
 import { createPortal } from "jsr:@dreamer/view/portal";
@@ -618,7 +665,8 @@ const root = createPortal(() => <Modal />);
 
 **Transition**
 
-Lightweight enter/leave transitions: the component toggles CSS classes only; you provide the animation via CSS. Import from `jsr:@dreamer/view/transition`.
+Lightweight enter/leave transitions: the component toggles CSS classes only; you
+provide the animation via CSS. Import from `jsr:@dreamer/view/transition`.
 
 ```tsx
 import { createSignal } from "jsr:@dreamer/view";
@@ -684,7 +732,9 @@ for (const chunk of stream) response.write(chunk);
 
 **Compiler: optimize / createOptimizePlugin**
 
-`view-cli build` enables the optimize plugin by default for `.tsx` (constant folding and static hoisting). Use `build.optimize: false` in view.config to disable. With a custom bundler, add the plugin manually:
+`view-cli build` enables the optimize plugin by default for `.tsx` (constant
+folding and static hoisting). Use `build.optimize: false` in view.config to
+disable. With a custom bundler, add the plugin manually:
 
 ```ts
 import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/compiler";
@@ -810,7 +860,10 @@ These match `deno.json` exports; import from the listed subpaths as needed.
 
 ### Main entry `jsr:@dreamer/view` (`.`)
 
-Core reactive and rendering API. The main entry does **not** re-export router, store, stream, boundary, portal, transition, etc.; import those from subpaths (e.g. `@dreamer/view/router`) so unused modules are not bundled (tree-shake friendly).
+Core reactive and rendering API. The main entry does **not** re-export router,
+store, stream, boundary, portal, transition, etc.; import those from subpaths
+(e.g. `@dreamer/view/router`) so unused modules are not bundled (tree-shake
+friendly).
 
 | Export                                      | Description                                                                                                                                                 |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -827,7 +880,7 @@ Core reactive and rendering API. The main entry does **not** re-export router, s
 | **renderToString**                          | SSR: root to HTML string                                                                                                                                    |
 | **hydrate**                                 | Activate server-rendered HTML in the browser                                                                                                                |
 | **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                                                                                 |
-| **getDocument**                             | Safe document access: returns `document` on client; throws a clear error in SSR (use in client-only branches to avoid `document is undefined`)             |
+| **getDocument**                             | Safe document access: returns `document` on client; throws a clear error in SSR (use in client-only branches to avoid `document is undefined`)              |
 | **Types**                                   | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions                                                   |
 | **isDOMEnvironment**                        | Whether in DOM environment                                                                                                                                  |
 
@@ -910,15 +963,17 @@ Use with Suspense: fallback while loading, content when data is set.
 
 ### Exports and tree-shaking
 
-The main entry (`jsr:@dreamer/view`) **does not** re-export router, store, stream,
-boundary, directive, etc. Import them from subpaths (e.g. `@dreamer/view/router`).
-Unused subpaths are not bundled, keeping the main bundle small.
+The main entry (`jsr:@dreamer/view`) **does not** re-export router, store,
+stream, boundary, directive, etc. Import them from subpaths (e.g.
+`@dreamer/view/router`). Unused subpaths are not bundled, keeping the main
+bundle small.
 
 ### Compiler `jsr:@dreamer/view/compiler`
 
 Build-time optimizations (static hoisting, constant folding); uses TypeScript
-compiler API. **view-cli build** enables `createOptimizePlugin` for production by
-default (applies to `.tsx`). Set `build.optimize: false` in view.config to disable.
+compiler API. **view-cli build** enables `createOptimizePlugin` for production
+by default (applies to `.tsx`). Set `build.optimize: false` in view.config to
+disable.
 
 | Export                                       | Description                                            |
 | -------------------------------------------- | ------------------------------------------------------ |
@@ -953,19 +1008,20 @@ Built-in SPA router (History API).
 | **Types**                 | RouteConfig, RouteMatch, RouteGuard, RouteGuardAfter, CreateRouterOptions           |
 
 Routes: path supports `:param`; component receives match; optional meta.
-beforeRoute/afterRoute, notFound supported. **scroll**: `'top'` scrolls to (0,0) after
-navigation; `'restore'` restores the previous scroll position for that path; `false` (default) does nothing.
+beforeRoute/afterRoute, notFound supported. **scroll**: `'top'` scrolls to (0,0)
+after navigation; `'restore'` restores the previous scroll position for that
+path; `false` (default) does nothing.
 
 **Route files and `export meta` (view-cli):** When using `view-cli dev`, the
 file `src/router/routers.tsx` is auto-generated by scanning `src/views`
 (recursive, max 5 levels). For convention files (_app, _layout, _loading, _404,
 _error), path mapping, and view.config, see **Project structure and conventions
-(view-cli)** above. Route files can export a `meta` object so it is merged into
-the generated route config:
+(view-cli)** above. Route files can export a `metadata` object so it is merged
+into the generated route config:
 
 ```tsx
 // src/views/home/index.tsx (or any route file)
-export const meta = {
+export const metadata = {
   title: "首页",
   description: "首页描述",
   keywords: "首页, 描述, 关键词",
@@ -993,19 +1049,19 @@ gitignored and should not be committed.
 
 ## 📚 API quick reference
 
-| Area       | API                                                                                                                                                | Import                        |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`           |
-| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`     |
-| Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`  |
-| Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`   |
-| Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`  |
-| Router     | createRouter (scroll: top/restore/false)                                                                                                           | `jsr:@dreamer/view/router`    |
-| Portal     | createPortal(children, container)                                                                                                                  | `jsr:@dreamer/view/portal`    |
-| Transition | Transition (show, enter, leave, duration)                                                                                                           | `jsr:@dreamer/view/transition` |
-| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`  |
-| Directives | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive` |
-| Stream     | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`    |
+| Area       | API                                                                                                                                                | Import                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`            |
+| Store      | createStore, withGetters, withActions                                                                                                              | `jsr:@dreamer/view/store`      |
+| Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`   |
+| Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`    |
+| Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`   |
+| Router     | createRouter (scroll: top/restore/false)                                                                                                           | `jsr:@dreamer/view/router`     |
+| Portal     | createPortal(children, container)                                                                                                                  | `jsr:@dreamer/view/portal`     |
+| Transition | Transition (show, enter, leave, duration)                                                                                                          | `jsr:@dreamer/view/transition` |
+| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`   |
+| Directives | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive`  |
+| Stream     | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`     |
 
 **Core:** createSignal returns `[getter, setter]`; createEffect runs once then
 re-runs when deps change (microtask); createMemo returns cached getter.
@@ -1023,9 +1079,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.12** (2026-02-16) — Fixed: view-cli upgrade and setup use stdout/stderr
-`"null"` so the install subprocess does not block and the CLI exits after
-installation. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.13** (2026-02-16) — Added: RoutePage `match.getState(key, initial)` for
+path-stable page state; router exports `GetState` and `RoutePageMatch`. Fixed:
+createContext example in README (theme → themeValue) to avoid Tailwind linter
+false positive. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
@@ -1033,9 +1090,9 @@ installation. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 | Metric      | Value      |
 | ----------- | ---------- |
-| Test date   | 2026-02-13 |
-| Total tests | 381        |
-| Passed      | 381 ✅     |
+| Test date   | 2026-02-16 |
+| Total tests | 412        |
+| Passed      | 412 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
 | Duration    | ~2m        |

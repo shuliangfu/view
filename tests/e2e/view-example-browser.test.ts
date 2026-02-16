@@ -147,17 +147,18 @@ async function clickButtonByExactTextInDocument(
   return ok as boolean;
 }
 
-/** 在 main 内根据 href 查找链接并点击（用于触发客户端导航，如 beforeRoute 重定向） */
+/** 在整页根据 href 查找链接并点击（先 main 内，再 body；用于卡片/导航触发客户端路由） */
 async function clickLinkByHref(
   t: { browser?: { evaluate: (fn: () => boolean) => Promise<unknown> } },
   href: string,
 ): Promise<boolean> {
   if (!t?.browser) return false;
-  const escaped = JSON.stringify(href);
+  const wantHref = href.startsWith("/") ? href : "/" + href;
+  const escaped = JSON.stringify(wantHref);
   const ok = await t.browser.evaluate(
     new Function(
       "var wantHref=" + escaped +
-        ";var main=document.querySelector('main');if(!main)return false;var links=main.querySelectorAll('a[href]');for(var i=0;i<links.length;i++){var a=links[i];var h=a.getAttribute('href');if(h===wantHref||(h&&h.endsWith&&h.endsWith(wantHref))){a.click();return true;}}return false;",
+        ";var links=document.querySelectorAll('a[href]');for(var i=0;i<links.length;i++){var a=links[i];var h=a.getAttribute('href');if(h===wantHref||(h&&(h.endsWith(wantHref)||h.endsWith(wantHref.slice(1))))){a.click();return true;}}return false;",
     ) as () => boolean,
   );
   await new Promise((r) => setTimeout(r, 80));
@@ -358,7 +359,7 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/");
     await new Promise((r) => setTimeout(r, 200));
-    const ok = await clickButtonByText(t, "globals");
+    const ok = await clickButtonByText(t, "Globals");
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);
@@ -373,7 +374,7 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/");
     await new Promise((r) => setTimeout(r, 200));
-    const ok = await clickButtonByText(t, "portal");
+    const ok = await clickButtonByText(t, "Portal");
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);
@@ -387,7 +388,7 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/");
     await new Promise((r) => setTimeout(r, 200));
-    const ok = await clickButtonByText(t, "transition");
+    const ok = await clickButtonByText(t, "Transition");
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);

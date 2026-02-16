@@ -7,7 +7,7 @@
 
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "Loading",
   description: "_loading.tsx 仅当前目录示例",
   keywords: "Loading, _loading, 加载态",

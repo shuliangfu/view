@@ -38,8 +38,8 @@ function navItemsFromRoutes(routes: RouteConfig[]): NavItem[] {
     .filter((r) => r.path !== "*")
     .map((r) => ({
       path: r.path,
-      label: (r.meta?.title as string) ?? r.path,
-      group: (r.meta?.group as string) ?? groupFromPath(r.path),
+      label: (r.metadata?.title as string) ?? r.path,
+      group: (r.metadata?.group as string) ?? groupFromPath(r.path),
     }));
 }
 

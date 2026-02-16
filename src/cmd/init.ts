@@ -222,7 +222,7 @@ export function App(props: { router: Router }): VNode {
       </Layout>
     );
   }
-  const pageTitle = (current.meta?.title as string) ?? current.path;
+  const pageTitle = (current.metadata?.title as string) ?? current.path;
   if (typeof globalThis.document !== "undefined" && globalThis.document.title !== pageTitle) {
     globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
   }
@@ -260,7 +260,7 @@ function navItemsFromRoutes(routes: RouteConfig[]): NavItem[] {
     .filter((r) => r.path !== "*")
     .map((r) => ({
       path: r.path,
-      label: (r.meta?.title as string) ?? r.path,
+      label: (r.metadata?.title as string) ?? r.path,
     }));
 }
 
@@ -367,7 +367,7 @@ export default function RouteLoading(): VNode {
  */
 import type { VNode } from "@dreamer/view";
 
-export const meta = {
+export const metadata = {
   title: "404",
   description: "页面未找到",
 };
@@ -612,7 +612,7 @@ export function createAppRouter(opts: {
     notFound: opts.notFound,
     interceptLinks: true,
     afterRoute: (to) => {
-      const title = (to?.meta?.title as string) ?? "";
+      const title = (to?.metadata?.title as string) ?? "";
       if (title && typeof globalThis.document !== "undefined") {
         globalThis.document.title = \`\${title} - @dreamer/view\`;
       }
@@ -635,14 +635,14 @@ export function createAppRouter(opts: {
 import type { RouteConfig } from "@dreamer/view/router";
 
 export const routes: RouteConfig[] = [
-  { path: "/", component: () => import("../views/home.tsx"), meta: { title: "首页" } },
-  { path: "/about", component: () => import("../views/about.tsx"), meta: { title: "关于" } },
+  { path: "/", component: () => import("../views/home.tsx"), metadata: { title: "首页" } },
+  { path: "/about", component: () => import("../views/about.tsx"), metadata: { title: "关于" } },
 ];
 
 export const notFoundRoute: RouteConfig = {
   path: "*",
   component: () => import("../views/_404.tsx"),
-  meta: { title: "404" },
+  metadata: { title: "404" },
 };
 `;
   await writeTextFile(

@@ -312,7 +312,7 @@ describe("router 后置守卫 afterRoute", () => {
   });
 });
 
-describe("router notFound 与 meta", () => {
+describe("router notFound 与 metadata", () => {
   it("无匹配且配置 notFound 时 getCurrentRoute 返回兜底匹配", () => {
     const g = globalThis as unknown as {
       location?: { pathname: string; search: string; hash: string };
@@ -332,20 +332,20 @@ describe("router notFound 与 meta", () => {
             props: {},
             children: [textVNode("404")],
           }),
-          meta: { title: "Not Found" },
+          metadata: { title: "Not Found" },
         },
       });
       const match = router.getCurrentRoute();
       expect(match).not.toBeNull();
       expect(match!.path).toBe("*");
-      expect(match!.meta?.title).toBe("Not Found");
+      expect(match!.metadata?.title).toBe("Not Found");
     } finally {
       g.location = origLocation;
       g.history = origHistory;
     }
   });
 
-  it("路由配置 meta 会出现在 RouteMatch 中", () => {
+  it("路由配置 metadata 会出现在 RouteMatch 中", () => {
     const g = globalThis as unknown as {
       location?: { pathname: string; search: string; hash: string };
       history?: { pushState: (a: unknown, b: string, c: string) => void };
@@ -364,7 +364,7 @@ describe("router notFound 与 meta", () => {
           {
             path: "/about",
             component: () => ({ type: "div", props: {}, children: [] }),
-            meta: { title: "关于" },
+            metadata: { title: "关于" },
           },
           {
             path: "/user/:id",
@@ -377,7 +377,7 @@ describe("router notFound 与 meta", () => {
         ],
       });
       const match = router.getCurrentRoute();
-      expect(match?.meta?.title).toBe("关于");
+      expect(match?.metadata?.title).toBe("关于");
     } finally {
       g.location = origLocation;
       g.history = origHistory;
@@ -388,7 +388,12 @@ describe("router notFound 与 meta", () => {
 describe("router scroll 选项", () => {
   it("scroll: 'top' 时导航完成后应调用 scrollTo(0, 0)", async () => {
     const g = globalThis as unknown as {
-      location?: { pathname: string; search: string; hash: string; origin: string };
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
       history?: { pushState: (a: unknown, b: string, c: string) => void };
       scrollTo?: (x: number, y: number) => void;
     };
@@ -397,7 +402,12 @@ describe("router scroll 选项", () => {
     const origScrollTo = g.scrollTo;
     let scrollToCalls: [number, number][] = [];
     try {
-      g.location = { pathname: "/", search: "", hash: "", origin: "http://localhost" };
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
       g.history = { pushState: () => {} } as typeof g.history;
       g.scrollTo = (x: number, y: number) => scrollToCalls.push([x, y]);
       const router = createRouter({
@@ -415,7 +425,12 @@ describe("router scroll 选项", () => {
 
   it("scroll: false 时不应调用 scrollTo", async () => {
     const g = globalThis as unknown as {
-      location?: { pathname: string; search: string; hash: string; origin: string };
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
       history?: { pushState: (a: unknown, b: string, c: string) => void };
       scrollTo?: (x: number, y: number) => void;
     };
@@ -424,7 +439,12 @@ describe("router scroll 选项", () => {
     const origScrollTo = g.scrollTo;
     let scrollToCalls: [number, number][] = [];
     try {
-      g.location = { pathname: "/", search: "", hash: "", origin: "http://localhost" };
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
       g.history = { pushState: () => {} } as typeof g.history;
       g.scrollTo = (x: number, y: number) => scrollToCalls.push([x, y]);
       const router = createRouter({
@@ -442,7 +462,12 @@ describe("router scroll 选项", () => {
 
   it("scroll: 'restore' 时先保存当前 scroll 再导航后恢复目标路径的 scroll", async () => {
     const g = globalThis as unknown as {
-      location?: { pathname: string; search: string; hash: string; origin: string };
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
       history?: { pushState: (a: unknown, b: string, c: string) => void };
       scrollX?: number;
       scrollY?: number;
@@ -455,7 +480,12 @@ describe("router scroll 选项", () => {
     const origScrollTo = g.scrollTo;
     const scrollToCalls: [number, number][] = [];
     try {
-      g.location = { pathname: "/", search: "", hash: "", origin: "http://localhost" };
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
       g.history = { pushState: () => {} } as typeof g.history;
       g.scrollX = 10;
       g.scrollY = 20;
@@ -465,10 +495,20 @@ describe("router scroll 选项", () => {
         scroll: "restore",
       });
       await router.navigate("/about");
-      g.location = { pathname: "/about", search: "", hash: "", origin: "http://localhost" };
+      g.location = {
+        pathname: "/about",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
       const afterAbout = scrollToCalls.length;
       await router.navigate("/");
-      g.location = { pathname: "/", search: "", hash: "", origin: "http://localhost" };
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
       await router.navigate("/about");
       expect(scrollToCalls.length).toBeGreaterThan(afterAbout);
       const lastCall = scrollToCalls[scrollToCalls.length - 1];

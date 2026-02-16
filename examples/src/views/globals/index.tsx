@@ -9,7 +9,7 @@ import type { VNode } from "@dreamer/view";
 import { createSignal } from "@dreamer/view";
 import { getDocument, getGlobal, setGlobal } from "@dreamer/view/globals";
 
-export const meta = {
+export const metadata = {
   title: "Globals",
   description: "getDocument、getGlobal、setGlobal 安全访问 document 与全局状态",
   keywords: "getDocument, getGlobal, setGlobal, SSR, document",

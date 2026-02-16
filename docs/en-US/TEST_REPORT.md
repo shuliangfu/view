@@ -5,16 +5,16 @@
 | Item            | Description                                        |
 | --------------- | -------------------------------------------------- |
 | Package         | @dreamer/view                                      |
-| Version         | 1.0.8                                              |
-| Test framework  | @dreamer/test ^1.0.5                               |
-| Test date       | 2026-02-13                                         |
+| Version         | 1.0.13                                             |
+| Test framework  | @dreamer/test ^1.0.6                               |
+| Test date       | 2026-02-16                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E) |
 | Command         | `deno test -A tests/`                              |
 
 ## Test Results
 
-- **Total tests**: 381
-- **Passed**: 381
+- **Total tests**: 412
+- **Passed**: 412
 - **Failed**: 0
 - **Pass rate**: 100%
 - **Duration**: ~2m
@@ -24,7 +24,7 @@
 | Test file                        | Tests | Status        |
 | -------------------------------- | ----- | ------------- |
 | e2e/cli.test.ts                  | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts | 52    | ✅ All passed |
+| e2e/view-example-browser.test.ts | 63    | ✅ All passed |
 | integration/integration.test.ts  | 14    | ✅ All passed |
 | unit/boundary.test.ts            | 13    | ✅ All passed |
 | unit/build-hmr.test.ts           | 5     | ✅ All passed |
@@ -32,20 +32,23 @@
 | unit/context.test.ts             | 8     | ✅ All passed |
 | unit/directive.test.ts           | 25    | ✅ All passed |
 | unit/effect.test.ts              | 15    | ✅ All passed |
+| unit/globals.test.ts             | 5     | ✅ All passed |
 | unit/hmr.test.ts                 | 3     | ✅ All passed |
 | unit/jsx-runtime.test.ts         | 6     | ✅ All passed |
 | unit/meta.test.ts                | 21    | ✅ All passed |
+| unit/portal.test.ts              | 5     | ✅ All passed |
 | unit/props.test.ts               | 55    | ✅ All passed |
 | unit/proxy.test.ts               | 5     | ✅ All passed |
 | unit/reactive.test.ts            | 7     | ✅ All passed |
 | unit/resource.test.ts            | 8     | ✅ All passed |
-| unit/router.test.ts              | 14    | ✅ All passed |
+| unit/router.test.ts              | 17    | ✅ All passed |
 | unit/runtime.test.ts             | 50    | ✅ All passed |
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
 | unit/store.test.ts               | 29    | ✅ All passed |
 | unit/stream.test.ts              | 7     | ✅ All passed |
+| unit/transition.test.ts          | 7     | ✅ All passed |
 
 ## Feature Test Details
 
@@ -66,7 +69,7 @@
 - ✅ view start after build: serves and browser opens home with multi-page
   example
 
-### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 51 tests
+### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 63 tests
 
 - ✅ Home mount and multi-page entry; navigation to
   Signal/Store/Boundary/Directive/Reactive/Resource/Context/Runtime/Router

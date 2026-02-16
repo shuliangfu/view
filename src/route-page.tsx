@@ -57,6 +57,47 @@ const resourceCache = new Map<string, ResourceGetter>();
 const loadingComponentCache = new Map<string, ResourceGetter>();
 
 /**
+ * 不再按 path 缓存页面 VNode：缓存会导致页面内 signal 更新时 effect 重跑仍用旧 VNode，
+ * 不再执行页面组件，从而无法读到最新 signal（如 Boundary 页的 shouldThrow），点击无反应。
+ * 每次 effect 都执行 data.default(match) 以保持页面内响应式与点击生效。
+ */
+
+/**
+ * 按 path + key 缓存页面内 state（createSignal），供 match.getState(key, initial) 使用。
+ * 页面组件内写 createSignal(initial) 会因每次重跑新建 signal 导致点击无反应；
+ * 通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]，写组件体内也可生效。
+ * path 变化时清空上一 path 的缓存，避免占用内存且不影响其他路由。
+ */
+const pathStateStore = new Map<
+  string,
+  Map<string, ReturnType<typeof createSignal>>
+>();
+let prevPathForState = "";
+
+function getPageState<T>(
+  path: string,
+  key: string,
+  initialValue: T,
+): [() => T, (value: T | ((prev: T) => T)) => void] {
+  let keyMap = pathStateStore.get(path);
+  if (!keyMap) {
+    keyMap = new Map();
+    pathStateStore.set(path, keyMap);
+  }
+  let tuple = keyMap.get(key) as
+    | [() => T, (value: T | ((prev: T) => T)) => void]
+    | undefined;
+  if (!tuple) {
+    tuple = createSignal(initialValue) as [
+      () => T,
+      (value: T | ((prev: T) => T)) => void,
+    ];
+    keyMap.set(key, tuple);
+  }
+  return tuple;
+}
+
+/**
  * 按 path 的 effect 作用域：resource 内部 effect 登记到此 scope，不随根 effect 重跑被 dispose，
  * 否则 _loading 先加载触发根重跑时会 dispose 掉页面 resource 的 effect，index 加载完成时 generation 已 -1 导致不 setState。
  */
@@ -220,7 +261,7 @@ const DEFAULT_LOADING_TEXT = "Loading…";
  * 同一 path 复用缓存的 resource；加载中显示转圈，失败显示错误+重试，成功渲染 data.default(matchWithRouter)。
  * 文案可通过 labels 传入自定义，默认英文。
  *
- * @param props.match - 当前路由匹配结果（含 path、component、meta 等）
+ * @param props.match - 当前路由匹配结果（含 path、component、metadata 等）
  * @param props.router - 路由器实例，与 match 一并传入子页面
  * @param props.showLoading - 可选，为 true 时加载中显示转圈/文案，为 false 时静默等待不渲染 loading UI，默认 true
  * @param props.labels - 可选，errorTitle / retryText / loadingText 自定义文案
@@ -240,7 +281,17 @@ export function RoutePage(props: {
   const path = props.match.path;
   const pathRef = { current: path };
   pathRef.current = path;
-  const matchWithRouter = { ...props.match, router: props.router };
+  if (prevPathForState && prevPathForState !== path) {
+    pathStateStore.delete(prevPathForState);
+  }
+  prevPathForState = path;
+  const matchWithRouter = {
+    ...props.match,
+    router: props.router,
+    /** 按 path+key 稳定的 state，页面内写 getState(key, initial) 即可在组件体内用「类 useState」且点击生效 */
+    getState: <T,>(key: string, initialValue: T) =>
+      getPageState(path, key, initialValue),
+  };
   const labels = props.labels ?? {};
   const [minDelayElapsed, setMinDelayElapsed] = getOrCreateMinDelaySignal(path);
   createEffect(() => {
