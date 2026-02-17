@@ -13,6 +13,7 @@
 
 import { error, info, success } from "@dreamer/console";
 import { createCommand, cwd, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
+import { $t } from "../i18n.ts";
 
 /**
  * 获取当前运行时名称（deno 或 bun）
@@ -20,7 +21,7 @@ import { createCommand, cwd, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
 function getRuntime(): "deno" | "bun" {
   if (IS_DENO) return "deno";
   if (IS_BUN) return "bun";
-  throw new Error("Unsupported runtime: only Deno and Bun are supported.");
+  throw new Error($t("error.runtimeUnsupported"));
 }
 
 /**

@@ -10,6 +10,7 @@
 
 import { injectCSSIntoHTML } from "@dreamer/esbuild/css-injector";
 import { existsSync, readFile, resolve } from "@dreamer/runtime-adapter";
+import { $t } from "../i18n.ts";
 import {
   HttpContext,
   type PathHandler,
@@ -78,7 +79,7 @@ export async function run(
     ...options,
     // 优先使用调用方传入的 mode（dev/start 会传），否则用环境变量，保证 dev 时一定为 "dev" 才能启动 DevTools/HMR
     onListen: ({ host, port }: { host: string; port: number }) => {
-      console.log(`✅ Server started http://${host}:${port}`);
+      console.log(`✅ ${$t("cli.serve.started", { host, port })}`);
       console.log("");
     },
   };

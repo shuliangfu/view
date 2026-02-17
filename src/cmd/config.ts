@@ -14,6 +14,7 @@ import {
   pathToFileUrl,
   resolve,
 } from "@dreamer/runtime-adapter";
+import { $t } from "../i18n.ts";
 
 /**
  * 开发环境服务器配置（dev 命令使用）
@@ -159,8 +160,9 @@ export async function loadViewConfig(root: string): Promise<ViewConfig> {
       }
     } catch (err) {
       console.warn(
-        "[view] Failed to load view.config.ts:",
-        err instanceof Error ? err.message : err,
+        $t("cli.config.loadFailedTs", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
   }
@@ -180,8 +182,9 @@ export async function loadViewConfig(root: string): Promise<ViewConfig> {
       }
     } catch (err) {
       console.warn(
-        "[view] Failed to load view.config.json:",
-        err instanceof Error ? err.message : err,
+        $t("cli.config.loadFailedJson", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
   }
@@ -227,7 +230,7 @@ function defaultsDeep(config: ViewConfig): ViewConfig {
 /**
  * 按模式（dev / prod）合并 build 与 build.dev 或 build.prod，供 CLI 构建使用
  * @param config 已加载的 view 配置
- * @param mode "dev" 时用 build.dev 覆盖，"prod" 时用 build.prod 覆盖
+ * @param mode Use build.dev overrides when "dev", build.prod when "prod"
  * @returns 合并后的 build 配置，保证 plugins 为数组
  */
 export function getBuildConfigForMode(

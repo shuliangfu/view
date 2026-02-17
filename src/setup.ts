@@ -25,6 +25,7 @@ import {
   remove,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
+import { $t } from "./i18n.ts";
 import { loadViewDenoJson, writeVersionCache } from "./version.ts";
 
 /** CLI 全局命令名称（与 cli.ts 中一致） */
@@ -118,7 +119,10 @@ async function createTempCliConfig(): Promise<string> {
       const raw = await readTextFile(denoJsonPath);
       config = JSON.parse(raw) as Record<string, unknown>;
     } catch (err) {
-      console.error("Failed to read deno.json:", denoJsonPath, err);
+      console.error(
+        $t("cli.setup.denoJsonReadFailed", { path: denoJsonPath }),
+        err,
+      );
       exit(1);
     }
   } else {
@@ -127,13 +131,18 @@ async function createTempCliConfig(): Promise<string> {
     try {
       const res = await fetch(denoJsonUrl);
       if (!res.ok) {
-        console.error("Failed to fetch deno.json:", res.status);
+        console.error(
+          $t("cli.setup.denoJsonFetchFailed", { status: String(res.status) }),
+        );
         exit(1);
       }
       const raw = await res.text();
       config = JSON.parse(raw) as Record<string, unknown>;
     } catch (err) {
-      console.error("Failed to fetch or parse deno.json:", denoJsonUrl, err);
+      console.error(
+        $t("cli.setup.denoJsonParseFailed", { url: denoJsonUrl }),
+        err,
+      );
       exit(1);
     }
   }
@@ -181,12 +190,16 @@ async function installGlobalCli(): Promise<void> {
         stderr: "null",
         stdin: "null", // 避免 deno install 继承终端 stdin 导致卡住
       });
-      console.log(`Installing ${CLI_NAME}...`);
+      console.log($t("cli.setup.installing", { name: CLI_NAME }));
       const child = cmd.spawn();
       child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
       const status = await child.status;
       if (status.success) {
-        console.log(`${GREEN}${CLI_NAME} installed successfully.${RESET}`);
+        console.log(
+          `${GREEN}${
+            $t("cli.setup.installSuccess", { name: CLI_NAME })
+          }${RESET}`,
+        );
         await writeVersionCacheOnInstall();
         printUsage();
       } else {
@@ -194,9 +207,12 @@ async function installGlobalCli(): Promise<void> {
           ? await new Response(child.stderr).text()
           : "";
         console.error(
-          `${RED}Install failed (exit code ${
-            status.code ?? ""
-          }). ${stderr}${RESET}`,
+          `${RED}${
+            $t("cli.setup.installFailedExit", {
+              code: String(status.code ?? ""),
+              stderr,
+            })
+          }${RESET}`,
         );
         exit(status.code ?? 1);
       }
@@ -211,12 +227,14 @@ async function installGlobalCli(): Promise<void> {
       stderr: "null",
       stdin: "null", // 避免 deno install 继承终端 stdin 导致卡住
     });
-    console.log(`Installing ${CLI_NAME}...`);
+    console.log($t("cli.setup.installing", { name: CLI_NAME }));
     const child = cmd.spawn();
     child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
     const status = await child.status;
     if (status.success) {
-      console.log(`${GREEN}${CLI_NAME} installed successfully.${RESET}`);
+      console.log(
+        `${GREEN}${$t("cli.setup.installSuccess", { name: CLI_NAME })}${RESET}`,
+      );
       await writeVersionCacheOnInstall();
       printUsage();
     } else {
@@ -224,9 +242,12 @@ async function installGlobalCli(): Promise<void> {
         ? await new Response(child.stderr).text()
         : "";
       console.error(
-        `${RED}Install failed (exit code ${
-          status.code ?? ""
-        }). ${stderr}${RESET}`,
+        `${RED}${
+          $t("cli.setup.installFailedExit", {
+            code: String(status.code ?? ""),
+            stderr,
+          })
+        }${RESET}`,
       );
       exit(status.code ?? 1);
     }
@@ -237,32 +258,34 @@ async function installGlobalCli(): Promise<void> {
 function printUsage(): void {
   const w = 12; // 命令部分宽度，保证 # 对齐
   const pad = (s: string) => s.padEnd(w);
-  console.log("Usage:");
+  console.log($t("cli.setup.usage"));
   console.log(
-    `  ${CLI_NAME} ${
-      pad("init [dir]")
-    } # Initialize project from example structure`,
+    `  ${CLI_NAME} ${pad("init [dir]")} # ${$t("cli.setup.usageInit")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("dev")} # Build then start static server (dev)`,
-  );
-  console.log(`  ${CLI_NAME} ${pad("build")} # Build only (output to dist/)`);
-  console.log(
-    `  ${CLI_NAME} ${
-      pad("start")
-    } # Start static server only (requires prior build)`,
+    `  ${CLI_NAME} ${pad("dev")} # ${$t("cli.setup.usageDev")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${
-      pad("upgrade")
-    } # Upgrade @dreamer/view to latest (use --beta for beta)`,
+    `  ${CLI_NAME} ${pad("build")} # ${$t("cli.setup.usageBuild")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("update")} # Update project dependencies and lockfile`,
+    `  ${CLI_NAME} ${pad("start")} # ${$t("cli.setup.usageStart")}`,
   );
-  console.log(`  ${CLI_NAME} ${pad("version")} # Show version`);
-  console.log(`  ${CLI_NAME} ${pad("--version")} # Show version (alias: -v)`);
-  console.log(`  ${CLI_NAME} ${pad("--help")} # Show help`);
+  console.log(
+    `  ${CLI_NAME} ${pad("upgrade")} # ${$t("cli.setup.usageUpgrade")}`,
+  );
+  console.log(
+    `  ${CLI_NAME} ${pad("update")} # ${$t("cli.setup.usageUpdate")}`,
+  );
+  console.log(
+    `  ${CLI_NAME} ${pad("version")} # ${$t("cli.setup.usageVersion")}`,
+  );
+  console.log(
+    `  ${CLI_NAME} ${pad("--version")} # ${$t("cli.setup.usageVersionAlias")}`,
+  );
+  console.log(
+    `  ${CLI_NAME} ${pad("--help")} # ${$t("cli.setup.usageHelp")}`,
+  );
   console.log("");
 }
 
@@ -271,7 +294,7 @@ if (import.meta.main) {
   installGlobalCli()
     .then(() => exit(0))
     .catch((err) => {
-      console.error("Install failed.", err);
+      console.error($t("cli.setup.installFailed"), err);
       exit(1);
     });
 }

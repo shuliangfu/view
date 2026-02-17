@@ -15,6 +15,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
+import { $t } from "../i18n.ts";
 import { getViewVersion } from "../version.ts";
 
 /** ANSI green for success message */
@@ -60,9 +61,7 @@ export async function main(
   // view.config.ts（对齐示例，供 dev/build/start 读取）
   // ---------------------------------------------------------------------------
   const viewConfigTs = `/**
- * view 项目配置：dev / build / start 会读取此文件
- * - build.dev：仅 dev 模式生效，覆盖顶层 build（如不压缩、保留 sourcemap）
- * - build.prod：仅 prod 模式生效，覆盖顶层 build
+ * ${$t("init.template.viewConfigComment")}
  */
 const config = {
   server: {
@@ -83,9 +82,9 @@ const config = {
     minify: true,
     sourcemap: true,
     splitting: true,
-    /** dev 模式覆盖：不压缩、保留 sourcemap，便于调试 */
+    /** ${$t("init.template.viewConfigDevComment")} */
     dev: { minify: false, sourcemap: true },
-    /** prod 模式覆盖 */
+    /** ${$t("init.template.viewConfigProdComment")} */
     prod: { minify: true, sourcemap: true },
   },
 };
@@ -125,7 +124,7 @@ export default config;
   // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
   // ---------------------------------------------------------------------------
   const jsxDts = `/**
- * JSX 固有元素类型：供项目内 TSX 类型检查使用
+ * ${$t("init.template.jsxDtsComment")}
  */
 declare global {
   namespace JSX {
@@ -181,7 +180,7 @@ export {};
   // src/main.tsx
   // ---------------------------------------------------------------------------
   const mainTsx = `/**
- * 应用入口：创建路由并挂载根组件
+ * ${$t("init.template.mainComment")}
  */
 import { createRoot } from "@dreamer/view";
 import { createAppRouter } from "./router/router.ts";
@@ -192,7 +191,6 @@ const container = document.getElementById("root");
 if (container) {
   const router = createAppRouter({ routes, notFound: notFoundRoute });
   createRoot(() => <App router={router} />, container);
-  container.removeAttribute("data-view-cloak");
 }
 `;
   await writeTextFile(join(targetDir, "src", "main.tsx"), mainTsx);
@@ -202,7 +200,7 @@ if (container) {
   // src/views/_app.tsx（约定根组件，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const appTsx = `/**
- * 根组件（约定 _app.tsx）：使用 router.getCurrentRouteSignal() 响应当前路由，渲染 Layout + 当前页
+ * ${$t("init.template.appComment")}
  */
 import type { VNode } from "@dreamer/view";
 import { RoutePage, type Router } from "@dreamer/view/router";
@@ -216,7 +214,7 @@ export function App(props: { router: Router }): VNode {
       <Layout routes={routes} currentPath="">
         <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
           <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            加载中…
+            ${$t("init.template.loading")}
           </p>
         </section>
       </Layout>
@@ -227,7 +225,11 @@ export function App(props: { router: Router }): VNode {
     globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
   }
   const routePage = (
-    <RoutePage match={current} router={props.router} labels={{ errorTitle: "Load failed", retryText: "Retry", loadingText: "Loading…" }} />
+    <RoutePage match={current} router={props.router} labels={{ errorTitle: ${
+    JSON.stringify($t("init.template.routePageLoadFailed"))
+  }, retryText: ${
+    JSON.stringify($t("init.template.routePageRetry"))
+  }, loadingText: ${JSON.stringify($t("init.template.routePageLoading"))} }} />
   );
   if (current.inheritLayout === false) return routePage;
   return (
@@ -244,7 +246,7 @@ export function App(props: { router: Router }): VNode {
   // src/views/_layout.tsx（约定布局，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const layoutTsx = `/**
- * 布局（约定 _layout.tsx）：顶部导航栏 + 主内容区，支持主题切换
+ * ${$t("init.template.layoutComment")}
  */
 import type { VNode } from "@dreamer/view";
 import type { RouteConfig } from "@dreamer/view/router";
@@ -306,8 +308,12 @@ export function Layout(props: LayoutProps): VNode {
               type="button"
               onClick={() => toggleTheme()}
               className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-              title={isDark ? "切换到浅色" : "切换到深色"}
-              aria-label={isDark ? "切换到浅色" : "切换到深色"}
+              title={isDark ? ${
+    JSON.stringify($t("init.template.switchToLight"))
+  } : ${JSON.stringify($t("init.template.switchToDark"))}}
+              aria-label={isDark ? ${
+    JSON.stringify($t("init.template.switchToLight"))
+  } : ${JSON.stringify($t("init.template.switchToDark"))}}
             >
               {isDark ? (
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -339,7 +345,7 @@ export function Layout(props: LayoutProps): VNode {
   // src/views/_loading.tsx（约定加载占位，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const loadingTsx = `/**
- * 路由懒加载占位（约定 _loading.tsx）。RoutePage 会取 default 导出并调用 (match) => VNode。
+ * ${$t("init.template.loadingComment")}
  */
 import type { VNode } from "@dreamer/view";
 
@@ -347,7 +353,7 @@ export default function RouteLoading(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
       <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        加载中…
+        ${$t("init.template.loading")}
       </p>
     </section>
   );
@@ -363,25 +369,29 @@ export default function RouteLoading(): VNode {
   // src/views/_404.tsx（约定 404 页，作为 path * 的 notFound 路由）
   // ---------------------------------------------------------------------------
   const notFoundTsxContent = `/**
- * 404 页面（约定 _404.tsx）：作为 path * 的 notFound 路由
+ * ${$t("init.template.notFoundComment")}
  */
 import type { VNode } from "@dreamer/view";
 
 export const metadata = {
   title: "404",
-  description: "页面未找到",
+  description: ${JSON.stringify($t("init.template.notFoundDesc"))},
 };
 
 export default function NotFound(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-12 shadow-xl text-center dark:border-slate-600/80 dark:bg-slate-800/95">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">页面未找到</h2>
-      <p className="mt-2 text-slate-600 dark:text-slate-300">您访问的路径不存在。</p>
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">${
+    $t("init.template.notFoundTitle")
+  }</h2>
+      <p className="mt-2 text-slate-600 dark:text-slate-300">${
+    $t("init.template.notFoundMessage")
+  }</p>
       <a
         href="/"
         className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
       >
-        返回首页
+        ${$t("init.template.backToHome")}
       </a>
     </section>
   );
@@ -392,7 +402,7 @@ export default function NotFound(): VNode {
   // src/views/_error.tsx（约定错误兜底，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
   const errorTsx = `/**
- * 错误兜底（约定 _error.tsx）：用于 ErrorBoundary 等
+ * ${$t("init.template.errorComment")}
  */
 import type { VNode } from "@dreamer/view";
 
@@ -402,14 +412,18 @@ interface ErrorViewProps {
 }
 
 export function ErrorView(props: ErrorViewProps): VNode {
-  const message = props.error instanceof Error ? props.error.message : String(props.error ?? "未知错误");
+  const message = props.error instanceof Error ? props.error.message : String(props.error ?? ${
+    JSON.stringify($t("init.template.unknownError"))
+  });
   return (
     <section className="rounded-2xl border border-red-200/80 bg-white p-12 shadow-xl text-center dark:border-red-800/80 dark:bg-slate-800/95">
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">加载失败</h2>
+      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">${
+    $t("init.template.loadFailed")
+  }</h2>
       <p className="mt-2 text-slate-600 dark:text-slate-300 wrap-break-word">{message}</p>
       {props.onRetry && (
         <button type="button" onClick={() => props.onRetry?.()} className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-          重试
+          ${$t("init.template.retry")}
         </button>
       )}
     </section>
@@ -431,7 +445,7 @@ export function ErrorView(props: ErrorViewProps): VNode {
   // src/views/home.tsx（首页：Hero + 简介，美化）
   // ---------------------------------------------------------------------------
   const homeTsx = `/**
- * 首页：欢迎、计数器演示与简介
+ * ${$t("init.template.homeComment")}
  */
 import { createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
@@ -443,31 +457,29 @@ export default function Home(): VNode {
     <div className="space-y-10">
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
-          View 模板引擎
+          ${$t("init.template.viewTemplateEngine")}
         </p>
         <h1 className="mb-4 text-4xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-          欢迎使用 @dreamer/view
+          ${$t("init.template.welcomeTitle")}
         </h1>
         <p className="max-w-xl text-slate-600 dark:text-slate-300 leading-relaxed">
-          这是一个由 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">view init</code> 生成的项目。
-          编辑 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/views/home.tsx</code> 和{" "}
-          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">src/views/about.tsx</code> 开始开发。
+          ${$t("init.template.homeIntro")}
         </p>
         <a
           href="/about"
           className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400"
         >
-          前往关于
+          ${$t("init.template.goToAbout")}
           <span aria-hidden="true">→</span>
         </a>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
         <h2 className="mb-4 text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-          计数器演示
+          ${$t("init.template.counterDemo")}
         </h2>
         <p className="mb-6 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-          使用 <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-700">createSignal</code> 实现响应式计数。
+          ${$t("init.template.counterIntro")}
         </p>
         <div className="flex flex-wrap items-center gap-4">
           <button
@@ -492,28 +504,34 @@ export default function Home(): VNode {
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
         <h2 className="mb-4 text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-100">
-          v-if 演示
+          ${$t("init.template.vIfDemo")}
         </h2>
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-          count ≤ 2 显示 AAA，3～5 显示 BBB，否则 CCC；条件用 getter 才能响应式切换。
+          ${$t("init.template.vIfIntro")}
         </p>
         <div vIf={() => count() <= 2} className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
           <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-700/50 dark:text-emerald-200">
-            count ≤ 2
+            ${$t("init.template.countLabelLow")}
           </span>
-          <span className="text-base font-medium text-emerald-800 dark:text-emerald-200">AAA</span>
+          <span className="text-base font-medium text-emerald-800 dark:text-emerald-200">${
+    $t("init.template.labelAAA")
+  }</span>
         </div>
         <div vElseIf={() => count() >= 3 && count() <= 5} className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-900/20">
           <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-700/50 dark:text-amber-200">
-            3 ≤ count ≤ 5
+            ${$t("init.template.countLabelMid")}
           </span>
-          <span className="text-base font-medium text-amber-800 dark:text-amber-200">BBB</span>
+          <span className="text-base font-medium text-amber-800 dark:text-amber-200">${
+    $t("init.template.labelBBB")
+  }</span>
         </div>
         <div vElse className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-500/30 dark:bg-slate-700/30">
           <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600/80 dark:text-slate-200">
-            count &gt; 5
+            ${$t("init.template.countLabelHigh")}
           </span>
-          <span className="text-base font-medium text-slate-800 dark:text-slate-200">CCC</span>
+          <span className="text-base font-medium text-slate-800 dark:text-slate-200">${
+    $t("init.template.labelCCC")
+  }</span>
         </div>
       </section>
     </div>
@@ -527,7 +545,7 @@ export default function Home(): VNode {
   // src/views/about.tsx（关于页，美化）
   // ---------------------------------------------------------------------------
   const aboutTsx = `/**
- * 关于页
+ * ${$t("init.template.aboutComment")}
  */
 import type { VNode } from "@dreamer/view";
 
@@ -536,23 +554,23 @@ export default function About(): VNode {
     <div className="space-y-10">
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-8 shadow-xl dark:border-slate-600/80 dark:bg-slate-800/95 sm:p-12">
         <h1 className="mb-4 text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-          关于
+          ${$t("init.template.aboutTitle")}
         </h1>
         <p className="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
-          @dreamer/view 是面向前端的视图层库，提供响应式、路由、Store、Boundary 等能力。
+          ${$t("init.template.aboutIntro")}
         </p>
         <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
-          <li>响应式：createSignal、createEffect、createMemo</li>
-          <li>路由：无刷新切换、守卫、标题同步</li>
-          <li>Store：状态 + 持久化</li>
-          <li>Boundary：错误边界与 Suspense</li>
+          <li>${$t("init.template.aboutItemReactive")}</li>
+          <li>${$t("init.template.aboutItemRouter")}</li>
+          <li>${$t("init.template.aboutItemStore")}</li>
+          <li>${$t("init.template.aboutItemBoundary")}</li>
         </ul>
         <a
           href="/"
           className="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <span aria-hidden="true">←</span>
-          返回首页
+          ${$t("init.template.backToHome")}
         </a>
       </section>
     </div>
@@ -566,7 +584,7 @@ export default function About(): VNode {
   // src/router/router.ts
   // ---------------------------------------------------------------------------
   const routerTs = `/**
- * 路由实例与上下文：创建应用路由，提供 RouterProvider、useRouter
+ * ${$t("init.template.routerComment")}
  */
 import { createContext } from "@dreamer/view/context";
 import {
@@ -602,10 +620,7 @@ export function createAppRouter(opts: {
   notFound: RouteConfig;
 }): Router {
   if (typeof createViewRouter !== "function") {
-    throw new Error(
-      "[view] createRouter from @dreamer/view/router is undefined. " +
-        "Ensure @dreamer/view is installed and the build resolves the /router subpath (e.g. jsr:@dreamer/view@^1.0.0-beta.24/router).",
-    );
+    throw new Error(${JSON.stringify($t("init.routerUndefined"))});
   }
   const router = createViewRouter({
     routes: opts.routes,
@@ -629,14 +644,18 @@ export function createAppRouter(opts: {
   // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/views 自动重新生成，勿提交）
   // ---------------------------------------------------------------------------
   const routersTsx = `/**
- * 路由表（自动生成）：path → component，使用动态 import 实现按需加载
- * 请勿手动编辑；dev 时会根据 src/views 目录自动重新生成
+ * ${$t("init.template.routersComment1")}
+ * ${$t("init.template.routersComment2")}
  */
 import type { RouteConfig } from "@dreamer/view/router";
 
 export const routes: RouteConfig[] = [
-  { path: "/", component: () => import("../views/home.tsx"), metadata: { title: "首页" } },
-  { path: "/about", component: () => import("../views/about.tsx"), metadata: { title: "关于" } },
+  { path: "/", component: () => import("../views/home.tsx"), metadata: { title: ${
+    JSON.stringify($t("init.template.homeNavTitle"))
+  } } },
+  { path: "/about", component: () => import("../views/about.tsx"), metadata: { title: ${
+    JSON.stringify($t("init.template.aboutTitle"))
+  } } },
 ];
 
 export const notFoundRoute: RouteConfig = {
@@ -728,16 +747,17 @@ export const toggleTheme = themeStore.toggleTheme;
   for (const f of createdFiles) {
     console.log(prefix + f);
   }
+  console.log("");
   console.log(
-    `${GREEN}Project created successfully at ${displayDir}.${RESET}`,
+    `${GREEN}${$t("cli.init.projectCreated", { dir: displayDir })}${RESET}`,
   );
 
   console.log("");
   if (displayDir !== ".") {
-    console.log(`cd ${displayDir}`);
+    console.log($t("cli.init.nextCd", { dir: displayDir }));
   }
-  console.log("dev: view-cli dev");
-  console.log("build: view-cli build");
-  console.log("prod: view-cli start");
+  console.log($t("cli.init.nextDev"));
+  console.log($t("cli.init.nextBuild"));
+  console.log($t("cli.init.nextProd"));
   console.log("");
 }

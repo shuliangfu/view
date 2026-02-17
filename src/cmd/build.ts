@@ -27,6 +27,7 @@ import {
   KEY_HMR_CLEAR_ROUTE_CACHE,
   KEY_VIEW_ROOT,
 } from "../constants.ts";
+import { $t } from "../i18n.ts";
 import type { ViewConfig } from "./config.ts";
 import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
 import { generateRoutersFile } from "./generate.ts";
@@ -36,8 +37,17 @@ import { generateRoutersFile } from "./generate.ts";
  * unmount 当前 root，再 import(mainUrl?t=ts) 拉取并执行新 main，由新 main 的 createRoot 重新渲染；
  * hmrOpts.chunkUrl 由服务端下发，可选先 import(chunkUrl) 预加载再拉 main；每次 rebuild 的 chunkUrl 已是新 hash，无需再拼 ?t=。
  * 若 import 失败或超时后 #root 仍为空则回退整页重载。
+ * @param msgs 已翻译的 HMR 提示文案（构建时按环境语言注入）
  */
-const HMR_BANNER = `
+function getHmrBanner(msgs: {
+  rootNotFound: string;
+  containerEmpty: string;
+  refreshFailed: string;
+}): string {
+  const msgRoot = JSON.stringify(msgs.rootNotFound);
+  const msgContainer = JSON.stringify(msgs.containerEmpty);
+  const msgRefresh = JSON.stringify(msgs.refreshFailed);
+  return `
 (function(){
   var g = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : (typeof self !== "undefined" ? self : {}));
   var getMainUrl = function(){
@@ -72,12 +82,12 @@ const HMR_BANNER = `
           var el = typeof g.document !== "undefined" && g.document.getElementById ? g.document.getElementById("root") : null;
           var check = function(){
             if (!el){
-              console.warn("[view] HMR: #root not found, falling back to full page reload");
+              console.warn(${msgRoot});
               reload();
               return;
             }
             if (el.childNodes.length === 0){
-              console.warn("[view] HMR: container still empty after refresh, falling back to full page reload");
+              console.warn(${msgContainer});
               reload();
             }
           };
@@ -86,7 +96,7 @@ const HMR_BANNER = `
           setTimeout(check, 500);
         })
         .catch(function(err){
-          console.warn("[view] HMR refresh failed, falling back to full page reload:", err?.message || err);
+          console.warn(${msgRefresh}, err?.message || err);
           reload();
         });
     };
@@ -115,6 +125,7 @@ const HMR_BANNER = `
   };
 })();
 `;
+}
 
 /**
  * 向 dev 产出的入口文件注入 HMR banner。
@@ -127,7 +138,12 @@ function injectHmrBannerIntoEntry(
     o.path.endsWith(entryFileName) && !o.path.endsWith(".map")
   );
   if (entry) {
-    entry.content = entry.content + "\n" + HMR_BANNER;
+    const banner = getHmrBanner({
+      rootNotFound: $t("cli.hmr.rootNotFound"),
+      containerEmpty: $t("cli.hmr.containerEmpty"),
+      refreshFailed: $t("cli.hmr.refreshFailed"),
+    });
+    entry.content = entry.content + "\n" + banner;
   }
 }
 
@@ -252,9 +268,9 @@ function getChunkRequestPathForChangedPath(
 }
 
 /**
- * 根据变更文件路径推断对应路由 path（约定：views/home|index -> "/"，其余 -> "/{segment}"）
- * 供 HMR 下发 routePath，客户端用 chunkUrl 仅更新该路由。
- * @internal 供 prepareDevBuild 与单元测试使用
+ * Infer route path from changed file path (convention: views/home|index -> "/", others -> "/{segment}").
+ * Used by HMR to send routePath; client uses chunkUrl to update only that route.
+ * @internal Used by prepareDevBuild and unit tests
  */
 export function getRoutePathForChangedPath(
   changedPath: string,
@@ -265,7 +281,7 @@ export function getRoutePathForChangedPath(
   const afterViews = normalized.slice(viewsIdx + "/views/".length);
   let segment = afterViews.split("/")[0];
   if (!segment) return undefined;
-  // 去掉扩展名，使 route path 为纯路径（如 about.tsx -> about）
+  // Strip extension so route path is segment only (e.g. about.tsx -> about)
   if (segment.includes(".")) segment = segment.split(".")[0];
   if (segment === "home" || segment === "index") return "/";
   return "/" + segment;
@@ -495,7 +511,7 @@ export async function run(): Promise<number> {
   }
 
   const builder = new BuilderClient(clientConfig);
-  console.log("[view] Building...");
+  console.log($t("cli.build.building"));
   const result = await builder.build("prod");
   if (result.outputFiles?.length) {
     const sorted = [...result.outputFiles].sort();
@@ -508,7 +524,10 @@ export async function run(): Promise<number> {
     }
   }
   console.log(
-    `[view] Build complete in ${result.duration}ms → ${outDir}`,
+    $t("cli.build.complete", {
+      duration: String(result.duration),
+      outDir,
+    }),
   );
   return 0;
 }
