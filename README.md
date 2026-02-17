@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.15** (2026-02-17) — Added: Docs for link interception (interceptLinks):
-which `<a>` clicks are intercepted and which are not (README en/zh + router
-JSDoc). Changed: Test report and README updated to 435 tests. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.16** (2026-02-17) — Fixed: Upgrade command calls child.unref() so process
+exits after spawn on Deno. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
+full details.
 
 ---
 

@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [1.0.16] - 2026-02-17
+
+### Fixed
+
+- **Upgrade command (Deno):** Call `child.unref()` after awaiting spawn status
+  so the CLI process exits after the install child finishes (same as dweb;
+  avoids hang on Deno).
+
+---
+
 ## [1.0.15] - 2026-02-17
 
 ### Added

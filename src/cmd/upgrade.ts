@@ -93,6 +93,8 @@ export async function main(
   startSpinner("Installing...");
   const child = cmd.spawn();
   const status = await child.status;
+  // Deno: child refs the event loop by default; unref() so parent can exit after handler returns
+  child.unref();
 
   if (status.success) {
     succeedSpinner(`Upgraded to ${latest}`);
