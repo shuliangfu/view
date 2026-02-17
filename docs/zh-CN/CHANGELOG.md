@@ -7,6 +7,32 @@
 
 ---
 
+## [1.0.18] - 2026-02-17
+
+### 新增
+
+- **CLI i18n：** view-cli
+  服务端国际化：`i18n.ts`、由环境变量（LANGUAGE/LC_ALL/LANG） 检测语言的
+  `detectLocale()`、`ensureViewI18n()`、`$t()`；`en-US.json` 与 `zh-CN.json`
+  覆盖 setup、serve、init、build、config、dev、HMR 等文案。
+- **init 模板 i18n：** 所有 init 生成文件中的注释与 TSX 文案均使用
+  `init.template.*` 键（view.config、main、_app、_layout、_loading、_404、
+  _error、home、about、router、routers）；路由 metadata 标题与 `generate.ts`
+  默认首页标题、路由表注释使用 `$t`。
+
+### 变更
+
+- **init：** 从 main.tsx 模板中移除多余的
+  `container.removeAttribute("data-view-cloak")`（运行时已在首次 append 后调用
+  `removeCloak`）。在「项目已创建」提示前增加空行。locale 中 `countLabelHigh`
+  改为 `count &gt; 5` 以符合 TSX 语法。
+- **generate：** `titleFromRelative` 与生成的路由表注释使用 `$t`；新增
+  `generate.tsNocheckComment` 文案键。
+- **build/config：** `getRoutePathForChangedPath` 与 `getBuildConfigForMode` 的
+  JSDoc 参数说明改为英文。
+
+---
+
 ## [1.0.17] - 2026-02-17
 
 ### 修复

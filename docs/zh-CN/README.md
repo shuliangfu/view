@@ -1060,8 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.17**（2026-02-17）— 修复：setup 使用 stdin "null" 与 unref 使进程退出；
-upgrade 以 stdin "null" spawn、unref，成功 exit(0)、失败 exit(1)。完整历史见
+**v1.0.18**（2026-02-17）— 新增：CLI i18n（en-US/zh-CN）、init 模板全部注释与
+TSX 文案国际化。变更：init main.tsx 移除多余 data-view-cloak、成功提示前空行、
+countLabelHigh 转义以符合 TSX；generate 与路由 metadata 使用 $t。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
