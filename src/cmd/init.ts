@@ -15,7 +15,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 import { getViewVersion } from "../version.ts";
 
 /** ANSI green for success message */

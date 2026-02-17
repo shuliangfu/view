@@ -18,7 +18,11 @@
 
 import { Command } from "@dreamer/console";
 import { args } from "@dreamer/runtime-adapter";
+import { initViewI18n } from "./cmd/i18n.ts";
 import { getViewVersion } from "./version.ts";
+
+// CLI 入口处初始化 i18n（getEnv/detectLocale 仅服务端可用，不能放在 mod.ts）
+initViewI18n();
 
 /**
  * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出）

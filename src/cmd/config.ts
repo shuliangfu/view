@@ -14,7 +14,7 @@ import {
   pathToFileUrl,
   resolve,
 } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 
 /**
  * 开发环境服务器配置（dev 命令使用）

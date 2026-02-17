@@ -27,7 +27,7 @@ import {
   KEY_HMR_CLEAR_ROUTE_CACHE,
   KEY_VIEW_ROOT,
 } from "../constants.ts";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 import type { ViewConfig } from "./config.ts";
 import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
 import { generateRoutersFile } from "./generate.ts";

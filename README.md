@@ -1107,11 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.18** (2026-02-17) — Added: CLI i18n (en-US/zh-CN), init template i18n for
-all generated comments and TSX copy. Changed: remove redundant data-view-cloak
-from init main.tsx, blank line before project-created message, countLabelHigh
-escaped for TSX; generate and route metadata use $t. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.19** (2026-02-18): i18n moved under `src/cmd/`; init only at CLI entry
+points (cli.ts, setup.ts), not in mod; `$t()` no longer calls ensure/init.
+
+See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

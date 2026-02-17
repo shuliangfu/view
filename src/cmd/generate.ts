@@ -15,7 +15,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 
 /** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 metadata、布局继承 */
 export interface RouteEntry {
