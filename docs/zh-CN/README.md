@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.19**（2026-02-18）：i18n 迁至 `src/cmd/`；仅在 CLI
-入口（cli.ts、setup.ts）初始化，mod 不再调用；`$t()` 内不再执行
-ensure/init。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.20**（2026-02-18）：修复 e2e init 测试（initMain 前初始化 i18n 并设
+zh-CN，使 view.config.ts 含「view 项目配置」）。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

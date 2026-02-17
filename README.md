@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.19** (2026-02-18): i18n moved under `src/cmd/`; init only at CLI entry
-points (cli.ts, setup.ts), not in mod; `$t()` no longer calls ensure/init.
-
-See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.20** (2026-02-18): Fixed e2e init test (initViewI18n + zh-CN before
+initMain so view.config.ts contains "view 项目配置"). See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
