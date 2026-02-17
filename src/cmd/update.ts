@@ -13,7 +13,7 @@
 
 import { error, info, success } from "@dreamer/console";
 import { createCommand, cwd, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 
 /**
  * 获取当前运行时名称（deno 或 bun）

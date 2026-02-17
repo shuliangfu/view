@@ -21,7 +21,7 @@ import {
   success,
 } from "@dreamer/console";
 import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 import {
   compareVersions,
   fetchLatestViewVersionFromJsr,

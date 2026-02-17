@@ -22,7 +22,7 @@ export async function run(
   const { devServeOutputs, rebuild } = await prepareDevBuild(root, config);
 
   if (devServeOutputs.length === 0) {
-    const { $t } = await import("../i18n.ts");
+    const { $t } = await import("./i18n.ts");
     console.warn($t("cli.dev.noOutput"));
   }
 

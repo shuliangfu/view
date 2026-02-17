@@ -8,6 +8,17 @@ and this project adheres to
 
 ---
 
+## [1.0.19] - 2026-02-18
+
+### Changed
+
+- **i18n**: Moved under `src/cmd/` (i18n.ts and locales) so client entry
+  (`mod.ts`) does not pull in server-only code. Init only at CLI entry points
+  (`cli.ts`, `setup.ts`); `initViewI18n()` no longer called from `mod.ts`.
+  `$t()` no longer calls `ensureViewI18n()` or sets locale internally.
+
+---
+
 ## [1.0.18] - 2026-02-17
 
 ### Added

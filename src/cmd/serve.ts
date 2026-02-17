@@ -10,7 +10,7 @@
 
 import { injectCSSIntoHTML } from "@dreamer/esbuild/css-injector";
 import { existsSync, readFile, resolve } from "@dreamer/runtime-adapter";
-import { $t } from "../i18n.ts";
+import { $t } from "./i18n.ts";
 import {
   HttpContext,
   type PathHandler,

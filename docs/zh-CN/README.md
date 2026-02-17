@@ -1060,10 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.18**（2026-02-17）— 新增：CLI i18n（en-US/zh-CN）、init 模板全部注释与
-TSX 文案国际化。变更：init main.tsx 移除多余 data-view-cloak、成功提示前空行、
-countLabelHigh 转义以符合 TSX；generate 与路由 metadata 使用 $t。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.19**（2026-02-18）：i18n 迁至 `src/cmd/`；仅在 CLI
+入口（cli.ts、setup.ts）初始化，mod 不再调用；`$t()` 内不再执行
+ensure/init。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
