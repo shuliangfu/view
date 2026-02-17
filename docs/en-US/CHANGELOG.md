@@ -8,6 +8,17 @@ and this project adheres to
 
 ---
 
+## [1.0.20] - 2026-02-18
+
+### Fixed
+
+- **e2e init test**: Initialize view i18n and set locale to zh-CN before calling
+  initMain in the test so generated view.config.ts contains the translated
+  comment ("view 项目配置"). Fixes failure when the test runs without the CLI
+  entry (e.g. in CI where initViewI18n was never called).
+
+---
+
 ## [1.0.19] - 2026-02-18
 
 ### Changed
