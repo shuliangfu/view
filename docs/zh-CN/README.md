@@ -1060,9 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.15**（2026-02-17）— 新增：链接拦截（interceptLinks）文档：说明哪些 `<a>`
-点击会拦截、哪些不拦截（README 中英文 + router JSDoc）。变更：测试 报告与 README
-更新为 435 用例。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.16**（2026-02-17）— 修复：upgrade 命令调用 child.unref()，Deno 下 spawn
+后进程可正常退出。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
