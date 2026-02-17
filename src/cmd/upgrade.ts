@@ -20,7 +20,7 @@ import {
   succeedSpinner,
   success,
 } from "@dreamer/console";
-import { createCommand, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
+import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
 import {
   compareVersions,
   fetchLatestViewVersionFromJsr,
@@ -88,21 +88,23 @@ export async function main(
     args: getRunArgs(setupSpec),
     stdout: "null",
     stderr: "null",
-    stdin: "inherit",
+    // Use "null" so the child (setup -> deno install) does not inherit terminal stdin and hang waiting for input
+    stdin: "null",
   });
   startSpinner("Installing...");
   const child = cmd.spawn();
-  const status = await child.status;
-  // Deno: child refs the event loop by default; unref() so parent can exit after handler returns
   child.unref();
+  const status = await child.status;
 
   if (status.success) {
     succeedSpinner(`Upgraded to ${latest}`);
     await writeVersionCache(latest);
+    exit(0); // 主流程结束显式退出，避免子进程 ref 导致 CLI 不退出
   } else {
     failSpinner("Auto install failed.");
     error("Please install manually:");
     info(`  deno run -A ${setupSpec}`);
     info("  Or use the version you need, e.g. jsr:@dreamer/view@1.0.0/setup");
+    exit(1);
   }
 }
