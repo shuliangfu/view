@@ -1060,8 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.16**（2026-02-17）— 修复：upgrade 命令调用 child.unref()，Deno 下 spawn
-后进程可正常退出。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.17**（2026-02-17）— 修复：setup 使用 stdin "null" 与 unref 使进程退出；
+upgrade 以 stdin "null" spawn、unref，成功 exit(0)、失败 exit(1)。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

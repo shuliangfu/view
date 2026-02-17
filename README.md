@@ -1107,9 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.16** (2026-02-17) — Fixed: Upgrade command calls child.unref() so process
-exits after spawn on Deno. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
-full details.
+**v1.0.17** (2026-02-17) — Fixed: Setup uses stdin "null" and unref so process
+exits; upgrade spawns with stdin "null", unref, and exit(0)/exit(1). See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
