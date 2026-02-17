@@ -1,0 +1,109 @@
+{
+  "error": {
+    "runtimeUnsupported": "不支持的运行时：仅支持 Deno 与 Bun。"
+  },
+  "cli": {
+    "setup": {
+      "installing": "正在安装 {name}...",
+      "installSuccess": "{name} 安装成功。",
+      "installFailedExit": "安装失败（退出码 {code}）。{stderr}",
+      "installFailed": "安装失败。",
+      "denoJsonReadFailed": "读取 deno.json 失败：{path}",
+      "denoJsonFetchFailed": "拉取 deno.json 失败：{status}",
+      "denoJsonParseFailed": "拉取或解析 deno.json 失败：{url}",
+      "usage": "用法：",
+      "usageInit": "从示例结构初始化项目",
+      "usageDev": "构建并启动静态服务（开发）",
+      "usageBuild": "仅构建（输出到 dist/）",
+      "usageStart": "仅启动静态服务（需先构建）",
+      "usageUpgrade": "升级 @dreamer/view 到最新（使用 --beta 获取 beta 版）",
+      "usageUpdate": "更新项目依赖与 lockfile",
+      "usageVersion": "显示版本",
+      "usageVersionAlias": "显示版本（别名：-v）",
+      "usageHelp": "显示帮助"
+    },
+    "serve": {
+      "started": "服务已启动 http://{host}:{port}"
+    },
+    "init": {
+      "projectCreated": "项目已成功创建于 {dir}。",
+      "nextCd": "cd {dir}",
+      "nextDev": "开发：view-cli dev",
+      "nextBuild": "构建：view-cli build",
+      "nextProd": "生产：view-cli start"
+    },
+    "build": {
+      "building": "[view] 构建中...",
+      "complete": "[view] 构建完成，耗时 {duration}ms → {outDir}"
+    },
+    "config": {
+      "loadFailedTs": "[view] 加载 view.config.ts 失败：{message}",
+      "loadFailedJson": "[view] 加载 view.config.json 失败：{message}"
+    },
+    "dev": {
+      "noOutput": "[view dev] 无输出内容；请确认构建已产生输出。"
+    },
+    "hmr": {
+      "rootNotFound": "[view] HMR：未找到 #root，回退为整页刷新",
+      "containerEmpty": "[view] HMR：刷新后容器仍为空，回退为整页刷新",
+      "refreshFailed": "[view] HMR 刷新失败，回退为整页刷新"
+    }
+  },
+  "init": {
+    "routerUndefined": "[view] @dreamer/view/router 的 createRouter 未定义。请确保已安装 @dreamer/view 且构建能解析 /router 子路径（如 jsr:@dreamer/view@^1.0.0-beta.24/router）。",
+    "template": {
+      "viewConfigComment": "view 项目配置：dev / build / start 会读取此文件。build.dev：仅 dev 生效。build.prod：仅 prod 生效。",
+      "viewConfigDevComment": "dev 模式覆盖：不压缩、保留 sourcemap，便于调试",
+      "viewConfigProdComment": "prod 模式覆盖",
+      "jsxDtsComment": "JSX 固有元素类型：供项目内 TSX 类型检查使用",
+      "mainComment": "应用入口：创建路由并挂载根组件",
+      "appComment": "根组件（约定 _app.tsx）：使用 router.getCurrentRouteSignal() 响应当前路由，渲染 Layout + 当前页",
+      "loading": "加载中…",
+      "routePageLoadFailed": "加载失败",
+      "routePageRetry": "重试",
+      "routePageLoading": "加载中…",
+      "layoutComment": "布局（约定 _layout.tsx）：顶部导航栏 + 主内容区，支持主题切换",
+      "switchToLight": "切换到浅色",
+      "switchToDark": "切换到深色",
+      "loadingComment": "路由懒加载占位（约定 _loading.tsx）。RoutePage 会取 default 导出并调用 (match) => VNode。",
+      "notFoundComment": "404 页面（约定 _404.tsx）：作为 path * 的 notFound 路由",
+      "notFoundDesc": "页面未找到",
+      "notFoundTitle": "页面未找到",
+      "notFoundMessage": "您访问的路径不存在。",
+      "backToHome": "返回首页",
+      "errorComment": "错误兜底（约定 _error.tsx）：用于 ErrorBoundary 等",
+      "unknownError": "未知错误",
+      "loadFailed": "加载失败",
+      "retry": "重试",
+      "homeComment": "首页：欢迎、计数器演示与简介",
+      "viewTemplateEngine": "View 模板引擎",
+      "welcomeTitle": "欢迎使用 @dreamer/view",
+      "homeIntro": "这是一个由 view init 生成的项目。编辑 src/views/home.tsx 和 src/views/about.tsx 开始开发。",
+      "goToAbout": "前往关于",
+      "counterDemo": "计数器演示",
+      "counterIntro": "使用 createSignal 实现响应式计数。",
+      "vIfDemo": "v-if 演示",
+      "vIfIntro": "count ≤ 2 显示 AAA，3～5 显示 BBB，否则 CCC；条件用 getter 才能响应式切换。",
+      "countLabelLow": "count ≤ 2",
+      "countLabelMid": "3 ≤ count ≤ 5",
+      "countLabelHigh": "count &gt; 5",
+      "labelAAA": "AAA",
+      "labelBBB": "BBB",
+      "labelCCC": "CCC",
+      "aboutComment": "关于页",
+      "aboutTitle": "关于",
+      "aboutIntro": "@dreamer/view 是面向前端的视图层库，提供响应式、路由、Store、Boundary 等能力。",
+      "aboutItemReactive": "响应式：createSignal、createEffect、createMemo",
+      "aboutItemRouter": "路由：无刷新切换、守卫、标题同步",
+      "aboutItemStore": "Store：状态 + 持久化",
+      "aboutItemBoundary": "Boundary：错误边界与 Suspense",
+      "routerComment": "路由实例与上下文：创建应用路由，提供 RouterProvider、useRouter",
+      "routersComment1": "路由表（自动生成）：path → component，使用动态 import 实现按需加载",
+      "routersComment2": "请勿手动编辑；dev 时会根据 src/views 目录自动重新生成",
+      "homeNavTitle": "首页"
+    }
+  },
+  "generate": {
+    "tsNocheckComment": "自动生成文件，component 为动态 import，与 RouteConfig 的同步类型兼容由运行时处理。"
+  }
+}
