@@ -8,6 +8,31 @@ and this project adheres to
 
 ---
 
+## [1.0.18] - 2026-02-17
+
+### Added
+
+- **CLI i18n:** Server-side i18n for view-cli: `i18n.ts`, `detectLocale()` from
+  env (LANGUAGE/LC_ALL/LANG), `ensureViewI18n()`, `$t()`. Locales `en-US.json`
+  and `zh-CN.json` for setup, serve, init, build, config, dev, HMR messages.
+- **Init template i18n:** All init-generated comments and TSX copy use
+  `init.template.*` keys (view.config, main, _app, _layout, _loading, _404,
+  _error, home, about, router, routers). Route metadata titles and `generate.ts`
+  default home title / router file comments use `$t`.
+
+### Changed
+
+- **Init:** Removed redundant `container.removeAttribute("data-view-cloak")`
+  from main.tsx template (runtime already calls `removeCloak` after first
+  append). Added blank line before "Project created" message. Escaped
+  `countLabelHigh` as `count &gt; 5` in locales for valid TSX.
+- **Generate:** `titleFromRelative` and generated routers file comments use
+  `$t`; added `generate.tsNocheckComment` locale key.
+- **Build/Config:** JSDoc for `getRoutePathForChangedPath` and
+  `getBuildConfigForMode` param translated to English.
+
+---
+
 ## [1.0.17] - 2026-02-17
 
 ### Fixed
