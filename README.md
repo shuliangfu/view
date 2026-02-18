@@ -1107,8 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.20** (2026-02-18): Fixed e2e init test (initViewI18n + zh-CN before
-initMain so view.config.ts contains "view 项目配置"). See
+**v1.0.21** (2026-02-18): Added Bun support (E2E/CLI via runtime-adapter,
+exports, jsxDEV). Test report now includes Deno and Bun results. Changed E2E/CLI
+tests to use createCommand/IS_BUN; server-ready accepts both locales. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
