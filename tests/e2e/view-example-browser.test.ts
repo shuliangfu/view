@@ -5,7 +5,14 @@
  * 对每个示例页执行主要交互（点击、输入等）并断言 DOM 效果。
  */
 
-import { dirname, join } from "@dreamer/runtime-adapter";
+import {
+  createCommand,
+  dirname,
+  execPath,
+  IS_BUN,
+  join,
+} from "@dreamer/runtime-adapter";
+import type { SpawnedProcess } from "@dreamer/runtime-adapter";
 import {
   afterAll,
   beforeAll,
@@ -47,8 +54,8 @@ function entryPointForBrowser(): string {
   return join(VIEW_ROOT, "tests", "e2e", "browser-stub.js");
 }
 
-/** 示例服务进程，beforeAll 启动、afterAll 关闭 */
-let serverProcess: Deno.ChildProcess | null = null;
+/** 示例服务进程，beforeAll 启动、afterAll 关闭；使用 runtime-adapter 以兼容 Deno/Bun */
+let serverProcess: SpawnedProcess | null = null;
 
 /** 浏览器配置：beforeAll 启动 dev 服务后由 goto 打开 BASE_URL 加载页面；entryPoint 用绝对路径/file URL 以兼容 Windows */
 const exampleBrowserConfig = {
@@ -201,6 +208,33 @@ async function getDocumentTitle(
   return (await t.browser.evaluate(() => document.title)) as string;
 }
 
+/** 读取已 piped 的 ReadableStream 内容（用于启动失败时输出子进程 stderr） */
+async function readStreamText(
+  stream: ReadableStream<Uint8Array> | null,
+): Promise<string> {
+  if (!stream) return "";
+  const chunks: Uint8Array[] = [];
+  const reader = stream.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (chunks.length === 0) return "";
+  const len = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
+  return new TextDecoder().decode(out);
+}
+
 describe("浏览器测试（examples 入口）", () => {
   beforeAll(async () => {
     const examplesDir = join(VIEW_ROOT, "examples");
@@ -209,12 +243,18 @@ describe("浏览器测试（examples 入口）", () => {
       "src/views",
       "src/router/routers.tsx",
     );
-    serverProcess = new Deno.Command(Deno.execPath(), {
-      args: ["task", "dev"],
-      cwd: examplesDir,
-      stdout: "piped",
-      stderr: "piped",
-    }).spawn();
+    // examples 为 Deno 项目（deno.json tasks）；Bun 下用 deno task dev 启动更可靠，Deno 下用 task dev
+    const useDenoForDev = IS_BUN;
+    const cmd = createCommand(
+      useDenoForDev ? "deno" : execPath(),
+      {
+        args: useDenoForDev ? ["task", "dev"] : ["task", "dev"],
+        cwd: examplesDir,
+        stdout: "piped",
+        stderr: "piped",
+      },
+    );
+    serverProcess = cmd.spawn();
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
       try {
@@ -225,12 +265,21 @@ describe("浏览器测试（examples 入口）", () => {
       }
       await new Promise((r) => setTimeout(r, 200));
     }
-    throw new Error("Examples dev server did not start within 15s");
+    let errMsg = "Examples dev server did not start within 15s";
+    if (serverProcess?.stderr) {
+      const stderrText = await readStreamText(serverProcess.stderr);
+      if (stderrText.trim()) errMsg += "\n--- stderr ---\n" + stderrText.trim();
+    }
+    if (serverProcess?.stdout) {
+      const stdoutText = await readStreamText(serverProcess.stdout);
+      if (stdoutText.trim()) errMsg += "\n--- stdout ---\n" + stdoutText.trim();
+    }
+    throw new Error(errMsg);
   });
 
   afterAll(async () => {
     try {
-      serverProcess?.kill("SIGTERM");
+      serverProcess?.kill(15);
       serverProcess = null;
     } catch {
       // ignore

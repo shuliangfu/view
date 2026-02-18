@@ -2,22 +2,35 @@
 
 ## Test Overview
 
-| Item            | Description                                        |
-| --------------- | -------------------------------------------------- |
-| Package         | @dreamer/view                                      |
-| Version         | 1.0.15                                             |
-| Test framework  | @dreamer/test ^1.0.6                               |
-| Test date       | 2026-02-17                                         |
-| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E) |
-| Command         | `deno test -A tests/`                              |
+| Item            | Description                                                 |
+| --------------- | ----------------------------------------------------------- |
+| Package         | @dreamer/view                                               |
+| Version         | 1.0.20                                                      |
+| Test framework  | @dreamer/test ^1.0.8                                        |
+| Test date       | 2026-02-18                                                  |
+| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)          |
+| Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test tests/` |
 
 ## Test Results
+
+### Deno
 
 - **Total tests**: 435
 - **Passed**: 435
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~2m
+- **Duration**: ~2m 23s
+
+### Bun
+
+- **Total tests**: 410
+- **Passed**: 410
+- **Failed**: 0
+- **Pass rate**: 100%
+- **Duration**: ~1m 46s (26 test files)
+
+> Both runtimes (Deno / Bun) pass all tests; the count difference is due to
+> runner reporting, with the same test files and coverage.
 
 ### Test File Summary
 
@@ -272,17 +285,20 @@
 - Unit, integration, and browser E2E coverage
 - Dedicated edge and error scenarios
 - Verified in both happy-dom and real browser
+- **Deno and Bun** both pass all tests (`deno test -A tests/`,
+  `bun test tests/`)
 
 ## Conclusion
 
-All 435 tests for @dreamer/view pass (100% pass rate). Coverage includes
-signals, reactivity, scheduler, router, resource, context, directives, runtime
-and SSR (createRoot, render, **mount**, **createReactiveRoot**, hydrate,
-renderToString with full branch coverage, renderToStream), **applyProps** (ref,
-vShow/vCloak, dangerouslySetInnerHTML, value/checked reactive, events, class,
-style, attributes, custom directives), store (persist, getters/actions, edge
-cases), reactive, boundary, meta (getMetaHeadFragment, applyMetaToHead, edge
-cases), proxy, compiler (constant folding edge cases, plugin onLoad catch),
-stream, build/HMR, CLI (init/build/start), browser example flows, and
-**integration**: getter-returning-Fragment input focus preservation, suitable
-for release and documentation.
+All tests for @dreamer/view pass under **Deno** (435 tests) and **Bun** (410
+tests; count differs by runner). 100% pass rate. Coverage includes signals,
+reactivity, scheduler, router, resource, context, directives, runtime and SSR
+(createRoot, render, **mount**, **createReactiveRoot**, hydrate, renderToString
+with full branch coverage, renderToStream), **applyProps** (ref, vShow/vCloak,
+dangerouslySetInnerHTML, value/checked reactive, events, class, style,
+attributes, custom directives), store (persist, getters/actions, edge cases),
+reactive, boundary, meta (getMetaHeadFragment, applyMetaToHead, edge cases),
+proxy, compiler (constant folding edge cases, plugin onLoad catch), stream,
+build/HMR, CLI (init/build/start), browser example flows, and **integration**:
+getter-returning-Fragment input focus preservation, suitable for release and
+documentation.

@@ -100,6 +100,55 @@ function SignalDemo(): VNode {
             createEffect 与 onCleanup 已在模块内使用；createMemo 用于 double。
           </p>
         </div>
+
+        {/* 三元、并且、或者：用计数器数值做条件演示 */}
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 dark:border-amber-600/80 dark:bg-amber-900/20">
+          <p className="mb-3 text-sm font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+            TSX 表达式：三元、并且（&&）、或者（||）
+          </p>
+          <p className="mb-3 text-slate-600 dark:text-slate-300">
+            当前 count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">{count}</span>
+            {" · "}用上方按钮改变 count 观察下面三行是否按条件更新。
+          </p>
+          <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
+            <li>
+              <strong>三元</strong>{" "}
+              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+                {"{ () => count() > 1 ? '大于1' : '不大于1' }"}
+              </code>
+              {" → "}
+              <span className="font-mono text-amber-700 dark:text-amber-300">
+                {() => (count() > 1 ? "大于1" : "不大于1")}
+              </span>
+            </li>
+            <li>
+              <strong>并且</strong>{" "}
+              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+                {"{ () => count() > 0 && <span>... </span> }"}
+              </code>
+              {" → "}
+              {() =>
+                count() > 0 && (
+                  <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                    count 大于 0 时显示
+                  </span>
+                )}
+            </li>
+            <li>
+              <strong>或者</strong>{" "}
+              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+                {"{ () => (count() === 0 || count() > 5) && <span>... </span> }"}
+              </code>
+              {" → "}
+              {() =>
+                (count() === 0 || count() > 5) && (
+                  <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+                    count 为 0 或大于 5 时显示
+                  </span>
+                )}
+            </li>
+          </ul>
+        </div>
       </div>
     </section>
   );

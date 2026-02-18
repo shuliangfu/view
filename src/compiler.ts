@@ -17,7 +17,7 @@
  */
 
 import { readTextFile } from "@dreamer/runtime-adapter";
-import ts from "npm:typescript@5.9";
+import ts from "typescript";
 
 const factory = ts.factory;
 
