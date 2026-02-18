@@ -77,3 +77,9 @@ export function jsxs(
 ): VNode {
   return createVNode(type, props, maybeKey);
 }
+
+/**
+ * 开发态 JSX 运行时入口，与 jsx 行为一致。
+ * Bun / React 兼容的 jsx-dev-runtime 会请求此命名导出，故在此提供别名。
+ */
+export const jsxDEV = jsx;

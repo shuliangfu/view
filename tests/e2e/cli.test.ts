@@ -14,6 +14,7 @@ import {
   ensureDir,
   execPath,
   existsSync,
+  IS_BUN,
   join,
   readdir,
   readTextFile,
@@ -112,8 +113,11 @@ describe("CLI：init", () => {
 
 describe("CLI：build", () => {
   it("在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件", async () => {
+    // 统一用 execPath()；Deno 需 -A，Bun 不需
     const cmd = createCommand(execPath(), {
-      args: ["run", "-A", "../src/cli.ts", "build"],
+      args: IS_BUN
+        ? ["run", "../src/cli.ts", "build"]
+        : ["run", "-A", "../src/cli.ts", "build"],
       cwd: resolve(EXAMPLES_DIR),
       stdout: "piped",
       stderr: "piped",
@@ -189,9 +193,11 @@ describe("CLI：start", () => {
   it(
     "先 build 再 start --port 后，用浏览器打开首页应含「多页面示例」",
     async (t) => {
-      // 先确保已 build（与上面 build 用例共享产物）
+      // 先确保已 build（与上面 build 用例共享产物）；统一 execPath()，仅 args 按运行时区分
       const buildCmd = createCommand(execPath(), {
-        args: ["run", "-A", "../src/cli.ts", "build"],
+        args: IS_BUN
+          ? ["run", "../src/cli.ts", "build"]
+          : ["run", "-A", "../src/cli.ts", "build"],
         cwd: EXAMPLES_DIR,
         stdout: "piped",
         stderr: "piped",
@@ -200,14 +206,16 @@ describe("CLI：start", () => {
       expect(buildOut.success).toBe(true);
 
       const startCmd = createCommand(execPath(), {
-        args: [
-          "run",
-          "-A",
-          join(VIEW_ROOT, "src", "cli.ts"),
-          "start",
-          "--port",
-          String(START_PORT),
-        ],
+        args: IS_BUN
+          ? ["run", "../src/cli.ts", "start", "--port", String(START_PORT)]
+          : [
+            "run",
+            "-A",
+            join(VIEW_ROOT, "src", "cli.ts"),
+            "start",
+            "--port",
+            String(START_PORT),
+          ],
         cwd: EXAMPLES_DIR,
         stdout: "piped",
         stderr: "piped",
@@ -237,43 +245,49 @@ describe("CLI：start", () => {
       drain(child.stderr ?? null, stderrChunks).catch(() => {});
       drain(child.stdout ?? null, stdoutChunks).catch(() => {});
 
-      // 等待 stdout 出现 "Server started" 再用浏览器打开，并给 drain 时间读完，避免子进程堵在 console.log
-      const deadlineReady = Date.now() + 10_000;
-      while (Date.now() < deadlineReady) {
-        const len = stdoutChunks.reduce((a, c) => a + c.length, 0);
-        if (len > 0) {
+      const decodeChunks = (chunks: Uint8Array[]) => {
+        try {
+          const len = chunks.reduce((a, c) => a + c.length, 0);
           const buf = new Uint8Array(len);
           let off = 0;
-          for (const c of stdoutChunks) {
+          for (const c of chunks) {
             buf.set(c, off);
             off += c.length;
           }
-          const out = new TextDecoder().decode(buf);
-          if (
-            out.includes("Server started") && out.includes(String(START_PORT))
-          ) {
+          return new TextDecoder().decode(buf);
+        } catch {
+          return "(unreadable)";
+        }
+      };
+
+      // 等待 stdout 出现 "Server started" 再用浏览器打开，并给 drain 时间读完，避免子进程堵在 console.log
+      const deadlineReady = Date.now() + 15_000;
+      let serverReady = false;
+      while (Date.now() < deadlineReady) {
+        const len = stdoutChunks.reduce((a, c) => a + c.length, 0);
+        if (len > 0) {
+          const out = decodeChunks(stdoutChunks);
+          const hasStarted =
+            (out.includes("Server started") || out.includes("服务已启动")) &&
+            out.includes(String(START_PORT));
+          if (hasStarted) {
+            serverReady = true;
             await new Promise((r) => setTimeout(r, 500));
             break;
           }
         }
         await new Promise((r) => setTimeout(r, 150));
       }
+      if (!serverReady) {
+        throw new Error(
+          'Start server did not log "Server started" within 15s. stdout: ' +
+            decodeChunks(stdoutChunks).slice(-500) +
+            "; stderr: " +
+            decodeChunks(stderrChunks).slice(-500),
+        );
+      }
 
       if (!t?.browser?.goto) {
-        const decodeChunks = (chunks: Uint8Array[]) => {
-          try {
-            const len = chunks.reduce((a, c) => a + c.length, 0);
-            const buf = new Uint8Array(len);
-            let off = 0;
-            for (const c of chunks) {
-              buf.set(c, off);
-              off += c.length;
-            }
-            return new TextDecoder().decode(buf);
-          } catch {
-            return "(unreadable)";
-          }
-        };
         throw new Error(
           "Start test requires browser; missing t.browser.goto. stdout: " +
             decodeChunks(stdoutChunks),
@@ -281,11 +295,22 @@ describe("CLI：start", () => {
       }
 
       await t.browser.goto(START_URL);
-      await new Promise((r) => setTimeout(r, 800));
-      const mainText = (await t.browser.evaluate(() => {
-        const main = document.querySelector("main");
-        return main ? main.innerText : document.body?.innerText ?? "";
-      })) as string;
+      await new Promise((r) => setTimeout(r, 1200));
+      let mainText: string;
+      try {
+        mainText = (await t.browser.evaluate(() => {
+          const main = document.querySelector("main");
+          return main ? main.innerText : document.body?.innerText ?? "";
+        })) as string;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(
+          "Browser evaluate failed (page/context may have closed). " +
+            msg +
+            ". stdout: " +
+            decodeChunks(stdoutChunks).slice(-300),
+        );
+      }
       const hasExpected = mainText.includes("多页面示例") ||
         mainText.includes("View 模板引擎") ||
         mainText.includes("view");

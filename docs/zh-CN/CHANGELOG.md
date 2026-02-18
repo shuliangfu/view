@@ -9,6 +9,22 @@
 
 ## [1.0.20] - 2026-02-18
 
+### 新增
+
+- **Bun 支持**：E2E 与 CLI 测试在 Bun 下通过 `@dreamer/runtime-adapter`
+  （`createCommand`、`execPath`、`IS_BUN`）运行。为 `package.json` 增加
+  `globals`、`stream`、`jsx-dev-runtime` 导出；新增 `tsconfig.json` 的
+  `jsxImportSource: "@dreamer/view"`；在 `jsx-runtime.ts` 中导出 `jsxDEV`。
+  文档：`BUN_COMPATIBILITY.md`、`JSX_EXPRESSIONS.md`。
+- **测试报告**：中英文 `TEST_REPORT.md` 现包含 Bun 结果（410 用例、26 文件） 与
+  Deno（435 用例）；两种运行时的运行命令均已记录。
+
+### 变更
+
+- **E2E / CLI 测试**：`view-example-browser.test.ts` 与 `cli.test.ts` 使用
+  `createCommand(execPath(), ...)`，按 `IS_BUN` 区分参数（Bun 不含 `-A`）。
+  服务就绪判断同时接受 "Server started" 与「服务已启动」。
+
 ### 修复
 
 - **e2e init 测试**：在测试中调用 initMain 前先初始化 view i18n 并设置 locale 为

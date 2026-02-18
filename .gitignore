@@ -9,6 +9,7 @@ deno.lock
 node_modules
 package.json
 bun.lock
+tsconfig.json
 
 # 构建输出
 build/

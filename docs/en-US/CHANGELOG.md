@@ -10,6 +10,23 @@ and this project adheres to
 
 ## [1.0.20] - 2026-02-18
 
+### Added
+
+- **Bun support**: E2E and CLI tests run under Bun via
+  `@dreamer/runtime-adapter` (`createCommand`, `execPath`, `IS_BUN`). Added
+  `package.json` exports for `globals`, `stream`, and `jsx-dev-runtime`;
+  `tsconfig.json` with `jsxImportSource: "@dreamer/view"`; `jsxDEV` export in
+  `jsx-runtime.ts`. Documentation: `BUN_COMPATIBILITY.md`, `JSX_EXPRESSIONS.md`.
+- **Test report**: `TEST_REPORT.md` (zh-CN and en-US) now include Bun results
+  (410 tests, 26 files) alongside Deno (435 tests); run commands for both
+  runtimes documented.
+
+### Changed
+
+- **E2E / CLI tests**: `view-example-browser.test.ts` and `cli.test.ts` use
+  `createCommand(execPath(), ...)` with `IS_BUN` for args (Bun omits `-A`).
+  Server-ready check accepts both "Server started" and "服务已启动".
+
 ### Fixed
 
 - **e2e init test**: Initialize view i18n and set locale to zh-CN before calling
