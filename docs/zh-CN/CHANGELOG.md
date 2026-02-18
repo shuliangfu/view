@@ -7,7 +7,7 @@
 
 ---
 
-## [1.0.20] - 2026-02-18
+## [1.0.21] - 2026-02-18
 
 ### 新增
 
@@ -24,6 +24,10 @@
 - **E2E / CLI 测试**：`view-example-browser.test.ts` 与 `cli.test.ts` 使用
   `createCommand(execPath(), ...)`，按 `IS_BUN` 区分参数（Bun 不含 `-A`）。
   服务就绪判断同时接受 "Server started" 与「服务已启动」。
+
+---
+
+## [1.0.20] - 2026-02-18
 
 ### 修复
 

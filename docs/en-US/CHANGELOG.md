@@ -8,7 +8,7 @@ and this project adheres to
 
 ---
 
-## [1.0.20] - 2026-02-18
+## [1.0.21] - 2026-02-18
 
 ### Added
 
@@ -26,6 +26,10 @@ and this project adheres to
 - **E2E / CLI tests**: `view-example-browser.test.ts` and `cli.test.ts` use
   `createCommand(execPath(), ...)` with `IS_BUN` for args (Bun omits `-A`).
   Server-ready check accepts both "Server started" and "服务已启动".
+
+---
+
+## [1.0.20] - 2026-02-18
 
 ### Fixed
 
