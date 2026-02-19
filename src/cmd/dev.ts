@@ -22,8 +22,8 @@ export async function run(
   const { devServeOutputs, rebuild } = await prepareDevBuild(root, config);
 
   if (devServeOutputs.length === 0) {
-    const { $t } = await import("./i18n.ts");
-    console.warn($t("cli.dev.noOutput"));
+    const { $tr } = await import("./i18n.ts");
+    console.warn($tr("cli.dev.noOutput"));
   }
 
   // 热更新后用最新产出替换，serve 通过 getDevServeOutputs() 每次请求取最新

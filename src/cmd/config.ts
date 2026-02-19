@@ -14,7 +14,7 @@ import {
   pathToFileUrl,
   resolve,
 } from "@dreamer/runtime-adapter";
-import { $t } from "./i18n.ts";
+import { $tr } from "./i18n.ts";
 
 /**
  * 开发环境服务器配置（dev 命令使用）
@@ -160,7 +160,7 @@ export async function loadViewConfig(root: string): Promise<ViewConfig> {
       }
     } catch (err) {
       console.warn(
-        $t("cli.config.loadFailedTs", {
+        $tr("cli.config.loadFailedTs", {
           message: err instanceof Error ? err.message : String(err),
         }),
       );
@@ -182,7 +182,7 @@ export async function loadViewConfig(root: string): Promise<ViewConfig> {
       }
     } catch (err) {
       console.warn(
-        $t("cli.config.loadFailedJson", {
+        $tr("cli.config.loadFailedJson", {
           message: err instanceof Error ? err.message : String(err),
         }),
       );

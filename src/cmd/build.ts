@@ -27,7 +27,7 @@ import {
   KEY_HMR_CLEAR_ROUTE_CACHE,
   KEY_VIEW_ROOT,
 } from "../constants.ts";
-import { $t } from "./i18n.ts";
+import { $tr } from "./i18n.ts";
 import type { ViewConfig } from "./config.ts";
 import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
 import { generateRoutersFile } from "./generate.ts";
@@ -139,9 +139,9 @@ function injectHmrBannerIntoEntry(
   );
   if (entry) {
     const banner = getHmrBanner({
-      rootNotFound: $t("cli.hmr.rootNotFound"),
-      containerEmpty: $t("cli.hmr.containerEmpty"),
-      refreshFailed: $t("cli.hmr.refreshFailed"),
+      rootNotFound: $tr("cli.hmr.rootNotFound"),
+      containerEmpty: $tr("cli.hmr.containerEmpty"),
+      refreshFailed: $tr("cli.hmr.refreshFailed"),
     });
     entry.content = entry.content + "\n" + banner;
   }
@@ -511,7 +511,7 @@ export async function run(): Promise<number> {
   }
 
   const builder = new BuilderClient(clientConfig);
-  console.log($t("cli.build.building"));
+  console.log($tr("cli.build.building"));
   const result = await builder.build("prod");
   if (result.outputFiles?.length) {
     const sorted = [...result.outputFiles].sort();
@@ -524,7 +524,7 @@ export async function run(): Promise<number> {
     }
   }
   console.log(
-    $t("cli.build.complete", {
+    $tr("cli.build.complete", {
       duration: String(result.duration),
       outDir,
     }),
