@@ -8,6 +8,18 @@ and this project adheres to
 
 ---
 
+## [1.0.23] - 2026-02-19
+
+### Changed
+
+- **CLI i18n**: i18n now initializes automatically when `cmd/i18n` is loaded;
+  `initViewI18n` is no longer exported. Removed explicit `initViewI18n()` calls
+  from `cli.ts` and `setup.ts`. `$tr` still ensures init when called.
+- **Dependencies**: Bumped @dreamer/runtime-adapter, @dreamer/console,
+  @dreamer/esbuild, @dreamer/test.
+
+---
+
 ## [1.0.22] - 2026-02-19
 
 ### Changed

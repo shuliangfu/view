@@ -10,6 +10,7 @@
 import {
   createCommand,
   cwd,
+  deleteEnv,
   dirname,
   ensureDir,
   execPath,
@@ -22,7 +23,6 @@ import {
   remove,
   resolve,
   setEnv,
-  deleteEnv,
 } from "@dreamer/runtime-adapter";
 import {
   afterAll,
@@ -77,12 +77,11 @@ describe("CLI：init", () => {
     "view init <dir> 应在目标目录生成 view.config.ts、deno.json、src 等",
     async () => {
       await ensureDir(INIT_OUT_DIR);
-      // 先设 LANGUAGE=zh-CN，再初始化 view i18n，使 detectLocale() 返回 zh-CN，生成内容含「view 项目配置」（CI 默认为 en-US）
+      // 先设 LANGUAGE=zh-CN，再加载 view i18n 模块（模块加载时自动执行 init，detectLocale() 会读到 zh-CN），生成内容含「view 项目配置」（CI 默认为 en-US）
       const prevLang = getEnv("LANGUAGE");
       setEnv("LANGUAGE", "zh-CN");
       try {
-        const { initViewI18n } = await import("../../src/cmd/i18n.ts");
-        initViewI18n();
+        await import("../../src/cmd/i18n.ts");
         // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
         const { main: initMain } = await import("../../src/cmd/init.ts");
         await initMain({ dir: INIT_OUT_DIR });

@@ -7,6 +7,18 @@
 
 ---
 
+## [1.0.23] - 2026-02-19
+
+### 变更
+
+- **CLI i18n**：i18n 在加载 `cmd/i18n` 时自动初始化；`initViewI18n` 不再导出。
+  已从 `cli.ts` 与 `setup.ts` 中移除显式 `initViewI18n()` 调用；`$tr`
+  调用时仍会确保完成初始化。
+- **依赖**：升级
+  @dreamer/runtime-adapter、@dreamer/console、@dreamer/esbuild、@dreamer/test。
+
+---
+
 ## [1.0.22] - 2026-02-19
 
 ### 变更

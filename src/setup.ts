@@ -25,11 +25,8 @@ import {
   remove,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr, initViewI18n } from "./cmd/i18n.ts";
+import { $tr } from "./cmd/i18n.ts";
 import { loadViewDenoJson, writeVersionCache } from "./version.ts";
-
-// CLI 独立入口时未经过 mod，此处确保 i18n 已初始化（幂等）
-initViewI18n();
 
 /** CLI 全局命令名称（与 cli.ts 中一致） */
 const CLI_NAME = "view-cli";
