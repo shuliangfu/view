@@ -192,13 +192,13 @@ async function installGlobalCli(): Promise<void> {
       });
       console.log($tr("cli.setup.installing", { name: CLI_NAME }));
       const child = cmd.spawn();
-      child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
       const status = await child.status;
+      child.unref(); // 等待 status 后再 unref，避免 Deno 下过早 unref 导致父进程提前退出
       if (status.success) {
         console.log(
-          `${GREEN}${
+          `\n${GREEN}${
             $tr("cli.setup.installSuccess", { name: CLI_NAME })
-          }${RESET}`,
+          }${RESET}\n`,
         );
         await writeVersionCacheOnInstall();
         printUsage();
@@ -229,8 +229,8 @@ async function installGlobalCli(): Promise<void> {
     });
     console.log($tr("cli.setup.installing", { name: CLI_NAME }));
     const child = cmd.spawn();
-    child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
     const status = await child.status;
+    child.unref(); // 等待 status 后再 unref，避免 Deno 下过早 unref 导致父进程提前退出
     if (status.success) {
       console.log(
         `${GREEN}${

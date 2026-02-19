@@ -8,6 +8,23 @@ and this project adheres to
 
 ---
 
+## [1.0.26] - 2026-02-19
+
+### Fixed
+
+- **CLI locale**: Call `setLocaleFromEnv()` at CLI entry so the globally
+  installed view-cli respects `LANGUAGE` / `LC_ALL` / `LANG` (e.g. Chinese
+  output when running `view-cli init` in a Chinese environment).
+- **init**: Blank line before "Project created successfully" is now part of the
+  same `console.log` so it is not dropped when running view-cli from JSR
+  install.
+- **setup**: Call `child.unref()` after `await child.status` (not before) so the
+  setup process does not exit before `deno install` completes when run via
+  `deno run -A jsr:@dreamer/view/setup`.
+- **upgrade**: Same unref-after-status order as setup for consistency.
+
+---
+
 ## [1.0.25] - 2026-02-19
 
 ### Changed

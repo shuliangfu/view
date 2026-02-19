@@ -747,12 +747,13 @@ export const toggleTheme = themeStore.toggleTheme;
   for (const f of createdFiles) {
     console.log(prefix + f);
   }
-  console.log("");
+  // 空行与成功文案同一次输出，避免外部单独运行 view-cli 时空行被吞掉
   console.log(
-    `${GREEN}${$tr("cli.init.projectCreated", { dir: displayDir })}${RESET}`,
+    `\n${GREEN}${
+      $tr("cli.init.projectCreated", { dir: displayDir })
+    }${RESET}\n`,
   );
 
-  console.log("");
   if (displayDir !== ".") {
     console.log($tr("cli.init.nextCd", { dir: displayDir }));
   }

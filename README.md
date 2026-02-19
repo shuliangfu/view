@@ -1107,8 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.25** (2026-02-19): CLI i18n for all commands/options; flattened cli.*
-keys; upgrade/update messages use $tr. See
+**v1.0.26** (2026-02-19): Fixed CLI locale for globally installed view-cli
+(LANGUAGE/LC_ALL/LANG); init blank line before success message; setup/upgrade
+unref after await child.status so process does not exit early. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---

@@ -73,6 +73,14 @@ function initViewI18n(): void {
 initViewI18n();
 
 /**
+ * 根据当前进程环境变量重新设置 CLI 语言（LANGUAGE / LC_ALL / LANG）。
+ * 在 CLI 入口处调用，确保全局安装的 view-cli 与当前终端语言一致。
+ */
+export function setLocaleFromEnv(): void {
+  if (viewCmdI18n) viewCmdI18n.setLocale(detectLocale());
+}
+
+/**
  * 根据 key 取翻译文案。未传 lang 时使用当前 locale；传 lang 时临时切换后恢复。未 init 时返回 key。
  *
  * @param key 文案 key，如 "error.ssrDocument"、"error.mountContainerNotFound"
