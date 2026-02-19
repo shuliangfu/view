@@ -57,10 +57,8 @@ export function detectLocale(): Locale {
   return DEFAULT_LOCALE;
 }
 
-/**
- * 加载翻译并设置当前 locale。在入口（如 mod）调用一次；不挂全局。
- */
-export function initViewI18n(): void {
+/** 内部初始化，导入 i18n 时自动执行，不导出 */
+function initViewI18n(): void {
   if (viewCmdI18n) return;
   const i18n = createI18n({
     defaultLocale: DEFAULT_LOCALE,
@@ -71,6 +69,8 @@ export function initViewI18n(): void {
   i18n.setLocale(detectLocale());
   viewCmdI18n = i18n;
 }
+
+initViewI18n();
 
 /**
  * 根据 key 取翻译文案。未传 lang 时使用当前 locale；传 lang 时临时切换后恢复。未 init 时返回 key。
@@ -84,6 +84,7 @@ export function $tr(
   params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
+  if (!viewCmdI18n) initViewI18n();
   if (!viewCmdI18n) return key;
   if (lang !== undefined) {
     const prev = viewCmdI18n.getLocale();
