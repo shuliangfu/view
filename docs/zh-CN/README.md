@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.26**（2026-02-19）：修复全局安装 view-cli
-的语言环境（LANGUAGE/LC_ALL/LANG）；init 成功提示前空行；setup/upgrade 先 await
-status 再 unref 避免提前退出。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.27**（2026-02-19）：修复 setup（JSR 路径）安装成功提示前后空行，使通过
+`jsr:@dreamer/view/setup` 运行时也能看到空行。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
