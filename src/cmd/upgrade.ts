@@ -92,8 +92,8 @@ export async function main(
   });
   startSpinner($tr("cli.upgrade.installing"));
   const child = cmd.spawn();
-  child.unref();
   const status = await child.status;
+  child.unref(); // 等待 status 后再 unref，与 setup.ts 一致，避免 Deno 下依赖其它 ref 才能不提前退出
 
   if (status.success) {
     succeedSpinner($tr("cli.upgrade.upgradedTo", { latest }));

@@ -7,6 +7,22 @@
 
 ---
 
+## [1.0.26] - 2026-02-19
+
+### 修复
+
+- **CLI 语言**：在 CLI 入口调用 `setLocaleFromEnv()`，使通过 JSR 安装的 view-cli
+  正确遵循 `LANGUAGE` / `LC_ALL` / `LANG`（如中文环境下 `view-cli init`
+  输出中文）。
+- **init**：将「项目已成功创建于」前的空行与成功文案合并为同一次
+  `console.log`，避免从 JSR 安装运行 view-cli 时空行被吞掉。
+- **setup**：在 `await child.status` 之后再调用 `child.unref()`（不再提前
+  unref），避免通过 `deno run -A jsr:@dreamer/view/setup` 运行时安装未完成
+  即退出。
+- **upgrade**：与 setup 一致，改为先等 status 再 unref。
+
+---
+
 ## [1.0.25] - 2026-02-19
 
 ### 变更
