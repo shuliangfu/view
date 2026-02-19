@@ -43,7 +43,7 @@ export async function main(
   }
   updateArgs.push(...args);
 
-  info(`Running ${runtime} update...`);
+  info($tr("cli.update.running", { runtime }));
 
   const cmd = createCommand(runtime, {
     args: updateArgs,
@@ -56,8 +56,8 @@ export async function main(
   const status = await child.status;
 
   if (status.success) {
-    success("Update complete.");
+    success($tr("cli.update.complete"));
   } else {
-    error(`Update failed with exit code ${status.code ?? "?"}`);
+    error($tr("cli.update.failed", { code: String(status.code ?? "?") }));
   }
 }

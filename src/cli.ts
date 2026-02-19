@@ -18,17 +18,14 @@
 
 import { Command } from "@dreamer/console";
 import { args } from "@dreamer/runtime-adapter";
+import { $tr } from "./cmd/i18n.ts";
 import { getViewVersion } from "./version.ts";
 
 /**
- * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出）
+ * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出），文案走 i18n
  */
 function buildVersionStr(version: string): string {
-  return `view-cli
-Version: ${version}
-
-@dreamer/view development tool: init, dev, build, start, upgrade, update.
-`;
+  return $tr("cli.versionBanner", { version });
 }
 
 /**
@@ -38,25 +35,23 @@ Version: ${version}
  * @returns Command 实例，可调用 .parse() 等执行
  */
 export function createCLI(version: string): Command {
-  const cli = new Command(
-    "view-cli",
-    "@dreamer/view development tool: init, dev, build, start, upgrade, update",
-  ).setVersion(buildVersionStr(version));
+  const cli = new Command("view-cli", $tr("cli.description")).setVersion(
+    buildVersionStr(version),
+  );
 
   // ---------------------------------------------------------------------------
   // init — 初始化项目
   // ---------------------------------------------------------------------------
   cli
-    .command("init", "Initialize project from example structure")
+    .command("init", $tr("cli.initDesc"))
     .argument({
       name: "dir",
-      description: "Target directory (default: current directory)",
+      description: $tr("cli.initArgDir"),
       required: false,
     })
     .option({
       name: "beta",
-      description:
-        "Allow latest beta/pre-release; if stable is newer than beta, stable is still used",
+      description: $tr("cli.initOptionBeta"),
       type: "boolean",
       defaultValue: false,
     })
@@ -73,18 +68,18 @@ export function createCLI(version: string): Command {
   // dev — 开发服务器（构建 + 静态服务）
   // ---------------------------------------------------------------------------
   cli
-    .command("dev", "Build then start static server (dev)")
+    .command("dev", $tr("cli.devDesc"))
     .option({
       name: "host",
       alias: "h",
-      description: "Host to bind (overrides config)",
+      description: $tr("cli.optionHost"),
       requiresValue: true,
       type: "string",
     })
     .option({
       name: "port",
       alias: "p",
-      description: "Port to listen on (overrides config)",
+      description: $tr("cli.optionPort"),
       requiresValue: true,
       type: "number",
     })
@@ -98,18 +93,18 @@ export function createCLI(version: string): Command {
   // start — 生产静态服务
   // ---------------------------------------------------------------------------
   cli
-    .command("start", "Start static server only (requires prior build)")
+    .command("start", $tr("cli.startDesc"))
     .option({
       name: "host",
       alias: "h",
-      description: "Host to bind (overrides config)",
+      description: $tr("cli.optionHost"),
       requiresValue: true,
       type: "string",
     })
     .option({
       name: "port",
       alias: "p",
-      description: "Port to listen on (overrides config)",
+      description: $tr("cli.optionPort"),
       requiresValue: true,
       type: "number",
     })
@@ -123,7 +118,7 @@ export function createCLI(version: string): Command {
   // build — 构建
   // ---------------------------------------------------------------------------
   cli
-    .command("build", "Build only (output to dist/)")
+    .command("build", $tr("cli.buildDesc"))
     .action(async () => {
       const { main: buildMain } = await import("./cmd/build.ts");
       await buildMain();
@@ -133,14 +128,10 @@ export function createCLI(version: string): Command {
   // upgrade — 升级 view-cli 到最新版本
   // ---------------------------------------------------------------------------
   cli
-    .command(
-      "upgrade",
-      "Upgrade @dreamer/view to latest version (re-run setup)",
-    )
+    .command("upgrade", $tr("cli.upgradeDesc"))
     .option({
       name: "beta",
-      description:
-        "Allow upgrading to latest beta; if stable is newer than beta, stable is still used",
+      description: $tr("cli.upgradeOptionBeta"),
       type: "boolean",
       defaultValue: false,
     })
@@ -153,14 +144,10 @@ export function createCLI(version: string): Command {
   // update — 更新项目依赖与 lockfile（deno update / bun update）
   // ---------------------------------------------------------------------------
   cli
-    .command(
-      "update",
-      "Update project dependencies and lockfile (deno update / bun update)",
-    )
+    .command("update", $tr("cli.updateDesc"))
     .option({
       name: "latest",
-      description:
-        "Update to latest versions (deno update --latest / bun update)",
+      description: $tr("cli.updateOptionLatest"),
       type: "boolean",
       defaultValue: false,
     })
@@ -173,7 +160,7 @@ export function createCLI(version: string): Command {
   // version — 显示版本（与 --version / -v 等效）
   // ---------------------------------------------------------------------------
   cli
-    .command("version", "Show view-cli and @dreamer/view version")
+    .command("version", $tr("cli.versionDesc"))
     .alias("v")
     .action(() => {
       console.log(buildVersionStr(version));

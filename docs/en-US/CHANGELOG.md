@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.0.25] - 2026-02-19
+
+### Changed
+
+- **CLI i18n**: All CLI command and option descriptions in `cli.ts` use i18n
+  (`$tr`). Flattened keys from `cli.cli.*` to `cli.*`; init/dev/build/start
+  descriptions use `cli.initDesc`, `cli.devDesc`, `cli.buildDesc`,
+  `cli.startDesc`.
+- **upgrade/update**: All user-facing messages in `upgrade.ts` and `update.ts`
+  use `$tr` (cli.upgrade._, cli.update._). HTTP response bodies in `serve.ts`
+  remain fixed English (no translation).
+
+---
+
 ## [1.0.24] - 2026-02-19
 
 ### Changed

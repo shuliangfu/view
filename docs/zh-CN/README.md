@@ -1060,8 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.24**（2026-02-19）：更新 @dreamer/server 至 ^1.0.9。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.25**（2026-02-19）：CLI 命令与选项全面 i18n；cli.* 键展平；upgrade/update
+文案使用 $tr。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

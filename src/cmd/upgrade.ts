@@ -62,27 +62,25 @@ export async function main(
   const useBeta = options?.beta === true;
   const runtime = getRuntime();
   const current = await getViewVersion(false);
-  info(`Current @dreamer/view version: ${current}`);
-  info("Checking latest version...");
+  info($tr("cli.upgrade.currentVersion", { current }));
+  info($tr("cli.upgrade.checkingLatest"));
 
   const latest = await fetchLatestViewVersionFromJsr(useBeta);
   if (!latest) {
     if (!useBeta) {
-      error(
-        "No stable release found. Try --beta to update to the latest beta.",
-      );
+      error($tr("cli.upgrade.noStableRelease"));
     } else {
-      error("Could not fetch latest version from JSR.");
+      error($tr("cli.upgrade.fetchFailed"));
     }
     return;
   }
 
   if (current === latest || compareVersions(latest, current) <= 0) {
-    success(`Already on latest version: ${current}`);
+    success($tr("cli.upgrade.alreadyLatest", { current }));
     return;
   }
 
-  success(`New version available: ${latest}`);
+  success($tr("cli.upgrade.newVersionAvailable", { latest }));
 
   const setupSpec = `jsr:@dreamer/view@${latest}/setup`;
   const cmd = createCommand(runtime, {
@@ -92,20 +90,20 @@ export async function main(
     // Use "null" so the child (setup -> deno install) does not inherit terminal stdin and hang waiting for input
     stdin: "null",
   });
-  startSpinner("Installing...");
+  startSpinner($tr("cli.upgrade.installing"));
   const child = cmd.spawn();
   child.unref();
   const status = await child.status;
 
   if (status.success) {
-    succeedSpinner(`Upgraded to ${latest}`);
+    succeedSpinner($tr("cli.upgrade.upgradedTo", { latest }));
     await writeVersionCache(latest);
     exit(0); // 主流程结束显式退出，避免子进程 ref 导致 CLI 不退出
   } else {
-    failSpinner("Auto install failed.");
-    error("Please install manually:");
-    info(`  deno run -A ${setupSpec}`);
-    info("  Or use the version you need, e.g. jsr:@dreamer/view@1.0.0/setup");
+    failSpinner($tr("cli.upgrade.autoInstallFailed"));
+    error($tr("cli.upgrade.installManually"));
+    info($tr("cli.upgrade.installCommand", { spec: setupSpec }));
+    info($tr("cli.upgrade.installExample"));
     exit(1);
   }
 }

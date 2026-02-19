@@ -7,6 +7,19 @@
 
 ---
 
+## [1.0.25] - 2026-02-19
+
+### 变更
+
+- **CLI i18n**：`cli.ts` 中所有命令与选项描述改为使用 i18n（`$tr`）。键从
+  `cli.cli.*` 展平为 `cli.*`；init/dev/build/start 描述使用
+  `cli.initDesc`、`cli.devDesc`、`cli.buildDesc`、`cli.startDesc`。
+- **upgrade/update**：`upgrade.ts`、`update.ts` 中所有用户可见文案改为
+  `$tr`（cli.upgrade._、cli.update._）。`serve.ts` 中 HTTP
+  响应正文保持固定英文，不翻译。
+
+---
+
 ## [1.0.24] - 2026-02-19
 
 ### 变更

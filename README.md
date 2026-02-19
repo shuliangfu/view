@@ -1107,7 +1107,8 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.24** (2026-02-19): Updated @dreamer/server to ^1.0.9. See
+**v1.0.25** (2026-02-19): CLI i18n for all commands/options; flattened cli.*
+keys; upgrade/update messages use $tr. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
