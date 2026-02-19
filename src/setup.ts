@@ -25,7 +25,7 @@ import {
   remove,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $t, initViewI18n } from "./cmd/i18n.ts";
+import { $tr, initViewI18n } from "./cmd/i18n.ts";
 import { loadViewDenoJson, writeVersionCache } from "./version.ts";
 
 // CLI 独立入口时未经过 mod，此处确保 i18n 已初始化（幂等）
@@ -123,7 +123,7 @@ async function createTempCliConfig(): Promise<string> {
       config = JSON.parse(raw) as Record<string, unknown>;
     } catch (err) {
       console.error(
-        $t("cli.setup.denoJsonReadFailed", { path: denoJsonPath }),
+        $tr("cli.setup.denoJsonReadFailed", { path: denoJsonPath }),
         err,
       );
       exit(1);
@@ -135,7 +135,7 @@ async function createTempCliConfig(): Promise<string> {
       const res = await fetch(denoJsonUrl);
       if (!res.ok) {
         console.error(
-          $t("cli.setup.denoJsonFetchFailed", { status: String(res.status) }),
+          $tr("cli.setup.denoJsonFetchFailed", { status: String(res.status) }),
         );
         exit(1);
       }
@@ -143,7 +143,7 @@ async function createTempCliConfig(): Promise<string> {
       config = JSON.parse(raw) as Record<string, unknown>;
     } catch (err) {
       console.error(
-        $t("cli.setup.denoJsonParseFailed", { url: denoJsonUrl }),
+        $tr("cli.setup.denoJsonParseFailed", { url: denoJsonUrl }),
         err,
       );
       exit(1);
@@ -193,14 +193,14 @@ async function installGlobalCli(): Promise<void> {
         stderr: "null",
         stdin: "null", // 避免 deno install 继承终端 stdin 导致卡住
       });
-      console.log($t("cli.setup.installing", { name: CLI_NAME }));
+      console.log($tr("cli.setup.installing", { name: CLI_NAME }));
       const child = cmd.spawn();
       child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
       const status = await child.status;
       if (status.success) {
         console.log(
           `${GREEN}${
-            $t("cli.setup.installSuccess", { name: CLI_NAME })
+            $tr("cli.setup.installSuccess", { name: CLI_NAME })
           }${RESET}`,
         );
         await writeVersionCacheOnInstall();
@@ -211,7 +211,7 @@ async function installGlobalCli(): Promise<void> {
           : "";
         console.error(
           `${RED}${
-            $t("cli.setup.installFailedExit", {
+            $tr("cli.setup.installFailedExit", {
               code: String(status.code ?? ""),
               stderr,
             })
@@ -230,13 +230,15 @@ async function installGlobalCli(): Promise<void> {
       stderr: "null",
       stdin: "null", // 避免 deno install 继承终端 stdin 导致卡住
     });
-    console.log($t("cli.setup.installing", { name: CLI_NAME }));
+    console.log($tr("cli.setup.installing", { name: CLI_NAME }));
     const child = cmd.spawn();
     child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
     const status = await child.status;
     if (status.success) {
       console.log(
-        `${GREEN}${$t("cli.setup.installSuccess", { name: CLI_NAME })}${RESET}`,
+        `${GREEN}${
+          $tr("cli.setup.installSuccess", { name: CLI_NAME })
+        }${RESET}`,
       );
       await writeVersionCacheOnInstall();
       printUsage();
@@ -246,7 +248,7 @@ async function installGlobalCli(): Promise<void> {
         : "";
       console.error(
         `${RED}${
-          $t("cli.setup.installFailedExit", {
+          $tr("cli.setup.installFailedExit", {
             code: String(status.code ?? ""),
             stderr,
           })
@@ -261,33 +263,33 @@ async function installGlobalCli(): Promise<void> {
 function printUsage(): void {
   const w = 12; // 命令部分宽度，保证 # 对齐
   const pad = (s: string) => s.padEnd(w);
-  console.log($t("cli.setup.usage"));
+  console.log($tr("cli.setup.usage"));
   console.log(
-    `  ${CLI_NAME} ${pad("init [dir]")} # ${$t("cli.setup.usageInit")}`,
+    `  ${CLI_NAME} ${pad("init [dir]")} # ${$tr("cli.setup.usageInit")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("dev")} # ${$t("cli.setup.usageDev")}`,
+    `  ${CLI_NAME} ${pad("dev")} # ${$tr("cli.setup.usageDev")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("build")} # ${$t("cli.setup.usageBuild")}`,
+    `  ${CLI_NAME} ${pad("build")} # ${$tr("cli.setup.usageBuild")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("start")} # ${$t("cli.setup.usageStart")}`,
+    `  ${CLI_NAME} ${pad("start")} # ${$tr("cli.setup.usageStart")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("upgrade")} # ${$t("cli.setup.usageUpgrade")}`,
+    `  ${CLI_NAME} ${pad("upgrade")} # ${$tr("cli.setup.usageUpgrade")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("update")} # ${$t("cli.setup.usageUpdate")}`,
+    `  ${CLI_NAME} ${pad("update")} # ${$tr("cli.setup.usageUpdate")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("version")} # ${$t("cli.setup.usageVersion")}`,
+    `  ${CLI_NAME} ${pad("version")} # ${$tr("cli.setup.usageVersion")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("--version")} # ${$t("cli.setup.usageVersionAlias")}`,
+    `  ${CLI_NAME} ${pad("--version")} # ${$tr("cli.setup.usageVersionAlias")}`,
   );
   console.log(
-    `  ${CLI_NAME} ${pad("--help")} # ${$t("cli.setup.usageHelp")}`,
+    `  ${CLI_NAME} ${pad("--help")} # ${$tr("cli.setup.usageHelp")}`,
   );
   console.log("");
 }
@@ -297,7 +299,7 @@ if (import.meta.main) {
   installGlobalCli()
     .then(() => exit(0))
     .catch((err) => {
-      console.error($t("cli.setup.installFailed"), err);
+      console.error($tr("cli.setup.installFailed"), err);
       exit(1);
     });
 }

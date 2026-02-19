@@ -21,7 +21,7 @@ import {
   success,
 } from "@dreamer/console";
 import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
-import { $t } from "./i18n.ts";
+import { $tr } from "./i18n.ts";
 import {
   compareVersions,
   fetchLatestViewVersionFromJsr,
@@ -35,7 +35,7 @@ import {
 function getRuntime(): "deno" | "bun" {
   if (IS_DENO) return "deno";
   if (IS_BUN) return "bun";
-  throw new Error($t("error.runtimeUnsupported"));
+  throw new Error($tr("error.runtimeUnsupported"));
 }
 
 /**

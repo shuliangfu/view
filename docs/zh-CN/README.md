@@ -1060,10 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.21**（2026-02-18）：新增 Bun 支持（E2E/CLI 通过 runtime-adapter、导出、
-jsxDEV）；测试报告包含 Deno 与 Bun 结果。变更 E2E/CLI 测试为
-createCommand/IS_BUN；服务就绪同时接受中英文。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.22**（2026-02-19）：变更 i18n 翻译方法 `$t` → `$tr`，避免与全局 `$t`
+冲突。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

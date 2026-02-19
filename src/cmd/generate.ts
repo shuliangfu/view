@@ -15,7 +15,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $t } from "./i18n.ts";
+import { $tr } from "./i18n.ts";
 
 /** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 metadata、布局继承 */
 export interface RouteEntry {
@@ -76,7 +76,7 @@ function titleFromRelative(relativeNoExt: string, isNotFound: boolean): string {
   if (isNotFound) return "404";
   const norm = relativeNoExt.replace(/\\/g, "/");
   if (norm === "index" || norm === "home" || norm === "home/index") {
-    return $t("init.template.homeNavTitle");
+    return $tr("init.template.homeNavTitle");
   }
   const parts = norm.split("/");
   // 子目录下的 index 用父目录名作 title，如 globals/index → Globals
@@ -325,10 +325,10 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
 
   const lines: string[] = [
     "/**",
-    " * " + $t("init.template.routersComment1"),
-    " * " + $t("init.template.routersComment2"),
+    " * " + $tr("init.template.routersComment1"),
+    " * " + $tr("init.template.routersComment2"),
     " */",
-    "// @ts-nocheck " + $t("generate.tsNocheckComment"),
+    "// @ts-nocheck " + $tr("generate.tsNocheckComment"),
     'import type { RouteConfig } from "@dreamer/view/router";',
     "",
     "export const routes: RouteConfig[] = [",
