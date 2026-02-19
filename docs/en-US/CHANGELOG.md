@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [1.0.27] - 2026-02-19
+
+### Fixed
+
+- **setup (JSR path)**: Add leading and trailing newlines around the install
+  success message so blank lines appear when running
+  `deno run -A jsr:@dreamer/view/setup` (aligned with local-run output).
+
+---
+
 ## [1.0.26] - 2026-02-19
 
 ### Fixed

@@ -232,10 +232,11 @@ async function installGlobalCli(): Promise<void> {
     const status = await child.status;
     child.unref(); // 等待 status 后再 unref，避免 Deno 下过早 unref 导致父进程提前退出
     if (status.success) {
+      // 与本地分支一致：成功提示前后空行，避免输出贴在一起
       console.log(
-        `${GREEN}${
+        `\n${GREEN}${
           $tr("cli.setup.installSuccess", { name: CLI_NAME })
-        }${RESET}`,
+        }${RESET}\n`,
       );
       await writeVersionCacheOnInstall();
       printUsage();
