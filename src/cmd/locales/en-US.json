@@ -3,6 +3,21 @@
     "runtimeUnsupported": "Unsupported runtime: only Deno and Bun are supported."
   },
   "cli": {
+    "description": "@dreamer/view development tool: init, dev, build, start, upgrade, update",
+    "versionBanner": "view-cli\nVersion: {version}\n\n@dreamer/view development tool: init, dev, build, start, upgrade, update.",
+    "initDesc": "Initialize project from example structure",
+    "initArgDir": "Target directory (default: current directory)",
+    "initOptionBeta": "Allow latest beta/pre-release; if stable is newer than beta, stable is still used",
+    "devDesc": "Build then start static server (dev)",
+    "startDesc": "Start static server only (requires prior build)",
+    "buildDesc": "Build only (output to dist/)",
+    "optionHost": "Host to bind (overrides config)",
+    "optionPort": "Port to listen on (overrides config)",
+    "upgradeDesc": "Upgrade @dreamer/view to latest version (re-run setup)",
+    "upgradeOptionBeta": "Allow upgrading to latest beta; if stable is newer than beta, stable is still used",
+    "updateDesc": "Update project dependencies and lockfile (deno update / bun update)",
+    "updateOptionLatest": "Update to latest versions (deno update --latest / bun update)",
+    "versionDesc": "Show view-cli and @dreamer/view version",
     "setup": {
       "installing": "Installing {name}...",
       "installSuccess": "{name} installed successfully.",
@@ -47,6 +62,25 @@
       "rootNotFound": "[view] HMR: #root not found, falling back to full page reload",
       "containerEmpty": "[view] HMR: container still empty after refresh, falling back to full page reload",
       "refreshFailed": "[view] HMR refresh failed, falling back to full page reload"
+    },
+    "upgrade": {
+      "currentVersion": "Current @dreamer/view version: {current}",
+      "checkingLatest": "Checking latest version...",
+      "noStableRelease": "No stable release found. Try --beta to update to the latest beta.",
+      "fetchFailed": "Could not fetch latest version from JSR.",
+      "alreadyLatest": "Already on latest version: {current}",
+      "newVersionAvailable": "New version available: {latest}",
+      "installing": "Installing...",
+      "upgradedTo": "Upgraded to {latest}",
+      "autoInstallFailed": "Auto install failed.",
+      "installManually": "Please install manually:",
+      "installCommand": "  deno run -A {spec}",
+      "installExample": "  Or use the version you need, e.g. jsr:@dreamer/view@1.0.0/setup"
+    },
+    "update": {
+      "running": "Running {runtime} update...",
+      "complete": "Update complete.",
+      "failed": "Update failed with exit code {code}."
     }
   },
   "init": {
@@ -100,7 +134,8 @@
       "routerComment": "Router instance and context: createAppRouter, RouterProvider, useRouter",
       "routersComment1": "Route table (auto-generated): path → component, dynamic import for code splitting",
       "routersComment2": "Do not edit manually; dev regenerates from src/views.",
-      "homeNavTitle": "Home"
+      "homeNavTitle": "Home",
+      "notFoundRouteTitle": "404"
     }
   },
   "generate": {
