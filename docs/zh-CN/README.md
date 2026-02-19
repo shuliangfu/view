@@ -1060,8 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.23**（2026-02-19）：CLI i18n 在加载时自动初始化；`initViewI18n`
-不再导出；依赖升级。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.24**（2026-02-19）：更新 @dreamer/server 至 ^1.0.9。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

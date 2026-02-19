@@ -8,6 +8,14 @@ and this project adheres to
 
 ---
 
+## [1.0.24] - 2026-02-19
+
+### Changed
+
+- **Dependencies**: Updated @dreamer/server to ^1.0.9.
+
+---
+
 ## [1.0.23] - 2026-02-19
 
 ### Changed
