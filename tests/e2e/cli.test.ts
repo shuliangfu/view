@@ -14,12 +14,15 @@ import {
   ensureDir,
   execPath,
   existsSync,
+  getEnv,
   IS_BUN,
   join,
   readdir,
   readTextFile,
   remove,
   resolve,
+  setEnv,
+  deleteEnv,
 } from "@dreamer/runtime-adapter";
 import {
   afterAll,
@@ -28,7 +31,6 @@ import {
   expect,
   it,
 } from "@dreamer/test";
-import { $i18n } from "@dreamer/i18n";
 
 /** 规整路径：消除 .. 与 .；Windows 盘符路径（/D:/ 或 D:/）不输出前导 /，避免 mkdir/cwd 报错 */
 function normalizeAbsolutePath(p: string): string {
@@ -75,14 +77,19 @@ describe("CLI：init", () => {
     "view init <dir> 应在目标目录生成 view.config.ts、deno.json、src 等",
     async () => {
       await ensureDir(INIT_OUT_DIR);
-      // 先初始化 view i18n，否则 init 生成文件时 $t() 未加载翻译会输出 key 字面量
-      const { initViewI18n } = await import("../../src/cmd/i18n.ts");
-      initViewI18n();
-      // 固定为 zh-CN，使生成内容含「view 项目配置」以通过断言（CI 环境可能为 en-US）
-      $i18n.setLocale("zh-CN");
-      // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
-      const { main: initMain } = await import("../../src/cmd/init.ts");
-      await initMain({ dir: INIT_OUT_DIR });
+      // 先设 LANGUAGE=zh-CN，再初始化 view i18n，使 detectLocale() 返回 zh-CN，生成内容含「view 项目配置」（CI 默认为 en-US）
+      const prevLang = getEnv("LANGUAGE");
+      setEnv("LANGUAGE", "zh-CN");
+      try {
+        const { initViewI18n } = await import("../../src/cmd/i18n.ts");
+        initViewI18n();
+        // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
+        const { main: initMain } = await import("../../src/cmd/init.ts");
+        await initMain({ dir: INIT_OUT_DIR });
+      } finally {
+        if (prevLang !== undefined) setEnv("LANGUAGE", prevLang);
+        else deleteEnv("LANGUAGE");
+      }
 
       const viewConfigPath = join(INIT_OUT_DIR, "view.config.ts");
       const denoJsonPath = join(INIT_OUT_DIR, "deno.json");
