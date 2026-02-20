@@ -187,7 +187,59 @@ export function createCreateRoot(
 }
 
 /**
+ * 判断是否为 dweb 的 viewState 形态（含 page / props / layouts / skipLayouts），用于同状态去重。
+ */
+function isViewStateLike(
+  s: unknown,
+): s is {
+  page: unknown;
+  props?: Record<string, unknown>;
+  layouts?: unknown[];
+  skipLayouts?: boolean;
+} {
+  return (
+    typeof s === "object" &&
+    s !== null &&
+    "page" in s
+  );
+}
+
+/**
+ * 对 dweb viewState 做等价比较：同 page、同 skipLayouts、props 浅比较、layouts 长度与每项 component 一致则视为相同，
+ * 避免 setViewState 多次传入等价状态时根 effect 重复跑、子 createEffect 被多次执行。
+ */
+function viewStateEquals(
+  a: {
+    page: unknown;
+    props?: Record<string, unknown>;
+    layouts?: unknown[];
+    skipLayouts?: boolean;
+  },
+  b: {
+    page: unknown;
+    props?: Record<string, unknown>;
+    layouts?: unknown[];
+    skipLayouts?: boolean;
+  },
+): boolean {
+  if (a.page !== b.page || a.skipLayouts !== b.skipLayouts) return false;
+  const ap = a.props ?? {};
+  const bp = b.props ?? {};
+  if (ap.params !== bp.params || ap.query !== bp.query) return false;
+  const al = a.layouts ?? [];
+  const bl = b.layouts ?? [];
+  if (al.length !== bl.length) return false;
+  for (let i = 0; i < al.length; i++) {
+    const ac = (al[i] as { component?: unknown })?.component;
+    const bc = (bl[i] as { component?: unknown })?.component;
+    if (ac !== bc) return false;
+  }
+  return true;
+}
+
+/**
  * 根据「传入的 createRoot」实现 createReactiveRoot：由外部状态驱动，状态变化时在根内做细粒度 patch。
+ * 当 state 为 dweb viewState 形态且与上次等价时跳过本次 buildTree，避免根 effect 重复执行、子 createEffect 只跑一次。
  */
 export function createReactiveRootWith<T>(
   createRootFn: (fn: () => VNode, container: Element) => Root,
@@ -195,5 +247,25 @@ export function createReactiveRootWith<T>(
   getState: () => T,
   buildTree: (state: T) => VNode,
 ): Root {
-  return createRootFn(() => buildTree(getState()), container);
+  let lastState: T | undefined = undefined;
+  let lastVnode: VNode | null = null;
+
+  return createRootFn(() => {
+    const state = getState();
+    if (
+      lastState !== undefined && isViewStateLike(state) &&
+      isViewStateLike(lastState)
+    ) {
+      if (viewStateEquals(state, lastState as typeof state)) {
+        return lastVnode!;
+      }
+    }
+    if (lastState === state) {
+      return lastVnode!;
+    }
+    lastState = state;
+    const vnode = buildTree(state);
+    lastVnode = vnode;
+    return vnode;
+  }, container);
 }

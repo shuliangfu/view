@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.0.29] - 2026-02-20
+
+### Fixed
+
+- **createReactiveRoot (dweb)**: In `createReactiveRootWith`, when state has the
+  dweb viewState shape (`page` / `props` / `layouts` / `skipLayouts`) and is
+  equivalent to the previous state (same page, same props, same layouts), the
+  root no longer re-runs `buildTree`. This avoids the root effect running
+  multiple times when `setViewState` is called repeatedly with the same logical
+  page (e.g. after hydrate and route callback), so child components and their
+  `createEffect` run only once instead of three times in hybrid scenarios.
+
+---
+
 ## [1.0.28] - 2026-02-20
 
 ### Fixed
