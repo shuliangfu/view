@@ -1107,8 +1107,8 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.28** (2026-02-20): Fixed SSR stringify guard for non-string `vnode.type`
-to avoid `tag.toLowerCase is not a function` under Bun. See
+**v1.0.29** (2026-02-20): Fixed createReactiveRoot re-running on equivalent
+state so child components and their `createEffect` run only once. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
