@@ -1060,9 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.28**（2026-02-20）：修复 SSR stringify 对非字符串 `vnode.type`
-的防护，避免 Bun 下出现 `tag.toLowerCase is not a function`。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.29**（2026-02-20）：修复根 effect 在等价状态下重复执行的问题，子组件及 其
+`createEffect` 不再被多次触发。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
