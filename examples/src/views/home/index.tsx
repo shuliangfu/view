@@ -4,6 +4,7 @@
  */
 
 import type { VNode } from "@dreamer/view";
+import { createEffect } from "@dreamer/view";
 // import "../../assets/index.css";
 
 export const metadata = {
@@ -326,6 +327,14 @@ const HOME_MODULES: Array<{
 
 /** 首页：Hero（渐变+层次）+ 功能模块卡片网格 */
 export function Home(): VNode {
+  // 测试：组件函数体执行次数（每次挂载/重跑都会打印）
+  console.log("[View Home] 组件函数执行", Date.now());
+
+  createEffect(() => {
+    // 测试：effect 执行次数
+    console.log("[View Home] createEffect 执行", Date.now());
+  });
+
   return (
     <div className="space-y-12">
       <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-white via-indigo-50/30 to-slate-50 p-8 shadow-xl backdrop-blur dark:border-slate-600/80 dark:from-slate-800 dark:via-indigo-950/20 dark:to-slate-800/90 sm:p-12">
