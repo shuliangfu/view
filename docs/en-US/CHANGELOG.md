@@ -8,6 +8,18 @@ and this project adheres to
 
 ---
 
+## [1.0.28] - 2026-02-20
+
+### Fixed
+
+- **SSR stringify**: Guard against non-string `vnode.type` in
+  `createElementToString` and `createElementToStream` to avoid
+  `tag.toLowerCase is not a function` when SSR runs under Bun (e.g. dweb
+  hybrid). Such nodes are skipped with empty output; set
+  `globalThis.__VIEW_SSR_DEBUG__` to log when the guard triggers.
+
+---
+
 ## [1.0.27] - 2026-02-19
 
 ### Fixed

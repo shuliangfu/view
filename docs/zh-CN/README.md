@@ -1060,8 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.27**（2026-02-19）：修复 setup（JSR 路径）安装成功提示前后空行，使通过
-`jsr:@dreamer/view/setup` 运行时也能看到空行。完整历史见
+**v1.0.28**（2026-02-20）：修复 SSR stringify 对非字符串 `vnode.type`
+的防护，避免 Bun 下出现 `tag.toLowerCase is not a function`。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---

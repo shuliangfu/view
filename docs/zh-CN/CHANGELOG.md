@@ -7,6 +7,17 @@
 
 ---
 
+## [1.0.28] - 2026-02-20
+
+### 修复
+
+- **SSR stringify**：在 `createElementToString` 与 `createElementToStream`
+  中对非 字符串的 `vnode.type` 做防护，避免在 Bun 下 SSR（如 dweb hybrid）时出现
+  `tag.toLowerCase is not a function`。此类节点跳过并输出空；设置
+  `globalThis.__VIEW_SSR_DEBUG__` 可在触发防护时输出调试日志。
+
+---
+
 ## [1.0.27] - 2026-02-19
 
 ### 修复
