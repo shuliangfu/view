@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.27** (2026-02-19): Fixed setup (JSR path) install success message
-leading/trailing newlines so blank lines show when running from
-`jsr:@dreamer/view/setup`. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
-full details.
+**v1.0.28** (2026-02-20): Fixed SSR stringify guard for non-string `vnode.type`
+to avoid `tag.toLowerCase is not a function` under Bun. See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

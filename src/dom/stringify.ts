@@ -245,6 +245,11 @@ export function createElementToString(
   }
 
   const tag = vnode.type as string;
+  // 防护：type 可能为 undefined 或非字符串（如未展开的组件引用），避免 tag.toLowerCase 报错
+  // Bun 与 Deno 在服务端加载/解析模块顺序可能不同，导致此处仅在 Bun 下出现异常 vnode
+  if (typeof tag !== "string") {
+    return "";
+  }
   if (tag === "#text") {
     return escapeText(
       String((vnode.props as { nodeValue?: unknown }).nodeValue ?? ""),
@@ -396,6 +401,10 @@ export function* createElementToStream(
   }
 
   const tag = vnode.type as string;
+  // 防护：type 可能为 undefined 或非字符串，避免 tag.toLowerCase 报错
+  if (typeof tag !== "string") {
+    return;
+  }
   if (tag === "#text") {
     yield escapeText(
       String((vnode.props as { nodeValue?: unknown }).nodeValue ?? ""),
