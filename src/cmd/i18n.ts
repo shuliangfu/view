@@ -80,6 +80,12 @@ export function setLocaleFromEnv(): void {
   if (viewCmdI18n) viewCmdI18n.setLocale(detectLocale());
 }
 
+export function setViewLocale(locale: Locale): void {
+  if (!viewCmdI18n) initViewI18n();
+  if (!viewCmdI18n) return;
+  viewCmdI18n.setLocale(locale);
+}
+
 /**
  * 根据 key 取翻译文案。未传 lang 时使用当前 locale；传 lang 时临时切换后恢复。未 init 时返回 key。
  *
