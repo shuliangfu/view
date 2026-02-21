@@ -1060,8 +1060,10 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.29**（2026-02-20）：修复根 effect 在等价状态下重复执行的问题，子组件及 其
-`createEffect` 不再被多次触发。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.30**（2026-02-21）：新增统一 SSR stringify、公共根 effect
+循环、dom/reconcile 与 registerPlaceholderContent；调试日志改为 **VIEW_DEBUG**
+门控；修复 vFor 在 parsed===null 时 SSR 无输出。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

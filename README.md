@@ -1107,9 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.29** (2026-02-20): Fixed createReactiveRoot re-running on equivalent
-state so child components and their `createEffect` run only once. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.30** (2026-02-21): Added unified SSR stringify (walkVNodeForSSR), shared
+root effect loop (createRootEffectLoop), dom/reconcile.ts and
+registerPlaceholderContent; changed debug logs gated by **VIEW_DEBUG**; fixed
+vFor SSR when parsed === null. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
+full details.
 
 ---
 
