@@ -2,9 +2,11 @@
   "name": "@dreamer/view",
   "version": "1.0.30",
   "license": "Apache-2.0",
-  "workspace": [
-    "examples"
-  ],
+  "description": "Lightweight reactive view engine with signals and effects; fine-grained DOM updates without virtual DOM. Supports CSR, SSR, streaming SSR, and hydration. JSX with v-if, v-for, v-show and store, router, context.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shuliangfu/view.git"
+  },
   "exports": {
     ".": "./src/mod.ts",
     "./cli": "./src/cli.ts",
@@ -28,6 +30,25 @@
     "./transition": "./src/transition.ts",
     "./types": "./src/types.ts"
   },
+  "publish": {
+    "include": [
+      "src/**/*.ts",
+      "src/**/*.json",
+      "LICENSE",
+      "NOTICE",
+      "README.md"
+    ],
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/test/**",
+      "**/tests/**"
+    ]
+  },
+  "tasks": {
+    "test": "deno test -A tests/",
+    "build": "deno run -A build.ts"
+  },
   "imports": {
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/jsx-dev-runtime": "./src/jsx-runtime.ts",
@@ -41,6 +62,7 @@
     "typescript": "npm:typescript@5.9.3",
     "happy-dom": "npm:happy-dom@20.4.0"
   },
+  "nodeModulesDir": "auto",
   "compilerOptions": {
     "jsx": "react",
     "lib": [
@@ -61,17 +83,9 @@
   "exclude": [
     "dist/*",
     "examples/*",
-    "tests/data/",
-    "jsx.d.ts"
+    "tests/data/"
   ],
-  "publish": {
-    "exclude": [
-      "jsx.d.ts"
-    ]
-  },
-  "nodeModulesDir": "auto",
-  "tasks": {
-    "test": "deno test -A tests/",
-    "build": "deno run -A build.ts"
-  }
+  "workspace": [
+    "examples"
+  ]
 }

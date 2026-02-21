@@ -2,14 +2,14 @@
 
 ## Test Overview
 
-| Item            | Description                                                 |
-| --------------- | ----------------------------------------------------------- |
-| Package         | @dreamer/view                                               |
-| Version         | 1.0.20                                                      |
-| Test framework  | @dreamer/test ^1.0.8                                        |
-| Test date       | 2026-02-18                                                  |
-| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)          |
-| Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test tests/` |
+| Item            | Description                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Package         | @dreamer/view                                                                                                                                                        |
+| Version         | 1.0.20                                                                                                                                                               |
+| Test framework  | @dreamer/test ^1.0.8                                                                                                                                                 |
+| Test date       | 2026-02-18                                                                                                                                                           |
+| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                                                   |
+| Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test --preload ./tests/dom-setup.ts tests/` (preload injects happy-dom for unit/integration tests that need document) |
 
 ## Test Results
 
@@ -27,7 +27,10 @@
 - **Passed**: 410
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 46s (26 test files)
+- **Duration**: ~2m 24s (26 test files, including E2E browser and CLI)
+- **Note**: Use `--preload ./tests/dom-setup.ts` so happy-dom is injected when
+  no DOM is present; otherwise unit/integration tests that need `document` fail
+  (SSR guard or missing document).
 
 > Both runtimes (Deno / Bun) pass all tests; the count difference is due to
 > runner reporting, with the same test files and coverage.
@@ -286,7 +289,7 @@
 - Dedicated edge and error scenarios
 - Verified in both happy-dom and real browser
 - **Deno and Bun** both pass all tests (`deno test -A tests/`,
-  `bun test tests/`)
+  `bun test --preload ./tests/dom-setup.ts tests/`)
 
 ## Conclusion
 

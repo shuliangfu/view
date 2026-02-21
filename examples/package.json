@@ -1,0 +1,25 @@
+{
+  "name": "@dreamer/view-examples",
+  "private": true,
+  "description": "View example app. Run with Bun from this directory: bun run dev | bun run build | bun run start",
+  "scripts": {
+    "dev": "bun run ../src/cli.ts dev",
+    "build": "bun run ../src/cli.ts build",
+    "start": "bun run ../src/cli.ts start"
+  },
+  "imports": {
+    "@dreamer/view": "../src/mod.ts",
+    "@dreamer/view/jsx-runtime": "../src/jsx-runtime.ts",
+    "@dreamer/view/jsx-dev-runtime": "../src/jsx-runtime.ts",
+    "@dreamer/view/store": "../src/store.ts",
+    "@dreamer/view/boundary": "../src/boundary.ts",
+    "@dreamer/view/directive": "../src/directive.ts",
+    "@dreamer/view/reactive": "../src/reactive.ts",
+    "@dreamer/view/resource": "../src/resource.ts",
+    "@dreamer/view/context": "../src/context.ts",
+    "@dreamer/view/router": "../src/router.ts",
+    "@dreamer/view/globals": "../src/globals.ts",
+    "@dreamer/view/portal": "../src/portal.ts",
+    "@dreamer/view/transition": "../src/transition.ts"
+  }
+}

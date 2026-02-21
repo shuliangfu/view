@@ -7,6 +7,25 @@
 
 ---
 
+## [1.0.31] - 2026-02-21
+
+### 修复
+
+- **renderToString（Bun / 无 DOM）**：在无 `document` 的环境（如 Bun
+  测试进程）下执行时，`finally` 中在原先没有 document 的情况下将
+  `globalThis.document` 恢复为 `undefined`，不再保留 SSR 用的
+  guard。避免后续代码（如 `getDocument()`）读到该 guard 而抛出 "document is not
+  available during server-side rendering"，使同一进程中先跑 SSR 再跑依赖 DOM 的
+  Bun 测试能通过。
+
+### 变更
+
+- **TEST_REPORT**：Bun 运行命令更新为
+  `bun test --preload ./tests/dom-setup.ts tests/`，并补充执行时间与说明（无 DOM
+  时 preload 注入 happy-dom）。中英文报告均已更新。
+
+---
+
 ## [1.0.30] - 2026-02-21
 
 ### 新增
