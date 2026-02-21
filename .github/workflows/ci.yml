@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show @dreamer/test version
+        run: node -e "const p=require('./package.json');console.log('@dreamer/test:', p.dependencies?.['@dreamer/test']||p.devDependencies?.['@dreamer/test']||'n/a')"
+
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.5
@@ -89,13 +92,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
-          restore-keys: ${{ runner.os }}-bun-
-
       - name: Install dependencies (Bun)
         run: bun install
 
@@ -113,13 +109,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
-          restore-keys: ${{ runner.os }}-bun-
 
       - name: Install dependencies (Bun)
         run: bun install
@@ -139,13 +128,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
-          restore-keys: ${{ runner.os }}-bun-
-
       - name: Install dependencies (Bun)
         run: bun install
 
@@ -155,5 +137,5 @@ jobs:
 
       # Windows 上 Chromium 启动易超时，暂不跑浏览器 E2E，只跑 unit + integration + CLI
       - name: Test (Bun, Windows)
-        run: bun test --preload ./tests/dom-setup.ts tests/unit tests/integration tests/e2e/cli.test.ts
+        run: bun test --preload ./tests/dom-setup.ts tests/
         timeout-minutes: 15
