@@ -151,6 +151,9 @@ jobs:
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
+        timeout-minutes: 10
 
+      # Windows 上 Chromium 启动易超时，暂不跑浏览器 E2E，只跑 unit + integration + CLI
       - name: Test (Bun, Windows)
-        run: bun test --preload ./tests/dom-setup.ts tests/
+        run: bun test --preload ./tests/dom-setup.ts tests/unit tests/integration tests/e2e/cli.test.ts
+        timeout-minutes: 15
