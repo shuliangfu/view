@@ -79,3 +79,77 @@ jobs:
 
       - name: Test (Deno, Windows)
         run: deno test -A --no-check tests/
+  test-linux-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Install dependencies (Bun)
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx -y playwright@latest install chromium
+
+      - name: Test (Bun)
+        run: bun test --preload ./tests/dom-setup.ts tests/
+
+  test-macos-bun:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Install dependencies (Bun)
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx -y playwright@latest install chromium
+
+      - name: Test (Bun, macOS)
+        run: bun test --preload ./tests/dom-setup.ts tests/
+
+  test-windows-bun:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      - name: Install dependencies (Bun)
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx -y playwright@latest install chromium
+
+      - name: Test (Bun, Windows)
+        run: bun test --preload ./tests/dom-setup.ts tests/
