@@ -147,7 +147,12 @@ export function renderToString(
     const vnode = fn();
     return createElementToString(vnode, undefined, options);
   } finally {
-    if (origDoc !== null) g.document = origDoc;
+    if (origDoc !== null) {
+      g.document = origDoc;
+    } else {
+      // 无 DOM 环境（如 Bun/Node 测试）：不要保留 guard，否则后续 getDocument() 会返回 guard 导致访问即抛错
+      (g as Record<string, unknown>).document = undefined;
+    }
     setGlobal(KEY_VIEW_SSR, false);
   }
 }

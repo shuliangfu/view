@@ -8,6 +8,27 @@ and this project adheres to
 
 ---
 
+## [1.0.31] - 2026-02-21
+
+### Fixed
+
+- **renderToString (Bun / no-DOM)**: When running in an environment without
+  `document` (e.g. Bun test runner), the `finally` block now sets
+  `globalThis.document` back to `undefined` when it was originally absent,
+  instead of leaving the SSR guard in place. This prevents later code (e.g.
+  `getDocument()`) from seeing the guard and throwing "document is not available
+  during server-side rendering", so Bun tests that run SSR then DOM-dependent
+  tests in the same process pass.
+
+### Changed
+
+- **TEST_REPORT**: Bun command updated to
+  `bun test --preload ./tests/dom-setup.ts tests/`; duration and note added
+  (preload injects happy-dom when no DOM is present). Applied in both en-US and
+  zh-CN reports.
+
+---
+
 ## [1.0.30] - 2026-02-21
 
 ### Added
