@@ -22,7 +22,7 @@ import {
   it,
 } from "@dreamer/test";
 import { generateRoutersFile } from "../../src/cmd/generate.ts";
-import { setViewLocale } from "../../src/cmd/i18n.ts"
+import { setViewLocale } from "../../src/cmd/i18n.ts";
 
 setViewLocale("zh-CN");
 
@@ -937,8 +937,7 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/signal");
     await new Promise((r) => setTimeout(r, 150));
-    const ok =
-      (await clickNavLinkByText(t, "首页")) ||
+    const ok = (await clickNavLinkByText(t, "首页")) ||
       (await clickNavLinkByText(t, "Home"));
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));

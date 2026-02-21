@@ -1107,11 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.30** (2026-02-21): Added unified SSR stringify (walkVNodeForSSR), shared
-root effect loop (createRootEffectLoop), dom/reconcile.ts and
-registerPlaceholderContent; changed debug logs gated by **VIEW_DEBUG**; fixed
-vFor SSR when parsed === null. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for
-full details.
+**v1.0.31** (2026-02-22): Fixed renderToString in Bun / no-DOM (restore
+globalThis.document); TEST_REPORT Bun preload. See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

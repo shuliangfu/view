@@ -8,7 +8,7 @@ and this project adheres to
 
 ---
 
-## [1.0.31] - 2026-02-21
+## [1.0.31] - 2026-02-22
 
 ### Fixed
 
@@ -26,6 +26,8 @@ and this project adheres to
   `bun test --preload ./tests/dom-setup.ts tests/`; duration and note added
   (preload injects happy-dom when no DOM is present). Applied in both en-US and
   zh-CN reports.
+- **Publish**: `publish.include` now has `src/**/*.tsx` so `route-page.tsx` (used
+  by `router.ts`) is included in the JSR package.
 
 ---
 
