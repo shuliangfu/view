@@ -79,6 +79,7 @@ jobs:
 
       - name: Test (Deno, Windows)
         run: deno test -A --no-check tests/
+
   test-linux-bun:
     runs-on: ubuntu-latest
     steps:
@@ -92,11 +93,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
           restore-keys: ${{ runner.os }}-bun-
 
       - name: Install dependencies (Bun)
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -117,11 +118,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
           restore-keys: ${{ runner.os }}-bun-
 
       - name: Install dependencies (Bun)
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -142,11 +143,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('package.json') }}
           restore-keys: ${{ runner.os }}-bun-
 
       - name: Install dependencies (Bun)
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium

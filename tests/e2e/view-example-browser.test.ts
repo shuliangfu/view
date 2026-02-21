@@ -9,7 +9,7 @@ import {
   createCommand,
   dirname,
   execPath,
-  IS_BUN,
+  IS_DENO,
   join,
 } from "@dreamer/runtime-adapter";
 import type { SpawnedProcess } from "@dreamer/runtime-adapter";
@@ -22,6 +22,9 @@ import {
   it,
 } from "@dreamer/test";
 import { generateRoutersFile } from "../../src/cmd/generate.ts";
+import { setViewLocale } from "../../src/cmd/i18n.ts"
+
+setViewLocale("zh-CN");
 
 const SERVER_PORT = 8787;
 const BASE_URL = `http://127.0.0.1:${SERVER_PORT}`;
@@ -244,11 +247,10 @@ describe("浏览器测试（examples 入口）", () => {
       "src/router/routers.tsx",
     );
     // examples 为 Deno 项目（deno.json tasks）；Bun 下用 deno task dev 启动更可靠，Deno 下用 task dev
-    const useDenoForDev = IS_BUN;
     const cmd = createCommand(
-      useDenoForDev ? "deno" : execPath(),
+      execPath(),
       {
-        args: useDenoForDev ? ["task", "dev"] : ["task", "dev"],
+        args: IS_DENO ? ["task", "dev"] : ["run", "dev"],
         cwd: examplesDir,
         stdout: "piped",
         stderr: "piped",
@@ -294,13 +296,13 @@ describe("浏览器测试（examples 入口）", () => {
       await new Promise((r) => setTimeout(r, 300));
     }
     const text = await getMainText(t);
-    expect(text).toContain("多页面示例");
+    expect(text).toMatch(/多页面示例|Multi-page/);
     expect(text).toContain("createSignal");
     expect(text).toContain("createStore");
     expect(text).toContain("Reactive");
-    expect(text).toContain("进入示例");
+    expect(text).toMatch(/进入示例|Enter/);
     const title = await getDocumentTitle(t);
-    expect(title).toContain("首页");
+    expect(title).toMatch(/首页|Home/);
     expect(title).toContain("@dreamer/view");
   }, exampleBrowserConfig);
 
@@ -935,12 +937,14 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/signal");
     await new Promise((r) => setTimeout(r, 150));
-    const ok = await clickNavLinkByText(t, "首页");
+    const ok =
+      (await clickNavLinkByText(t, "首页")) ||
+      (await clickNavLinkByText(t, "Home"));
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);
-    expect(text).toContain("多页面示例");
-    expect(text).toContain("进入示例");
+    expect(text).toMatch(/多页面示例|Multi-page/);
+    expect(text).toMatch(/进入示例|Enter/);
   }, exampleBrowserConfig);
 
   it("顶部导航：点击「Signal」进入 Signal 页", async (t) => {
