@@ -4,7 +4,8 @@
  * View 模板引擎 — 向 DOM 元素应用 props。含 signal 绑定、ref、v-show、事件、className、style、布尔/表单属性及自定义指令。
  *
  * **本模块导出：**
- * - `applyProps(el, props, vnode)`：向 DOM 元素应用 props（ref、事件、class、style、指令等）
+ * - `applyProps(el, props)`：向 DOM 元素应用 props（ref、事件、class、style、指令等）；事件仅存储 handler，不在此处 addEventListener
+ * - `bindDeferredEventListeners(root)`：在节点入文档后对子树补绑事件，保证「先入文档再绑事件」
  */
 
 import { KEY_VIEW_DEV } from "../constants.ts";
@@ -134,15 +135,16 @@ export function applyProps(
   applyDirectives(el, props, createEffect, registerDirectiveUnmount);
 }
 
-/** 存在元素上的事件监听器 key 前缀，用于替换时 remove 旧监听 */
+/** 存在元素上的事件监听器 key 前缀，用于替换时 remove 旧监听；延后绑定时用同一 key 存 handler，加此后缀表示已绑定到 DOM */
 const VIEW_EVENT_KEY_PREFIX = "__view$on:";
+const VIEW_EVENT_BOUND_SUFFIX = "_bound";
 
 /** 开发环境下已对「传了 getter 却当静态值用」的 prop 做过一次性警告的 key 集合 */
 const getterWarnedKeys = new Set<string>();
 
 /**
  * 设置单个 prop：事件、className、style、布尔/表单属性、通用 attribute
- * 事件使用 addEventListener 绑定，避免部分环境下直接赋 on* 不生效（如动态创建节点、某些 CSP）
+ * 事件仅在此处存储 handler（__view$on:*），不在此处 addEventListener，由 bindDeferredEventListeners 在节点入文档后统一绑定，保证「先入文档再绑事件」顺序。
  */
 function applySingleProp(el: Element, key: string, value: unknown): void {
   // 开发环境：若传入的是 signal getter 却在此处当静态值使用，提示应写 count() 而非 count，并本次用求值结果避免界面错乱（children 不经过 applySingleProp，不会误伤 pre 等动态子节点）
@@ -163,11 +165,19 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     if (typeof prev === "function") {
       el.removeEventListener(event, prev);
       viewEl[storageKey] = undefined;
+      delete (viewEl as Record<string, unknown>)[
+        storageKey + VIEW_EVENT_BOUND_SUFFIX
+      ];
     }
     if (typeof value === "function") {
-      const fn = value as (e: Event) => void;
-      viewEl[storageKey] = fn;
-      el.addEventListener(event, fn);
+      (viewEl as Record<string, unknown>)[storageKey] = value;
+      // 首次绑定由 bindDeferredEventListeners 在节点入文档后统一做；此处若为「更新 handler」且节点已在文档中，则立即绑定新 handler，否则 patch 后不会再次遍历，点击一次后即失效
+      if (el.isConnected) {
+        el.addEventListener(event, value as EventListener);
+        (viewEl as Record<string, unknown>)[
+          storageKey + VIEW_EVENT_BOUND_SUFFIX
+        ] = true;
+      }
     }
     return;
   }
@@ -247,4 +257,42 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
   }
   const attrName = key === "htmlFor" ? "for" : key;
   if (el.getAttribute(attrName) !== str) el.setAttribute(attrName, str);
+}
+
+/**
+ * 在节点已入文档后，对子树中带 __view$on:* 的元素补绑 addEventListener，实现「先入文档再绑事件」。
+ * 在 createRoot 的 appendChild(mounted) 与 patchRoot 之后调用，避免首屏「先绑再插」导致点击不触发。
+ *
+ * @param root - 已挂载到 document 的根节点（Element 或 DocumentFragment）
+ */
+export function bindDeferredEventListeners(root: Node): void {
+  if (!isDOMEnvironment()) return;
+  if (root.nodeType === 1) {
+    const el = root as Element;
+    const viewEl = el as unknown as Record<string, unknown>;
+    for (const key of Object.keys(viewEl)) {
+      if (
+        key.startsWith(VIEW_EVENT_KEY_PREFIX) &&
+        !key.endsWith(VIEW_EVENT_BOUND_SUFFIX)
+      ) {
+        const fn = viewEl[key];
+        if (typeof fn === "function") {
+          const event = key.slice(VIEW_EVENT_KEY_PREFIX.length);
+          el.addEventListener(event, fn as EventListener);
+          viewEl[key + VIEW_EVENT_BOUND_SUFFIX] = true;
+          if (event === "click" && el.setAttribute) {
+            el.setAttribute("data-view-has-click", "1");
+          }
+        }
+      }
+    }
+    for (let i = 0; i < el.childNodes.length; i++) {
+      bindDeferredEventListeners(el.childNodes[i]);
+    }
+  } else if (root.nodeType === 11) {
+    const frag = root as DocumentFragment;
+    for (let i = 0; i < frag.childNodes.length; i++) {
+      bindDeferredEventListeners(frag.childNodes[i]);
+    }
+  }
 }

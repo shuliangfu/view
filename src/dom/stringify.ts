@@ -1,7 +1,7 @@
 /**
  * @module @dreamer/view/dom/stringify
  * @description
- * View 模板引擎 — SSR：将 VNode 转为 HTML 字符串或流。createElementToString、createElementToStream、stringifyAttributes、escapeText/escapeAttr、normalizeChildrenForSSR。
+ * View 模板引擎 — SSR：将 VNode 转为 HTML 字符串或流。统一遍历 walkVNodeForSSR，createElementToString 与 createElementToStream 复用。
  *
  * **本模块导出：**
  * - `createElementToString(vnode, options?)`：将 VNode 转为 HTML 字符串
@@ -11,6 +11,7 @@
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";
+import { normalizeChildren } from "./element.ts";
 import {
   getVElseIfValue,
   getVElseShow,
@@ -194,165 +195,42 @@ function stringifyAttributes(props: Record<string, unknown>): string {
 }
 
 /**
- * 将 VNode 转为 HTML 字符串（SSR，无浏览器 API）。
- * SSR 时 getter 只求值一次；vIf/vElse/vFor 与 createElement 逻辑一致。
- * options.allowRawHtml 为 false 时 v-html 输出转义文本（安全场景）；默认与客户端一致不转义。
- *
- * @param vnode - 要序列化的根 VNode
- * @param ifContext - 可选，v-else / v-else-if 的上下文
- * @param options - 可选，SSR 选项（如 allowRawHtml）
- * @returns 对应的 HTML 字符串
+ * 元素子节点 SSR 遍历：与客户端 1:1 对应，动态子节点（getter/function）包一层 div，keyed 包 span。
+ * 供 walkVNodeForSSR 在元素标签内 yield* 使用。
  */
-export function createElementToString(
-  vnode: VNode,
-  ifContext?: IfContext,
-  options?: SSROptions,
-): string {
-  if (isFragment(vnode)) {
-    const ctx = ifContext ?? { lastVIf: true };
-    const children = normalizeChildrenForSSR(
-      vnode.props.children ?? vnode.children,
-    );
-    return children.map((c) => createElementToString(c, ctx, options)).join("");
-  }
-
-  if (typeof vnode.type === "function") {
-    const type = vnode.type;
-    const props = vnode.props;
-    const binding = getContextBinding(type, props);
-    if (binding) pushContext(binding.id, binding.value);
-    try {
-      const result: VNode | VNode[] | null = type(props);
-      if (result == null) return "";
-      const nodes = Array.isArray(result) ? result : [result];
-      if (isErrorBoundary(type)) {
-        try {
-          return nodes.map((n) => createElementToString(n, ifContext, options))
-            .join("");
-        } catch (e) {
-          return createElementToString(
-            getErrorBoundaryFallback(props)(e),
-            ifContext,
-            options,
-          );
-        }
+function* walkElementChildrenStream(
+  rawChildren: unknown,
+  ctx: IfContext,
+  options: SSROptions | undefined,
+): Generator<string> {
+  const items = normalizeChildren(rawChildren);
+  for (const item of items) {
+    if (typeof item === "function" || isSignalGetter(item)) {
+      const resolved = normalizeChildrenForSSR((item as () => unknown)());
+      yield "<div data-view-dynamic>";
+      for (const c of resolved) {
+        yield* walkVNodeForSSR(c, ctx, options);
       }
-      return nodes.map((n) => createElementToString(n, ifContext, options))
-        .join("");
-    } finally {
-      if (binding) popContext(binding.id);
+      yield "</div>";
+    } else {
+      const v = item as VNode;
+      if (v.key != null && v.key !== undefined) {
+        const key = String(v.key);
+        yield `<span data-view-keyed data-key="${escapeAttr(key)}">`;
+        yield* walkVNodeForSSR(v, ctx, options);
+        yield "</span>";
+      } else {
+        yield* walkVNodeForSSR(v, ctx, options);
+      }
     }
   }
-
-  const tag = vnode.type as string;
-  // 防护：type 可能为 undefined 或非字符串（如未展开的组件引用），避免 tag.toLowerCase 报错
-  // Bun 与 Deno 在服务端加载/解析模块顺序可能不同，导致此处仅在 Bun 下出现异常 vnode
-  if (typeof tag !== "string") {
-    return "";
-  }
-  if (tag === "#text") {
-    return escapeText(
-      String((vnode.props as { nodeValue?: unknown }).nodeValue ?? ""),
-    );
-  }
-
-  const props = vnode.props;
-  const structural = hasStructuralDirective(props);
-
-  if (hasDirective(props, "vElse")) {
-    if (ifContext && !getVElseShow(ifContext.lastVIf)) return "";
-    if (ifContext) ifContext.lastVIf = true;
-  }
-  if (hasDirective(props, "vElseIf")) {
-    if (ifContext && ifContext.lastVIf) return "";
-    if (!getVElseIfValue(props)) {
-      if (ifContext) ifContext.lastVIf = false;
-      return "";
-    }
-    if (ifContext) ifContext.lastVIf = true;
-  }
-
-  if (structural === "vIf") {
-    if (!getVIfValue(props)) {
-      if (ifContext) ifContext.lastVIf = false;
-      return "";
-    }
-    if (ifContext) ifContext.lastVIf = true;
-  }
-
-  if (structural === "vFor") {
-    const rawChildren = props.children ?? vnode.children;
-    const parsed = getVForListAndFactory(props, rawChildren);
-    if (parsed) {
-      const { list, factory } = parsed;
-      const templateProps = { ...props, vFor: undefined, "v-for": undefined };
-      return list
-        .map((item, i) => {
-          const childResult = factory(item, i);
-          const childNodes = Array.isArray(childResult)
-            ? childResult
-            : [childResult];
-          const first = childNodes[0] as VNode | undefined;
-          const itemVnode: VNode = {
-            type: tag,
-            props: {
-              ...templateProps,
-              children: childNodes.length === 1 ? childNodes[0] : childNodes,
-            },
-            key: first?.key != null ? first.key : i,
-          };
-          return createElementToString(itemVnode, ifContext, options);
-        })
-        .join("");
-    }
-  }
-
-  let attrs = stringifyAttributes(props);
-  if (hasDirective(props, "vShow")) {
-    if (!getVShowValue(props)) {
-      attrs += ' style="display:none"';
-    }
-  }
-  if (vnode.key != null && vnode.key !== undefined) {
-    attrs += ` data-key="${escapeAttr(String(vnode.key))}"`;
-  }
-  const ctx = ifContext ?? { lastVIf: true };
-  const children = normalizeChildrenForSSR(props.children ?? vnode.children);
-  let inner: string;
-  {
-    const hasKeyedChildren = children.some(
-      (c) => (c as VNode).key != null && (c as VNode).key !== undefined,
-    );
-    inner = hasKeyedChildren
-      ? children
-        .map((c, i) => {
-          const v = c as VNode;
-          const key = v.key != null && v.key !== undefined
-            ? String(v.key)
-            : `@${i}`;
-          return `<span data-view-keyed data-key="${escapeAttr(key)}">${
-            createElementToString(c, ctx, options)
-          }</span>`;
-        })
-        .join("")
-      : children.map((c) => createElementToString(c, ctx, options)).join("");
-  }
-  if (voidElements.has(tag.toLowerCase())) {
-    return `<${tag}${attrs}>`;
-  }
-  return `<${tag}${attrs}>${inner}</${tag}>`;
 }
 
 /**
- * 流式 SSR：将 VNode 转为逐块输出的字符串生成器，与 createElementToString 结构一致。
- * options.allowRawHtml 为 false 时 dangerouslySetInnerHTML 输出转义文本；默认与客户端一致不转义。
- *
- * @param vnode - 要序列化的根 VNode
- * @param ifContext - 可选，v-else / v-else-if 的上下文
- * @param options - 可选，SSR 选项（如 allowRawHtml）
- * @yields 逐块 HTML 字符串
+ * 统一 SSR 遍历：按 VNode 树 yield 逐块 HTML，string 与 stream 入口复用此逻辑。
+ * Fragment → 组件 → #text → 标签（v-if/v-else/v-for/v-show）→ 属性与子节点。
  */
-export function* createElementToStream(
+function* walkVNodeForSSR(
   vnode: VNode,
   ifContext?: IfContext,
   options?: SSROptions,
@@ -363,7 +241,7 @@ export function* createElementToStream(
       vnode.props.children ?? vnode.children,
     );
     for (const c of children) {
-      yield* createElementToStream(c, ctx, options);
+      yield* walkVNodeForSSR(c, ctx, options);
     }
     return;
   }
@@ -380,10 +258,10 @@ export function* createElementToStream(
       if (isErrorBoundary(type)) {
         try {
           for (const n of nodes) {
-            yield* createElementToStream(n, ifContext, options);
+            yield* walkVNodeForSSR(n, ifContext, options);
           }
         } catch (e) {
-          yield* createElementToStream(
+          yield* walkVNodeForSSR(
             getErrorBoundaryFallback(props)(e),
             ifContext,
             options,
@@ -391,7 +269,7 @@ export function* createElementToStream(
         }
       } else {
         for (const n of nodes) {
-          yield* createElementToStream(n, ifContext, options);
+          yield* walkVNodeForSSR(n, ifContext, options);
         }
       }
     } finally {
@@ -401,10 +279,7 @@ export function* createElementToStream(
   }
 
   const tag = vnode.type as string;
-  // 防护：type 可能为 undefined 或非字符串，避免 tag.toLowerCase 报错
-  if (typeof tag !== "string") {
-    return;
-  }
+  if (typeof tag !== "string") return;
   if (tag === "#text") {
     yield escapeText(
       String((vnode.props as { nodeValue?: unknown }).nodeValue ?? ""),
@@ -454,10 +329,10 @@ export function* createElementToStream(
           },
           key: first?.key != null ? first.key : i,
         };
-        yield* createElementToStream(itemVnode, ifContext, options);
+        yield* walkVNodeForSSR(itemVnode, ifContext, options);
       }
+      return;
     }
-    return;
   }
 
   let attrs = stringifyAttributes(props);
@@ -470,25 +345,61 @@ export function* createElementToStream(
   const ctx = ifContext ?? { lastVIf: true };
   yield `<${tag}${attrs}>`;
   if (!voidElements.has(tag.toLowerCase())) {
-    const children = normalizeChildrenForSSR(
+    yield* walkElementChildrenStream(
       props.children ?? vnode.children,
+      ctx,
+      options,
     );
-    const hasKeyedChildren = children.some(
-      (c) => (c as VNode).key != null && (c as VNode).key !== undefined,
-    );
-    if (hasKeyedChildren) {
-      for (let i = 0; i < children.length; i++) {
-        const v = children[i] as VNode;
-        const key = v.key != null && v.key !== undefined
-          ? String(v.key)
-          : `@${i}`;
-        yield `<span data-view-keyed data-key="${escapeAttr(key)}">`;
-        yield* createElementToStream(children[i], ctx, options);
-        yield `</span>`;
-      }
-    } else {
-      for (const c of children) yield* createElementToStream(c, ctx, options);
-    }
     yield `</${tag}>`;
   }
+}
+
+/**
+ * 将 walkVNodeForSSR 的产出收集为单字符串，供 createElementToString 使用。
+ */
+function collectWalk(
+  vnode: VNode,
+  ifContext?: IfContext,
+  options?: SSROptions,
+): string {
+  let s = "";
+  for (const chunk of walkVNodeForSSR(vnode, ifContext, options)) {
+    s += chunk;
+  }
+  return s;
+}
+
+/**
+ * 将 VNode 转为 HTML 字符串（SSR，无浏览器 API）。
+ * SSR 时 getter 只求值一次；vIf/vElse/vFor 与 createElement 逻辑一致。
+ * options.allowRawHtml 为 false 时 v-html 输出转义文本（安全场景）；默认与客户端一致不转义。
+ *
+ * @param vnode - 要序列化的根 VNode
+ * @param ifContext - 可选，v-else / v-else-if 的上下文
+ * @param options - 可选，SSR 选项（如 allowRawHtml）
+ * @returns 对应的 HTML 字符串
+ */
+export function createElementToString(
+  vnode: VNode,
+  ifContext?: IfContext,
+  options?: SSROptions,
+): string {
+  return collectWalk(vnode, ifContext, options);
+}
+
+/**
+ * 流式 SSR：将 VNode 转为逐块输出的字符串生成器，与 createElementToString 共用 walkVNodeForSSR。
+ * options.allowRawHtml 为 false 时 dangerouslySetInnerHTML 输出转义文本；默认与客户端一致不转义。
+ *
+ * @param vnode - 要序列化的根 VNode
+ * @param ifContext - 可选，v-else / v-else-if 的上下文
+ * @param options - 可选，SSR 选项（如 allowRawHtml）
+ * @yields 逐块 HTML 字符串
+ */
+export function* createElementToStream(
+  vnode: VNode,
+  ifContext?: IfContext,
+  options?: SSROptions,
+): Generator<string> {
+  yield* walkVNodeForSSR(vnode, ifContext, options);
 }

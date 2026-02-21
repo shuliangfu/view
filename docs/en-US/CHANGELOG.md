@@ -8,6 +8,51 @@ and this project adheres to
 
 ---
 
+## [1.0.30] - 2026-02-21
+
+### Added
+
+- **SSR stringify**: Unified string and stream SSR behind a single traversal.
+  `walkVNodeForSSR` drives both `createElementToString` and
+  `createElementToStream`; `collectWalk` and `walkElementChildrenStream` handle
+  concatenation and element children. Reduces duplicate logic and keeps SSR
+  behavior in one place.
+- **runtime-shared**: Shared root effect loop `createRootEffectLoop` for
+  `createRoot` and `hydrate`. Common handling of disposed check, time/scope,
+  debounce placeholder, and strategy callbacks (`readDeps`, `shouldSkip`,
+  `runBody`, `onBeforeRun`). Root state (`RootEffectState`) and `getNow()` are
+  shared; each root supplies its own run body and skip logic.
+- **dom/reconcile**: New `reconcile.ts` with `createReconcile(deps)` returning
+  `reconcileKeyedChildren`, `reconcileChildren`, and `patchRoot`. Reconcile and
+  patch logic moved out of `element.ts`; element injects deps and delegates
+  `patchRoot` to the reconcile module. Exports `hasAnyKey` and `collectVIfGroup`
+  for use by element.
+- **element placeholder API**:
+  `registerPlaceholderContent(placeholder,
+  effectBody, options?: { preserveScroll })`
+  unifies v-if group, single v-if, and v-for placeholder behavior (clear, run
+  body, bind deferred events; optional scroll preservation). Replaces repeated
+  unmount/replaceChildren/bind blocks.
+
+### Changed
+
+- **runtime-shared**: `createRoot` and `hydrate` no longer log to console by
+  default. Debug logs are gated by `globalThis.__VIEW_DEBUG__`; set it to `true`
+  to restore "[view] createRoot() root created #" and hydrate effect run
+  messages.
+- **element.ts**: Size reduced by moving reconcile/patch into `reconcile.ts` and
+  using `registerPlaceholderContent` for placeholder + effect cases. Public API
+  unchanged; `patchRoot` still exported and implemented via `rec.patchRoot`.
+
+### Fixed
+
+- **SSR stringify (vFor)**: When vFor item had `parsed === null` (e.g. props
+  with `vFor` cleared), the branch incorrectly returned and produced no HTML.
+  Now falls through to normal element output so vFor list items render correctly
+  in SSR.
+
+---
+
 ## [1.0.29] - 2026-02-20
 
 ### Fixed

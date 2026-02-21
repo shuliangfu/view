@@ -5,6 +5,7 @@
  *
  * **本模块导出：**
  * - `hydrateElement(container, vnode)`：在已有 DOM 上激活，与 vnode 一一对应并挂上 props/effect
+ * - `hydrateFromExpanded(container, expanded)`：基于已展开树 hydrate，不执行组件，首屏 effect 只跑一次
  */
 
 import { KEY_VIEW_DEV } from "../constants.ts";
@@ -18,6 +19,7 @@ import {
 import { getGlobal } from "../globals.ts";
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
+import type { ChildItem, ExpandedRoot } from "./element.ts";
 import { appendDynamicChild, normalizeChildren } from "./element.ts";
 import { applyProps } from "./props.ts";
 import type { IfContext } from "./shared.ts";
@@ -85,6 +87,110 @@ function collectExpected(
   for (const item of childList) {
     if (isSignalGetter(item)) out.push("<dynamic>");
     else collectExpected(item as VNode, out, ctx);
+  }
+}
+
+/** 从已展开树收集节点描述（不执行组件），用于与 DOM 对比 */
+function collectExpectedFromExpanded(
+  expanded: ExpandedRoot,
+  out: string[],
+  ifContext?: IfContext,
+): void {
+  if (Array.isArray(expanded)) {
+    const ctx = ifContext ?? { lastVIf: true };
+    for (const item of expanded) {
+      if (typeof item === "function") out.push("<dynamic>");
+      else collectExpectedFromExpandedItem(item as VNode, out, ctx);
+    }
+    return;
+  }
+  collectExpectedFromExpandedItem(expanded as VNode, out, ifContext);
+}
+
+/** 单条 ChildItem / VNode 的预期结构收集（已展开树中无组件，不调用 type） */
+function collectExpectedFromExpandedItem(
+  item: ChildItem,
+  out: string[],
+  ifContext?: IfContext,
+): void {
+  if (typeof item === "function") {
+    out.push("<dynamic>");
+    return;
+  }
+  const vnode = item as VNode;
+  const props = vnode.props;
+  if (props == null || typeof props !== "object") return;
+  if (hasDirective(props, "vElse")) {
+    if (ifContext && !getVElseShow(ifContext.lastVIf)) return;
+    if (ifContext) ifContext.lastVIf = true;
+  }
+  if (hasDirective(props, "vElseIf")) {
+    if (ifContext?.lastVIf) return;
+    if (!getVElseIfValue(props)) {
+      if (ifContext) ifContext.lastVIf = false;
+      return;
+    }
+    if (ifContext) ifContext.lastVIf = true;
+  }
+  if (hasStructuralDirective(props) === "vIf" && !getVIfValue(props)) {
+    if (ifContext) ifContext.lastVIf = false;
+    return;
+  }
+  if (hasStructuralDirective(props) === "vIf" && ifContext) {
+    ifContext.lastVIf = true;
+  }
+  if (isFragment(vnode)) {
+    const ctx = ifContext ?? { lastVIf: true };
+    const children = normalizeChildren(vnode.props.children ?? vnode.children);
+    for (const c of children) {
+      if (isSignalGetter(c)) out.push("<dynamic>");
+      else collectExpectedFromExpandedItem(c as ChildItem, out, ctx);
+    }
+    return;
+  }
+  const tag = vnode.type as string;
+  const key = vnode.key != null ? `:key=${String(vnode.key)}` : "";
+  out.push(tag === "#text" ? "#text" : `${tag}${key}`);
+  if (tag === "#text") return;
+  const rawChildren = props.children ?? vnode.children;
+  if (isSignalGetter(rawChildren)) {
+    out.push("<dynamic>");
+    return;
+  }
+  const ctx = ifContext ?? { lastVIf: true };
+  const childList = normalizeChildren(rawChildren);
+  for (const child of childList) {
+    if (isSignalGetter(child)) out.push("<dynamic>");
+    else collectExpectedFromExpandedItem(child as ChildItem, out, ctx);
+  }
+}
+
+/** 开发环境下对比「已展开树」与 DOM 结构，不一致时 console.warn（不执行组件） */
+function warnHydrationMismatchFromExpanded(
+  container: Element,
+  expanded: ExpandedRoot,
+): void {
+  if (!getGlobal<boolean>(KEY_VIEW_DEV)) return;
+  const expected: string[] = [];
+  collectExpectedFromExpanded(expanded, expected);
+  const actual: string[] = [];
+  collectActual(Array.from(container.childNodes), actual);
+  if (
+    expected.length !== actual.length ||
+    expected.some((e, i) => actual[i] !== e)
+  ) {
+    const path = container.id
+      ? `#${container.id}`
+      : (container.getAttribute?.("class")?.slice(0, 30) ?? "container");
+    console.warn(
+      `[View] Hydration mismatch at ${path}: expected ${expected.length} nodes (e.g. ${
+        expected.slice(0, 5).join(", ")
+      }${expected.length > 5 ? "..." : ""}), got ${actual.length} (e.g. ${
+        actual.slice(0, 5).join(", ")
+      }${
+        actual.length > 5 ? "..." : ""
+      }). Ensure server-rendered HTML matches the client component tree (e.g. same keys, same conditional branches).`,
+    );
   }
 }
 
@@ -258,6 +364,159 @@ function hydrateFromList(
     }
   }
   return index + 1;
+}
+
+/**
+ * 基于已展开树做 hydrate：与 DOM 一一对应并挂上 props/effect，不执行组件（避免组件树执行两次）。
+ * 返回消费的节点下标，供根级遍历使用。
+ */
+function hydrateFromExpandedItem(
+  nodes: Node[],
+  index: number,
+  item: ChildItem,
+  parentNamespace: string | null,
+  ifContext?: IfContext,
+): number {
+  if (typeof item === "function") {
+    const doc = (globalThis as { document: Document }).document;
+    const wrap = createDynamicSpan(doc);
+    if (nodes[index]) {
+      (nodes[index] as Node).parentNode?.replaceChild(wrap, nodes[index]);
+    }
+    const ctx = ifContext ?? { lastVIf: true };
+    appendDynamicChild(wrap, item, parentNamespace, ctx);
+    return index + 1;
+  }
+  const vnode = item as VNode;
+  const props = vnode.props;
+  if (props == null || typeof props !== "object") {
+    return index;
+  }
+  const structural = hasStructuralDirective(props);
+  if (hasDirective(props, "vElse")) {
+    if (ifContext && !getVElseShow(ifContext.lastVIf)) return index;
+    if (ifContext) ifContext.lastVIf = true;
+  }
+  if (hasDirective(props, "vElseIf")) {
+    if (ifContext?.lastVIf) return index;
+    if (!getVElseIfValue(props)) {
+      if (ifContext) ifContext.lastVIf = false;
+      return index;
+    }
+    if (ifContext) ifContext.lastVIf = true;
+  }
+  if (structural === "vIf" && !getVIfValue(props)) {
+    if (ifContext) ifContext.lastVIf = false;
+    return index;
+  }
+  if (structural === "vIf" && ifContext) ifContext.lastVIf = true;
+
+  if (isFragment(vnode)) {
+    const ctx = ifContext ?? { lastVIf: true };
+    const children = normalizeChildren(vnode.props.children ?? vnode.children);
+    let i = index;
+    for (const c of children) {
+      if (isSignalGetter(c)) {
+        const wrap = createDynamicSpan(
+          (globalThis as { document: Document }).document,
+        );
+        if (nodes[i]) {
+          (nodes[i] as Element).replaceWith?.(wrap) ??
+            (nodes[i].parentNode?.appendChild(wrap));
+        }
+        appendDynamicChild(wrap, c as () => unknown, parentNamespace, ctx);
+        i++;
+      } else {
+        i = hydrateFromExpandedItem(
+          nodes,
+          i,
+          c as ChildItem,
+          parentNamespace,
+          ctx,
+        );
+      }
+    }
+    return i;
+  }
+  const tag = vnode.type as string;
+  if (tag === "#text") {
+    const text = nodes[index] as Text;
+    if (text && text.nodeType === 3) {
+      text.nodeValue = String(
+        (vnode.props as { nodeValue?: unknown }).nodeValue ?? "",
+      );
+    }
+    return index + 1;
+  }
+  const el = nodes[index] as Element;
+  if (!el || el.nodeType !== 1) return index + 1;
+  const elTag = (el.nodeName || "").toLowerCase();
+  const wantTag = tag.toLowerCase();
+  if (elTag !== wantTag) return index + 1;
+  applyProps(el, props);
+  const rawChildren = props.children ?? vnode.children;
+  const ctx = ifContext ?? { lastVIf: true };
+  if (isSignalGetter(rawChildren)) {
+    runDirectiveUnmountOnChildren(el);
+    el.replaceChildren();
+    appendDynamicChild(el, rawChildren as () => unknown, parentNamespace, ctx);
+    return index + 1;
+  }
+  const childList = Array.from(el.childNodes);
+  const childItems = normalizeChildren(rawChildren);
+  let next = 0;
+  for (const childItem of childItems) {
+    if (isSignalGetter(childItem)) {
+      const wrap = createDynamicSpan(
+        (globalThis as { document: Document }).document,
+      );
+      if (childList[next]) {
+        (childList[next] as Element).parentNode?.replaceChild(
+          wrap,
+          childList[next],
+        );
+      }
+      appendDynamicChild(
+        wrap,
+        childItem as () => unknown,
+        parentNamespace,
+        ctx,
+      );
+      next++;
+    } else {
+      next = hydrateFromExpandedItem(
+        childList,
+        next,
+        childItem as ChildItem,
+        parentNamespace,
+        ctx,
+      );
+    }
+  }
+  return index + 1;
+}
+
+/**
+ * 基于已展开树在已有 DOM 上 hydrate，不执行组件，保证首屏组件/effect 只跑一次。
+ * 与 hydrateElement 语义一致，但调用方需先 expandVNode(vnode) 再传入 expanded。
+ *
+ * @param container - 已有 SSR 子节点的 DOM 容器
+ * @param expanded - expandVNode(vnode) 的返回值
+ */
+export function hydrateFromExpanded(
+  container: Element,
+  expanded: ExpandedRoot,
+): void {
+  warnHydrationMismatchFromExpanded(container, expanded);
+  const nodes = Array.from(container.childNodes);
+  if (Array.isArray(expanded)) {
+    let i = 0;
+    for (const item of expanded) {
+      i = hydrateFromExpandedItem(nodes, i, item, null);
+    }
+  } else {
+    hydrateFromExpandedItem(nodes, 0, expanded as ChildItem, null);
+  }
 }
 
 /**
