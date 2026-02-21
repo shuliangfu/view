@@ -29,4 +29,4 @@ jobs:
         run: deno lint
 
       - name: Publish to JSR
-        run: npx jsr publish --no-check
+        run: npx jsr publish 
