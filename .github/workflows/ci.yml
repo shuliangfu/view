@@ -133,20 +133,12 @@ jobs:
       - name: Install dependencies (Bun)
         run: bun install
 
-      - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
-        timeout-minutes: 10
-
-      - name: Verify Chromium in PLAYWRIGHT_BROWSERS_PATH (Windows)
+      # Windows 上浏览器测试由上方 test-windows (Deno) 覆盖。
+      # Bun 在 Windows 存在已知 bug（chromium.launch() 卡住不返回，见 oven-sh/bun#15679）
+      # 即使 PLAYWRIGHT_BROWSERS_PATH 与 Chromium 已正确安装也会 120s 超时，
+      # 故此处仅跑非 browser 用例；待 Bun 修复后可改为 bun test tests/
+      - name: Test (Bun, Windows)
         shell: pwsh
         run: |
-          $path = "$env:PLAYWRIGHT_BROWSERS_PATH"
-          Write-Host "PLAYWRIGHT_BROWSERS_PATH=$path"
-          if (-not (Test-Path $path)) { Write-Error "Path not found: $path"; exit 1 }
-          Get-ChildItem -Path $path -Recurse -Filter "chrome.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $?) { Write-Error "chrome.exe not found under $path"; exit 1 }
-
-      # Windows 上 Chromium 启动易超时，暂不跑浏览器 E2E，只跑 unit + integration + CLI
-      - name: Test (Bun, Windows)
-        run: bun test --preload ./tests/dom-setup.ts tests/
-        timeout-minutes: 15
+          bun test tests/integration tests/unit
+        timeout-minutes: 10
