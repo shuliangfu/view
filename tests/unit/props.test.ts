@@ -8,7 +8,7 @@ import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import { createSignal, isDOMEnvironment } from "@dreamer/view";
 import { registerDirective } from "../../src/directive.ts";
-import { applyProps } from "../../src/dom/props.ts";
+import { applyProps, bindDeferredEventListeners } from "../../src/dom/props.ts";
 
 /** happy-dom 或其它测试可能启动定时器，关闭 sanitize 避免泄漏误报 */
 const noSanitize = { sanitizeOps: false, sanitizeResources: false };
@@ -191,42 +191,55 @@ describe("applyProps value/checked 响应式", () => {
 describe("applyProps 事件 on*", () => {
   it("onClick 绑定并触发", () => {
     const el = document.createElement("button");
+    document.body.appendChild(el);
     let n = 0;
     applyProps(el, { onClick: () => n++ });
+    bindDeferredEventListeners(el);
     (el as HTMLButtonElement).click();
     expect(n).toBe(1);
+    document.body.removeChild(el);
   }, noSanitize);
 
   it("再次 applyProps 同事件时替换监听器", () => {
     const el = document.createElement("button");
+    document.body.appendChild(el);
     let a = 0;
     let b = 0;
     applyProps(el, { onClick: () => a++ });
+    bindDeferredEventListeners(el);
     (el as HTMLButtonElement).click();
     expect(a).toBe(1);
     applyProps(el, { onClick: () => b++ });
+    bindDeferredEventListeners(el);
     (el as HTMLButtonElement).click();
     expect(a).toBe(1);
     expect(b).toBe(1);
+    document.body.removeChild(el);
   }, noSanitize);
 
   it("事件监听器置为 null 时移除旧监听器", () => {
     const el = document.createElement("button");
+    document.body.appendChild(el);
     let n = 0;
     applyProps(el, { onClick: () => n++ });
+    bindDeferredEventListeners(el);
     (el as HTMLButtonElement).click();
     expect(n).toBe(1);
     applyProps(el, { onClick: null });
     (el as HTMLButtonElement).click();
     expect(n).toBe(1);
+    document.body.removeChild(el);
   }, noSanitize);
 
   it("onChange 等其它 on* 事件绑定", () => {
     const el = document.createElement("input");
+    document.body.appendChild(el);
     let changed = false;
     applyProps(el, { onChange: () => (changed = true) });
+    bindDeferredEventListeners(el);
     el.dispatchEvent(new Event("change", { bubbles: true }));
     expect(changed).toBe(true);
+    document.body.removeChild(el);
   }, noSanitize);
 });
 

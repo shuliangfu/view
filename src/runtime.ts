@@ -14,21 +14,21 @@ import {
   createElementToString,
   createNodeFromExpanded,
   expandVNode,
-  hydrateElement,
+  hydrateFromExpanded,
   patchRoot,
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./dom.ts";
-import type { ExpandedRoot } from "./dom.ts";
+import { bindDeferredEventListeners } from "./dom/props.ts";
 import type { SSROptions } from "./dom.ts";
 import { KEY_VIEW_DATA, KEY_VIEW_SSR } from "./constants.ts";
 import { setGlobal } from "./globals.ts";
 import {
   createCreateRoot,
+  createHydrateRoot,
   createReactiveRootWith,
   createRender,
   NOOP_ROOT,
-  removeCloak,
   resolveMountContainer,
 } from "./runtime-shared.ts";
 import { createSignal } from "./signal.ts";
@@ -47,6 +47,7 @@ export const createRoot: (fn: () => VNode, container: Element) => Root =
     createNodeFromExpanded,
     patchRoot,
     runDirectiveUnmount,
+    bindDeferredEventListeners,
   });
 
 /** 便捷方法：创建根并挂载（等同于 createRoot(fn, container)），由 runtime-shared.createRender 统一实现 */
@@ -116,6 +117,21 @@ function createSSRDocumentGuard(): Document {
   });
 }
 
+/**
+ * 尝试将 globalThis.document 替换为 guard（仅当运行环境允许写入时，如 Node/Deno 服务端）。
+ * 浏览器中 window.document 为只读 getter，赋值会抛错，此时返回 null 表示未替换。
+ */
+function trySwapDocumentForSSR(guard: Document): Document | null {
+  const g = globalThis as { document?: Document };
+  try {
+    const orig = g.document;
+    g.document = guard;
+    return orig ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function renderToString(
   fn: () => VNode,
   options?: SSROptions,
@@ -125,13 +141,13 @@ export function renderToString(
     document?: Document;
     __VIEW_ORIG_DOCUMENT__?: Document;
   };
-  const origDoc = g.document;
-  g.document = createSSRDocumentGuard();
+  const guard = createSSRDocumentGuard();
+  const origDoc = trySwapDocumentForSSR(guard);
   try {
     const vnode = fn();
     return createElementToString(vnode, undefined, options);
   } finally {
-    g.document = origDoc;
+    if (origDoc !== null) g.document = origDoc;
     setGlobal(KEY_VIEW_SSR, false);
   }
 }
@@ -196,94 +212,37 @@ export function generateHydrationScript(
  * 若 container 已有子节点，则与 fn() 的 VNode 一一对应复用 DOM（完整 hydrate）；
  * 首次复用后，后续响应式更新与 createRoot 一致，走 patchRoot 细粒度 patch，不整树替换。
  * 无子节点时与 createRoot 行为一致。
+ * 实现与调试逻辑由 runtime-shared.createHydrateRoot 统一提供。
+ */
+export const hydrate: (fn: () => VNode, container: Element) => Root =
+  createHydrateRoot({
+    createEffect,
+    createRunDisposersCollector,
+    setCurrentScope,
+    isDOMEnvironment,
+    createRenderTriggerSignal: () => createSignal(0),
+    expandVNode,
+    createNodeFromExpanded,
+    patchRoot,
+    runDirectiveUnmount,
+    bindDeferredEventListeners,
+    hydrateFromExpanded,
+    runDirectiveUnmountOnChildren,
+  });
+
+/**
+ * 创建响应式单根并首屏水合：首屏用 hydrate 激活已有服务端 HTML，后续状态变化时在根内做细粒度 patch。
+ * 用于 Hybrid 首屏只做一次激活、不卸根不重建，避免 hydrate 后再 createReactiveRoot 导致组件树执行两遍。
  *
- * @param fn 根组件函数（与 SSR 时相同）
- * @param container 已有 SSR 内容的 DOM 容器
+ * @param container 挂载的 DOM 容器（首屏时通常已有子节点）
+ * @param getState 获取当前状态（建议为 createSignal 的 getter）
+ * @param buildTree 根据状态构建根 VNode
  * @returns Root 句柄
  */
-export function hydrate(fn: () => VNode, container: Element): Root {
-  if (!isDOMEnvironment()) {
-    return { unmount: () => {}, container: null };
-  }
-  let mounted: Node | Element | null = null;
-  let lastExpanded: ExpandedRoot | null = null;
-  let disposed = false;
-  let didHydrate = false;
-  const disposers: Array<() => void> = [];
-  const { runDisposers, getScopeForRun } = createRunDisposersCollector();
-
-  const root: Root = {
-    container,
-    unmount() {
-      disposed = true;
-      disposers.forEach((d) => d());
-      disposers.length = 0;
-      runDisposers.forEach((d) => d());
-      runDisposers.length = 0;
-      if (mounted != null) {
-        if (mounted === container) {
-          runDirectiveUnmountOnChildren(container as Element);
-          (container as Element).textContent = "";
-        } else if ((container as Element).contains(mounted)) {
-          runDirectiveUnmount(mounted);
-          (container as Element).removeChild(mounted);
-        }
-      }
-      mounted = null;
-      lastExpanded = null;
-    },
-  };
-
-  const disposeRoot = createEffect(() => {
-    if (disposed) return;
-    setCurrentScope(getScopeForRun());
-    try {
-      const vnode = fn();
-      const hasExisting = (container as Element).hasChildNodes();
-      if (hasExisting && !didHydrate) {
-        hydrateElement(container as Element, vnode);
-        didHydrate = true;
-        removeCloak(container as Element);
-        const expanded = expandVNode(vnode);
-        lastExpanded = expanded;
-        mounted = Array.isArray(expanded)
-          ? (container as Element)
-          : (container as Element).firstChild;
-      } else {
-        const newExpanded = expandVNode(vnode);
-        if (
-          mounted != null && lastExpanded != null && container.contains(mounted)
-        ) {
-          patchRoot(
-            container as Element,
-            mounted,
-            lastExpanded,
-            newExpanded,
-          );
-          lastExpanded = newExpanded;
-          mounted = Array.isArray(newExpanded)
-            ? (container as Element)
-            : (container as Element).firstChild;
-        } else {
-          if (mounted != null) {
-            if (mounted === container) {
-              runDirectiveUnmountOnChildren(container as Element);
-              (container as Element).textContent = "";
-            } else if ((container as Element).contains(mounted)) {
-              runDirectiveUnmount(mounted);
-              (container as Element).removeChild(mounted);
-            }
-          }
-          mounted = createNodeFromExpanded(newExpanded);
-          (container as Element).appendChild(mounted);
-          lastExpanded = newExpanded;
-          didHydrate = true;
-        }
-      }
-    } finally {
-      setCurrentScope(null);
-    }
-  });
-  disposers.push(disposeRoot);
-  return root;
+export function createReactiveRootHydrate<T>(
+  container: Element,
+  getState: () => T,
+  buildTree: (state: T) => VNode,
+): Root {
+  return createReactiveRootWith(hydrate, container, getState, buildTree);
 }

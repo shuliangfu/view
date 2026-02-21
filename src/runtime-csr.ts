@@ -14,6 +14,7 @@ import {
   expandVNode,
   patchRoot,
 } from "./dom/element.ts";
+import { bindDeferredEventListeners } from "./dom/props.ts";
 import { runDirectiveUnmount } from "./dom/unmount.ts";
 import {
   createCreateRoot,
@@ -38,6 +39,7 @@ export const createRoot: (fn: () => VNode, container: Element) => Root =
     createNodeFromExpanded,
     patchRoot,
     runDirectiveUnmount,
+    bindDeferredEventListeners,
   });
 
 /** 便捷方法：创建根并挂载，由 runtime-shared.createRender 统一实现 */

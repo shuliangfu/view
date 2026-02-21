@@ -8,7 +8,7 @@
  * - 指令卸载：`registerDirectiveUnmount`、`runDirectiveUnmount`、`runDirectiveUnmountOnChildren`（来自 dom/unmount）
  * - 元素与 patch：`appendDynamicChild`、`ChildItem`、`createElement`、`createNodeFromExpanded`、`ExpandedRoot`、`expandVNode`、`normalizeChildren`、`patchRoot`（来自 dom/element）
  * - SSR：`createElementToStream`、`createElementToString`（来自 dom/stringify）
- * - `hydrateElement`（来自 dom/hydrate）
+ * - `hydrateElement`、`hydrateFromExpanded`（来自 dom/hydrate）
  */
 
 export {
@@ -40,4 +40,4 @@ export {
   createElementToString,
 } from "./dom/stringify.ts";
 
-export { hydrateElement } from "./dom/hydrate.ts";
+export { hydrateElement, hydrateFromExpanded } from "./dom/hydrate.ts";

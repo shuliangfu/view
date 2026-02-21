@@ -31,6 +31,20 @@ function createSSRDocumentGuard(): Document {
 }
 
 /**
+ * 尝试将 globalThis.document 替换为 guard；浏览器中 document 只读时返回 null，调用方不替换、不恢复。
+ */
+function trySwapDocumentForSSR(guard: Document): Document | null {
+  const g = globalThis as { document?: Document };
+  try {
+    const orig = g.document;
+    g.document = guard;
+    return orig ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 流式 SSR：将根组件渲染为逐块输出的字符串生成器，便于边渲染边写入响应。
  * 执行期间设置 KEY_VIEW_SSR，便于 getDocument() 等在误用 document 时抛出明确错误。
  *
@@ -47,12 +61,12 @@ export function renderToStream(
   return (function* () {
     setGlobal(KEY_VIEW_SSR, true);
     const g = globalThis as { document?: Document };
-    const origDoc = g.document;
-    g.document = createSSRDocumentGuard();
+    const guard = createSSRDocumentGuard();
+    const origDoc = trySwapDocumentForSSR(guard);
     try {
       yield* inner;
     } finally {
-      g.document = origDoc;
+      if (origDoc !== null) g.document = origDoc;
       setGlobal(KEY_VIEW_SSR, false);
     }
   })();

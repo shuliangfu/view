@@ -57,7 +57,6 @@ export function createSignal<T>(
 ): [() => T, (value: T | ((prev: T) => T)) => void] {
   let value = initialValue;
   const subscribers: Subscriber = new Set();
-
   const getter = (): T => {
     const currentEffect = getCurrentEffect() as EffectRun | null;
     if (currentEffect) {

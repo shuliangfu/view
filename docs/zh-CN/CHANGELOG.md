@@ -7,6 +7,47 @@
 
 ---
 
+## [1.0.30] - 2026-02-21
+
+### 新增
+
+- **SSR stringify**：将字符串与流式 SSR 统一为单一路径。`walkVNodeForSSR`
+  同时驱动 `createElementToString` 与 `createElementToStream`；`collectWalk` 与
+  `walkElementChildrenStream` 负责拼接与元素子节点遍历。减少重复逻辑，
+  便于维护。
+- **runtime-shared**：抽公共根 effect 循环 `createRootEffectLoop`，供
+  `createRoot` 与 `hydrate` 复用。统一处理 disposed 检查、时间与 scope、
+  防抖占位及策略回调（`readDeps`、`shouldSkip`、`runBody`、`onBeforeRun`）。
+  根状态（`RootEffectState`）与 `getNow()` 共用；各根仅提供自己的 runBody
+  与跳过逻辑。
+- **dom/reconcile**：新增 `reconcile.ts`，通过 `createReconcile(deps)` 返回
+  `reconcileKeyedChildren`、`reconcileChildren`、`patchRoot`。协调与 patch
+  逻辑从 `element.ts` 迁出；element 注入 deps 并将 `patchRoot` 委托给 reconcile
+  模块。对外导出 `hasAnyKey`、`collectVIfGroup` 供 element 使用。
+- **element 占位
+  API**：`registerPlaceholderContent(placeholder, effectBody,
+  options?: { preserveScroll })`
+  统一 v-if 组、单 v-if、v-for 的占位逻辑 （清空、执行
+  body、补绑延迟事件；可选保留滚动）。替代原先多处重复的
+  unmount/replaceChildren/bind 代码。
+
+### 变更
+
+- **runtime-shared**：`createRoot` 与 `hydrate` 默认不再向控制台输出日志。
+  调试日志由 `globalThis.__VIEW_DEBUG__` 门控；设为 `true` 可恢复 "[view]
+  createRoot() root created #" 及 hydrate effect 运行次数等输出。
+- **element.ts**：将 reconcile/patch 迁至 `reconcile.ts`，占位 + effect 改用
+  `registerPlaceholderContent`，单文件行数减少。对外 API 不变；`patchRoot`
+  仍由本包导出，内部委托给 `rec.patchRoot`。
+
+### 修复
+
+- **SSR stringify（vFor）**：当 vFor 项出现 `parsed === null`（如 props 中
+  `vFor` 被清空）时，原先错误地 return 导致无 HTML 输出。现改为继续走普通
+  元素分支，vFor 列表项在 SSR 下能正确渲染。
+
+---
+
 ## [1.0.29] - 2026-02-20
 
 ### 修复

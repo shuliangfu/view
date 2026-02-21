@@ -8,13 +8,7 @@
  */
 
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";
-import {
-  KEYED_WRAPPER_ATTR,
-  V_FOR_ATTR,
-  V_IF_ATTR,
-  V_IF_GROUP_ATTR,
-  V_ONCE_FROZEN_ATTR,
-} from "../constants.ts";
+import { V_FOR_ATTR, V_IF_ATTR, V_IF_GROUP_ATTR } from "../constants.ts";
 import {
   CONTEXT_SCOPE_TYPE,
   getContextBinding,
@@ -35,7 +29,7 @@ import { createEffect } from "../effect.ts";
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import { isDOMEnvironment } from "../types.ts";
-import { applyProps } from "./props.ts";
+import { applyProps, bindDeferredEventListeners } from "./props.ts";
 import type { IfContext } from "./shared.ts";
 import {
   createDynamicSpan,
@@ -46,9 +40,9 @@ import {
 } from "./shared.ts";
 import {
   registerDirectiveUnmount,
-  runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
+import { collectVIfGroup, createReconcile, hasAnyKey } from "./reconcile.ts";
 
 /** 在 placeholder 上创建 effect 并注册卸载时 dispose，供 v-if/v-for/动态子节点等多处复用 */
 function registerPlaceholderEffect(
@@ -56,6 +50,27 @@ function registerPlaceholderEffect(
   effectBody: () => void,
 ): void {
   registerDirectiveUnmount(placeholder, createEffect(effectBody));
+}
+
+/**
+ * 占位内容统一入口：先清空占位、执行 effectBody、再补绑事件；可选保留滚动位置（v-if 切换时防抖动）。
+ * 供 v-if 组、单 v-if、v-for 等占位 + effect 场景复用，减少重复的 unmount/replaceChildren/bindDeferred 代码。
+ */
+function registerPlaceholderContent(
+  placeholder: Element,
+  effectBody: () => void,
+  options?: { preserveScroll?: boolean },
+): void {
+  const run = () => {
+    runDirectiveUnmountOnChildren(placeholder);
+    placeholder.replaceChildren();
+    effectBody();
+    bindDeferredEventListeners(placeholder);
+  };
+  registerPlaceholderEffect(placeholder, () => {
+    if (options?.preserveScroll) preserveScrollAroundUpdate(run);
+    else run();
+  });
 }
 
 /** SVG 命名空间，用于 createElementNS */
@@ -194,87 +209,6 @@ export function normalizeChildren(children: unknown): ChildItem[] {
   return [createTextVNode(children)];
 }
 
-/** 判断 ChildItem 列表是否包含任意带 key 的 VNode */
-function hasAnyKey(items: ChildItem[]): boolean {
-  for (const x of items) {
-    if (!isSignalGetter(x) && (x as VNode).key != null) return true;
-  }
-  return false;
-}
-
-/** 从 ChildItem 取 key，供 keyed 协调时与旧列表对齐 */
-function getItemKey(item: ChildItem, index: number): string {
-  if (isSignalGetter(item) || typeof item === "function") return `@${index}`;
-  const k = (item as VNode).key;
-  return k != null ? String(k) : `@${index}`;
-}
-
-/**
- * 按 key 协调列表：复用已有 DOM 节点（同 key 时 patch 子节点而非整节点替换），减少重挂
- * @param oldItems - 上一轮子项列表，传空数组时仅做创建/替换，不 patch
- */
-function reconcileKeyedChildren(
-  container: Element,
-  oldItems: ChildItem[],
-  items: ChildItem[],
-  parentNamespace: string | null,
-  ifContext?: IfContext,
-): void {
-  const doc = (globalThis as { document: Document }).document;
-  const keyToWrapper = new Map<string, Element>();
-  for (const child of Array.from(container.children)) {
-    const key = (child as Element).getAttribute?.("data-key");
-    if (key != null) keyToWrapper.set(key, child as Element);
-  }
-  const keyToOldItem = new Map<string, ChildItem>();
-  for (let i = 0; i < oldItems.length; i++) {
-    keyToOldItem.set(getItemKey(oldItems[i], i), oldItems[i]);
-  }
-  const resultNodes: Node[] = [];
-  const ctx = ifContext ?? { lastVIf: true };
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (isSignalGetter(item)) {
-      const wrap = createDynamicSpan(doc);
-      appendDynamicChild(wrap, item as () => unknown, parentNamespace, ctx);
-      resultNodes.push(wrap);
-      continue;
-    }
-    const v = item as VNode;
-    const key = getItemKey(v, i);
-    const wrapper = keyToWrapper.get(key);
-    const oldItem = keyToOldItem.get(key);
-    const canPatch = wrapper?.firstChild != null &&
-      oldItem != null &&
-      !isSignalGetter(oldItem) &&
-      typeof oldItem !== "function";
-    if (wrapper && canPatch) {
-      keyToWrapper.delete(key);
-      patchNode(
-        wrapper.firstChild as Node,
-        oldItem as VNode,
-        v,
-        parentNamespace,
-        ctx,
-      );
-      resultNodes.push(wrapper);
-    } else if (wrapper) {
-      keyToWrapper.delete(key);
-      runDirectiveUnmountOnChildren(wrapper);
-      wrapper.replaceChildren(createElement(v, parentNamespace, ctx));
-      resultNodes.push(wrapper);
-    } else {
-      const newWrapper = doc.createElement("span");
-      newWrapper.setAttribute(KEYED_WRAPPER_ATTR, "");
-      newWrapper.setAttribute("data-key", key);
-      newWrapper.appendChild(createElement(v, parentNamespace, ctx));
-      resultNodes.push(newWrapper);
-    }
-  }
-  for (const w of keyToWrapper.values()) runDirectiveUnmount(w);
-  container.replaceChildren(...resultNodes);
-}
-
 /**
  * 挂载动态子节点：用 createEffect 根据 getter 的当前值创建并替换子内容。
  * 若子项带 key 则做 keyed 协调以复用 DOM。
@@ -312,7 +246,7 @@ export function appendDynamicChild(
     }
     const ctx = ifContext ?? { lastVIf: true };
     if (items.length > 0 && hasAnyKey(items)) {
-      reconcileKeyedChildren(
+      rec.reconcileKeyedChildren(
         placeholder as Element,
         lastItems,
         items,
@@ -320,6 +254,7 @@ export function appendDynamicChild(
         ctx,
       );
       lastItems = items;
+      bindDeferredEventListeners(placeholder as Element);
       return;
     }
     if (items.length === 0) {
@@ -342,9 +277,10 @@ export function appendDynamicChild(
       runDirectiveUnmountOnChildren(placeholder);
       placeholder.replaceChildren(frag);
       lastItems = items;
+      bindDeferredEventListeners(placeholder as Element);
       return;
     }
-    reconcileChildren(
+    rec.reconcileChildren(
       placeholder as Element,
       lastItems,
       items,
@@ -352,73 +288,8 @@ export function appendDynamicChild(
       ctx,
     );
     lastItems = items;
+    bindDeferredEventListeners(placeholder as Element);
   });
-}
-
-/**
- * 收集从 startIndex 起的连续 vIf / vElseIf / vElse 节点（用于一组用一个 effect 响应式渲染）
- * 首项必须为带 getter 的 vIf，否则返回空数组
- */
-function collectVIfGroup(
-  list: ChildItem[],
-  startIndex: number,
-): VNode[] {
-  const first = list[startIndex];
-  if (first == null || isSignalGetter(first)) return [];
-  const v0 = first as VNode;
-  const props = v0.props;
-  if (props == null || typeof props !== "object") return [];
-  const vIfRaw = props["vIf"] ?? props["v-if"];
-  const isReactiveVIf = typeof vIfRaw === "function" || isSignalGetter(vIfRaw);
-  if (!hasDirective(props, "vIf") || !isReactiveVIf) return [];
-
-  const group: VNode[] = [v0];
-  for (let i = startIndex + 1; i < list.length; i++) {
-    const it = list[i];
-    if (isSignalGetter(it)) break;
-    const v = it as VNode;
-    const vProps = v.props;
-    if (vProps == null) break;
-    if (hasDirective(vProps, "vElseIf") || hasDirective(vProps, "vElse")) {
-      group.push(v);
-    } else {
-      break;
-    }
-  }
-  return group;
-}
-
-/**
- * 计算 expanded 子项对应的 DOM 子节点个数（与 appendChildren 一致：v-if 组占 1 个，getter 占 1 个，其余每项 1 个）。
- * 供 reconcileChildren 删除多余节点、按「DOM 槽位」对齐，避免 v-if 组被拆成多节点导致占位符 effect 失效。
- */
-function getExpectedDomCount(items: ChildItem[]): number {
-  let count = 0;
-  let i = 0;
-  while (i < items.length) {
-    const item = items[i];
-    if (typeof item === "function" || isSignalGetter(item)) {
-      count++;
-      i++;
-      continue;
-    }
-    const vnode = item as VNode;
-    const props = vnode.props;
-    const vIfRaw = props?.["vIf"] ?? props?.["v-if"];
-    const isDynamicVIf = props && hasDirective(props, "vIf") &&
-      (typeof vIfRaw === "function" || isSignalGetter(vIfRaw));
-    if (isDynamicVIf) {
-      const group = collectVIfGroup(items, i);
-      if (group.length > 0) {
-        count++;
-        i += group.length;
-        continue;
-      }
-    }
-    count++;
-    i++;
-  }
-  return count;
 }
 
 /**
@@ -433,29 +304,28 @@ function createVIfGroupPlaceholder(
   const placeholder = doc.createElement("span");
   placeholder.setAttribute(V_IF_GROUP_ATTR, "");
 
-  registerPlaceholderEffect(placeholder, () => {
-    let showIndex = -1;
-    for (let i = 0; i < group.length; i++) {
-      const v = group[i];
-      const props = v.props;
-      if (i === 0) {
-        if (getVIfValue(props)) {
+  registerPlaceholderContent(
+    placeholder,
+    () => {
+      let showIndex = -1;
+      for (let i = 0; i < group.length; i++) {
+        const v = group[i];
+        const props = v.props;
+        if (i === 0) {
+          if (getVIfValue(props)) {
+            showIndex = i;
+            break;
+          }
+        } else if (hasDirective(props, "vElse")) {
           showIndex = i;
           break;
-        }
-      } else if (hasDirective(props, "vElse")) {
-        showIndex = i;
-        break;
-      } else if (hasDirective(props, "vElseIf")) {
-        if (getVElseIfValue(props)) {
-          showIndex = i;
-          break;
+        } else if (hasDirective(props, "vElseIf")) {
+          if (getVElseIfValue(props)) {
+            showIndex = i;
+            break;
+          }
         }
       }
-    }
-    preserveScrollAroundUpdate(() => {
-      runDirectiveUnmountOnChildren(placeholder);
-      placeholder.replaceChildren();
       if (showIndex >= 0) {
         const chosen = group[showIndex];
         const stripProps = { ...chosen.props };
@@ -472,8 +342,9 @@ function createVIfGroupPlaceholder(
         );
         placeholder.appendChild(next);
       }
-    });
-  });
+    },
+    { preserveScroll: true },
+  );
 
   return placeholder;
 }
@@ -528,6 +399,15 @@ function appendChildren(
     i++;
   }
 }
+
+const rec = createReconcile({
+  createElement,
+  createVIfGroupPlaceholder,
+  normalizeChildren,
+  resolveNamespace,
+  appendChildren,
+  appendDynamicChild,
+});
 
 /**
  * 将 VNode 转为浏览器 DOM 节点（或 DocumentFragment）。
@@ -676,11 +556,10 @@ export function createElement(
     if (isReactiveVIf) {
       const placeholder = doc.createElement("span");
       placeholder.setAttribute(V_IF_ATTR, "");
-      registerPlaceholderEffect(placeholder, () => {
-        const show = getVIfValue(props);
-        preserveScrollAroundUpdate(() => {
-          runDirectiveUnmountOnChildren(placeholder);
-          placeholder.replaceChildren();
+      registerPlaceholderContent(
+        placeholder,
+        () => {
+          const show = getVIfValue(props);
           if (show) {
             const next = createElement(
               {
@@ -692,9 +571,10 @@ export function createElement(
             );
             placeholder.appendChild(next);
           }
-        });
-        if (ifContext) ifContext.lastVIf = show;
-      });
+          if (ifContext) ifContext.lastVIf = show;
+        },
+        { preserveScroll: true },
+      );
       return placeholder;
     }
     if (!getVIfValue(props)) {
@@ -716,7 +596,7 @@ export function createElement(
       const templateProps = { ...props, vFor: undefined, "v-for": undefined };
       const vForNs = resolveNamespace(tag, parentNamespace);
       const childNs = vForNs ?? (tag === "svg" ? SVG_NS : null);
-      registerPlaceholderEffect(placeholder, () => {
+      registerPlaceholderContent(placeholder, () => {
         const resolved = typeof rawList === "function"
           ? (rawList as () => unknown)()
           : (rawList as () => unknown)();
@@ -744,7 +624,6 @@ export function createElement(
           };
           frag.appendChild(createElement(itemVnode, childNs, ifContext));
         }
-        runDirectiveUnmountOnChildren(placeholder);
         placeholder.replaceChildren(frag);
       });
       return placeholder;
@@ -916,250 +795,8 @@ export function createNodeFromExpanded(expanded: ExpandedRoot): Node {
 }
 
 /**
- * 协调两棵子项列表到父节点上：按「DOM 槽位」对齐（v-if 组占一槽），同槽则 patch，否则替换/插入。
- * 与 appendChildren 语义一致，避免 v-if 组在 patch 时被拆成多节点导致占位符 effect 失效。
- */
-function reconcileChildren(
-  parent: Element | DocumentFragment,
-  oldItems: ChildItem[],
-  newItems: ChildItem[],
-  parentNamespace: string | null,
-  ifContext: IfContext,
-): void {
-  const doc = (globalThis as { document: Document }).document;
-  const expectedDomCount = getExpectedDomCount(newItems);
-
-  for (let i = parent.childNodes.length - 1; i >= expectedDomCount; i--) {
-    const node = parent.childNodes[i];
-    runDirectiveUnmount(node);
-    parent.removeChild(node);
-  }
-
-  let i = 0;
-  let domIndex = 0;
-  while (i < newItems.length) {
-    const newItem = newItems[i];
-    const oldItem = oldItems[i];
-    const existing = parent.childNodes[domIndex] as Node | undefined;
-
-    const group = collectVIfGroup(newItems, i);
-    if (group.length > 0) {
-      const node = createVIfGroupPlaceholder(
-        group,
-        parentNamespace,
-        ifContext,
-      );
-      if (!existing) {
-        if (domIndex < parent.childNodes.length) {
-          parent.insertBefore(node, parent.childNodes[domIndex]);
-        } else {
-          parent.appendChild(node);
-        }
-      } else {
-        runDirectiveUnmount(existing);
-        parent.replaceChild(node, existing);
-      }
-      domIndex++;
-      i += group.length;
-      continue;
-    }
-
-    if (i >= oldItems.length || !existing) {
-      const node = isSignalGetter(newItem) || typeof newItem === "function"
-        ? (() => {
-          const span = createDynamicSpan(doc);
-          appendDynamicChild(
-            span,
-            newItem as () => unknown,
-            parentNamespace,
-            ifContext,
-          );
-          return span;
-        })()
-        : createElement(newItem as VNode, parentNamespace, ifContext);
-      if (domIndex < parent.childNodes.length) {
-        parent.insertBefore(node, parent.childNodes[domIndex]);
-      } else {
-        parent.appendChild(node);
-      }
-      domIndex++;
-      i++;
-      continue;
-    }
-
-    const newIsGetter = isSignalGetter(newItem) ||
-      typeof newItem === "function";
-    const oldIsGetter = isSignalGetter(oldItem) ||
-      typeof oldItem === "function";
-    if (newIsGetter || oldIsGetter) {
-      runDirectiveUnmount(existing);
-      parent.replaceChild(
-        newIsGetter
-          ? (() => {
-            const span = createDynamicSpan(doc);
-            appendDynamicChild(
-              span,
-              newItem as () => unknown,
-              parentNamespace,
-              ifContext,
-            );
-            return span;
-          })()
-          : createElement(newItem as VNode, parentNamespace, ifContext),
-        existing,
-      );
-      domIndex++;
-      i++;
-      continue;
-    }
-
-    // v-for / 单 v-if 占位符：根 effect 重跑会 dispose 其 effect，每次 patch 用新节点替换以恢复响应
-    if (existing && (existing as Node).nodeType === 1) {
-      const el = existing as Element;
-      if (el.hasAttribute?.(V_FOR_ATTR) || el.hasAttribute?.(V_IF_ATTR)) {
-        runDirectiveUnmount(existing);
-        const node = createElement(
-          newItem as VNode,
-          parentNamespace,
-          ifContext,
-        );
-        parent.replaceChild(node, existing);
-        domIndex++;
-        i++;
-        continue;
-      }
-    }
-
-    patchNode(
-      existing,
-      oldItem as VNode,
-      newItem as VNode,
-      parentNamespace,
-      ifContext,
-    );
-    domIndex++;
-    i++;
-  }
-}
-
-/**
- * 单节点 patch：同类型同 key 则更新 props 并协调子节点，否则替换
- */
-function patchNode(
-  dom: Node,
-  oldV: VNode,
-  newV: VNode,
-  parentNamespace: string | null,
-  ifContext: IfContext,
-): void {
-  if (checkFragment(oldV) && checkFragment(newV)) {
-    const parent = dom.parentNode as Element | null;
-    if (!parent) return;
-    const oldChildren = normalizeChildren(
-      oldV.props?.children ?? oldV.children ?? [],
-    );
-    const newChildren = normalizeChildren(
-      newV.props?.children ?? newV.children ?? [],
-    );
-    reconcileChildren(
-      parent,
-      oldChildren,
-      newChildren,
-      parentNamespace,
-      ifContext,
-    );
-    return;
-  }
-  if (
-    oldV.type === CONTEXT_SCOPE_TYPE &&
-    newV.type === CONTEXT_SCOPE_TYPE
-  ) {
-    const parent = dom.parentNode;
-    if (!parent) return;
-    const next = createElement(newV, parentNamespace, ifContext);
-    parent.replaceChild(next, dom);
-    runDirectiveUnmount(dom);
-    return;
-  }
-  if (oldV.type === "#text" && newV.type === "#text") {
-    const newVal = String(
-      (newV.props as { nodeValue?: unknown }).nodeValue ?? "",
-    );
-    if (dom.nodeValue !== newVal) dom.nodeValue = newVal;
-    return;
-  }
-
-  if (oldV.type !== newV.type || String(oldV.key) !== String(newV.key)) {
-    const parent = dom.parentNode;
-    if (!parent) return;
-    const next = createElement(newV, parentNamespace, ifContext);
-    parent.replaceChild(next, dom);
-    runDirectiveUnmount(dom);
-    return;
-  }
-
-  // 组件节点：必须重新执行以读取最新 context/signal，再替换子树
-  if (typeof newV.type === "function") {
-    const parent = dom.parentNode;
-    if (!parent) return;
-    const next = createElement(newV, parentNamespace, ifContext);
-    parent.replaceChild(next, dom);
-    runDirectiveUnmount(dom);
-    return;
-  }
-
-  // v-once：允许第一次 patch 时更新一次，之后打上标记不再更新（与「以前点 B/C 会跟着变一次」一致）
-  if (newV.props && hasDirective(newV.props, "vOnce")) {
-    const elOnce = dom.nodeType === 1 ? (dom as Element) : null;
-    if (elOnce?.hasAttribute?.(V_ONCE_FROZEN_ATTR)) return;
-  }
-
-  if (typeof newV.type === "string" && newV.type !== "#text") {
-    // 只有 Element / DocumentFragment 才支持 appendChild；若 dom 实为 Text 等节点（与 VNode 不同步），走替换避免 HierarchyRequestError
-    const nodeType = dom.nodeType;
-    const isElementOrFragment = nodeType === 1 || nodeType === 11; // ELEMENT_NODE | DOCUMENT_FRAGMENT_NODE
-    if (!isElementOrFragment) {
-      const parent = dom.parentNode;
-      if (!parent) return;
-      const next = createElement(newV, parentNamespace, ifContext);
-      parent.replaceChild(next, dom);
-      runDirectiveUnmount(dom);
-      return;
-    }
-    const el = dom as Element;
-    // vFor/vIf 占位符：子节点由各自 effect 管理，patch 时不 applyProps、不协调子节点，避免覆盖或打断 effect
-    if (
-      el.hasAttribute?.(V_FOR_ATTR) ||
-      el.hasAttribute?.(V_IF_ATTR) ||
-      el.hasAttribute?.(V_IF_GROUP_ATTR)
-    ) {
-      return;
-    }
-    applyProps(el, newV.props);
-    const oldChildren = normalizeChildren(
-      oldV.props?.children ?? oldV.children ?? [],
-    );
-    const newChildren = normalizeChildren(
-      newV.props?.children ?? newV.children ?? [],
-    );
-    const ns = resolveNamespace(newV.type as string, parentNamespace);
-    reconcileChildren(
-      el,
-      oldChildren,
-      newChildren,
-      ns ?? (newV.type === "svg" ? SVG_NS : null),
-      ifContext,
-    );
-    if (newV.props && hasDirective(newV.props, "vOnce")) {
-      (dom as Element).setAttribute?.(V_ONCE_FROZEN_ATTR, "");
-    }
-  }
-}
-
-const defaultIfContext: IfContext = { lastVIf: true };
-
-/**
  * 根协调：用新展开树对已有 DOM 做增量 patch，不整树替换，保证表单等不重挂、不丢焦点。
+ * 实现位于 reconcile.ts，由 rec.patchRoot 提供。
  *
  * @param container - 根容器元素
  * @param mounted - 当前已挂载的根节点（可能是单个节点或 DocumentFragment）
@@ -1172,31 +809,5 @@ export function patchRoot(
   lastExpanded: ExpandedRoot,
   newExpanded: ExpandedRoot,
 ): void {
-  if (Array.isArray(lastExpanded) && Array.isArray(newExpanded)) {
-    const frag = mounted as DocumentFragment;
-    reconcileChildren(
-      frag,
-      lastExpanded,
-      newExpanded,
-      null,
-      defaultIfContext,
-    );
-    return;
-  }
-
-  if (!Array.isArray(lastExpanded) && !Array.isArray(newExpanded)) {
-    patchNode(mounted, lastExpanded, newExpanded, null, defaultIfContext);
-    return;
-  }
-
-  const doc = (globalThis as { document: Document }).document;
-  runDirectiveUnmount(mounted);
-  const next = Array.isArray(newExpanded)
-    ? (() => {
-      const frag = doc.createDocumentFragment();
-      appendChildren(frag, newExpanded, null, defaultIfContext);
-      return frag;
-    })()
-    : createElement(newExpanded);
-  container.replaceChild(next, mounted);
+  rec.patchRoot(container, mounted, lastExpanded, newExpanded);
 }

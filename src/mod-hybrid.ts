@@ -21,6 +21,7 @@ export {
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
 export {
   createReactiveRoot,
+  createReactiveRootHydrate,
   createRoot,
   hydrate,
   mount,

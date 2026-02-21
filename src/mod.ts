@@ -6,7 +6,7 @@
  *
  * **响应式：** createSignal、createEffect、createMemo、onCleanup、untrack、getCurrentEffect、setCurrentEffect、isSignalGetter
  *
- * **渲染：** createRoot、render、mount、renderToString、hydrate、generateHydrationScript
+ * **渲染：** createRoot、render、mount、renderToString、hydrate、generateHydrationScript、createReactiveRoot、createReactiveRootHydrate
  *
  * **环境：** getDocument、isDOMEnvironment
  *
@@ -30,6 +30,7 @@ export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
 export { getDocument } from "./globals.ts";
 export {
   createReactiveRoot,
+  createReactiveRootHydrate,
   createRoot,
   generateHydrationScript,
   hydrate,
