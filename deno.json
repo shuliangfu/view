@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.0.30",
+  "version": "1.0.31",
   "license": "Apache-2.0",
   "description": "Lightweight reactive view engine with signals and effects; fine-grained DOM updates without virtual DOM. Supports CSR, SSR, streaming SSR, and hydration. JSX with v-if, v-for, v-show and store, router, context.",
   "repository": {
@@ -33,6 +33,7 @@
   "publish": {
     "include": [
       "src/**/*.ts",
+      "src/**/*.tsx",
       "src/**/*.json",
       "LICENSE",
       "NOTICE",

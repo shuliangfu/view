@@ -1060,9 +1060,8 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.30**（2026-02-21）：新增统一 SSR stringify、公共根 effect
-循环、dom/reconcile 与 registerPlaceholderContent；调试日志改为 **VIEW_DEBUG**
-门控；修复 vFor 在 parsed===null 时 SSR 无输出。完整历史见
+**v1.0.31**（2026-02-22）：修复 renderToString 在 Bun/无 DOM 下恢复
+globalThis.document；TEST_REPORT Bun preload。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---

@@ -7,7 +7,7 @@
 
 ---
 
-## [1.0.31] - 2026-02-21
+## [1.0.31] - 2026-02-22
 
 ### 修复
 
@@ -23,6 +23,8 @@
 - **TEST_REPORT**：Bun 运行命令更新为
   `bun test --preload ./tests/dom-setup.ts tests/`，并补充执行时间与说明（无 DOM
   时 preload 注入 happy-dom）。中英文报告均已更新。
+- **发布**：`publish.include` 增加 `src/**/*.tsx`，使被 `router.ts` 引用的
+  `route-page.tsx` 纳入 JSR 包。
 
 ---
 
