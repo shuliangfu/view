@@ -121,6 +121,8 @@ jobs:
 
   test-windows-bun:
     runs-on: windows-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\.playwright-browsers
     steps:
       - uses: actions/checkout@v4
 
@@ -134,6 +136,15 @@ jobs:
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
         timeout-minutes: 10
+
+      - name: Verify Chromium in PLAYWRIGHT_BROWSERS_PATH (Windows)
+        shell: pwsh
+        run: |
+          $path = "$env:PLAYWRIGHT_BROWSERS_PATH"
+          Write-Host "PLAYWRIGHT_BROWSERS_PATH=$path"
+          if (-not (Test-Path $path)) { Write-Error "Path not found: $path"; exit 1 }
+          Get-ChildItem -Path $path -Recurse -Filter "chrome.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $?) { Write-Error "chrome.exe not found under $path"; exit 1 }
 
       # Windows 上 Chromium 启动易超时，暂不跑浏览器 E2E，只跑 unit + integration + CLI
       - name: Test (Bun, Windows)
