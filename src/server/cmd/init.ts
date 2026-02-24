@@ -1,7 +1,7 @@
 /**
  * init 命令：按示例项目结构初始化新项目
  * 使用 @dreamer/runtime-adapter 做文件与路径操作，兼容 Deno / Bun。
- * 版本号通过 version.ts 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
+ * 版本号通过 server/utils/version.ts 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
  * 生成 views 下约定特殊文件 _app.tsx、_layout.tsx、_loading.tsx、_404.tsx、_error.tsx（路由扫描自动屏蔽）与路由页 home/about，风格参考 view/examples。
  */
 
@@ -16,11 +16,15 @@ import {
   writeTextFile,
 } from "@dreamer/runtime-adapter";
 import { interactiveMenu } from "@dreamer/console";
-import { $tr } from "./i18n.ts";
-import { getViewVersion } from "../version.ts";
+import { $tr, detectLocale } from "../utils/i18n.ts";
+import { getPluginsVersion, getViewVersion } from "../utils/version.ts";
+import { logger } from "../utils/logger.ts";
 
 /** 运行时：Deno 仅生成 deno.json；Bun 生成 package.json、.npmrc、tsconfig.json */
 type Runtime = "deno" | "bun";
+
+/** 样式方案：Tailwind / UnoCSS / 不需要 */
+type Style = "tailwind" | "unocss" | "none";
 
 /** ANSI green for success message */
 const GREEN = "\x1b[32m";
@@ -34,7 +38,10 @@ export async function main(
   options?: Record<string, unknown>,
 ): Promise<void> {
   const beta = options?.beta === true;
-  const VIEW_VERSION = await getViewVersion(beta);
+  const [VIEW_VERSION, PLUGINS_VERSION] = await Promise.all([
+    getViewVersion(beta),
+    getPluginsVersion(beta),
+  ]);
 
   const root = cwd();
   const targetDirRaw = (options?.dir as string | undefined)?.trim() ?? ".";
@@ -44,14 +51,6 @@ export async function main(
     : targetDirRaw.startsWith("/") || /^[A-Za-z]:[\\/]/.test(targetDirRaw)
     ? targetDirRaw
     : resolve(root, targetDirRaw);
-
-  await ensureDir(targetDir);
-  await ensureDir(join(targetDir, "src"));
-  await ensureDir(join(targetDir, "src", "router"));
-  await ensureDir(join(targetDir, "src", "views"));
-  await ensureDir(join(targetDir, "src", "stores"));
-  await ensureDir(join(targetDir, "src", "hooks"));
-  await ensureDir(join(targetDir, "src", "utils"));
 
   /** Display path: always relative to cwd (e.g. "app-test" or ".") */
   const displayDir = targetDir === root
@@ -79,19 +78,150 @@ export async function main(
     : "bun";
 
   // ---------------------------------------------------------------------------
-  // view.config.ts（对齐示例，供 dev/build/start 读取）
+  // 样式选择：Tailwind / UnoCSS / 不需要；options.style 存在时跳过交互
   // ---------------------------------------------------------------------------
+  const styleOpt = options?.style as string | undefined;
+  const styleIdx =
+    styleOpt === "tailwind" || styleOpt === "unocss" || styleOpt === "none"
+      ? null
+      : await interactiveMenu(
+        $tr("cli.init.style"),
+        [
+          $tr("cli.init.styleTailwind"),
+          $tr("cli.init.styleUnoCSS"),
+          $tr("cli.init.styleNone"),
+        ],
+        0,
+      );
+  const style: Style = styleOpt === "tailwind"
+    ? "tailwind"
+    : styleOpt === "unocss"
+    ? "unocss"
+    : styleOpt === "none"
+    ? "none"
+    : styleIdx === 0
+    ? "tailwind"
+    : styleIdx === 1
+    ? "unocss"
+    : "none";
+
+  // ---------------------------------------------------------------------------
+  // 选择完毕后再创建项目目录与文件
+  // ---------------------------------------------------------------------------
+  await ensureDir(targetDir);
+  await ensureDir(join(targetDir, "src"));
+  await ensureDir(join(targetDir, "src", "assets"));
+  await ensureDir(join(targetDir, "src", "router"));
+  await ensureDir(join(targetDir, "src", "views"));
+  await ensureDir(join(targetDir, "src", "stores"));
+  await ensureDir(join(targetDir, "src", "hooks"));
+  await ensureDir(join(targetDir, "src", "utils"));
+
+  // ---------------------------------------------------------------------------
+  // view.config.ts（根据样式方案生成：含 server、build、plugins；index.html 由 static 从 src/assets 提供）
+  // ---------------------------------------------------------------------------
+  const pluginsImports = style === "tailwind"
+    ? `import { tailwindPlugin } from "@dreamer/plugins/tailwindcss";
+import { staticPlugin } from "@dreamer/plugins/static";`
+    : style === "unocss"
+    ? `import { unocssPlugin } from "@dreamer/plugins/unocss";
+import { staticPlugin } from "@dreamer/plugins/static";`
+    : `import { staticPlugin } from "@dreamer/plugins/static";`;
+
+  const buildAssetsBlock = style === "tailwind"
+    ? `
+    /** ${$tr("init.template.viewConfigAssetsComment")} */
+    assets: {
+      publicDir: "src/assets",
+      assetsDir: "assets",
+      exclude: ["tailwind.css", "global.css", "index.css"],
+      images: {
+        compress: true,
+        quality: 80,
+        format: "avif",
+        hash: true,
+      },
+    },`
+    : style === "unocss"
+    ? `
+    /** ${$tr("init.template.viewConfigAssetsComment")} */
+    assets: {
+      publicDir: "src/assets",
+      assetsDir: "assets",
+      exclude: ["uno.css", "global.css", "index.css"],
+      images: {
+        compress: true,
+        quality: 80,
+        format: "avif",
+        hash: true,
+      },
+    },`
+    : "";
+
+  const pluginsArray = style === "tailwind"
+    ? `[
+    tailwindPlugin({
+      output: "dist/assets",
+      cssEntry: "src/assets/tailwind.css",
+      assetsPath: "/assets",
+    }),
+    staticPlugin({
+      statics: [
+        { root: "src/assets", prefix: "/*" },
+        { root: "dist", prefix: "/*" },
+      ],
+    }),
+  ]`
+    : style === "unocss"
+    ? `[
+    unocssPlugin({
+      output: "dist/assets",
+      cssEntry: "src/assets/uno.css",
+      assetsPath: "/assets",
+    }),
+    staticPlugin({
+      statics: [
+        { root: "src/assets", prefix: "/*" },
+        { root: "dist", prefix: "/*" },
+      ],
+    }),
+  ]`
+    : `[
+    staticPlugin({
+      statics: [
+        { root: "src/assets", prefix: "/*" },
+        { root: "dist", prefix: "/*" },
+      ],
+    }),
+  ]`;
+
+  const appName = displayDir === "."
+    ? "view-app"
+    : (displayDir.split("/").pop() ?? "view-app").replace(/\s+/g, "-");
+  const appVersion = "0.0.1";
+  const appLanguage = detectLocale();
+
   const viewConfigTs = `/**
  * ${$tr("init.template.viewConfigComment")}
  */
+${pluginsImports}
+
 const config = {
+  name: "${appName}",
+  version: "${appVersion}",
+  language: "${appLanguage}",
   server: {
+    // port: 8787,
+    // host: "127.0.0.1",
     dev: {
       port: 8787,
       host: "127.0.0.1",
       dev: {
         hmr: { enabled: true, path: "/__hmr" },
-        watch: { paths: ["./src"], ignore: ["node_modules", ".git", "dist", "routers.tsx"] },
+        watch: {
+          paths: ["./src"],
+          ignore: ["node_modules", ".git", "dist", "routers.tsx"],
+        },
       },
     },
     prod: { port: 8787, host: "127.0.0.1" },
@@ -102,12 +232,56 @@ const config = {
     outFile: "main.js",
     minify: true,
     sourcemap: true,
-    splitting: true,
+    splitting: true,${buildAssetsBlock}
     /** ${$tr("init.template.viewConfigDevComment")} */
-    dev: { minify: false, sourcemap: true },
+    dev: {
+      minify: false,
+      sourcemap: true,
+    },
     /** ${$tr("init.template.viewConfigProdComment")} */
-    prod: { minify: true, sourcemap: true },
+    prod: {
+      minify: true,
+      sourcemap: true,
+    },
   },
+  plugins: ${pluginsArray},
+  /** ${$tr("init.template.viewConfigLoggerComment")} */
+  // logger: {
+  //   level: "info",                     // ${
+    $tr("init.template.loggerLevelComment")
+  }
+  //   format: "text",                    // ${
+    $tr("init.template.loggerFormatComment")
+  }
+  //   showTime: true,                    // ${
+    $tr("init.template.loggerShowTimeComment")
+  }
+  //   showLevel: true,                   // ${
+    $tr("init.template.loggerShowLevelComment")
+  }
+  //   color: true,                       // ${
+    $tr("init.template.loggerColorComment")
+  }
+  //   output: {
+  //     console: true,                   // ${
+    $tr("init.template.loggerOutputConsoleComment")
+  }
+  //     file: {
+  //       path: "runtime/logs/app.log",  // ${
+    $tr("init.template.loggerFilePathComment")
+  }
+  //       rotate: true,                  // ${
+    $tr("init.template.loggerRotateComment")
+  }
+  //       maxSize: 10 * 1024 * 1024,     // ${
+    $tr("init.template.loggerMaxSizeComment")
+  }
+  //       maxFiles: 5,                   // ${
+    $tr("init.template.loggerMaxFilesComment")
+  }
+  //     },
+  //   },
+  // },
 };
 
 export default config;
@@ -117,6 +291,7 @@ export default config;
 
   // ---------------------------------------------------------------------------
   // deno.json（仅 Deno 运行时）或 package.json + .npmrc + tsconfig.json（Bun）
+  // 含 @dreamer/plugins（static 插件提供 index.html 与静态资源）
   // ---------------------------------------------------------------------------
   if (runtime === "deno") {
     const denoJson = {
@@ -128,6 +303,7 @@ export default config;
       },
       imports: {
         "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
+        "@dreamer/plugins": `jsr:@dreamer/plugins@^${PLUGINS_VERSION}`,
       },
       lint: { include: ["src/"], exclude: ["dist/"] },
       tasks: {
@@ -157,6 +333,7 @@ export default config;
       },
       dependencies: {
         "@dreamer/view": `npm:@jsr/dreamer__view@^${VIEW_VERSION}`,
+        "@dreamer/plugins": `npm:@jsr/dreamer__plugins@^${PLUGINS_VERSION}`,
       },
     };
     await writeTextFile(
@@ -214,7 +391,7 @@ export {};
   addFile("jsx.d.ts");
 
   // ---------------------------------------------------------------------------
-  // index.html（对齐示例：/main.js、Tailwind v4、dark 首屏、data-view-cloak）
+  // src/assets/index.html（模板：dark 首屏、data-view-cloak、/main.js；由 static 插件从 assets 提供）
   // ---------------------------------------------------------------------------
   const indexHtml = `<!DOCTYPE html>
 <html lang="${$tr("init.template.htmlLang")}">
@@ -222,33 +399,101 @@ export {};
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>@dreamer/view App</title>
+    <title>${$tr("init.template.htmlTitle")}</title>
+    <!-- ${$tr("init.template.htmlDarkScriptComment")} -->
     <script>
       try {
         var v = localStorage.getItem("view-theme");
-        var isDark = v === "dark" || (v && JSON.parse(v).theme === "dark");
+        var isDark = v === "dark" ||
+          (v && JSON.parse(v).theme === "dark");
         if (isDark) document.documentElement.classList.add("dark");
         else document.documentElement.classList.remove("dark");
       } catch (_) {}
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style type="text/tailwindcss">
-      @custom-variant dark (&:where(.dark, .dark *));
-    </style>
+
     <style>
-      [data-view-cloak] { display: none; }
+      [data-view-cloak] {
+        display: none;
+      }
     </style>
   </head>
   <body
-    class="min-h-screen bg-[linear-gradient(to_bottom,var(--tw-gradient-from),var(--tw-gradient-to))] from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200"
+    class="min-h-screen bg-linear-to-b from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200"
   >
     <div id="root" data-view-cloak></div>
     <script type="module" src="/main.js"></script>
   </body>
 </html>
 `;
-  await writeTextFile(join(targetDir, "index.html"), indexHtml);
-  addFile("index.html");
+  await writeTextFile(
+    join(targetDir, "src", "assets", "index.html"),
+    indexHtml,
+  );
+  addFile("src/assets/index.html");
+
+  // favicon.svg（与 index.html 中 link href 一致，由 static 插件提供）
+  const faviconSvg = `<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 32 32"
+  width="32"
+  height="32"
+>
+  <rect width="32" height="32" rx="6" fill="#2563eb" />
+  <text
+    x="16"
+    y="22"
+    font-size="18"
+    font-weight="bold"
+    fill="white"
+    text-anchor="middle"
+    font-family="system-ui,sans-serif"
+  >V</text>
+</svg>
+`;
+  await writeTextFile(
+    join(targetDir, "src", "assets", "favicon.svg"),
+    faviconSvg,
+  );
+  addFile("src/assets/favicon.svg");
+
+  // 占位全局样式与页面样式（main.tsx / 页面中已注释 import，取消注释即可使用）
+  await writeTextFile(
+    join(targetDir, "src", "assets", "global.css"),
+    `/** ${$tr("init.template.globalCssComment")} */\n`,
+  );
+  addFile("src/assets/global.css");
+  await writeTextFile(
+    join(targetDir, "src", "assets", "index.css"),
+    `/** ${$tr("init.template.indexCssComment")} */\n`,
+  );
+  addFile("src/assets/index.css");
+
+  // 按样式方案生成对应 CSS 入口（Tailwind / UnoCSS 由插件编译，main.tsx 或页面中 import）
+  if (style === "tailwind") {
+    const tailwindCss = `/**
+ * ${$tr("init.template.tailwindCssComment")}
+ */
+@import "tailwindcss";
+@source "../**/*.{ts,tsx}";
+@custom-variant dark (&:where(.dark, .dark *));
+`;
+    await writeTextFile(
+      join(targetDir, "src", "assets", "tailwind.css"),
+      tailwindCss,
+    );
+    addFile("src/assets/tailwind.css");
+  } else if (style === "unocss") {
+    const unoCss = `/**
+ * ${$tr("init.template.unoCssComment")}
+ */
+@unocss;
+`;
+    await writeTextFile(
+      join(targetDir, "src", "assets", "uno.css"),
+      unoCss,
+    );
+    addFile("src/assets/uno.css");
+  }
 
   // ---------------------------------------------------------------------------
   // src/main.tsx
@@ -256,6 +501,9 @@ export {};
   const mainTsx = `/**
  * ${$tr("init.template.mainComment")}
  */
+/** ${$tr("init.template.globalCssImportComment")} */
+// import "./assets/global.css";
+
 import { createRoot } from "@dreamer/view";
 import { createAppRouter } from "./router/router.ts";
 import { App } from "./views/_app.tsx";
@@ -519,6 +767,9 @@ export function ErrorView(props: ErrorViewProps): VNode {
   const homeTsx = `/**
  * ${$tr("init.template.homeComment")}
  */
+/** ${$tr("init.template.pageCssImportComment")} */
+// import "../assets/index.css";
+
 import { createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 
@@ -823,26 +1074,28 @@ export const toggleTheme = themeStore.toggleTheme;
   const prefix = displayDir === "." ? "" : displayDir + "/";
   createdFiles.sort();
   for (const f of createdFiles) {
-    console.log(prefix + f);
+    logger.info(prefix + f);
   }
-  // 空行与成功文案同一次输出，避免外部单独运行 view-cli 时空行被吞掉
-  console.log(
-    `\n${GREEN}${
-      $tr("cli.init.projectCreated", { dir: displayDir })
-    }${RESET}\n`,
+
+  // 成功文案用 logger.info 输出并保留绿色；空行用 console.log 输出
+  console.log("");
+  logger.info(
+    `${GREEN}${$tr("cli.init.projectCreated", { dir: displayDir })}${RESET}`,
   );
+  console.log("");
 
   if (displayDir !== ".") {
-    console.log($tr("cli.init.nextCd", { dir: displayDir }));
+    logger.info($tr("cli.init.nextCd", { dir: displayDir }));
   }
   if (runtime === "bun") {
-    console.log($tr("cli.init.nextDevBun"));
-    console.log($tr("cli.init.nextBuildBun"));
-    console.log($tr("cli.init.nextProdBun"));
+    logger.info($tr("cli.init.nextInstallBun"));
+    logger.info($tr("cli.init.nextDevBun"));
+    logger.info($tr("cli.init.nextBuildBun"));
+    logger.info($tr("cli.init.nextProdBun"));
   } else {
-    console.log($tr("cli.init.nextDev"));
-    console.log($tr("cli.init.nextBuild"));
-    console.log($tr("cli.init.nextProd"));
+    logger.info($tr("cli.init.nextDev"));
+    logger.info($tr("cli.init.nextBuild"));
+    logger.info($tr("cli.init.nextProd"));
   }
   console.log("");
 }

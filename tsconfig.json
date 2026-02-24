@@ -1,14 +1,27 @@
 {
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "jsx": "react-jsx",
     "jsxImportSource": "@dreamer/view",
-    "lib": ["ES2022", "DOM"],
-    "module": "ESNext",
-    "target": "ES2022",
-    "moduleResolution": "bundler",
+    "noEmit": true,
+    "skipLibCheck": true,
     "strict": true,
-    "noEmit": true
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist", "examples", "tests/data"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

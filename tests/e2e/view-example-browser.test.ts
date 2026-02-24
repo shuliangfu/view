@@ -21,8 +21,8 @@ import {
   expect,
   it,
 } from "@dreamer/test";
-import { generateRoutersFile } from "../../src/cmd/routers.ts";
-import { setViewLocale } from "../../src/cmd/i18n.ts";
+import { generateRoutersFile } from "../../src/server/core/routers.ts";
+import { setViewLocale } from "../../src/server/utils/i18n.ts";
 
 setViewLocale("zh-CN");
 

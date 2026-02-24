@@ -17,8 +17,12 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr } from "./i18n.ts";
-import { computeLayoutChain, readInheritLayoutFromPageFile } from "./layout.ts";
+import { $tr } from "../utils/i18n.ts";
+import {
+  computeLayoutChain,
+  readInheritLayoutFromPageFile,
+  readLoadingFromPageFile,
+} from "./layout.ts";
 
 /** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 metadata、布局继承 */
 export interface RouteEntry {
@@ -38,8 +42,13 @@ export interface RouteEntry {
   inheritLayout?: boolean;
   /** 子布局 import 路径（不含根 _layout），从外到内，供生成 layouts: [ () => import(...), ... ] */
   layoutImportPaths?: string[];
-  /** 仅当该路由所在目录存在 _loading.tsx 时存在；作用域仅当前目录，子目录不继承 */
+  /**
+   * 当前路由使用的 loading 组件 import 路径：优先子目录 _loading.tsx，否则全局 views/_loading.tsx。
+   * 当页面 export const loading = false 时不设置（该页不显示 loading）。
+   */
   loadingImportPath?: string;
+  /** 页面 export const loading = false 时为 true，该页不显示任何 loading UI */
+  skipLoading?: boolean;
 }
 
 const ROUTE_EXT = [".tsx", ".ts"];
@@ -168,6 +177,12 @@ export async function scanRouteEntries(
   const routeEntries: RouteEntry[] = [];
   let notFoundEntry: RouteEntry | null = null;
 
+  /** 全局 loading：views/_loading.tsx 存在时作为默认，子目录有 _loading.tsx 时以子目录为准 */
+  const globalLoadingPath = join(viewsDirAbs, "_loading.tsx");
+  const globalLoadingImportPath = existsSync(globalLoadingPath)
+    ? "../views/_loading.tsx"
+    : undefined;
+
   async function walk(
     dirAbs: string,
     relativeDir: string,
@@ -201,6 +216,7 @@ export async function scanRouteEntries(
               layoutImportPaths: existsSync(rootLayoutPath)
                 ? ["../views/_layout.tsx"]
                 : undefined,
+              loadingImportPath: globalLoadingImportPath,
             };
           }
           continue;
@@ -235,8 +251,12 @@ export async function scanRouteEntries(
         } catch {
           // 读取失败则保持 layout 链结果
         }
-        const loadingPath = join(viewsDirAbs, relativeDir, "_loading.tsx");
-        const loadingImportPath = existsSync(loadingPath)
+        const pageWantsLoading = await readLoadingFromPageFile(fileAbs);
+        const localLoadingPath = join(viewsDirAbs, relativeDir, "_loading.tsx");
+        const hasLocalLoading = existsSync(localLoadingPath);
+        const loadingImportPath = !pageWantsLoading
+          ? undefined
+          : hasLocalLoading
           ? [
             "..",
             "views",
@@ -245,7 +265,7 @@ export async function scanRouteEntries(
             .filter(Boolean)
             .join("/")
             .replace(/\/+/g, "/")
-          : undefined;
+          : globalLoadingImportPath;
         const entry: RouteEntry = {
           name,
           importPath,
@@ -258,6 +278,7 @@ export async function scanRouteEntries(
             ? layoutImportPaths
             : undefined,
           loadingImportPath,
+          skipLoading: !pageWantsLoading,
         };
         if (isNotFound) {
           if (!notFoundEntry) notFoundEntry = entry;
@@ -325,8 +346,9 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
     const loadingProp = e.loadingImportPath
       ? `, loading: () => import("${e.loadingImportPath}")`
       : "";
+    const skipLoadingProp = e.skipLoading ? ", skipLoading: true" : "";
     lines.push(
-      `  { path: "${e.path}", component: () => import("${e.importPath}"), metadata: ${metaJson}${inheritProp}${layoutsProp}${loadingProp} },`,
+      `  { path: "${e.path}", component: () => import("${e.importPath}"), metadata: ${metaJson}${inheritProp}${layoutsProp}${loadingProp}${skipLoadingProp} },`,
     );
   }
   lines.push("];");
@@ -338,11 +360,14 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
       ? nfLayoutPaths.map((p) => `() => import("${p}")`).join(", ")
       : "";
     const nfLayoutsProp = nfLayoutsArr ? `, layouts: [ ${nfLayoutsArr} ]` : "";
+    const nfLoadingProp = notFound.loadingImportPath
+      ? `, loading: () => import("${notFound.loadingImportPath}")`
+      : "";
     lines.push("export const notFoundRoute: RouteConfig = {");
     lines.push(
       `  path: "${notFound.path}", component: () => import("${notFound.importPath}"), metadata: ${
         metaToJson(notFound)
-      }${nfLayoutsProp}`,
+      }${nfLayoutsProp}${nfLoadingProp}`,
     );
     lines.push("};");
   } else {

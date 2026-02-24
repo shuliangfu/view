@@ -12,7 +12,8 @@ import type { Root } from "@dreamer/view";
 
 export const metadata = {
   title: "Portal",
-  description: "createPortal 将内容挂载到 body 或指定容器，弹窗/抽屉/toast 示例",
+  description:
+    "createPortal 将内容挂载到 body 或指定容器，弹窗/抽屉/toast 示例",
   keywords: "createPortal, Portal, modal, overlay, body",
 };
 
@@ -32,7 +33,9 @@ function ModalContent(props: { onClose: () => void }): VNode {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={(e: Event) => {
-        if ((e.target as Element).getAttribute?.("data-modal-backdrop") === "true") {
+        if (
+          (e.target as Element).getAttribute?.("data-modal-backdrop") === "true"
+        ) {
           props.onClose();
         }
       }}

@@ -7,6 +7,46 @@
 
 ---
 
+## [1.1.0] - 2026-02-25
+
+### 新增
+
+- **init 样式选择**：交互式选择样式方案（Tailwind CSS / UnoCSS /
+  不需要），按选择写入 `deno.json` 或 `package.json` 依赖及 `view.config.ts`
+  插件；支持 `options.style` 非交互 调用（如 CI：`style: "none"`）。
+- **init 模板增强**：生成
+  `src/assets/index.html`、`favicon.svg`、`global.css`、`index.css`
+  占位；`view.config.ts` 增加顶层
+  `name`、`version`、`language`（语言自动检测），以及 完整注释的 `logger`
+  配置（level/format/showTime/showLevel/color/output.file 等）， 默认日志路径
+  `runtime/logs/app.log`；logger 各字段注释支持 i18n（中英文）。
+- **版本管理集中**：版本逻辑迁至 `src/server/utils/version.ts`，通用方法
+  `getPackageVersion(packageName, useBeta)`，`getViewVersion` /
+  `getPluginsVersion` 复用； init 与 setup 动态获取
+  @dreamer/view、@dreamer/plugins 最新版本（支持 --beta）。
+
+### 变更
+
+- **开发服务器重构**：服务端与 CLI 结构重写。`src/cmd/` 拆分为 `src/server/`（含
+  `core/`：app、serve、build、config、routers、route-css 等）与顶层
+  `src/cli.ts`。 CLI 入口仍为 `@dreamer/view/cli`（现指向 `src/cli.ts`）。dev
+  时由 `ViewServer` + pathHandlers 提供内存构建产物，静态与 SPA 回退由插件（如
+  staticPlugin）通过 middlewares 提供；index.html 自 `src/assets` 由插件返回。
+- **init 执行顺序**：运行时与样式选择完毕后再创建项目目录与文件；成功提示使用
+  `logger.info` 输出并保留绿色，空行使用 `console.log`。
+- **路由 CSS 清理**：切路由时移除上一路由由 esbuild 内联注入的
+  `style[data-dweb-css-id]`（通过 `data-view-route-path` 标记），避免无 CSS
+  的页面 仍残留上一页样式；main 包全局样式（入口 import 的
+  CSS）不参与标记与移除。
+- **图片压缩与 hash 化**：构建配置 `build.assets` 支持生产构建时对图片压缩、hash
+  化，并在编译产物（HTML/CSS/JS）中直接替换为带 hash 的路径，无需运行时
+  asset-manifest；与 @dreamer/esbuild 的 AssetsProcessor 行为一致。
+- **插件配置**：配置支持 `plugins` 数组，可注册 Tailwind、UnoCSS 等样式插件及
+  用户自定义插件；插件按注册顺序执行（如先 tailwind 再 static），通过
+  onRequest/onResponse 参与请求与响应处理。
+
+---
+
 ## [1.0.32] - 2026-02-24
 
 ### 新增

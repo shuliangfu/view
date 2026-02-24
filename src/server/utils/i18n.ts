@@ -1,10 +1,10 @@
 /**
- * @module @dreamer/view/cmd/i18n
+ * @module @dreamer/view/server/utils/i18n
  *
  * @fileoverview view 包 i18n 桥接（仅服务端/CLI）：使用 $tr + 模块实例，不挂全局；供 CLI 输出与服务端抛错使用。
  *
  * 未传 lang 时按环境变量（LANGUAGE / LC_ALL / LANG）检测语言。默认 en-US。
- * 文案来自 src/cmd/locales/zh-CN.json、en-US.json。
+ * 文案来自 src/server/locales/zh-CN.json、en-US.json。本模块位于 server/utils/i18n.ts。
  */
 
 import {
@@ -14,8 +14,8 @@ import {
   type TranslationParams,
 } from "@dreamer/i18n";
 import { getEnv } from "@dreamer/runtime-adapter";
-import zhCN from "./locales/zh-CN.json" with { type: "json" };
-import enUS from "./locales/en-US.json" with { type: "json" };
+import zhCN from "../locales/zh-CN.json" with { type: "json" };
+import enUS from "../locales/en-US.json" with { type: "json" };
 
 /** 支持的 locale；英语使用 en-US */
 export type Locale = "zh-CN" | "en-US";

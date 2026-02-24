@@ -2,7 +2,7 @@
  * @module @dreamer/view/constants
  * @description
  * 集中管理挂载到 globalThis 的 __VIEW_* 键名，避免各模块硬编码字符串与拼写错误。
- * @internal 仅由 scheduler、signal、context、store、directive、runtime、hmr、route-page、cmd/build 等使用
+ * @internal 仅由 scheduler、signal、context、store、directive、runtime、hmr、route-page、server/core/build 等使用
  *
  * **globalThis 键名一览（统一在此定义，各模块从本文件 import 使用）：**
  * - KEY_SCHEDULER / KEY_CURRENT_EFFECT：调度与 effect

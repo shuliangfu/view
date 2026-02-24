@@ -24,7 +24,12 @@ export default function LoadingExample(): VNode {
         加载态示例
       </h1>
       <p className="text-slate-600 dark:text-slate-300">
-        该目录下的 <code className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-700">_loading.tsx</code> 仅在当前目录生效，子目录不继承；页面懒加载时会显示该目录的 loading 组件。
+        该目录下的{" "}
+        <code className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-700">
+          _loading.tsx
+        </code>{" "}
+        仅在当前目录生效，子目录不继承；页面懒加载时会显示该目录的 loading
+        组件。
       </p>
     </section>
   );

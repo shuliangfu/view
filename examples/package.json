@@ -21,5 +21,9 @@
     "@dreamer/view/globals": "../src/globals.ts",
     "@dreamer/view/portal": "../src/portal.ts",
     "@dreamer/view/transition": "../src/transition.ts"
+  },
+  "dependencies": {
+    "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
+    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.7"
   }
 }

@@ -8,6 +8,51 @@ and this project adheres to
 
 ---
 
+## [1.1.0] - 2026-02-25
+
+### Added
+
+- **init style choice**: Interactive style selection (Tailwind CSS / UnoCSS /
+  None); dependencies and `view.config.ts` plugins are written accordingly.
+  Supports non-interactive `options.style` (e.g. CI: `style: "none"`).
+- **init template improvements**: Generated project includes
+  `src/assets/index.html`, `favicon.svg`, and `global.css` / `index.css`
+  placeholders; `view.config.ts` gets top-level `name`, `version`, `language`
+  (auto-detected) and a fully commented `logger` block (level, format, showTime,
+  showLevel, color, output.file, etc.) with default log path
+  `runtime/logs/app.log`; logger field comments use i18n (en/zh).
+- **Version utilities**: Version logic moved to `src/server/utils/version.ts`;
+  generic `getPackageVersion(packageName, useBeta)`; `getViewVersion` and
+  `getPluginsVersion` use it. init and setup fetch latest @dreamer/view and
+  @dreamer/plugins from JSR (supports --beta).
+
+### Changed
+
+- **Dev server refactor**: Server and CLI layout rewritten. `src/cmd/` was split
+  into `src/server/` (with `core/`: app, serve, build, config, routers,
+  route-css, etc.) and top-level `src/cli.ts`. CLI entry remains
+  `@dreamer/view/cli` (now pointing to `src/cli.ts`). In dev, `ViewServer` and
+  pathHandlers serve in-memory build outputs; static and SPA fallback are
+  provided by plugins (e.g. staticPlugin) via middlewares; index.html is served
+  from `src/assets` by the plugin.
+- **init flow**: Project directories and files are created only after runtime
+  and style choices; success message uses `logger.info` (green) and blank lines
+  use `console.log`.
+- **Route CSS cleanup**: On route change, styles injected by esbuild for the
+  previous route (`style[data-dweb-css-id]`) are removed using
+  `data-view-route-path` marking, so pages without CSS no longer keep the
+  previous page’s styles; global styles from the main bundle (entry CSS imports)
+  are not marked or removed.
+- **Image compression and hashing**: Build config `build.assets` supports
+  compressing and hashing images in production; compiled output (HTML/CSS/JS) is
+  updated with hashed asset paths so no runtime asset-manifest is needed. Aligns
+  with @dreamer/esbuild AssetsProcessor behavior.
+- **Plugin config**: Config supports a `plugins` array to register Tailwind,
+  UnoCSS, or custom plugins; plugins run in registration order (e.g. tailwind
+  then static) and participate in request/response via onRequest/onResponse.
+
+---
+
 ## [1.0.32] - 2026-02-24
 
 ### Added

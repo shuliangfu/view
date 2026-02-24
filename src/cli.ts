@@ -6,7 +6,7 @@
  * @module @dreamer/view/cli
  * @packageDocumentation
  *
- * 使用 @dreamer/console 的 Command 注册子命令，子命令由 cmd/* 动态导入执行。
+ * 使用 @dreamer/console 的 Command 注册子命令，子命令由 server/* 动态导入执行。
  *
  * **导出函数：** createCLI(version) — 创建并返回 CLI Command 实例
  *
@@ -18,8 +18,9 @@
 
 import { Command } from "@dreamer/console";
 import { args } from "@dreamer/runtime-adapter";
-import { $tr } from "./cmd/i18n.ts";
-import { getViewVersion } from "./version.ts";
+import { $tr } from "./server/utils/i18n.ts";
+import { getViewVersion } from "./server/utils/version.ts";
+import { logger } from "./server/utils/logger.ts";
 
 /**
  * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出），文案走 i18n
@@ -56,7 +57,7 @@ export function createCLI(version: string): Command {
       defaultValue: false,
     })
     .action(async (args: string[], options: Record<string, unknown>) => {
-      const { main: initMain } = await import("./cmd/init.ts");
+      const { main: initMain } = await import("./server/cmd/init.ts");
       const initOptions: Record<string, unknown> = {
         ...options,
         dir: args[0],
@@ -85,7 +86,7 @@ export function createCLI(version: string): Command {
     })
     .keepAlive()
     .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: devMain } = await import("./cmd/dev.ts");
+      const { main: devMain } = await import("./server/cmd/dev.ts");
       await devMain(options);
     });
 
@@ -110,7 +111,7 @@ export function createCLI(version: string): Command {
     })
     .keepAlive()
     .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: startMain } = await import("./cmd/start.ts");
+      const { main: startMain } = await import("./server/cmd/start.ts");
       await startMain(options);
     });
 
@@ -120,7 +121,7 @@ export function createCLI(version: string): Command {
   cli
     .command("build", $tr("cli.buildDesc"))
     .action(async () => {
-      const { main: buildMain } = await import("./cmd/build.ts");
+      const { main: buildMain } = await import("./server/cmd/build.ts");
       await buildMain();
     });
 
@@ -136,7 +137,7 @@ export function createCLI(version: string): Command {
       defaultValue: false,
     })
     .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: upgradeMain } = await import("./cmd/upgrade.ts");
+      const { main: upgradeMain } = await import("./server/cmd/upgrade.ts");
       await upgradeMain(_args, options);
     });
 
@@ -152,7 +153,7 @@ export function createCLI(version: string): Command {
       defaultValue: false,
     })
     .action(async (args: string[], options: Record<string, unknown>) => {
-      const { main: updateMain } = await import("./cmd/update.ts");
+      const { main: updateMain } = await import("./server/cmd/update.ts");
       await updateMain(args, options);
     });
 
@@ -163,7 +164,7 @@ export function createCLI(version: string): Command {
     .command("version", $tr("cli.versionDesc"))
     .alias("v")
     .action(() => {
-      console.log(buildVersionStr(version));
+      logger.info(buildVersionStr(version));
     });
 
   return cli;

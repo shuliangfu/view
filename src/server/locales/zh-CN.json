@@ -49,9 +49,14 @@
       "runtime": "运行时",
       "runtimeDeno": "Deno",
       "runtimeBun": "Bun",
+      "nextInstallBun": "安装依赖：bun install",
       "nextDevBun": "开发：bun run dev",
       "nextBuildBun": "构建：bun run build",
-      "nextProdBun": "生产：bun run start"
+      "nextProdBun": "生产：bun run start",
+      "style": "样式方案",
+      "styleTailwind": "Tailwind CSS",
+      "styleUnoCSS": "UnoCSS",
+      "styleNone": "不需要"
     },
     "build": {
       "building": "[view] 构建中...",
@@ -143,7 +148,27 @@
       "routerComment": "路由实例与上下文：创建应用路由，提供 RouterProvider、useRouter",
       "routersComment1": "路由表（自动生成）：path → component，使用动态 import 实现按需加载",
       "routersComment2": "请勿手动编辑；dev 时会根据 src/views 目录自动重新生成",
-      "homeNavTitle": "首页"
+      "homeNavTitle": "首页",
+      "htmlTitle": "@dreamer/view 完整示例",
+      "htmlDarkScriptComment": "尽早应用 dark 类，避免首屏闪烁（兼容 store 持久化 JSON 与旧字符串格式）",
+      "globalCssComment": "全局样式：在 main.tsx 中 import \"./assets/global.css\" 即可生效",
+      "indexCssComment": "仅当前页面生效的样式：在对应页面中 import 即可生效",
+      "globalCssImportComment": "全局样式：取消注释即可生效",
+      "pageCssImportComment": "仅当前页面生效的样式：取消注释即可生效",
+      "tailwindCssComment": "TailwindCSS v4 入口：在 main.tsx 中 import 此文件即可全局生效",
+      "unoCssComment": "UnoCSS 入口：在 main.tsx 中 import 此文件即可全局生效",
+      "viewConfigAssetsComment": "资源处理：复制 src/assets 到 dist/assets，图片压缩与 hash",
+      "viewConfigLoggerComment": "日志配置（可选）：未设时使用默认 level info、format text",
+      "loggerLevelComment": "\"debug\" | \"info\" | \"warn\" | \"error\" | \"fatal\"",
+      "loggerFormatComment": "\"text\" | \"json\" | \"color\"",
+      "loggerShowTimeComment": "是否显示时间戳",
+      "loggerShowLevelComment": "是否显示级别标签 [info]、[error] 等",
+      "loggerColorComment": "是否启用颜色，默认自动检测",
+      "loggerOutputConsoleComment": "是否输出到控制台",
+      "loggerFilePathComment": "日志文件路径",
+      "loggerRotateComment": "是否按大小轮转",
+      "loggerMaxSizeComment": "单文件最大字节（如 10MB）",
+      "loggerMaxFilesComment": "轮转保留文件数"
     }
   },
   "generate": {

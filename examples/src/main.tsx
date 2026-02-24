@@ -11,6 +11,7 @@ import { registerDirective } from "@dreamer/view/directive";
 import { createAppRouter } from "./router/router.ts";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 import { App } from "./views/_app.tsx";
+import "./assets/global.css";
 
 registerDirective("v-focus", {
   mounted(el: Element) {

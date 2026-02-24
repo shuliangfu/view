@@ -25,10 +25,10 @@ import {
   remove,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr } from "./cmd/i18n.ts";
-import { loadViewDenoJson, writeVersionCache } from "./version.ts";
+import { $tr } from "./server/utils/i18n.ts";
+import { loadViewDenoJson, writeVersionCache } from "./server/utils/version.ts";
 
-/** CLI 全局命令名称（与 cli.ts 中一致） */
+/** CLI 全局命令名称（与 src/cli.ts 中一致） */
 const CLI_NAME = "view-cli";
 
 /** ANSI 颜色（安装成功绿、失败红） */

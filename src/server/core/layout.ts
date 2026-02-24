@@ -28,6 +28,22 @@ export async function readInheritLayoutFromPageFile(
   return typeof v === "boolean" ? v : undefined;
 }
 
+/**
+ * 从页面文件路径动态 import，读取 loading 导出；
+ * 当页面 export const loading = false 时返回 false（当前页不显示 loading），未导出或为 true 时返回 true。
+ */
+export async function readLoadingFromPageFile(
+  pagePath: string,
+): Promise<boolean> {
+  try {
+    const mod = await import(pathToFileUrl(pagePath));
+    const v = (mod as { loading?: boolean }).loading;
+    return v !== false;
+  } catch {
+    return true;
+  }
+}
+
 export interface LayoutChainResult {
   /** 是否继承父级 Layout（根 _layout） */
   inheritLayout: boolean;

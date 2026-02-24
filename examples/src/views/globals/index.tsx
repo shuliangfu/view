@@ -63,7 +63,8 @@ export function GlobalsDemo(): VNode {
         <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
           @dreamer/view/globals
         </code>{" "}
-        在浏览器中安全访问 document（SSR 下会抛错），以及按 key 在 globalThis 上存取全局状态。
+        在浏览器中安全访问 document（SSR 下会抛错），以及按 key 在 globalThis
+        上存取全局状态。
       </p>
       <div className="space-y-6">
         <div className={block}>
@@ -73,7 +74,8 @@ export function GlobalsDemo(): VNode {
             <span className="font-semibold text-indigo-600 dark:text-indigo-400">
               {globalCount()}
             </span>
-            。点击下方按钮自增并写回 globalThis，刷新页面后仍会保留（同 tab 内）。
+            。点击下方按钮自增并写回 globalThis，刷新页面后仍会保留（同 tab
+            内）。
           </p>
           <button type="button" className={btn} onClick={incrementGlobal}>
             自增并 setGlobal
@@ -99,8 +101,8 @@ export function GlobalsDemo(): VNode {
           <h3 className={subTitle}>SSR 说明</h3>
           <p className="text-sm text-slate-600 dark:text-slate-300">
             在服务端渲染（renderToString / renderToStream）时调用 getDocument()
-            会抛出明确错误，提示不要在服务端使用 document。可在 createEffect
-            或 onMount 等仅客户端逻辑中使用 getDocument。
+            会抛出明确错误，提示不要在服务端使用 document。可在 createEffect 或
+            onMount 等仅客户端逻辑中使用 getDocument。
           </p>
         </div>
       </div>
