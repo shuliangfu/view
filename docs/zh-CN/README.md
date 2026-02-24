@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.31**（2026-02-22）：修复 renderToString 在 Bun/无 DOM 下恢复
-globalThis.document；TEST_REPORT Bun preload。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.32**（2026-02-24）：布局 codegen 与 init 模板含根布局；router 导出
+KEY_VIEW_ROUTER/getGlobal/setGlobal；init 支持 options.runtime 便于
+CI。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

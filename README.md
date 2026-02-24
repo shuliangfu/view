@@ -1107,9 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.31** (2026-02-22): Fixed renderToString in Bun / no-DOM (restore
-globalThis.document); TEST_REPORT Bun preload. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.0.32** (2026-02-24): Layout codegen and init template with root layout;
+KEY_VIEW_ROUTER/getGlobal/setGlobal from router; init options.runtime for CI.
+See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 
