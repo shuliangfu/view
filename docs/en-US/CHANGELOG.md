@@ -8,6 +8,45 @@ and this project adheres to
 
 ---
 
+## [1.0.32] - 2026-02-24
+
+### Added
+
+- **Router / layout**: `KEY_VIEW_ROUTER` constant and `getGlobal` / `setGlobal`
+  exported from `@dreamer/view/router` so root _layout (or other code) can read
+  the router from global when needed.
+- **init (non-interactive)**: `main(options)` accepts optional `options.runtime`
+  (`"deno"` or `"bun"`). When set, the runtime selection menu is skipped so CI
+  and tests can run init without stdin (e.g.
+  `initMain({ dir: "...", runtime: "deno" })`).
+
+### Changed
+
+- **Layout inheritance**: Decided entirely in codegen (layout chain in
+  `layout.ts` + `routers.ts`). _app no longer checks `inheritLayout`; it sets
+  the router on global and always renders `RoutePage`, which applies the route’s
+  `layouts` array (root _layout included when inheriting). Root _layout is the
+  default export of `_layout.tsx`; `Layout` accepts optional `routes` /
+  `currentPath` (no global fallback for currentPath).
+- **Layout chain in generated routes**: Full `layoutImportPaths` (including
+  root) are emitted when inheriting; when page sets `inheritLayout = false`,
+  only the root path is filtered out so the current directory’s _layout still
+  wraps the page.
+- **RoutePage layout order**: Layouts are applied in reverse order so the first
+  entry (root) is outermost and nesting is correct (root > child layout > page).
+- **layout.ts**: `readInheritLayoutFromLayoutFile` and
+  `readInheritLayoutFromPageFile` now use dynamic `import(pathToFileUrl(path))`
+  to read `inheritLayout` from the module instead of regex on file content.
+
+### Fixed
+
+- **Page `inheritLayout = false`**: When the page (or directory _layout) sets
+  `inheritLayout = false`, only the root layout is removed from the chain; the
+  current directory’s _layout is no longer dropped, so the local layout (e.g.
+  dashed box) still renders.
+
+---
+
 ## [1.0.31] - 2026-02-22
 
 ### Fixed
@@ -26,8 +65,8 @@ and this project adheres to
   `bun test --preload ./tests/dom-setup.ts tests/`; duration and note added
   (preload injects happy-dom when no DOM is present). Applied in both en-US and
   zh-CN reports.
-- **Publish**: `publish.include` now has `src/**/*.tsx` so `route-page.tsx` (used
-  by `router.ts`) is included in the JSR package.
+- **Publish**: `publish.include` now has `src/**/*.tsx` so `route-page.tsx`
+  (used by `router.ts`) is included in the JSR package.
 
 ---
 
@@ -224,7 +263,7 @@ and this project adheres to
   and `zh-CN.json` for setup, serve, init, build, config, dev, HMR messages.
 - **Init template i18n:** All init-generated comments and TSX copy use
   `init.template.*` keys (view.config, main, _app, _layout, _loading, _404,
-  _error, home, about, router, routers). Route metadata titles and `generate.ts`
+  _error, home, about, router, routers). Route metadata titles and `routers.ts`
   default home title / router file comments use `$t`.
 
 ### Changed
@@ -234,7 +273,7 @@ and this project adheres to
   append). Added blank line before "Project created" message. Escaped
   `countLabelHigh` as `count &gt; 5` in locales for valid TSX.
 - **Generate:** `titleFromRelative` and generated routers file comments use
-  `$t`; added `generate.tsNocheckComment` locale key.
+  `$t`; added `routers.tsNocheckComment` locale key.
 - **Build/Config:** JSDoc for `getRoutePathForChangedPath` and
   `getBuildConfigForMode` param translated to English.
 

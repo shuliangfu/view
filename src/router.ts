@@ -874,3 +874,7 @@ export {
   type RoutePageStyle,
   type RoutePageStyles,
 } from "./route-page.tsx";
+
+/** 根 _layout 通过 getGlobal(KEY_VIEW_ROUTER) 读取 _app 挂载的 Router，用于渲染 Navbar 的 currentPath */
+export { KEY_VIEW_ROUTER } from "./constants.ts";
+export { getGlobal, setGlobal } from "./globals.ts";

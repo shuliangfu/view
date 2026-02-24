@@ -424,9 +424,10 @@ export function RoutePage(props: {
         ) as LayoutComponentModule[];
         return {
           default: (m?: unknown) => {
+            // layouts 顺序为 [根, 子]，应从内到外包裹：先包子再包根，根在最外层
             let inner: VNode = pageMod.default(m ?? matchWithRouter);
-            for (const mod of layoutMods) {
-              inner = mod.default({ children: inner });
+            for (let i = layoutMods.length - 1; i >= 0; i--) {
+              inner = layoutMods[i].default({ children: inner });
             }
             return inner;
           },

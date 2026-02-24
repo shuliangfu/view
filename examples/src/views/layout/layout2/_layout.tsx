@@ -19,7 +19,7 @@ export default function Layout(props: LayoutProps): VNode {
   return (
     <div className="rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/20 p-4">
       <p className="mb-2 text-xs font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-        layout 1 目录 _layout 包裹
+        layout 2 目录 _layout 包裹
       </p>
       {props.children}
     </div>

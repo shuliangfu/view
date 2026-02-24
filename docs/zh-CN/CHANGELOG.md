@@ -7,6 +7,39 @@
 
 ---
 
+## [1.0.32] - 2026-02-24
+
+### 新增
+
+- **Router / 布局**：从 `@dreamer/view/router` 导出常量 `KEY_VIEW_ROUTER` 及
+  `getGlobal` / `setGlobal`，便于根 _layout 等从 global 读取 router。
+- **init（非交互）**：`main(options)` 支持可选 `options.runtime`（`"deno"` 或
+  `"bun"`）。 传入时跳过运行时选择菜单，CI 与测试可无 stdin 执行 init（如
+  `initMain({ dir: "...", runtime: "deno" })`）。
+
+### 变更
+
+- **布局继承**：完全由 codegen（layout.ts 布局链 + routers.ts）决定。_app
+  不再判断 `inheritLayout`，仅将 router 挂到 global 并始终渲染 `RoutePage`，由
+  RoutePage 根据 路由的 `layouts` 数组应用布局（继承时含根 _layout）。根 _layout
+  为 _layout.tsx 的 default 导出；Layout 的 `routes` / `currentPath`
+  改为可选（不再从 global 补 currentPath）。
+- **生成路由的布局链**：继承时输出完整 `layoutImportPaths`（含根）；页面设置
+  `inheritLayout = false` 时仅过滤掉根路径，当前目录的 _layout 仍会包裹页面。
+- **RoutePage 布局顺序**：按倒序应用
+  layouts，使数组中第一项（根）为最外层，嵌套顺序 正确（根 > 子布局 > 页面）。
+- **layout.ts**：`readInheritLayoutFromLayoutFile` 与
+  `readInheritLayoutFromPageFile` 改为通过 动态 `import(pathToFileUrl(path))`
+  从模块读取 `inheritLayout`，不再用正则解析文件内容。
+
+### 修复
+
+- **页面 `inheritLayout = false`**：当页面（或目录 _layout）设置
+  `inheritLayout = false` 时， 仅从链中移除根布局，当前目录的 _layout
+  不再被误删，本地布局（如虚线框）会正常显示。
+
+---
+
 ## [1.0.31] - 2026-02-22
 
 ### 修复
@@ -207,7 +240,7 @@
   覆盖 setup、serve、init、build、config、dev、HMR 等文案。
 - **init 模板 i18n：** 所有 init 生成文件中的注释与 TSX 文案均使用
   `init.template.*` 键（view.config、main、_app、_layout、_loading、_404、
-  _error、home、about、router、routers）；路由 metadata 标题与 `generate.ts`
+  _error、home、about、router、routers）；路由 metadata 标题与 `routers.ts`
   默认首页标题、路由表注释使用 `$t`。
 
 ### 变更
@@ -217,7 +250,7 @@
   `removeCloak`）。在「项目已创建」提示前增加空行。locale 中 `countLabelHigh`
   改为 `count &gt; 5` 以符合 TSX 语法。
 - **generate：** `titleFromRelative` 与生成的路由表注释使用 `$t`；新增
-  `generate.tsNocheckComment` 文案键。
+  `routers.tsNocheckComment` 文案键。
 - **build/config：** `getRoutePathForChangedPath` 与 `getBuildConfigForMode` 的
   JSDoc 参数说明改为英文。
 
