@@ -392,7 +392,11 @@ export {};
 
   // ---------------------------------------------------------------------------
   // src/assets/index.html（模板：dark 首屏、data-view-cloak、/main.js；由 static 插件从 assets 提供）
+  // body 渐变类按样式方案区分：Tailwind v4 用 bg-linear-to-b，UnoCSS 用 bg-gradient-to-b
   // ---------------------------------------------------------------------------
+  const indexHtmlBodyClass = style === "tailwind"
+    ? "min-h-screen bg-linear-to-b from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200"
+    : "min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200";
   const indexHtml = `<!DOCTYPE html>
 <html lang="${$tr("init.template.htmlLang")}">
   <head>
@@ -418,7 +422,7 @@ export {};
     </style>
   </head>
   <body
-    class="min-h-screen bg-linear-to-b from-slate-50 to-slate-100 text-slate-800 antialiased dark:from-slate-900 dark:to-slate-800 dark:text-slate-200"
+    class="${indexHtmlBodyClass}"
   >
     <div id="root" data-view-cloak></div>
     <script type="module" src="/main.js"></script>

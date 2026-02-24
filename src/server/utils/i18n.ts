@@ -79,6 +79,29 @@ export function setViewLocale(locale: Locale): void {
 }
 
 /**
+ * 将配置中的 language 字符串规范为 Locale（zh-CN / en-US），不匹配则返回 null
+ */
+export function normalizeLanguageToLocale(
+  lang: string | undefined,
+): Locale | null {
+  if (!lang || typeof lang !== "string") return null;
+  const trimmed = lang.trim();
+  const match = trimmed.match(/^([a-z]{2})[-_]([A-Za-z]{2})/i);
+  if (match) {
+    const normalized = `${match[1].toLowerCase()}-${
+      match[2].toUpperCase()
+    }` as Locale;
+    return VIEW_LOCALES.includes(normalized) ? normalized : null;
+  }
+  if (VIEW_LOCALES.includes(trimmed as Locale)) return trimmed as Locale;
+  const primary = trimmed.substring(0, 2).toLowerCase();
+  for (const locale of VIEW_LOCALES) {
+    if (locale.startsWith(primary + "-")) return locale;
+  }
+  return null;
+}
+
+/**
  * 根据 key 取翻译文案。未传 lang 时使用当前 locale；传 lang 时临时切换后恢复。未 init 时返回 key。
  *
  * @param key 文案 key，如 "error.ssrDocument"、"error.mountContainerNotFound"

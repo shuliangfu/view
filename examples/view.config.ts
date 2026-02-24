@@ -14,6 +14,9 @@ import { tailwindPlugin } from "@dreamer/plugins/tailwindcss";
 import { staticPlugin } from "@dreamer/plugins/static";
 
 const config: AppConfig = {
+  name: "view-examples",
+  version: "1.0.0",
+  language: "zh-CN",
   server: {
     port: 8787,
     host: "127.0.0.1",
