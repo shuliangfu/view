@@ -62,6 +62,7 @@
     "@dreamer/logger": "jsr:@dreamer/logger@^1.0.2",
     "@dreamer/i18n": "jsr:@dreamer/i18n@^1.0.1",
     "@dreamer/test": "jsr:@dreamer/test@^1.0.15",
+    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.0.7",
     "typescript": "npm:typescript@5.9.3",
     "happy-dom": "npm:happy-dom@20.4.0"
   },
