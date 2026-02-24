@@ -150,8 +150,11 @@ export function renderToString(
     if (origDoc !== null) {
       g.document = origDoc;
     } else {
-      // 无 DOM 环境（如 Bun/Node 测试）：不要保留 guard，否则后续 getDocument() 会返回 guard 导致访问即抛错
-      (g as Record<string, unknown>).document = undefined;
+      try {
+        (g as Record<string, unknown>).document = undefined;
+      } catch {
+        // 浏览器中 document 只读，赋值会抛错，忽略；未替换过则无需恢复
+      }
     }
     setGlobal(KEY_VIEW_SSR, false);
   }

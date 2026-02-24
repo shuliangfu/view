@@ -16,7 +16,11 @@ import type { AppConfig } from "./config.ts";
 import { ViewServer } from "./serve.ts";
 import type { ViewServerMiddleware, ViewServerOptions } from "./serve.ts";
 import { prepareDevBuild, runBuildWithConfig } from "./build.ts";
-import { $tr } from "../utils/i18n.ts";
+import {
+  $tr,
+  normalizeLanguageToLocale,
+  setViewLocale,
+} from "../utils/i18n.ts";
 import { logger, setLoggerConfig } from "../utils/logger.ts";
 
 /** 创建 App 时的选项（可传入已加载的 viewConfig，否则从 root 加载） */
@@ -106,6 +110,20 @@ export class App implements ViewApp {
     this._viewConfig = this._configFromOptions ??
       await loadViewConfig(this.root);
     this.container.registerSingleton("AppConfig", () => this._viewConfig);
+
+    // 根据 config.language 设置 i18n locale 与语言环境变量（LANG），供 detectLocale() 等使用
+    const lang = this._viewConfig.language;
+    if (lang) {
+      const locale = normalizeLanguageToLocale(lang);
+      if (locale) {
+        setViewLocale(locale);
+        try {
+          setEnv("LANG", lang);
+        } catch {
+          // 部分环境只读时忽略
+        }
+      }
+    }
 
     // 插件初始化：view.config.ts 中 plugins 为 Plugin 实例数组，由 ViewApp 注册
     const plugins = this._viewConfig.plugins ?? [];

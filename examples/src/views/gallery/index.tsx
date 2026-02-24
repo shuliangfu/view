@@ -147,7 +147,7 @@ export default function Gallery(): VNode {
           >
             <button
               type="button"
-              className="block w-full aspect-[4/3] overflow-hidden bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-slate-700"
+              className="block w-full aspect-4/3 overflow-hidden bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-slate-700"
               onClick={() => setSelectedIndex(index)}
             >
               <img
