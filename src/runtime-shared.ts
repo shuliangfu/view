@@ -426,6 +426,8 @@ export function createCreateRoot(
           patchRoot(container, s.mounted!, s.lastExpanded!, newExpanded);
           bindDeferredEventListeners(container);
           s.lastExpanded = newExpanded;
+          // patch 可能做了 replaceChild，s.mounted 已脱离 DOM；需同步为当前根节点，否则下次 run 会误判 shouldMount 再 appendChild 导致 #root 下堆积
+          s.mounted = (container.firstChild as Node) ?? container;
         }
       },
       onBeforeRun: () => {

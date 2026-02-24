@@ -14,7 +14,7 @@ import {
   KEY_HMR_CHUNK_FOR_PATH,
   KEY_HMR_CLEAR_ROUTE_CACHE,
 } from "./constants.ts";
-import { createEffect, createScopeWithDisposers, untrack } from "./effect.ts";
+import { createEffect, createScopeWithDisposers } from "./effect.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
 import { jsx as runtimeJsx } from "./jsx-runtime.ts";
@@ -78,6 +78,11 @@ const pathStateStore = new Map<
 >();
 let prevPathForState = "";
 
+/** 上一路由 path，用于切换时移除该路由由 esbuild 注入的 dweb-css-* 样式 */
+let prevPathForCssCleanup = "";
+/** 当前路由切换时已存在的 dweb-css id 集合，用于区分「当前 chunk 新注入」与 main/全局样式，只给前者打 data-view-route-path */
+const dwebCssIdsSnapshot = new Set<string>();
+
 function getPageState<T>(
   path: string,
   key: string,
@@ -121,33 +126,6 @@ function getScopeForPath(
   return scope;
 }
 
-/** 有 _loading 时的最短展示时间（毫秒）：页面未加载完继续显示 loading；页面很快加载完也至少展示此时长再进入内容 */
-const MIN_LOADING_DELAY_MS = 10;
-
-/** 已启动过「最短 MIN_LOADING_DELAY_MS」计时器的 path，避免重复启动导致一直 loading */
-const minDelayTimerStartedPaths = new Set<string>();
-
-/** 上一帧的 path，用于仅在 path 变化时重置 minDelayElapsed，避免根 effect 重跑时反复置 false */
-let prevPathForMinDelay = "";
-
-/** 按 path 缓存 minDelayElapsed 的 [getter, setter]，保证根 effect 重跑时仍用同一 signal，定时器回调更新的是当前渲染所读的 signal */
-const minDelaySignalsByPath = new Map<
-  string,
-  [() => boolean, (value: boolean) => void]
->();
-
-function getOrCreateMinDelaySignal(
-  path: string,
-): [() => boolean, (value: boolean) => void] {
-  let tuple = minDelaySignalsByPath.get(path);
-  if (!tuple) {
-    const [get, set] = createSignal(false);
-    tuple = [get, set];
-    minDelaySignalsByPath.set(path, tuple);
-  }
-  return tuple;
-}
-
 /** HMR 无感刷新前由 __HMR_REFRESH__ 置为 true，本模块执行时清空缓存以便拉新 chunk */
 if (getGlobal<boolean>(KEY_HMR_CLEAR_ROUTE_CACHE)) {
   for (const scope of pathScopes.values()) scope.runDisposers();
@@ -155,31 +133,6 @@ if (getGlobal<boolean>(KEY_HMR_CLEAR_ROUTE_CACHE)) {
   resourceCache.clear();
   loadingComponentCache.clear();
   setGlobal(KEY_HMR_CLEAR_ROUTE_CACHE, false);
-}
-
-/** 是否已注入页面过渡样式（仅浏览器环境注入一次） */
-let routePageTransitionStyleInjected = false;
-
-/**
- * 在浏览器下注入页面淡入动画样式，时长约 0.35s，使切换有明显淡入感且减少闪白
- */
-function ensureRoutePageTransitionStyle(): void {
-  if (routePageTransitionStyleInjected) return;
-  const doc = (globalThis as { document?: Document }).document;
-  if (!doc?.head) return;
-  routePageTransitionStyleInjected = true;
-  const style = doc.createElement("style");
-  style.setAttribute("data-view-route-page", "");
-  style.textContent = `
-@keyframes view-route-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.view-route-page-enter {
-  animation: view-route-fade-in 0.35s ease-out both;
-}
-`;
-  doc.head.appendChild(style);
 }
 
 /** 内联样式类型（与 DOM style 一致） */
@@ -276,8 +229,6 @@ export function RoutePage(props: {
   styles?: RoutePageStyles;
 }): VNode {
   const path = props.match.path;
-  const pathRef = { current: path };
-  pathRef.current = path;
   // path 变化时清理上一 path 的缓存与 scope，避免长时间 SPA 导航导致内存持续增长（见 ANALYSIS_REPORT 1.2）
   if (prevPathForState && prevPathForState !== path) {
     const prev = prevPathForState;
@@ -286,9 +237,29 @@ export function RoutePage(props: {
     pathScopes.delete(prev);
     resourceCache.delete(prev);
     loadingComponentCache.delete(prev);
-    minDelaySignalsByPath.delete(prev);
   }
   prevPathForState = path;
+
+  // 路由切换时：移除上一路由由 esbuild 内联注入的 style[data-view-route-path]，再快照当前 dweb-css id，避免误删 main 包全局样式
+  if (path !== prevPathForCssCleanup) {
+    const doc = (globalThis as { document?: Document }).document;
+    if (doc?.head) {
+      doc
+        .querySelectorAll(
+          `style[data-view-route-path="${prevPathForCssCleanup}"]`,
+        )
+        .forEach((el) => el.remove());
+      dwebCssIdsSnapshot.clear();
+      doc.querySelectorAll("style[data-dweb-css-id]").forEach((el) => {
+        const id = (el as HTMLStyleElement).id ||
+          el.getAttribute("data-dweb-css-id") ||
+          "";
+        if (id) dwebCssIdsSnapshot.add(id);
+      });
+    }
+    prevPathForCssCleanup = path;
+  }
+
   const matchWithRouter: RouteMatchWithRouter = {
     ...props.match,
     router: props.router,
@@ -297,30 +268,6 @@ export function RoutePage(props: {
       getPageState(path, key, initialValue),
   };
   const labels = props.labels ?? {};
-  const [minDelayElapsed, setMinDelayElapsed] = getOrCreateMinDelaySignal(path);
-  createEffect(() => {
-    path;
-    if (prevPathForMinDelay !== path) {
-      minDelayTimerStartedPaths.delete(prevPathForMinDelay);
-      prevPathForMinDelay = path;
-      setMinDelayElapsed(false);
-    }
-  });
-  createEffect(() => {
-    const hasLoading = untrack(() => props.match.loading);
-    const p = untrack(() => path);
-    if (!hasLoading || minDelayTimerStartedPaths.has(p)) return;
-    minDelayTimerStartedPaths.add(p);
-    const pathWhenStarted = p;
-    const setElapsed = getOrCreateMinDelaySignal(pathWhenStarted)[1];
-    const t = setTimeout(() => {
-      if (pathRef.current === pathWhenStarted) setElapsed(true);
-    }, MIN_LOADING_DELAY_MS);
-    return () => {
-      clearTimeout(t);
-      minDelayTimerStartedPaths.delete(pathWhenStarted);
-    };
-  });
   const errorTitle = labels.errorTitle ?? DEFAULT_ERROR_TITLE;
   const retryText = labels.retryText ?? DEFAULT_RETRY_TEXT;
   const loadingText = labels.loadingText ?? DEFAULT_LOADING_TEXT;
@@ -358,7 +305,6 @@ export function RoutePage(props: {
         </section>
       );
     }
-    ensureRoutePageTransitionStyle();
     return (
       <div
         className={cls("transitionPlaceholder")}
@@ -405,9 +351,26 @@ export function RoutePage(props: {
         const overrideUrl = chunkMap?.[path];
         if (overrideUrl && chunkMap) {
           delete chunkMap[path];
-          return import(/* @vite-ignore */ overrideUrl) as Promise<
-            { default: (m?: unknown) => VNode }
-          >;
+          const pageMod = (await import(/* @vite-ignore */ overrideUrl)) as {
+            default: (m?: unknown) => VNode;
+          };
+          if (!match.layouts?.length) {
+            return {
+              default: (m?: unknown) => pageMod.default(m ?? matchWithRouter),
+            };
+          }
+          const layoutMods = await Promise.all(
+            match.layouts.map((loader) => loader()),
+          ) as LayoutComponentModule[];
+          return {
+            default: (m?: unknown) => {
+              let inner: VNode = pageMod.default(m ?? matchWithRouter);
+              for (let i = layoutMods.length - 1; i >= 0; i--) {
+                inner = layoutMods[i].default({ children: inner });
+              }
+              return inner;
+            },
+          };
         }
         const result = match.component(matchWithRouter) as unknown;
         const pageMod =
@@ -445,6 +408,23 @@ export function RoutePage(props: {
   const { data, loading, error, refetch } = resourceGetter();
   const pageReady = !error && !loading && data != null;
 
+  // 当前路由就绪后，把「新出现」的 esbuild 注入的 style[data-dweb-css-id] 标记为当前路由，切走时移除
+  createEffect(() => {
+    const currentPath = path;
+    const ready = pageReady;
+    const doc = (globalThis as { document?: Document }).document;
+    if (!doc?.head || !ready) return;
+    doc.querySelectorAll("style[data-dweb-css-id]").forEach((el) => {
+      const id = (el as HTMLStyleElement).id ||
+        el.getAttribute("data-dweb-css-id") ||
+        "";
+      if (id && !dwebCssIdsSnapshot.has(id)) {
+        dwebCssIdsSnapshot.add(id);
+        el.setAttribute("data-view-route-path", currentPath);
+      }
+    });
+  });
+
   if (error) {
     const message = error instanceof Error ? error.message : String(error);
     return (
@@ -467,22 +447,18 @@ export function RoutePage(props: {
     );
   }
 
-  /* 页面组件未就绪：优先显示 _loading，否则默认 loading 或占位 */
+  /* 页面组件未就绪：若页面 export const loading = false 则不显示任何 loading；否则优先 _loading，再默认转圈。
+   * 不包 key 的 wrapper，直接返回单一子节点，由上层 #root 处做整体替换，避免多次点击链接后 #root 下堆积多个 div。 */
   if (!pageReady) {
+    if (props.match.skipLoading) {
+      return null as unknown as VNode;
+    }
     const custom = tryCustomLoading();
     if (custom) return custom;
     return loadingOrPlaceholder(props.showLoading === true);
   }
 
-  /* 页面已就绪但 minDelay 未到：再显示一段 _loading 或默认 loading / 占位后切到内容 */
-  if (pageReady && data && props.match.loading && !minDelayElapsed()) {
-    const custom = tryCustomLoading();
-    if (custom) return custom;
-    return loadingOrPlaceholder(props.showLoading === true);
-  }
-
-  /* 页面就绪且 minDelay 已过：显示内容并加过渡容器 */
-  ensureRoutePageTransitionStyle();
+  /* 页面就绪：直接显示内容，不包 key，保证 #root 下始终只有一个子节点被替换 */
   const content = data.default(matchWithRouter);
   return (
     <div

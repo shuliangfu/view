@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { getRoutePathForChangedPath } from "../../src/cmd/build.ts";
+import { getRoutePathForChangedPath } from "../../src/server/core/build.ts";
 
 describe("getRoutePathForChangedPath", () => {
   it('路径含 /views/home 或 /views/index 应返回 "/"', () => {

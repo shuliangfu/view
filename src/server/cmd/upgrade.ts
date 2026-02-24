@@ -21,13 +21,13 @@ import {
   success,
 } from "@dreamer/console";
 import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
-import { $tr } from "./i18n.ts";
+import { $tr } from "../utils/i18n.ts";
 import {
   compareVersions,
   fetchLatestViewVersionFromJsr,
   getViewVersion,
   writeVersionCache,
-} from "../version.ts";
+} from "../utils/version.ts";
 
 /**
  * 获取当前运行时名称（deno 或 bun），供 createCommand 使用

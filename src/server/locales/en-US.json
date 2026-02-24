@@ -49,9 +49,14 @@
       "runtime": "Runtime",
       "runtimeDeno": "Deno",
       "runtimeBun": "Bun",
+      "nextInstallBun": "install deps: bun install",
       "nextDevBun": "dev: bun run dev",
       "nextBuildBun": "build: bun run build",
-      "nextProdBun": "prod: bun run start"
+      "nextProdBun": "prod: bun run start",
+      "style": "Style",
+      "styleTailwind": "Tailwind CSS",
+      "styleUnoCSS": "UnoCSS",
+      "styleNone": "None"
     },
     "build": {
       "building": "[view] Building...",
@@ -144,7 +149,27 @@
       "routersComment1": "Route table (auto-generated): path → component, dynamic import for code splitting",
       "routersComment2": "Do not edit manually; dev regenerates from src/views.",
       "homeNavTitle": "Home",
-      "notFoundRouteTitle": "404"
+      "notFoundRouteTitle": "404",
+      "htmlTitle": "@dreamer/view Example",
+      "htmlDarkScriptComment": "Apply dark class early to avoid first-screen flash (compatible with store persist JSON and legacy string format).",
+      "globalCssComment": "Global styles: import \"./assets/global.css\" in main.tsx to apply.",
+      "indexCssComment": "Page-specific styles: import in the corresponding page to apply.",
+      "globalCssImportComment": "Global styles: uncomment to apply.",
+      "pageCssImportComment": "Page-specific styles: uncomment to apply.",
+      "tailwindCssComment": "TailwindCSS v4 entry: import this file in main.tsx for global styles.",
+      "unoCssComment": "UnoCSS entry: import this file in main.tsx for global styles.",
+      "viewConfigAssetsComment": "Assets: copy src/assets to dist/assets, compress and hash images.",
+      "viewConfigLoggerComment": "Logger config (optional): defaults to level info, format text when unset.",
+      "loggerLevelComment": "\"debug\" | \"info\" | \"warn\" | \"error\" | \"fatal\"",
+      "loggerFormatComment": "\"text\" | \"json\" | \"color\"",
+      "loggerShowTimeComment": "Show timestamp",
+      "loggerShowLevelComment": "Show level label [info], [error], etc.",
+      "loggerColorComment": "Enable color, auto-detect by default",
+      "loggerOutputConsoleComment": "Output to console",
+      "loggerFilePathComment": "Log file path",
+      "loggerRotateComment": "Rotate by size",
+      "loggerMaxSizeComment": "Max bytes per file (e.g. 10MB)",
+      "loggerMaxFilesComment": "Number of rotated files to keep"
     }
   },
   "generate": {

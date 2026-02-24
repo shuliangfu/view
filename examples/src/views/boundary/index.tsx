@@ -98,7 +98,9 @@ export function BoundaryDemo(): VNode {
               <p className="text-slate-500 dark:text-slate-400">加载中…</p>
             }
           >
-            {asyncPromise() ?? <p className="text-slate-500 dark:text-slate-400">加载中…</p>}
+            {asyncPromise() ?? (
+              <p className="text-slate-500 dark:text-slate-400">加载中…</p>
+            )}
           </Suspense>
         </div>
       </div>

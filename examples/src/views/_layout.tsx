@@ -23,12 +23,14 @@ export interface NavItem {
 const GROUP_ORDER = ["首页", "核心", "路由", "示例"];
 
 /**
- * 从 path 推断分组（无 meta.group 时使用）：/ -> 首页，/router|/runtime -> 路由，/layout|/loading -> 示例，其余 -> 核心
+ * 从 path 推断分组（无 meta.group 时使用）：/ -> 首页，/router|/runtime -> 路由，/layout|/loading|/gallery -> 示例，其余 -> 核心
  */
 function groupFromPath(path: string): string {
   if (path === "/") return "首页";
   if (path === "/router" || path === "/runtime") return "路由";
-  if (path === "/layout" || path === "/loading") return "示例";
+  if (path === "/layout" || path === "/loading" || path === "/gallery") {
+    return "示例";
+  }
   return "核心";
 }
 
@@ -148,7 +150,11 @@ export function Layout(props: LayoutProps): VNode {
                   const isActive = currentPath === item.path;
                   return (
                     <li key={item.path}>
-                      <a href={item.path} className={navLinkClass(isActive) + " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}>
+                      <a
+                        href={item.path}
+                        className={navLinkClass(isActive) +
+                          " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+                      >
                         {item.label}
                       </a>
                     </li>
@@ -156,16 +162,30 @@ export function Layout(props: LayoutProps): VNode {
                 }
                 const isGroupActive = items.some((i) => i.path === currentPath);
                 return (
-                  <li key={groupName} className="relative shrink-0 overflow-visible group/list">
+                  <li
+                    key={groupName}
+                    className="relative shrink-0 overflow-visible group/list"
+                  >
                     <button
                       type="button"
-                      className={navLinkClass(isGroupActive) + " inline-flex items-center gap-1.5 pr-4 overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+                      className={navLinkClass(isGroupActive) +
+                        " inline-flex items-center gap-1.5 pr-4 overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
                       aria-haspopup="true"
                       aria-expanded="false"
                     >
                       <span className="shrink-0">{groupName}</span>
                       {/* 向下箭头：butt+miter 避免 round 导致视觉上一边长一边短 */}
-                      <svg className="h-4 w-4 shrink-0 opacity-70 overflow-visible -mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="butt" strokeLinejoin="miter" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                      <svg
+                        className="h-4 w-4 shrink-0 opacity-70 overflow-visible -mt-1"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="butt"
+                        strokeLinejoin="miter"
+                        preserveAspectRatio="xMidYMid meet"
+                        aria-hidden="true"
+                      >
                         <path d="M6 9l6 7 6-7" />
                       </svg>
                     </button>
@@ -179,7 +199,9 @@ export function Layout(props: LayoutProps): VNode {
                           <li key={item.path} role="none">
                             <a
                               href={item.path}
-                              className={"block px-4 py-2 text-sm " + (isActive ? "text-indigo-600 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-900/50" : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700")}
+                              className={"block px-4 py-2 text-sm " + (isActive
+                                ? "text-indigo-600 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-900/50"
+                                : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700")}
                               role="menuitem"
                             >
                               {item.label}

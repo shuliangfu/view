@@ -17,7 +17,8 @@ import type { VNode } from "@dreamer/view";
 
 export const metadata = {
   title: "Signal",
-  description: "createSignal、createEffect、createMemo、onCleanup 核心 API 示例",
+  description:
+    "createSignal、createEffect、createMemo、onCleanup 核心 API 示例",
   keywords: "createSignal, createEffect, createMemo, onCleanup",
 };
 
@@ -107,7 +108,10 @@ function SignalDemo(): VNode {
             TSX 表达式：三元、并且（&&）、或者（||）
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            当前 count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">{count}</span>
+            当前
+            count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+              {count}
+            </span>
             {" · "}用上方按钮改变 count 观察下面三行是否按条件更新。
           </p>
           <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">

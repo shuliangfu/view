@@ -15,11 +15,7 @@
         else document.documentElement.classList.remove("dark");
       } catch (_) {}
     </script>
-    <!-- Tailwind CSS v4 Play CDN；dark 由 .dark 类控制（非系统偏好） -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style type="text/tailwindcss">
-      @custom-variant dark (&:where(.dark, .dark *));
-    </style>
+
     <style>
       [data-view-cloak] {
         display: none;

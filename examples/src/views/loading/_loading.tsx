@@ -7,10 +7,10 @@
 
 import type { VNode } from "@dreamer/view";
 
-/** 本目录加载态：转圈 + 文案，便于确认 _loading 是否生效 */
+/** 本目录加载态：转圈 + 文案，全屏居中显示 */
 export default function Loading(): VNode {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 dark:border-slate-600/80 dark:bg-slate-800/90">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 dark:border-slate-600/80 dark:bg-slate-800/90">
       <div
         className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent dark:border-indigo-400 dark:border-t-transparent"
         aria-hidden="true"

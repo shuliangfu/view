@@ -130,10 +130,12 @@ export interface RouteConfig {
    */
   layouts?: (() => Promise<LayoutComponentModule>)[];
   /**
-   * 该路由所在目录下的 _loading.tsx 懒加载；作用域仅当前目录，子目录不继承。
+   * 该路由所在目录下的 _loading.tsx 懒加载；全局为 views/_loading.tsx，子目录有 _loading 时以子目录为准。
    * 仅由 view-cli 根据 src/views 目录扫描生成。
    */
   loading?: () => Promise<RouteComponentModule>;
+  /** 页面 export const loading = false 时为 true，该页不显示任何 loading UI */
+  skipLoading?: boolean;
 }
 
 /**
@@ -180,8 +182,10 @@ export interface RouteMatch {
   inheritLayout?: boolean;
   /** 子布局链（见 RouteConfig.layouts） */
   layouts?: (() => Promise<LayoutComponentModule>)[];
-  /** 当前目录 _loading 组件（见 RouteConfig.loading），作用域仅当前目录 */
+  /** 当前目录或全局 _loading 组件（见 RouteConfig.loading） */
   loading?: () => Promise<RouteComponentModule>;
+  /** 页面 export const loading = false 时为 true，该页不显示任何 loading UI */
+  skipLoading?: boolean;
 }
 
 /**
@@ -318,7 +322,13 @@ function resolvePathOrTo(pathOrTo: string | NavigateTo): string {
 function buildMatch(
   r: Pick<
     RouteConfig,
-    "path" | "component" | "metadata" | "inheritLayout" | "layouts" | "loading"
+    | "path"
+    | "component"
+    | "metadata"
+    | "inheritLayout"
+    | "layouts"
+    | "loading"
+    | "skipLoading"
   >,
   path: string,
   query: Record<string, string>,
@@ -335,6 +345,7 @@ function buildMatch(
     inheritLayout: r.inheritLayout,
     layouts: r.layouts,
     loading: r.loading,
+    skipLoading: r.skipLoading,
   };
 }
 

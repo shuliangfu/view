@@ -81,10 +81,10 @@ describe("CLI：init", () => {
       const prevLang = getEnv("LANGUAGE");
       setEnv("LANGUAGE", "zh-CN");
       try {
-        await import("../../src/cmd/i18n.ts");
+        await import("../../src/server/utils/i18n.ts");
         // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败；传 runtime 跳过交互菜单
-        const { main: initMain } = await import("../../src/cmd/init.ts");
-        await initMain({ dir: INIT_OUT_DIR, runtime: "deno" });
+        const { main: initMain } = await import("../../src/server/cmd/init.ts");
+        await initMain({ dir: INIT_OUT_DIR, runtime: "deno", style: "none" });
       } finally {
         if (prevLang !== undefined) setEnv("LANGUAGE", prevLang);
         else deleteEnv("LANGUAGE");
@@ -95,20 +95,25 @@ describe("CLI：init", () => {
       const mainTsxPath = join(INIT_OUT_DIR, "src", "main.tsx");
       const viewsDir = join(INIT_OUT_DIR, "src", "views");
       const routerDir = join(INIT_OUT_DIR, "src", "router");
+      const indexHtmlPath = join(INIT_OUT_DIR, "src", "assets", "index.html");
 
       expect(existsSync(viewConfigPath)).toBe(true);
       expect(existsSync(denoJsonPath)).toBe(true);
       expect(existsSync(mainTsxPath)).toBe(true);
       expect(existsSync(viewsDir)).toBe(true);
       expect(existsSync(routerDir)).toBe(true);
+      expect(existsSync(indexHtmlPath)).toBe(true);
 
       const viewConfigContent = await readTextFile(viewConfigPath);
       expect(viewConfigContent).toContain("view 项目配置");
       expect(viewConfigContent).toContain("server");
       expect(viewConfigContent).toContain("build");
+      expect(viewConfigContent).toContain("staticPlugin");
+      expect(viewConfigContent).toContain("plugins");
 
       const denoJsonContent = await readTextFile(denoJsonPath);
       expect(denoJsonContent).toContain("@dreamer/view");
+      expect(denoJsonContent).toContain("@dreamer/plugins");
       expect(denoJsonContent).toContain("dev");
       expect(denoJsonContent).toContain("build");
       expect(denoJsonContent).toContain("start");
@@ -213,7 +218,13 @@ describe("CLI：start", () => {
 
       const startCmd = createCommand(execPath(), {
         args: IS_BUN
-          ? ["run", "../src/cli.ts", "start", "--port", String(START_PORT)]
+          ? [
+            "run",
+            "../src/cli.ts",
+            "start",
+            "--port",
+            String(START_PORT),
+          ]
           : [
             "run",
             "-A",

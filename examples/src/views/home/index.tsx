@@ -5,7 +5,7 @@
 
 import type { VNode } from "@dreamer/view";
 import { createEffect } from "@dreamer/view";
-// import "../../assets/index.css";
+import "../../assets/index.css";
 
 export const metadata = {
   title: "首页",

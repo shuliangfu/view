@@ -17,7 +17,9 @@
     "@dreamer/view/router": "../src/router.ts",
     "@dreamer/view/globals": "../src/globals.ts",
     "@dreamer/view/portal": "../src/portal.ts",
-    "@dreamer/view/transition": "../src/transition.ts"
+    "@dreamer/view/transition": "../src/transition.ts",
+    "@dreamer/image": "jsr:@dreamer/image@^1.0.2",
+    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.0.7"
   },
   "lint": {
     "include": ["src/"],

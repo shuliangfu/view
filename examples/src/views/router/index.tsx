@@ -185,12 +185,22 @@ export function RouterDemo(match: RouteMatchWithRouter): VNode {
         <div className={block}>
           <h3 className={subTitle}>scroll 选项</h3>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            createRouter 的 <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">scroll</code> 控制导航后的滚动行为：
+            createRouter 的{" "}
+            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
+              scroll
+            </code>{" "}
+            控制导航后的滚动行为：
           </p>
           <ul className="mb-3 list-inside list-disc space-y-1 font-mono text-sm text-slate-600 dark:text-slate-300">
-            <li><code>scroll: &quot;top&quot;</code>：导航完成后 scrollTo(0, 0)</li>
-            <li><code>scroll: &quot;restore&quot;</code>：恢复该路由上次的滚动位置</li>
-            <li><code>scroll: false</code>（默认）：不处理滚动</li>
+            <li>
+              <code>scroll: &quot;top&quot;</code>：导航完成后 scrollTo(0, 0)
+            </li>
+            <li>
+              <code>scroll: &quot;restore&quot;</code>：恢复该路由上次的滚动位置
+            </li>
+            <li>
+              <code>scroll: false</code>（默认）：不处理滚动
+            </li>
           </ul>
           <p className="text-sm text-slate-600 dark:text-slate-300">
             与 afterRoute 配合：先执行 afterRoute，再根据 scroll 执行滚动。
@@ -206,8 +216,9 @@ export function RouterDemo(match: RouteMatchWithRouter): VNode {
             >
               /router-redirect
             </a>{" "}
-            会被重定向到本页。 afterRoute：每次导航完成后会同步当前路由的
-            meta 到 &lt;head&gt;（title、description、keywords、og:* 等，在 router 中配置）。
+            会被重定向到本页。 afterRoute：每次导航完成后会同步当前路由的 meta
+            到 &lt;head&gt;（title、description、keywords、og:* 等，在 router
+            中配置）。
           </p>
         </div>
       </div>

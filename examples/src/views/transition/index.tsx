@@ -77,7 +77,8 @@ export function TransitionDemo(match?: RoutePageMatch): VNode {
                 这是 Transition 包裹的内容
               </p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                show 为 false 时会先加上 leave class，等待 200ms 后再从 DOM 移除。
+                show 为 false 时会先加上 leave class，等待 200ms 后再从 DOM
+                移除。
               </p>
             </div>
           </Transition>

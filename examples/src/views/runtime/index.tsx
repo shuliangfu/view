@@ -17,10 +17,10 @@ import type { VNode } from "@dreamer/view";
 
 export const metadata = {
   title: "Runtime",
-  description: "createRoot、render、renderToString、generateHydrationScript、renderToStream 示例",
+  description:
+    "createRoot、render、renderToString、generateHydrationScript、renderToStream 示例",
   keywords: "createRoot, render, renderToString, SSR, 流式",
 };
-
 
 const [ssrSample, setSsrSample] = createSignal("Hello SSR");
 

@@ -1,10 +1,9 @@
 /**
- * view 版本号与 deno.json 配置读取
+ * 版本号与 deno.json 配置读取（view 与 @dreamer/plugins）
  *
- * 参考 @dreamer/dweb 的 version.ts：
- * - 从包根 deno.json 读取 version，供 init、setup 使用
- * - 版本缓存：JSR 远程运行时缓存到 ~/.dreamer/view/version.json，避免每次请求网络
- * - setup 安装成功、init 解析出版本后可写入缓存
+ * - 从包根 deno.json 读取 version / imports，供 init、setup 使用
+ * - 版本缓存：JSR 远程运行时缓存到 ~/.dreamer/view/version.json
+ * - getViewVersion / getPluginsVersion 供 init、setup、cli、upgrade 使用
  */
 
 import {
@@ -21,6 +20,9 @@ import {
 /** 无法读取 deno.json 时的默认 view 版本 */
 export const FALLBACK_VIEW_VERSION = "1.0.0";
 
+/** 无法读取或拉取时的默认 @dreamer/plugins 版本（供 init 生成的依赖使用） */
+export const FALLBACK_PLUGINS_VERSION = "1.0.0";
+
 /**
  * 将 file: URL 转为本地路径（兼容 Unix / Windows）
  */
@@ -32,17 +34,17 @@ export function fromFileUrl(url: string): string {
   return p;
 }
 
-/** 当前模块所在目录（version.ts 在 src/） */
+/** 当前模块所在目录（version.ts 在 src/server/utils/） */
 function getCurrentDir(): string {
   return dirname(fromFileUrl(import.meta.url));
 }
 
 /**
  * view 包根目录路径
- * version.ts 在 src/，故上一级为包根
+ * version.ts 在 src/server/utils/，故上三级为包根
  */
 export function getPackageRoot(): string {
-  return join(getCurrentDir(), "..");
+  return join(getCurrentDir(), "..", "..", "..");
 }
 
 /** 包根 deno.json 路径 */
@@ -144,12 +146,12 @@ export async function writeVersionCache(version: string): Promise<void> {
 /**
  * 从 view 包根 deno.json 读取版本与 imports
  * - 本地：从文件系统读取
- * - JSR：fetch 包根 ../deno.json（setup.ts 在 src/，故相对 import.meta.url）
+ * - JSR：fetch 包根 deno.json（version.ts 在 src/server/utils/，故 ../../../deno.json）
  */
 export async function loadViewDenoJson(): Promise<ViewDenoConfig | null> {
   try {
     if (isRemoteRun()) {
-      const denoJsonUrl = new URL("../deno.json", import.meta.url).href;
+      const denoJsonUrl = new URL("../../../deno.json", import.meta.url).href;
       const res = await fetch(denoJsonUrl);
       if (!res.ok) return null;
       const content = await res.text();
@@ -181,7 +183,16 @@ export async function loadViewDenoJson(): Promise<ViewDenoConfig | null> {
 
 // ---------- JSR meta.json 版本解析（与 @dreamer/dweb jsr-versions 对齐） ----------
 
-const JSR_VIEW_META_URL = "https://jsr.io/@dreamer/view/meta.json";
+/** JSR @dreamer 作用域根 URL，按包名拼接 meta.json 使用 */
+const JSR_DREAMER_BASE = "https://jsr.io/@dreamer/";
+
+/** 根据包名返回 JSR meta.json 地址，如 getJsrMetaUrl("view") => "https://jsr.io/@dreamer/view/meta.json" */
+function getJsrMetaUrl(packageName: string): string {
+  return `${JSR_DREAMER_BASE}${packageName}/meta.json`;
+}
+
+/** 请求 JSR 时使用的 User-Agent */
+const JSR_FETCH_UA = "view-cli/1.0 (jsr:@dreamer/view)";
 
 /** 是否为预发布版（含 -beta、-alpha、-rc 等） */
 function isPrereleaseVersion(v: string): boolean {
@@ -236,28 +247,18 @@ export function pickNewer(a: string | null, b: string | null): string | null {
 }
 
 /**
- * 从 JSR meta.json 拉取可用版本并按 beta/稳定版规则选取
+ * 从 JSR meta.json 拉取 @dreamer 下指定包的最新版本（通用方法）
+ *
+ * @param packageName 包名，如 "view"、"plugins"，对应 https://jsr.io/@dreamer/{packageName}/meta.json
  * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
+ * @returns 版本号，失败或无可用版本时返回 null
  */
-async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
-  const v = await fetchLatestViewVersionFromJsr(useBeta);
-  return v ?? FALLBACK_VIEW_VERSION;
-}
-
-/**
- * 从 JSR meta.json 拉取 @dreamer/view 最新版本（供 upgrade 命令使用）
- * 成功时返回版本号，失败或无可用版本时返回 null
- * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
- */
-/** 请求 JSR 时使用的 User-Agent，避免被当作浏览器返回 HTML */
-const JSR_FETCH_UA = "view-cli/1.0 (jsr:@dreamer/view)";
-
-export async function fetchLatestViewVersionFromJsr(
+export async function getPackageVersion(
+  packageName: string,
   useBeta: boolean,
 ): Promise<string | null> {
   try {
-    // JSR 要求：Accept 不能含 text/html，且建议带 User-Agent 标识为 CLI
-    const res = await fetch(JSR_VIEW_META_URL, {
+    const res = await fetch(getJsrMetaUrl(packageName), {
       headers: {
         Accept: "application/json",
         "User-Agent": JSR_FETCH_UA,
@@ -296,7 +297,27 @@ export async function fetchLatestViewVersionFromJsr(
 }
 
 /**
- * 获取 view 框架版本号（供 init、CLI 使用）
+ * 从 JSR meta.json 拉取 @dreamer/view 最新版本（供 upgrade 命令使用）
+ * 成功时返回版本号，失败或无可用版本时返回 null
+ * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
+ */
+export function fetchLatestViewVersionFromJsr(
+  useBeta: boolean,
+): Promise<string | null> {
+  return getPackageVersion("view", useBeta);
+}
+
+/**
+ * 从 JSR meta.json 拉取可用版本并按 beta/稳定版规则选取
+ * @param useBeta true 时允许 beta；若稳定版比 beta 新则仍返回稳定版
+ */
+async function fetchViewVersionFromJsr(useBeta: boolean): Promise<string> {
+  const v = await getPackageVersion("view", useBeta);
+  return v ?? FALLBACK_VIEW_VERSION;
+}
+
+/**
+ * 获取 view 框架版本号（供 init、CLI、upgrade 使用）
  *
  * - 本地运行：从 deno.json 读取
  * - JSR 远程：useBeta=false 时先读缓存，无缓存再请求 JSR 并写入缓存；
@@ -318,4 +339,36 @@ export async function getViewVersion(useBeta: boolean): Promise<string> {
     await writeVersionCache(version);
   }
   return version;
+}
+
+// ---------- @dreamer/plugins 版本（供 init 生成的依赖使用） ----------
+
+/**
+ * 从 deno.json 的 imports 中解析 @dreamer/plugins 的版本号
+ * 例如 "jsr:@dreamer/plugins@^1.0.7" 或 "jsr:@dreamer/plugins@1.0.7" -> "1.0.7"
+ */
+function parsePluginsVersionFromImports(
+  imports: Record<string, string>,
+): string | null {
+  const spec = imports["@dreamer/plugins"];
+  if (typeof spec !== "string") return null;
+  const m = spec.match(/@dreamer\/plugins@\^?([\d.]+(?:-\w+\.?\d*)?)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * 获取 @dreamer/plugins 最新版本号（供 init、setup 使用）
+ *
+ * - 本地运行：从 view 包 deno.json 的 imports["@dreamer/plugins"] 解析版本
+ * - JSR 远程：请求 JSR meta.json 拉取最新版本（useBeta 规则与 getViewVersion 一致）
+ */
+export async function getPluginsVersion(useBeta: boolean): Promise<string> {
+  const config = await loadViewDenoJson();
+  const fromImports = config?.imports
+    ? parsePluginsVersionFromImports(config.imports)
+    : null;
+  if (fromImports) return fromImports;
+
+  const fromJsr = await getPackageVersion("plugins", useBeta);
+  return fromJsr ?? FALLBACK_PLUGINS_VERSION;
 }
