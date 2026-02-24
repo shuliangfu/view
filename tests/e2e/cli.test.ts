@@ -82,9 +82,9 @@ describe("CLI：init", () => {
       setEnv("LANGUAGE", "zh-CN");
       try {
         await import("../../src/cmd/i18n.ts");
-        // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败
+        // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败；传 runtime 跳过交互菜单
         const { main: initMain } = await import("../../src/cmd/init.ts");
-        await initMain({ dir: INIT_OUT_DIR });
+        await initMain({ dir: INIT_OUT_DIR, runtime: "deno" });
       } finally {
         if (prevLang !== undefined) setEnv("LANGUAGE", prevLang);
         else deleteEnv("LANGUAGE");

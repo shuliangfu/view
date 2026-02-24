@@ -32,7 +32,7 @@ const LOCALE_DATA: Record<string, TranslationData> = {
 };
 
 /** init 时创建的 view cmd 实例，不挂全局，$tr 专用 */
-let viewCmdI18n: I18n | null = null;
+let viewI18n: I18n | null = null;
 
 /**
  * 检测当前语言（服务端/CLI）：使用环境变量 LANGUAGE > LC_ALL > LANG。
@@ -59,7 +59,7 @@ export function detectLocale(): Locale {
 
 /** 内部初始化，导入 i18n 时自动执行，不导出 */
 function initViewI18n(): void {
-  if (viewCmdI18n) return;
+  if (viewI18n) return;
   const i18n = createI18n({
     defaultLocale: DEFAULT_LOCALE,
     fallbackBehavior: "default",
@@ -67,23 +67,15 @@ function initViewI18n(): void {
     translations: LOCALE_DATA as Record<string, TranslationData>,
   });
   i18n.setLocale(detectLocale());
-  viewCmdI18n = i18n;
+  viewI18n = i18n;
 }
 
 initViewI18n();
 
-/**
- * 根据当前进程环境变量重新设置 CLI 语言（LANGUAGE / LC_ALL / LANG）。
- * 在 CLI 入口处调用，确保全局安装的 view-cli 与当前终端语言一致。
- */
-export function setLocaleFromEnv(): void {
-  if (viewCmdI18n) viewCmdI18n.setLocale(detectLocale());
-}
-
 export function setViewLocale(locale: Locale): void {
-  if (!viewCmdI18n) initViewI18n();
-  if (!viewCmdI18n) return;
-  viewCmdI18n.setLocale(locale);
+  if (!viewI18n) initViewI18n();
+  if (!viewI18n) return;
+  viewI18n.setLocale(locale);
 }
 
 /**
@@ -98,16 +90,16 @@ export function $tr(
   params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
-  if (!viewCmdI18n) initViewI18n();
-  if (!viewCmdI18n) return key;
+  if (!viewI18n) initViewI18n();
+  if (!viewI18n) return key;
   if (lang !== undefined) {
-    const prev = viewCmdI18n.getLocale();
-    viewCmdI18n.setLocale(lang);
+    const prev = viewI18n.getLocale();
+    viewI18n.setLocale(lang);
     try {
-      return viewCmdI18n.t(key, params as TranslationParams);
+      return viewI18n.t(key, params as TranslationParams);
     } finally {
-      viewCmdI18n.setLocale(prev);
+      viewI18n.setLocale(prev);
     }
   }
-  return viewCmdI18n.t(key, params as TranslationParams);
+  return viewI18n.t(key, params as TranslationParams);
 }

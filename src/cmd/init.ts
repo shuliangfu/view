@@ -15,8 +15,12 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
+import { interactiveMenu } from "@dreamer/console";
 import { $tr } from "./i18n.ts";
 import { getViewVersion } from "../version.ts";
+
+/** 运行时：Deno 仅生成 deno.json；Bun 生成 package.json、.npmrc、tsconfig.json */
+type Runtime = "deno" | "bun";
 
 /** ANSI green for success message */
 const GREEN = "\x1b[32m";
@@ -58,6 +62,23 @@ export async function main(
   const addFile = (relPath: string) => createdFiles.push(relPath);
 
   // ---------------------------------------------------------------------------
+  // 运行时选择：Deno 仅生成 deno.json；Bun 生成 package.json、.npmrc、tsconfig.json
+  // options.runtime 存在时跳过交互（用于 CI/测试）
+  // ---------------------------------------------------------------------------
+  const runtimeOpt = options?.runtime as string | undefined;
+  const runtime: Runtime = runtimeOpt === "bun"
+    ? "bun"
+    : runtimeOpt === "deno"
+    ? "deno"
+    : (await interactiveMenu(
+        $tr("cli.init.runtime"),
+        [$tr("cli.init.runtimeDeno"), $tr("cli.init.runtimeBun")],
+        0,
+      )) === 0
+    ? "deno"
+    : "bun";
+
+  // ---------------------------------------------------------------------------
   // view.config.ts（对齐示例，供 dev/build/start 读取）
   // ---------------------------------------------------------------------------
   const viewConfigTs = `/**
@@ -95,33 +116,86 @@ export default config;
   addFile("view.config.ts");
 
   // ---------------------------------------------------------------------------
-  // deno.json
+  // deno.json（仅 Deno 运行时）或 package.json + .npmrc + tsconfig.json（Bun）
   // ---------------------------------------------------------------------------
-  const denoJson = {
-    compilerOptions: {
-      jsx: "react-jsx",
-      jsxImportSource: "@dreamer/view",
-      lib: ["deno.window", "dom"],
-      types: ["./jsx.d.ts"],
-    },
-    imports: {
-      "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
-    },
-    lint: { include: ["src/"], exclude: ["dist/"] },
-    tasks: {
-      dev: "deno run -A @dreamer/view/cli dev",
-      build: "deno run -A @dreamer/view/cli build",
-      start: "deno run -A @dreamer/view/cli start",
-    },
-  };
-  await writeTextFile(
-    join(targetDir, "deno.json"),
-    JSON.stringify(denoJson, null, 2),
-  );
-  addFile("deno.json");
+  if (runtime === "deno") {
+    const denoJson = {
+      compilerOptions: {
+        jsx: "react-jsx",
+        jsxImportSource: "@dreamer/view",
+        lib: ["deno.window", "dom"],
+        types: ["./jsx.d.ts"],
+      },
+      imports: {
+        "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
+      },
+      lint: { include: ["src/"], exclude: ["dist/"] },
+      tasks: {
+        dev: "deno run -A @dreamer/view/cli dev",
+        build: "deno run -A @dreamer/view/cli build",
+        start: "deno run -A @dreamer/view/cli start",
+      },
+    };
+    await writeTextFile(
+      join(targetDir, "deno.json"),
+      JSON.stringify(denoJson, null, 2),
+    );
+    addFile("deno.json");
+  } else {
+    const projectName = displayDir === "."
+      ? "view-app"
+      : (displayDir.split("/").pop() ?? "view-app").replace(/\s+/g, "-");
+    const packageJson = {
+      name: projectName,
+      version: "0.0.1",
+      type: "module" as const,
+      private: true,
+      scripts: {
+        dev: "bun run node_modules/@dreamer/view/src/cli.ts dev",
+        build: "bun run node_modules/@dreamer/view/src/cli.ts build",
+        start: "bun run node_modules/@dreamer/view/src/cli.ts start",
+      },
+      dependencies: {
+        "@dreamer/view": `npm:@jsr/dreamer__view@^${VIEW_VERSION}`,
+      },
+    };
+    await writeTextFile(
+      join(targetDir, "package.json"),
+      JSON.stringify(packageJson, null, 2),
+    );
+    addFile("package.json");
+    await writeTextFile(
+      join(targetDir, ".npmrc"),
+      "@jsr:registry=https://npm.jsr.io\n",
+    );
+    addFile(".npmrc");
+    const tsconfigJson = {
+      compilerOptions: {
+        target: "ESNext",
+        module: "NodeNext",
+        moduleResolution: "nodenext",
+        lib: ["ESNext", "DOM", "DOM.Iterable"],
+        jsx: "react-jsx",
+        jsxImportSource: "@dreamer/view",
+        noEmit: true,
+        skipLibCheck: true,
+        strict: true,
+        resolveJsonModule: true,
+        isolatedModules: true,
+        allowImportingTsExtensions: true,
+      },
+      include: ["src/**/*", "jsx.d.ts"],
+      exclude: ["node_modules", "dist"],
+    };
+    await writeTextFile(
+      join(targetDir, "tsconfig.json"),
+      JSON.stringify(tsconfigJson, null, 2),
+    );
+    addFile("tsconfig.json");
+  }
 
   // ---------------------------------------------------------------------------
-  // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 引用）
+  // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 或 tsconfig include 引用）
   // ---------------------------------------------------------------------------
   const jsxDts = `/**
  * ${$tr("init.template.jsxDtsComment")}
@@ -143,7 +217,7 @@ export {};
   // index.html（对齐示例：/main.js、Tailwind v4、dark 首屏、data-view-cloak）
   // ---------------------------------------------------------------------------
   const indexHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${$tr("init.template.htmlLang")}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -201,41 +275,32 @@ if (container) {
   // ---------------------------------------------------------------------------
   const appTsx = `/**
  * ${$tr("init.template.appComment")}
+ * ${$tr("init.template.appLayoutInheritComment")}
  */
 import type { VNode } from "@dreamer/view";
 import { RoutePage, type Router } from "@dreamer/view/router";
-import { routes } from "../router/routers.tsx";
-import { Layout } from "./_layout.tsx";
 
 export function App(props: { router: Router }): VNode {
   const current = props.router.getCurrentRouteSignal()();
   if (!current) {
     return (
-      <Layout routes={routes} currentPath="">
-        <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
-          <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            ${$tr("init.template.loading")}
-          </p>
-        </section>
-      </Layout>
+      <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg dark:border-slate-600/80 dark:bg-slate-800/90 flex min-h-[200px] items-center justify-center">
+        <p className="text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          ${$tr("init.template.loading")}
+        </p>
+      </section>
     );
   }
-  const pageTitle = (current.metadata?.title as string) ?? current.path;
-  if (typeof globalThis.document !== "undefined" && globalThis.document.title !== pageTitle) {
-    globalThis.document.title = \`\${pageTitle} - @dreamer/view\`;
-  }
-  const routePage = (
-    <RoutePage match={current} router={props.router} labels={{ errorTitle: ${
-    JSON.stringify($tr("init.template.routePageLoadFailed"))
-  }, retryText: ${
-    JSON.stringify($tr("init.template.routePageRetry"))
-  }, loadingText: ${JSON.stringify($tr("init.template.routePageLoading"))} }} />
-  );
-  if (current.inheritLayout === false) return routePage;
   return (
-    <Layout routes={routes} currentPath={current.path}>
-      {routePage}
-    </Layout>
+    <RoutePage
+      match={current}
+      router={props.router}
+      labels={{
+        errorTitle: ${JSON.stringify($tr("init.template.routePageLoadFailed"))},
+        retryText: ${JSON.stringify($tr("init.template.routePageRetry"))},
+        loadingText: ${JSON.stringify($tr("init.template.routePageLoading"))},
+      }}
+    />
   );
 }
 `;
@@ -247,9 +312,11 @@ export function App(props: { router: Router }): VNode {
   // ---------------------------------------------------------------------------
   const layoutTsx = `/**
  * ${$tr("init.template.layoutComment")}
+ * ${$tr("init.template.layoutRootDefaultComment")}
  */
 import type { VNode } from "@dreamer/view";
 import type { RouteConfig } from "@dreamer/view/router";
+import { routes } from "../router/routers.tsx";
 import { theme, toggleTheme } from "../stores/theme.ts";
 
 export interface NavItem {
@@ -267,14 +334,16 @@ function navItemsFromRoutes(routes: RouteConfig[]): NavItem[] {
 }
 
 interface LayoutProps {
-  routes: RouteConfig[];
+  routes?: RouteConfig[];
   currentPath?: string;
   children: VNode | VNode[];
 }
 
 export function Layout(props: LayoutProps): VNode {
-  const { routes, currentPath = "", children } = props;
-  const navItems = navItemsFromRoutes(routes);
+  const { children } = props;
+  const routesProp = props.routes ?? routes;
+  const currentPath = props.currentPath ?? "";
+  const navItems = navItemsFromRoutes(routesProp);
   const isDark = theme() === "dark";
   return (
     <div className="min-h-screen">
@@ -334,6 +403,9 @@ export function Layout(props: LayoutProps): VNode {
     </div>
   );
 }
+
+/** ${$tr("init.template.layoutRootDefaultComment")} */
+export default Layout;
 `;
   await writeTextFile(
     join(targetDir, "src", "views", "_layout.tsx"),
@@ -449,6 +521,10 @@ export function ErrorView(props: ErrorViewProps): VNode {
  */
 import { createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
+
+export const metadata = {
+  title: ${JSON.stringify($tr("init.template.homeNavTitle"))},
+};
 
 export default function Home(): VNode {
   const [count, setCount] = createSignal(0);
@@ -641,8 +717,9 @@ export function createAppRouter(opts: {
   addFile("src/router/router.ts");
 
   // ---------------------------------------------------------------------------
-  // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/views 自动重新生成，勿提交）
+  // src/router/routers.tsx（路由表：动态 import，dev 时会按 src/views 自动重新生成，勿提交；含根 _layout 以与 examples 一致显示导航）
   // ---------------------------------------------------------------------------
+  const rootLayoutImport = '() => import("../views/_layout.tsx")';
   const routersTsx = `/**
  * ${$tr("init.template.routersComment1")}
  * ${$tr("init.template.routersComment2")}
@@ -652,16 +729,17 @@ import type { RouteConfig } from "@dreamer/view/router";
 export const routes: RouteConfig[] = [
   { path: "/", component: () => import("../views/home.tsx"), metadata: { title: ${
     JSON.stringify($tr("init.template.homeNavTitle"))
-  } } },
+  } }, layouts: [ ${rootLayoutImport} ] },
   { path: "/about", component: () => import("../views/about.tsx"), metadata: { title: ${
     JSON.stringify($tr("init.template.aboutTitle"))
-  } } },
+  } }, layouts: [ ${rootLayoutImport} ] },
 ];
 
 export const notFoundRoute: RouteConfig = {
   path: "*",
   component: () => import("../views/_404.tsx"),
   metadata: { title: "404" },
+  layouts: [ ${rootLayoutImport} ],
 };
 `;
   await writeTextFile(
@@ -737,7 +815,7 @@ export const toggleTheme = themeStore.toggleTheme;
   } else {
     await writeTextFile(
       gitignorePath,
-      "dist/\n" + routersIgnore + "\n",
+      "node_modules\ndist/\n" + routersIgnore + "\n",
     );
     addFile(".gitignore");
   }
@@ -757,8 +835,14 @@ export const toggleTheme = themeStore.toggleTheme;
   if (displayDir !== ".") {
     console.log($tr("cli.init.nextCd", { dir: displayDir }));
   }
-  console.log($tr("cli.init.nextDev"));
-  console.log($tr("cli.init.nextBuild"));
-  console.log($tr("cli.init.nextProd"));
+  if (runtime === "bun") {
+    console.log($tr("cli.init.nextDevBun"));
+    console.log($tr("cli.init.nextBuildBun"));
+    console.log($tr("cli.init.nextProdBun"));
+  } else {
+    console.log($tr("cli.init.nextDev"));
+    console.log($tr("cli.init.nextBuild"));
+    console.log($tr("cli.init.nextProd"));
+  }
   console.log("");
 }

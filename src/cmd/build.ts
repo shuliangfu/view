@@ -30,7 +30,7 @@ import {
 import { $tr } from "./i18n.ts";
 import type { ViewConfig } from "./config.ts";
 import { getBuildConfigForMode, loadViewConfig } from "./config.ts";
-import { generateRoutersFile } from "./generate.ts";
+import { generateRoutersFile } from "./routers.ts";
 
 /**
  * 开发模式在 main.js 开头注入的 __HMR_REFRESH__（无感刷新）：

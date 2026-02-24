@@ -45,7 +45,13 @@
       "nextCd": "cd {dir}",
       "nextDev": "开发：view-cli dev",
       "nextBuild": "构建：view-cli build",
-      "nextProd": "生产：view-cli start"
+      "nextProd": "生产：view-cli start",
+      "runtime": "运行时",
+      "runtimeDeno": "Deno",
+      "runtimeBun": "Bun",
+      "nextDevBun": "开发：bun run dev",
+      "nextBuildBun": "构建：bun run build",
+      "nextProdBun": "生产：bun run start"
     },
     "build": {
       "building": "[view] 构建中...",
@@ -86,17 +92,20 @@
   "init": {
     "routerUndefined": "[view] @dreamer/view/router 的 createRouter 未定义。请确保已安装 @dreamer/view 且构建能解析 /router 子路径（如 jsr:@dreamer/view@^1.0.0-beta.24/router）。",
     "template": {
+      "htmlLang": "zh-CN",
       "viewConfigComment": "view 项目配置：dev / build / start 会读取此文件。build.dev：仅 dev 生效。build.prod：仅 prod 生效。",
       "viewConfigDevComment": "dev 模式覆盖：不压缩、保留 sourcemap，便于调试",
       "viewConfigProdComment": "prod 模式覆盖",
       "jsxDtsComment": "JSX 固有元素类型：供项目内 TSX 类型检查使用",
       "mainComment": "应用入口：创建路由并挂载根组件",
-      "appComment": "根组件（约定 _app.tsx）：使用 router.getCurrentRouteSignal() 响应当前路由，渲染 Layout + 当前页",
+      "appComment": "根组件（约定 _app.tsx）：使用 router.getCurrentRouteSignal() 响应当前路由，渲染 RoutePage（布局由路由配置的 layouts 应用）。",
+      "appLayoutInheritComment": "布局是否继承由 layout 链在 codegen 阶段决定，生成的 layouts 含根 _layout 时由 RoutePage 统一应用，_app 不再判断 inheritLayout。",
       "loading": "加载中…",
       "routePageLoadFailed": "加载失败",
       "routePageRetry": "重试",
       "routePageLoading": "加载中…",
       "layoutComment": "布局（约定 _layout.tsx）：顶部导航栏 + 主内容区，支持主题切换",
+      "layoutRootDefaultComment": "default 即根布局（RoutePage layouts 链只传 children）。",
       "switchToLight": "切换到浅色",
       "switchToDark": "切换到深色",
       "loadingComment": "路由懒加载占位（约定 _loading.tsx）。RoutePage 会取 default 导出并调用 (match) => VNode。",

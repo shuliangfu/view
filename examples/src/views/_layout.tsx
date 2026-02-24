@@ -4,10 +4,12 @@
  * 链接直接写 path（如 href="/signal"），由 router 拦截实现无刷新跳转。
  * 导航项由 routes 在内部派生（过滤 *、取 path + meta.title），可传 currentPath 高亮当前页。
  * 支持 light/dark 主题切换。
+ * default 即根布局，供 RoutePage 的 layouts 链调用。
  */
 
 import type { VNode } from "@dreamer/view";
 import type { RouteConfig } from "@dreamer/view/router";
+import { routes } from "../router/routers.tsx";
 import { theme, toggleTheme } from "../stores/theme.ts";
 
 /** 导航项：path 即 href，group 用于分组（核心 / 路由 / 示例），供 Navbar 渲染 */
@@ -56,9 +58,9 @@ function groupNavItems(items: NavItem[]): Map<string, NavItem[]> {
 }
 
 interface LayoutProps {
-  /** 路由表，用于在布局内派生导航项（不依赖 routers 导出 navItems，便于 routers 自动生成） */
-  routes: RouteConfig[];
-  /** 当前路径，用于高亮 Navbar 激活项 */
+  /** 路由表（不传则用本模块 routes）；用于在布局内派生导航项 */
+  routes?: RouteConfig[];
+  /** 当前路径，用于高亮 Navbar（不传则从 global router 取） */
   currentPath?: string;
   /** 主内容区（JSX 子节点会注入到此） */
   children?: VNode | VNode[];
@@ -115,10 +117,12 @@ function navLinkClass(isActive: boolean): string {
     : "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100";
 }
 
-/** 布局：顶部固定 Navbar + 主内容区；导航按分组展示（首页 + 核心/路由/示例 下拉）；含主题切换、GitHub 链接 */
+/** 布局：顶部固定 Navbar + 主内容区；作为根布局时仅传 children，routes/currentPath 从 global 补全 */
 export function Layout(props: LayoutProps): VNode {
-  const { routes, currentPath = "", children } = props;
-  const navItems = navItemsFromRoutes(routes);
+  const { children } = props;
+  const routesProp = props.routes ?? routes;
+  const currentPath = props.currentPath ?? "";
+  const navItems = navItemsFromRoutes(routesProp);
   const grouped = groupNavItems(navItems);
   const isDark = theme() === "dark";
   return (
@@ -215,3 +219,6 @@ export function Layout(props: LayoutProps): VNode {
     </div>
   );
 }
+
+/** default 即根布局（RoutePage layouts 链只传 children） */
+export default Layout;

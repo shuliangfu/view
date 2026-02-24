@@ -1,6 +1,9 @@
 /**
- * Route table codegen: recursively scan views dir (max 5 levels), emit routers file with dynamic import.
- * Called before prepareDevBuild in dev so each build uses latest routes; generated file is in .gitignore.
+ * 路由表代码生成（routers codegen）
+ *
+ * 扫描 src/views 目录（最多 5 层），根据文件路径与 _layout.tsx、metadata、inheritLayout 等约定，
+ * 生成 src/router/routers.tsx（RouteConfig[] 源码，含动态 import）。
+ * dev/build 前会调用 generateRoutersFile，使路由表与 views 目录同步；生成文件在 .gitignore 中。
  */
 
 import {
@@ -11,11 +14,11 @@ import {
   mkdir,
   pathToFileUrl,
   readdir,
-  readTextFile,
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
 import { $tr } from "./i18n.ts";
+import { computeLayoutChain, readInheritLayoutFromPageFile } from "./layout.ts";
 
 /** 单条路由条目：相对路径、import 路径、URL path、是否 404、title、可选的从文件读取的 metadata、布局继承 */
 export interface RouteEntry {
@@ -125,59 +128,6 @@ function toSerializableMeta(value: unknown): unknown {
 }
 
 /**
- * 从 _layout 文件内容中读取是否 export const inheritLayout = false（不继承父级布局）
- * 仅匹配行首的 export 声明，避免注释中的相同文案被误判
- */
-function readInheritLayoutFromLayoutFile(content: string): boolean {
-  return !/^\s*export\s+const\s+inheritLayout\s*=\s*false\b/m.test(content);
-}
-
-/**
- * 根据路由文件所在相对目录，从根到该目录收集 _layout.tsx 链，并解析 inheritLayout
- * @param viewsDirAbs views 目录绝对路径
- * @param relativeDir 路由文件所在目录相对 views 的路径，如 ""、"dashboard"、"dashboard/settings"
- * @returns inheritLayout（是否继承父级 Layout）、layoutImportPaths（从根到子的 import 路径，含根）
- */
-async function computeLayoutChain(
-  viewsDirAbs: string,
-  relativeDir: string,
-): Promise<{ inheritLayout: boolean; layoutImportPaths: string[] }> {
-  const parts = relativeDir ? relativeDir.replace(/\\/g, "/").split("/") : [];
-  const ancestors: string[] = [""];
-  for (let i = 0; i < parts.length; i++) {
-    ancestors.push(parts.slice(0, i + 1).join("/"));
-  }
-  let inheritLayout = true;
-  const layoutImportPaths: string[] = [];
-  for (const dir of ancestors) {
-    const layoutPath = join(viewsDirAbs, dir, "_layout.tsx");
-    if (!existsSync(layoutPath)) continue;
-    const importPath = [
-      "..",
-      "views",
-      dir ? dir + "/_layout.tsx" : "_layout.tsx",
-    ]
-      .filter(Boolean)
-      .join("/")
-      .replace(/\/+/g, "/");
-    try {
-      const content = await readTextFile(layoutPath);
-      const inherit = readInheritLayoutFromLayoutFile(content);
-      if (!inherit) {
-        layoutImportPaths.length = 0;
-        layoutImportPaths.push(importPath);
-        inheritLayout = false;
-      } else {
-        layoutImportPaths.push(importPath);
-      }
-    } catch {
-      layoutImportPaths.push(importPath);
-    }
-  }
-  return { inheritLayout, layoutImportPaths };
-}
-
-/**
  * 通过动态 import 加载路由文件并读取其 export 的 metadata；不限制字段，仅过滤为可序列化值
  * @param fileAbs 路由文件绝对路径
  * @returns 解析出的 metadata 对象（仅含可 JSON 序列化的结构），无或加载失败时返回 undefined
@@ -240,6 +190,7 @@ export async function scanRouteEntries(
             const importPath = ["..", "views", relPathSlash].join("/");
             const fileAbs = join(dirAbs, e.name);
             const metaFromFile = await extractMetaFromFile(fileAbs);
+            const rootLayoutPath = join(viewsDirAbs, "_layout.tsx");
             notFoundEntry = {
               name: "_404",
               importPath,
@@ -247,6 +198,9 @@ export async function scanRouteEntries(
               isNotFound: true,
               title: "404",
               metadata: metaFromFile,
+              layoutImportPaths: existsSync(rootLayoutPath)
+                ? ["../views/_layout.tsx"]
+                : undefined,
             };
           }
           continue;
@@ -262,10 +216,25 @@ export async function scanRouteEntries(
         const fileAbs = join(dirAbs, e.name);
         const metaFromFile = await extractMetaFromFile(fileAbs);
         const title = (metaFromFile?.title as string) ?? titleFallback;
-        const { inheritLayout, layoutImportPaths } = await computeLayoutChain(
+        let { inheritLayout, layoutImportPaths } = await computeLayoutChain(
           viewsDirAbs,
           relativeDir,
         );
+        // 页面文件若显式导出 inheritLayout，优先于 _layout 链；false 时仅不继承根布局，当前目录及子级 _layout 仍保留
+        try {
+          const pageInherit = await readInheritLayoutFromPageFile(fileAbs);
+          if (pageInherit !== undefined) {
+            inheritLayout = pageInherit;
+            if (!inheritLayout) {
+              const rootLayoutPath = "../views/_layout.tsx";
+              layoutImportPaths = layoutImportPaths.filter((p) =>
+                p !== rootLayoutPath
+              );
+            }
+          }
+        } catch {
+          // 读取失败则保持 layout 链结果
+        }
         const loadingPath = join(viewsDirAbs, relativeDir, "_loading.tsx");
         const loadingImportPath = existsSync(loadingPath)
           ? [
@@ -346,11 +315,9 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
     const inheritProp = e.inheritLayout === false
       ? ", inheritLayout: false"
       : "";
-    const layoutPaths = e.layoutImportPaths && e.layoutImportPaths.length > 0
-      ? e.inheritLayout === false
-        ? e.layoutImportPaths
-        : e.layoutImportPaths.slice(1)
-      : [];
+    // 由 layout.ts 计算：inheritLayout=false 时 layoutImportPaths 已为 []，不继承父级布局；
+    // inheritLayout=true 时使用完整链（含根 _layout），由 RoutePage 统一应用，_app 不再判断 inheritLayout
+    const layoutPaths = e.layoutImportPaths ?? [];
     const layoutsArr = layoutPaths
       .map((p) => `() => import("${p}")`)
       .join(", ");
@@ -366,11 +333,16 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
   lines.push("");
 
   if (notFound) {
+    const nfLayoutPaths = notFound.layoutImportPaths ?? [];
+    const nfLayoutsArr = nfLayoutPaths.length > 0
+      ? nfLayoutPaths.map((p) => `() => import("${p}")`).join(", ")
+      : "";
+    const nfLayoutsProp = nfLayoutsArr ? `, layouts: [ ${nfLayoutsArr} ]` : "";
     lines.push("export const notFoundRoute: RouteConfig = {");
     lines.push(
       `  path: "${notFound.path}", component: () => import("${notFound.importPath}"), metadata: ${
         metaToJson(notFound)
-      }`,
+      }${nfLayoutsProp}`,
     );
     lines.push("};");
   } else {

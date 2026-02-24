@@ -14,6 +14,8 @@ export const metadata = {
   group: "示例",
 };
 
+// export const inheritLayout = false;
+
 export default function LayoutExample(): VNode {
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">

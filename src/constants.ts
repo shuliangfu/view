@@ -54,6 +54,9 @@ export const KEY_VIEW_SSR = "__VIEW_SSR__";
 /** 开发模式：启用 hydration 不匹配告警、忘记 getter 提示等（可由构建或运行时设置） */
 export const KEY_VIEW_DEV = "__VIEW_DEV__";
 
+/** 根组件 _app 挂载的 Router 实例，供根 _layout 的 default 读取 currentPath 渲染 Navbar（见 router 文档） */
+export const KEY_VIEW_ROUTER = "__VIEW_ROUTER__";
+
 /** DOM 占位符 / 标记用 data 属性（dom/element.ts）：keyed 列表包裹节点 */
 export const KEYED_WRAPPER_ATTR = "data-view-keyed";
 /** v-if 组占位符：一个 placeholder 对应整组 vIf/vElseIf/vElse，patch 时整组共用一个 DOM 槽位 */
