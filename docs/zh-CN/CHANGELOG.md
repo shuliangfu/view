@@ -45,6 +45,14 @@
   用户自定义插件；插件按注册顺序执行（如先 tailwind 再 static），通过
   onRequest/onResponse 参与请求与响应处理。
 
+### 修复
+
+- **init 依赖**：选择 Tailwind 或 UnoCSS 时，生成的 `deno.json` / `package.json`
+  现会包含 `tailwindcss` 或 `unocss`，生成项目可直接构建。
+- **CI（Deno Mac）**：CLI e2e 测试为 build/start 子进程传入 `stdin: "null"` 并
+  延长超时（build 45s、start 120s），在无 TTY 的 CI 下通过；需 @dreamer/esbuild
+  ^1.0.40（buildModuleCache 为 deno info/eval 传入 stdin）。
+
 ---
 
 ## [1.0.32] - 2026-02-24
