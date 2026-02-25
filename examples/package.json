@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
-    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.7"
+    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.7",
+    "tailwindcss": "npm:tailwindcss@4.2.0"
   }
 }

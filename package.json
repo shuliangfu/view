@@ -36,12 +36,13 @@
     "@dreamer/i18n": "npm:@jsr/dreamer__i18n@^1.0.1",
     "@dreamer/logger": "npm:@jsr/dreamer__logger@^1.0.2",
     "@dreamer/plugin": "npm:@jsr/dreamer__plugin@^1.0.2",
+    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.7",
     "@dreamer/runtime-adapter": "npm:@jsr/dreamer__runtime-adapter@^1.0.17",
     "@dreamer/server": "npm:@jsr/dreamer__server@^1.0.9",
     "@dreamer/service": "npm:@jsr/dreamer__service@^1.0.2",
     "@dreamer/test": "npm:@jsr/dreamer__test@^1.0.15",
-    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.7",
     "happy-dom": "npm:happy-dom@20.4.0",
+    "tailwindcss": "npm:tailwindcss@4.2.0",
     "typescript": "5.9.3"
   },
   "engines": {
