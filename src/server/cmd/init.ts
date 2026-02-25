@@ -294,6 +294,15 @@ export default config;
   // 含 @dreamer/plugins（static 插件提供 index.html 与静态资源）
   // ---------------------------------------------------------------------------
   if (runtime === "deno") {
+    const imports: Record<string, string> = {
+      "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
+      "@dreamer/plugins": `jsr:@dreamer/plugins@^${PLUGINS_VERSION}`,
+    };
+    if (style === "tailwind") {
+      imports["tailwindcss"] = "npm:tailwindcss@4.2.0";
+    } else if (style === "unocss") {
+      imports["unocss"] = "npm:unocss@66.0.0";
+    }
     const denoJson = {
       compilerOptions: {
         jsx: "react-jsx",
@@ -301,10 +310,7 @@ export default config;
         lib: ["deno.window", "dom"],
         types: ["./jsx.d.ts"],
       },
-      imports: {
-        "@dreamer/view": `jsr:@dreamer/view@^${VIEW_VERSION}`,
-        "@dreamer/plugins": `jsr:@dreamer/plugins@^${PLUGINS_VERSION}`,
-      },
+      imports,
       lint: { include: ["src/"], exclude: ["dist/"] },
       tasks: {
         dev: "deno run -A @dreamer/view/cli dev",
@@ -321,6 +327,15 @@ export default config;
     const projectName = displayDir === "."
       ? "view-app"
       : (displayDir.split("/").pop() ?? "view-app").replace(/\s+/g, "-");
+    const dependencies: Record<string, string> = {
+      "@dreamer/view": `npm:@jsr/dreamer__view@^${VIEW_VERSION}`,
+      "@dreamer/plugins": `npm:@jsr/dreamer__plugins@^${PLUGINS_VERSION}`,
+    };
+    if (style === "tailwind") {
+      dependencies["tailwindcss"] = "npm:tailwindcss@4.2.0";
+    } else if (style === "unocss") {
+      dependencies["unocss"] = "npm:unocss@66.0.0";
+    }
     const packageJson = {
       name: projectName,
       version: "0.0.1",
@@ -331,10 +346,7 @@ export default config;
         build: "bun run node_modules/@dreamer/view/src/cli.ts build",
         start: "bun run node_modules/@dreamer/view/src/cli.ts start",
       },
-      dependencies: {
-        "@dreamer/view": `npm:@jsr/dreamer__view@^${VIEW_VERSION}`,
-        "@dreamer/plugins": `npm:@jsr/dreamer__plugins@^${PLUGINS_VERSION}`,
-      },
+      dependencies,
     };
     await writeTextFile(
       join(targetDir, "package.json"),
