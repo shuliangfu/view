@@ -125,127 +125,28 @@ describe("CLI：init", () => {
   );
 });
 
-/** build 子进程最大等待时间（ms），超时则 kill 进程；CI 冷缓存或 npm 解析可能较慢，故放宽至 120s */
-const BUILD_PROCESS_TIMEOUT_MS = 120_000;
-
-/**
- * 将 stream 读到底并追加到 chunks，返回在 stream 结束时 resolve 的 Promise。
- * 用于与 status 一起 race，超时 kill 后可用已累积内容做诊断。
- */
-function drainToChunks(
-  stream: ReadableStream<Uint8Array> | null,
-  chunks: Uint8Array[],
-): Promise<void> {
-  if (!stream || typeof stream.getReader !== "function") {
-    return Promise.resolve();
-  }
-  const reader = stream.getReader();
-  const read = (): Promise<void> =>
-    reader.read().then(({ done, value }) => {
-      if (value) chunks.push(value);
-      if (done) return;
-      return read();
-    });
-  return read().finally(() => {
-    try {
-      reader.releaseLock?.();
-    } catch {
-      // ignore
-    }
+/** 与 start 用例一致的 build 命令选项，便于两处行为一致、避免 build 用例被误杀 */
+function buildCommandInExamples() {
+  return createCommand(execPath(), {
+    args: IS_BUN
+      ? ["run", "../src/cli.ts", "build"]
+      : ["run", "-A", "../src/cli.ts", "build"],
+    cwd: resolve(EXAMPLES_DIR),
+    stdin: "null",
+    stdout: "piped",
+    stderr: "piped",
   });
-}
-
-/** 将 chunk 数组拼成字符串 */
-function decodeChunks(chunks: Uint8Array[]): string {
-  if (chunks.length === 0) return "";
-  const len = chunks.reduce((a, c) => a + c.length, 0);
-  const buf = new Uint8Array(len);
-  let off = 0;
-  for (const c of chunks) {
-    buf.set(c, off);
-    off += c.length;
-  }
-  return new TextDecoder().decode(buf);
 }
 
 describe("CLI：build", () => {
   it(
     "在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件",
     async () => {
-      // 统一用 execPath()；Deno 需 -A，Bun 不需；stdin: "null" 避免 CI 无 TTY 时子进程阻塞
-      const cmd = createCommand(execPath(), {
-        args: IS_BUN
-          ? ["run", "../src/cli.ts", "build"]
-          : ["run", "-A", "../src/cli.ts", "build"],
-        cwd: resolve(EXAMPLES_DIR),
-        stdin: "null",
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const child = cmd.spawn();
-      const stdoutChunks: Uint8Array[] = [];
-      const stderrChunks: Uint8Array[] = [];
-      const stdoutDrain = drainToChunks(
-        child.stdout as ReadableStream<Uint8Array> | null,
-        stdoutChunks,
-      );
-      const stderrDrain = drainToChunks(
-        child.stderr as ReadableStream<Uint8Array> | null,
-        stderrChunks,
-      );
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      const timeoutPromise = new Promise<never>((_, rej) => {
-        timeoutId = setTimeout(
-          () =>
-            rej(
-              new Error(
-                `view build timed out after ${
-                  BUILD_PROCESS_TIMEOUT_MS / 1000
-                }s (process will be killed)`,
-              ),
-            ),
-          BUILD_PROCESS_TIMEOUT_MS,
-        );
-      });
-      const statusPromise = Promise.resolve(child.status);
-
-      let result: {
-        code: number | null;
-        success: boolean;
-        stdout: string;
-        stderr: string;
-      };
-      try {
-        result = await Promise.race([
-          Promise.all([statusPromise, stdoutDrain, stderrDrain]).then(
-            ([s]) => ({
-              code: s.code,
-              success: s.success,
-              stdout: decodeChunks(stdoutChunks),
-              stderr: decodeChunks(stderrChunks),
-            }),
-          ),
-          timeoutPromise,
-        ]);
-        clearTimeout(timeoutId);
-        timeoutId = undefined;
-      } catch (e) {
-        clearTimeout(timeoutId);
-        child.kill(9);
-        const partialStderr = decodeChunks(stderrChunks);
-        const partialStdout = decodeChunks(stdoutChunks);
-        const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(
-          partialStderr || partialStdout
-            ? `${msg}\nstderr (partial): ${
-              partialStderr || "(empty)"
-            }\nstdout (partial): ${partialStdout || "(empty)"}`
-            : msg,
-        );
-      }
-      if (!result.success) {
-        const stderr = result.stderr ?? "";
-        const stdout = result.stdout ?? "";
+      // 与 start 用例相同：直接 output() 等 build 完成，不设进程级超时，避免 CI 上冷缓存被误杀
+      const out = await buildCommandInExamples().output();
+      if (!out.success) {
+        const stderr = new TextDecoder().decode(out.stderr ?? []);
+        const stdout = new TextDecoder().decode(out.stdout ?? []);
         throw new Error(
           `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
             stdout || "(empty)"
@@ -271,8 +172,8 @@ describe("CLI：build", () => {
         }
       }
     },
-    // 子进程 60s 超时会 kill，测试总超时略大于进程超时以收尾
-    { timeout: BUILD_PROCESS_TIMEOUT_MS + 15_000 },
+    // 正常 build 约 1s；CI 预拉 examples 依赖后也应很快，90s 仅作冷缓存/卡死兜底
+    { timeout: 90_000 },
   );
 });
 
@@ -316,17 +217,8 @@ describe("CLI：start", () => {
   it(
     "先 build 再 start --port 后，用浏览器打开首页应含「多页面示例」",
     async (t) => {
-      // 先确保已 build（与上面 build 用例共享产物）；统一 execPath()，仅 args 按运行时区分；stdin: "null" 避免 CI 无 TTY 时子进程阻塞
-      const buildCmd = createCommand(execPath(), {
-        args: IS_BUN
-          ? ["run", "../src/cli.ts", "build"]
-          : ["run", "-A", "../src/cli.ts", "build"],
-        cwd: EXAMPLES_DIR,
-        stdin: "null",
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const buildOut = await buildCmd.output();
+      // 先确保已 build（与上面 build 用例同一逻辑）；与 build 用例共用 buildCommandInExamples()
+      const buildOut = await buildCommandInExamples().output();
       expect(buildOut.success).toBe(true);
 
       const startCmd = createCommand(execPath(), {
