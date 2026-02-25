@@ -129,12 +129,13 @@ describe("CLI：build", () => {
   it(
     "在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件",
     async () => {
-      // 统一用 execPath()；Deno 需 -A，Bun 不需
+      // 统一用 execPath()；Deno 需 -A，Bun 不需；stdin: "null" 避免 CI 无 TTY 时子进程阻塞
       const cmd = createCommand(execPath(), {
         args: IS_BUN
           ? ["run", "../src/cli.ts", "build"]
           : ["run", "-A", "../src/cli.ts", "build"],
         cwd: resolve(EXAMPLES_DIR),
+        stdin: "null",
         stdout: "piped",
         stderr: "piped",
       });
@@ -211,12 +212,13 @@ describe("CLI：start", () => {
   it(
     "先 build 再 start --port 后，用浏览器打开首页应含「多页面示例」",
     async (t) => {
-      // 先确保已 build（与上面 build 用例共享产物）；统一 execPath()，仅 args 按运行时区分
+      // 先确保已 build（与上面 build 用例共享产物）；统一 execPath()，仅 args 按运行时区分；stdin: "null" 避免 CI 无 TTY 时子进程阻塞
       const buildCmd = createCommand(execPath(), {
         args: IS_BUN
           ? ["run", "../src/cli.ts", "build"]
           : ["run", "-A", "../src/cli.ts", "build"],
         cwd: EXAMPLES_DIR,
+        stdin: "null",
         stdout: "piped",
         stderr: "piped",
       });
@@ -241,6 +243,7 @@ describe("CLI：start", () => {
             String(START_PORT),
           ],
         cwd: EXAMPLES_DIR,
+        stdin: "null",
         stdout: "piped",
         stderr: "piped",
       });
