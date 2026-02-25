@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.0** (2026-02-25): Dev server refactor; init style choice
-(Tailwind/UnoCSS/None) with deps; init template improvements; route CSS cleanup;
-image compression/hashing; plugin config. Fixed: init adds tailwind/unocss to
-generated project when selected; CLI e2e stdin/timeouts for CI. See
+**v1.1.1** (2026-02-25): CLI i18n (9 locales); init template i18n and logger
+block; LoggerConfig from @dreamer/logger; examples logger comments; e2e start
+robustness and afterAll timeout fix. See
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
