@@ -170,7 +170,16 @@
       "loggerFilePathComment": "로그 파일 경로",
       "loggerRotateComment": "크기별 로테이트",
       "loggerMaxSizeComment": "파일당 최대 바이트(예: 10MB)",
-      "loggerMaxFilesComment": "유지할 로테이트 파일 수"
+      "loggerMaxFilesComment": "유지할 로테이트 파일 수",
+      "vscodeDeno": "Deno 설정",
+      "vscodeBun": "Bun / TypeScript 설정",
+      "vscodeFormat": "포맷 설정",
+      "vscodeEditor": "에디터 기본 설정",
+      "vscodeCss": "CSS / Tailwind 설정",
+      "vscodeAssoc": "파일 연결",
+      "vscodeExclude": "제외 파일",
+      "vscodeSearchExclude": "검색 제외",
+      "vscodeI18n": "i18n-ally 설정"
     }
   },
   "generate": {

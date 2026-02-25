@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.1** (2026-02-25): CLI i18n (9 locales); init template i18n and logger
-block; LoggerConfig from @dreamer/logger; examples logger comments; e2e start
-robustness and afterAll timeout fix. See
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.1.2** (2026-02-25): init .vscode/settings.json and
+i18n-ally-custom-framework.yml; version -v blank line; e2e afterAll timeout fix.
+See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

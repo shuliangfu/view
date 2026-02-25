@@ -170,7 +170,16 @@
       "loggerFilePathComment": "Ruta del archivo de log",
       "loggerRotateComment": "Rotar por tamaño",
       "loggerMaxSizeComment": "Máximo de bytes por archivo (ej. 10MB)",
-      "loggerMaxFilesComment": "Número de archivos rotados a conservar"
+      "loggerMaxFilesComment": "Número de archivos rotados a conservar",
+      "vscodeDeno": "Config Deno",
+      "vscodeBun": "Config Bun / TypeScript",
+      "vscodeFormat": "Config de formato",
+      "vscodeEditor": "Config base del editor",
+      "vscodeCss": "Config CSS / Tailwind",
+      "vscodeAssoc": "Asociaciones de archivos",
+      "vscodeExclude": "Archivos excluidos",
+      "vscodeSearchExclude": "Búsqueda excluida",
+      "vscodeI18n": "Config i18n-ally"
     }
   },
   "generate": {

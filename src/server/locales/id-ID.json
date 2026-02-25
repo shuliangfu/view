@@ -172,7 +172,16 @@
       "loggerFilePathComment": "Path file log",
       "loggerRotateComment": "Rotasi berdasarkan ukuran",
       "loggerMaxSizeComment": "Maks byte per file (mis. 10MB)",
-      "loggerMaxFilesComment": "Jumlah file rotasi yang disimpan"
+      "loggerMaxFilesComment": "Jumlah file rotasi yang disimpan",
+      "vscodeDeno": "Config Deno",
+      "vscodeBun": "Config Bun / TypeScript",
+      "vscodeFormat": "Config format",
+      "vscodeEditor": "Config dasar editor",
+      "vscodeCss": "Config CSS / Tailwind",
+      "vscodeAssoc": "Asosiasi file",
+      "vscodeExclude": "File dikecualikan",
+      "vscodeSearchExclude": "Pencarian dikecualikan",
+      "vscodeI18n": "Config i18n-ally"
     }
   },
   "generate": {

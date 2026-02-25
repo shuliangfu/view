@@ -172,7 +172,16 @@
       "loggerFilePathComment": "ログファイルパス",
       "loggerRotateComment": "サイズでローテート",
       "loggerMaxSizeComment": "ファイルあたり最大バイト（例: 10MB）",
-      "loggerMaxFilesComment": "保持するローテートファイル数"
+      "loggerMaxFilesComment": "保持するローテートファイル数",
+      "vscodeDeno": "Deno 設定",
+      "vscodeBun": "Bun / TypeScript 設定",
+      "vscodeFormat": "フォーマット設定",
+      "vscodeEditor": "エディタの基本設定",
+      "vscodeCss": "CSS / Tailwind 設定",
+      "vscodeAssoc": "ファイル関連付け",
+      "vscodeExclude": "除外ファイル",
+      "vscodeSearchExclude": "検索除外",
+      "vscodeI18n": "i18n-ally 設定"
     }
   },
   "generate": {

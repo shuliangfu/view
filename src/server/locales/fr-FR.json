@@ -172,7 +172,16 @@
       "loggerFilePathComment": "Chemin du fichier de log",
       "loggerRotateComment": "Rotation par taille",
       "loggerMaxSizeComment": "Octets max par fichier (ex. 10 Mo)",
-      "loggerMaxFilesComment": "Nombre de fichiers rotatifs à conserver"
+      "loggerMaxFilesComment": "Nombre de fichiers rotatifs à conserver",
+      "vscodeDeno": "Config Deno",
+      "vscodeBun": "Config Bun / TypeScript",
+      "vscodeFormat": "Config format",
+      "vscodeEditor": "Config éditeur de base",
+      "vscodeCss": "Config CSS / Tailwind",
+      "vscodeAssoc": "Associations fichiers",
+      "vscodeExclude": "Exclure fichiers",
+      "vscodeSearchExclude": "Exclure de la recherche",
+      "vscodeI18n": "Config i18n-ally"
     }
   },
   "generate": {
