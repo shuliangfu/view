@@ -248,7 +248,6 @@ describe("CLI：start", () => {
         stderr: "piped",
       });
       const child = startCmd.spawn();
-      child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
       startProcess = child;
 
       // 后台消费 stdout/stderr，避免管道满导致子进程阻塞；收集两者便于超时时报错
@@ -272,6 +271,8 @@ describe("CLI：start", () => {
       };
       drain(child.stderr ?? null, stderrChunks).catch(() => {});
       drain(child.stdout ?? null, stdoutChunks).catch(() => {});
+
+      child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
 
       const decodeChunks = (chunks: Uint8Array[]) => {
         try {
