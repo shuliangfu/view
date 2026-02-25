@@ -108,6 +108,11 @@ export async function loadViewConfig(root: string): Promise<AppConfig> {
 
 function mergeConfig(defaults: AppConfig, user: AppConfig): AppConfig {
   return {
+    name: user.name ?? defaults.name,
+    version: user.version ?? defaults.version,
+    language: user.language ?? defaults.language,
+    /** 合并后传入 setLoggerConfig，未设时为 undefined，使用默认 logger */
+    logger: user.logger ?? defaults.logger,
     server: {
       host: user.server?.host ?? defaults.server?.host,
       port: user.server?.port ?? defaults.server?.port,

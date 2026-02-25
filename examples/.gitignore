@@ -40,3 +40,7 @@ coverage/
 
 # 分析报告
 analysis
+
+
+# 日志
+logs/

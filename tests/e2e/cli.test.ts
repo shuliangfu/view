@@ -285,7 +285,7 @@ describe("CLI：start", () => {
         }
       };
 
-      // 等待 stdout 出现 "Server started" 再用浏览器打开，并给 drain 时间读完，避免子进程堵在 console.log
+      // 等待服务就绪：优先看 stdout 的 "Server started"/"服务已启动"；无 TTY 时 logger 可能只写文件，故备选为端口可连接
       const deadlineReady = Date.now() + 15_000;
       let serverReady = false;
       while (Date.now() < deadlineReady) {
@@ -301,11 +301,24 @@ describe("CLI：start", () => {
             break;
           }
         }
+        // 无 TTY 时 logger 可能不输出到 stdout，用端口是否可连接作为备选
+        try {
+          const res = await fetch(START_URL, {
+            signal: AbortSignal.timeout(800),
+          });
+          if (res.ok || res.status === 304) {
+            serverReady = true;
+            await new Promise((r) => setTimeout(r, 300));
+            break;
+          }
+        } catch {
+          // 端口尚未监听，继续轮询
+        }
         await new Promise((r) => setTimeout(r, 150));
       }
       if (!serverReady) {
         throw new Error(
-          'Start server did not log "Server started" within 15s. stdout: ' +
+          'Start server did not log "Server started" and port not ready within 15s. stdout: ' +
             decodeChunks(stdoutChunks).slice(-500) +
             "; stderr: " +
             decodeChunks(stderrChunks).slice(-500),
@@ -320,21 +333,31 @@ describe("CLI：start", () => {
       }
 
       await t.browser.goto(START_URL);
-      await new Promise((r) => setTimeout(r, 1200));
-      let mainText: string;
-      try {
-        mainText = (await t.browser.evaluate(() => {
+      // 轮询等待首页渲染出期望文案（CI/慢环境可能超过 1.2s），最多约 8s
+      const pollDeadline = Date.now() + 8000;
+      let mainText = "";
+      const getMainText = (): Promise<string> =>
+        t.browser!.evaluate(() => {
           const main = document.querySelector("main");
           return main ? main.innerText : document.body?.innerText ?? "";
-        })) as string;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(
-          "Browser evaluate failed (page/context may have closed). " +
-            msg +
-            ". stdout: " +
-            decodeChunks(stdoutChunks).slice(-300),
-        );
+        }) as Promise<string>;
+      while (Date.now() < pollDeadline) {
+        try {
+          mainText = await getMainText();
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          throw new Error(
+            "Browser evaluate failed (page/context may have closed). " +
+              msg +
+              ". stdout: " +
+              decodeChunks(stdoutChunks).slice(-300),
+          );
+        }
+        const hasExpected = mainText.includes("多页面示例") ||
+          mainText.includes("View 模板引擎") ||
+          mainText.includes("view");
+        if (hasExpected) break;
+        await new Promise((r) => setTimeout(r, 400));
       }
       const hasExpected = mainText.includes("多页面示例") ||
         mainText.includes("View 模板引擎") ||

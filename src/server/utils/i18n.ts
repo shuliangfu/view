@@ -4,7 +4,7 @@
  * @fileoverview view 包 i18n 桥接（仅服务端/CLI）：使用 $tr + 模块实例，不挂全局；供 CLI 输出与服务端抛错使用。
  *
  * 未传 lang 时按环境变量（LANGUAGE / LC_ALL / LANG）检测语言。默认 en-US。
- * 文案来自 src/server/locales/zh-CN.json、en-US.json。本模块位于 server/utils/i18n.ts。
+ * 文案来自 src/server/locales/*.json（与 dweb 一致支持 9 种语言）。本模块位于 server/utils/i18n.ts。
  */
 
 import {
@@ -14,21 +14,54 @@ import {
   type TranslationParams,
 } from "@dreamer/i18n";
 import { getEnv } from "@dreamer/runtime-adapter";
-import zhCN from "../locales/zh-CN.json" with { type: "json" };
+import deDE from "../locales/de-DE.json" with { type: "json" };
 import enUS from "../locales/en-US.json" with { type: "json" };
+import esES from "../locales/es-ES.json" with { type: "json" };
+import frFR from "../locales/fr-FR.json" with { type: "json" };
+import idID from "../locales/id-ID.json" with { type: "json" };
+import jaJP from "../locales/ja-JP.json" with { type: "json" };
+import koKR from "../locales/ko-KR.json" with { type: "json" };
+import ptBR from "../locales/pt-BR.json" with { type: "json" };
+import zhCN from "../locales/zh-CN.json" with { type: "json" };
 
-/** 支持的 locale；英语使用 en-US */
-export type Locale = "zh-CN" | "en-US";
+/** 支持的 locale（与 dweb 一致：9 种）；英语使用 en-US */
+export type Locale =
+  | "de-DE"
+  | "en-US"
+  | "es-ES"
+  | "fr-FR"
+  | "id-ID"
+  | "ja-JP"
+  | "ko-KR"
+  | "pt-BR"
+  | "zh-CN";
 
 /** 默认语言（与框架统一为 en-US） */
 export const DEFAULT_LOCALE: Locale = "en-US";
 
 /** view 包支持的 locale 列表 */
-const VIEW_LOCALES: Locale[] = ["zh-CN", "en-US"];
+const VIEW_LOCALES: Locale[] = [
+  "de-DE",
+  "en-US",
+  "es-ES",
+  "fr-FR",
+  "id-ID",
+  "ja-JP",
+  "ko-KR",
+  "pt-BR",
+  "zh-CN",
+];
 
 const LOCALE_DATA: Record<string, TranslationData> = {
-  "zh-CN": zhCN as TranslationData,
+  "de-DE": deDE as TranslationData,
   "en-US": enUS as TranslationData,
+  "es-ES": esES as TranslationData,
+  "fr-FR": frFR as TranslationData,
+  "id-ID": idID as TranslationData,
+  "ja-JP": jaJP as TranslationData,
+  "ko-KR": koKR as TranslationData,
+  "pt-BR": ptBR as TranslationData,
+  "zh-CN": zhCN as TranslationData,
 };
 
 /** init 时创建的 view cmd 实例，不挂全局，$tr 专用 */
@@ -79,7 +112,7 @@ export function setViewLocale(locale: Locale): void {
 }
 
 /**
- * 将配置中的 language 字符串规范为 Locale（zh-CN / en-US），不匹配则返回 null
+ * 将配置中的 language 字符串规范为 Locale（de-DE / en-US / es-ES / fr-FR / id-ID / ja-JP / ko-KR / pt-BR / zh-CN），不匹配则返回 null
  */
 export function normalizeLanguageToLocale(
   lang: string | undefined,

@@ -8,6 +8,69 @@ and this project adheres to
 
 ---
 
+## [1.1.1] - 2026-02-25
+
+### Added
+
+- **CLI i18n (9 locales)**: Same locale set as dweb: de-DE, en-US, es-ES, fr-FR,
+  id-ID, ja-JP, ko-KR, pt-BR, zh-CN. New locale JSON files and `Locale` type
+  updates in `src/server/utils/i18n.ts`.
+- **init template i18n**: UnoCSS `view.config.ts` content comment and `uno.css`
+  header/reset/body/custom comments use i18n keys (`unocssContentComment`,
+  `unoCssHeaderComment`, `unoCssResetComment`, `unoCssBodyComment`,
+  `unoCssCustomComment`) in all 9 locales.
+- **init deno.json template**: Generated project `deno.json` now includes
+  `version: "1.0.0"`, `description` (project name + scaffold note), `author`
+  (from `USER` / `USERNAME`), `license: "MIT"`, `keywords`, and
+  `nodeModulesDir: "auto"`.
+- **init UnoCSS**: `unocssPlugin` in `view.config.ts` gets `content` array (e.g.
+  `./src/**/*.{ts,tsx}`, `./src/**/*.html`, `./src/assets/index.html`) with i18n
+  multi-line JSDoc comment; generated UnoCSS dependency is `@unocss/core`
+  (replacing `unocss`).
+- **init uno.css template**: Replaced minimal `@unocss` entry with full base
+  styles: reset (box-sizing, html/body/a), default body and `.dark body`
+  gradients/colors for above-the-fold, plus optional custom-layer comment; all
+  section comments i18n.
+- **setup install success**: Prints installed @dreamer/view version in success
+  message (e.g. `view-cli  v1.1.1  installed successfully.`); message template
+  uses `{version}` placeholder and i18n.
+
+### Changed
+
+- **init plugins template**: Extracted shared `staticPlugin` block so
+  tailwind/unocss/none branches reuse one snippet.
+- **init layout**: Header title shows `@dreamer/view` when app name is view-app;
+  nav `<ul>` uses `list-none`; theme toggle and GitHub link buttons use
+  `border-0 bg-transparent outline-none` to remove default button border and
+  focus outline.
+- **init theme icon**: Theme toggle shows moon icon when theme is dark and sun
+  icon when light (icon matches current theme).
+- **Logger config type**: `AppConfig.logger` and `setLoggerConfig()` now use
+  `LoggerConfig` from `@dreamer/logger` directly; removed local
+  `AppLoggerConfig` from `src/server/types.ts`.
+- **examples/view.config.ts**: Logger section comments moved above each field
+  (JSDoc style); `color` and `output.console` comments document
+  `true | false |
+  "auto"` and auto behaviour.
+- **init template**: Generated `view.config.ts` logger block uncommented and
+  aligned with examples (comments above fields, `color: "auto"`,
+  `console:
+  "auto"`, `path: "logs/app.log"`). Logger comment i18n updated in
+  all 9 locales (`viewConfigLoggerComment`, `loggerColorComment`,
+  `loggerOutputConsoleComment` with "auto" descriptions).
+
+### Fixed
+
+- **zh-CN init template**: Added missing `notFoundRouteTitle` key for 404 page
+  title.
+
+### Dependencies
+
+- `@dreamer/runtime-adapter`: ^1.0.17 → ^1.0.18
+- `@dreamer/plugins`: ^1.0.7 → ^1.0.8
+
+---
+
 ## [1.1.0] - 2026-02-25
 
 ### Added

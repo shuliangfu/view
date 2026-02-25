@@ -38,15 +38,19 @@ const RESET = "\x1b[0m";
 
 /**
  * 安装成功后写入版本缓存到 ~/.dreamer/view/version.json，供 view-cli init 等快速读取
+ * @returns 当前安装的版本号，写入失败或无法读取时返回 null
  */
-async function writeVersionCacheOnInstall(): Promise<void> {
+async function writeVersionCacheOnInstall(): Promise<string | null> {
   try {
     const config = await loadViewDenoJson();
     if (config?.version) {
       await writeVersionCache(config.version);
+      return config.version;
     }
+    return null;
   } catch {
     // 忽略，不影响安装成功
+    return null;
   }
 }
 
@@ -195,12 +199,18 @@ async function installGlobalCli(): Promise<void> {
       const status = await child.status;
       child.unref(); // 等待 status 后再 unref，避免 Deno 下过早 unref 导致父进程提前退出
       if (status.success) {
+        const installedVersion = await writeVersionCacheOnInstall();
+        const versionForMsg = installedVersion
+          ? `  v${installedVersion}  `
+          : "  ";
         console.log(
           `\n${GREEN}${
-            $tr("cli.setup.installSuccess", { name: CLI_NAME })
+            $tr("cli.setup.installSuccess", {
+              name: CLI_NAME,
+              version: versionForMsg,
+            })
           }${RESET}\n`,
         );
-        await writeVersionCacheOnInstall();
         printUsage();
       } else {
         const stderr = child.stderr
@@ -232,13 +242,19 @@ async function installGlobalCli(): Promise<void> {
     const status = await child.status;
     child.unref(); // 等待 status 后再 unref，避免 Deno 下过早 unref 导致父进程提前退出
     if (status.success) {
+      const installedVersion = await writeVersionCacheOnInstall();
+      const versionForMsg = installedVersion
+        ? `  v${installedVersion}  `
+        : "  ";
       // 与本地分支一致：成功提示前后空行，避免输出贴在一起
       console.log(
         `\n${GREEN}${
-          $tr("cli.setup.installSuccess", { name: CLI_NAME })
+          $tr("cli.setup.installSuccess", {
+            name: CLI_NAME,
+            version: versionForMsg,
+          })
         }${RESET}\n`,
       );
-      await writeVersionCacheOnInstall();
       printUsage();
     } else {
       const stderr = child.stderr

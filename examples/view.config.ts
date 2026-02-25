@@ -86,22 +86,32 @@ const config: AppConfig = {
     }),
   ],
   /** 日志配置（可选）：未设时使用默认 level info、format text、仅控制台输出 */
-  // logger: {
-  //   level: "info",              // "debug" | "info" | "warn" | "error" | "fatal"
-  //   format: "text",             // "text" | "json" | "color"
-  //   showTime: true,             // 是否显示时间戳
-  //   showLevel: true,            // 是否显示级别标签 [info]、[error] 等
-  //   color: true,                // 是否启用颜色，默认自动检测
-  //   output: {
-  //     console: true,             // 是否输出到控制台
-  //     file: {
-  //       path: "runtime/logs/app.log",  // 日志文件路径
-  //       rotate: true,            // 是否按大小轮转
-  //       maxSize: 10 * 1024 * 1024,     // 单文件最大字节（如 10MB）
-  //       maxFiles: 5,             // 轮转保留文件数
-  //     },
-  //   },
-  // },
+  logger: {
+    /** "debug" | "info" | "warn" | "error" | "fatal" */
+    level: "info",
+    /** "text" | "json" | "color" */
+    format: "text",
+    /** 是否显示时间戳 */
+    showTime: false,
+    /** 是否显示级别标签 [info]、[error] 等 */
+    showLevel: true,
+    /** true | false | "auto"，未设或 "auto" 时自动检测（TTY + format color 时启用） */
+    color: "auto",
+    output: {
+      /** true | false | "auto"，"auto" 时由 TTY 自动选择（有 TTY 仅控制台，无 TTY 仅文件） */
+      console: "auto",
+      file: {
+        /** 日志文件路径 */
+        path: "logs/app.log",
+        /** 是否按大小轮转 */
+        rotate: true,
+        /** 单文件最大字节（如 10MB） */
+        maxSize: 10 * 1024 * 1024,
+        /** 轮转保留文件数 */
+        maxFiles: 5,
+      },
+    },
+  },
 };
 
 export default config;

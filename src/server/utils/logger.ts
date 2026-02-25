@@ -8,8 +8,7 @@
  */
 
 import { createLogger } from "@dreamer/logger";
-import type { Logger } from "@dreamer/logger";
-import type { AppLoggerConfig } from "../types.ts";
+import type { Logger, LoggerConfig } from "@dreamer/logger";
 
 /** 默认 Server logger 配置：文本格式、控制台输出、info 级别 */
 const DEFAULT_SERVER_LOGGER_CONFIG = {
@@ -25,9 +24,9 @@ let _logger: Logger = createLogger(DEFAULT_SERVER_LOGGER_CONFIG);
  * 应用 AppConfig.logger 配置，更新 Server 统一 logger。
  * 在加载 view.config 后调用（如 App._initialize 末尾），未传或空对象时使用默认配置。
  *
- * @param config - view.config 中的 logger 配置，与 AppLoggerConfig 一致
+ * @param config - view.config 中的 logger 配置，与 @dreamer/logger LoggerConfig 一致
  */
-export function setLoggerConfig(config?: AppLoggerConfig | null): void {
+export function setLoggerConfig(config?: LoggerConfig | null): void {
   _logger = createLogger({
     ...DEFAULT_SERVER_LOGGER_CONFIG,
     ...(config && typeof config === "object" ? config : {}),

@@ -9,6 +9,7 @@ import {
   cwd,
   ensureDir,
   existsSync,
+  getEnv,
   join,
   readTextFile,
   relative,
@@ -158,36 +159,17 @@ import { staticPlugin } from "@dreamer/plugins/static";`
     },`
     : "";
 
-  const pluginsArray = style === "tailwind"
-    ? `[
-    tailwindPlugin({
-      output: "dist/assets",
-      cssEntry: "src/assets/tailwind.css",
-      assetsPath: "/assets",
-    }),
-    staticPlugin({
-      statics: [
-        { root: "src/assets", prefix: "/*" },
-        { root: "dist", prefix: "/*" },
-      ],
-    }),
-  ]`
-    : style === "unocss"
-    ? `[
-    unocssPlugin({
-      output: "dist/assets",
-      cssEntry: "src/assets/uno.css",
-      assetsPath: "/assets",
-    }),
-    staticPlugin({
-      statics: [
-        { root: "src/assets", prefix: "/*" },
-        { root: "dist", prefix: "/*" },
-      ],
-    }),
-  ]`
-    : `[
-    staticPlugin({
+  /** 将 i18n 的 unocss content 说明格式化为多行 JSDoc，用于生成的 view.config.ts；缩进与 unocssPlugin 内部属性对齐 */
+  const unocssContentComment = (() => {
+    const raw = $tr("init.template.unocssContentComment") as string;
+    const indent = "      "; /* 6 空格，与 output/cssEntry/content 等属性同级 */
+    return indent + "/**\n" +
+      raw.split("\n").map((l) => indent + " * " + l).join("\n") + "\n" +
+      indent + " */";
+  })();
+
+  /** 静态资源插件配置：三处（tailwind / unocss / 无样式）共用，避免三元内重复 */
+  const staticPluginBlock = `    staticPlugin({
       statics: [
         { root: "src/assets", prefix: "/*" },
         { root: "dist", prefix: "/*" },
@@ -195,9 +177,36 @@ import { staticPlugin } from "@dreamer/plugins/static";`
     }),
   ]`;
 
+  const pluginsArray = style === "tailwind"
+    ? `[
+    tailwindPlugin({
+      output: "dist/assets",
+      cssEntry: "src/assets/tailwind.css",
+      assetsPath: "/assets",
+    }),
+${staticPluginBlock}`
+    : style === "unocss"
+    ? `[
+    unocssPlugin({
+      output: "dist/assets",
+      cssEntry: "src/assets/uno.css",
+      assetsPath: "/assets",
+${unocssContentComment}
+      content: [
+        "./src/**/*.{ts,tsx}",
+        "./src/**/*.html",
+        "./src/assets/index.html",
+      ],
+    }),
+${staticPluginBlock}`
+    : `[
+${staticPluginBlock}`;
+
   const appName = displayDir === "."
     ? "view-app"
     : (displayDir.split("/").pop() ?? "view-app").replace(/\s+/g, "-");
+  /** 头部显示名：当前目录未指定项目名时显示 @dreamer/view，否则显示 appName */
+  const headerTitle = appName === "view-app" ? "@dreamer/view" : appName;
   const appVersion = "0.0.1";
   const appLanguage = detectLocale();
 
@@ -246,42 +255,32 @@ const config = {
   },
   plugins: ${pluginsArray},
   /** ${$tr("init.template.viewConfigLoggerComment")} */
-  // logger: {
-  //   level: "info",                     // ${
-    $tr("init.template.loggerLevelComment")
-  }
-  //   format: "text",                    // ${
-    $tr("init.template.loggerFormatComment")
-  }
-  //   showTime: true,                    // ${
-    $tr("init.template.loggerShowTimeComment")
-  }
-  //   showLevel: true,                   // ${
-    $tr("init.template.loggerShowLevelComment")
-  }
-  //   color: true,                       // ${
-    $tr("init.template.loggerColorComment")
-  }
-  //   output: {
-  //     console: true,                   // ${
-    $tr("init.template.loggerOutputConsoleComment")
-  }
-  //     file: {
-  //       path: "runtime/logs/app.log",  // ${
-    $tr("init.template.loggerFilePathComment")
-  }
-  //       rotate: true,                  // ${
-    $tr("init.template.loggerRotateComment")
-  }
-  //       maxSize: 10 * 1024 * 1024,     // ${
-    $tr("init.template.loggerMaxSizeComment")
-  }
-  //       maxFiles: 5,                   // ${
-    $tr("init.template.loggerMaxFilesComment")
-  }
-  //     },
-  //   },
-  // },
+  logger: {
+    /** ${$tr("init.template.loggerLevelComment")} */
+    level: "info",
+    /** ${$tr("init.template.loggerFormatComment")} */
+    format: "text",
+    /** ${$tr("init.template.loggerShowTimeComment")} */
+    showTime: false,
+    /** ${$tr("init.template.loggerShowLevelComment")} */
+    showLevel: true,
+    /** ${$tr("init.template.loggerColorComment")} */
+    color: "auto",
+    output: {
+      /** ${$tr("init.template.loggerOutputConsoleComment")} */
+      console: "auto",
+      file: {
+        /** ${$tr("init.template.loggerFilePathComment")} */
+        path: "runtime/logs/app.log",
+        /** ${$tr("init.template.loggerRotateComment")} */
+        rotate: true,
+        /** ${$tr("init.template.loggerMaxSizeComment")} */
+        maxSize: 10 * 1024 * 1024,
+        /** ${$tr("init.template.loggerMaxFilesComment")} */
+        maxFiles: 5,
+      },
+    },
+  },
 };
 
 export default config;
@@ -301,21 +300,49 @@ export default config;
     if (style === "tailwind") {
       imports["tailwindcss"] = "npm:tailwindcss@4.2.0";
     } else if (style === "unocss") {
-      imports["unocss"] = "npm:unocss@66.0.0";
+      imports["@unocss/core"] = "npm:@unocss/core@66.0.0";
     }
+    /** 项目名（与 appName 一致，用于 description / keywords） */
+    const projectNameDeno = displayDir === "."
+      ? "view-app"
+      : (displayDir.split("/").pop() ?? "view-app").replace(/\s+/g, "-");
+    /** 简短描述：项目名 + 说明，便于发布与识别 */
+    const description =
+      `${projectNameDeno} — SPA/SSR app scaffolded with @dreamer/view`;
+    /** 作者：优先 USER（Unix），其次 USERNAME（Windows），无则留空由用户自填 */
+    const author = getEnv("USER") ?? getEnv("USERNAME") ?? "";
     const denoJson = {
+      version: "1.0.0",
+      description,
+      author,
+      license: "MIT",
+      keywords: [
+        projectNameDeno,
+        "view",
+        "@dreamer/view",
+        "dweb",
+        "dreamer",
+        "spa",
+        "ssr",
+        "react",
+        "typescript",
+      ],
+      tasks: {
+        dev: "deno run -A @dreamer/view/cli dev",
+        build: "deno run -A @dreamer/view/cli build",
+        start: "deno run -A @dreamer/view/cli start",
+      },
+      imports,
+      nodeModulesDir: "auto",
+      lint: {
+        include: ["src/"],
+        exclude: ["dist/"],
+      },
       compilerOptions: {
         jsx: "react-jsx",
         jsxImportSource: "@dreamer/view",
         lib: ["deno.window", "dom"],
         types: ["./jsx.d.ts"],
-      },
-      imports,
-      lint: { include: ["src/"], exclude: ["dist/"] },
-      tasks: {
-        dev: "deno run -A @dreamer/view/cli dev",
-        build: "deno run -A @dreamer/view/cli build",
-        start: "deno run -A @dreamer/view/cli start",
       },
     };
     await writeTextFile(
@@ -334,7 +361,7 @@ export default config;
     if (style === "tailwind") {
       dependencies["tailwindcss"] = "npm:tailwindcss@4.2.0";
     } else if (style === "unocss") {
-      dependencies["unocss"] = "npm:unocss@66.0.0";
+      dependencies["@unocss/core"] = "npm:@unocss/core@66.0.0";
     }
     const packageJson = {
       name: projectName,
@@ -499,10 +526,42 @@ export {};
     );
     addFile("src/assets/tailwind.css");
   } else if (style === "unocss") {
+    const unoCssHeader = ($tr("init.template.unoCssHeaderComment") as string)
+      .split("\n")
+      .map((l) => ` * ${l}`)
+      .join("\n");
     const unoCss = `/**
- * ${$tr("init.template.unoCssComment")}
+${unoCssHeader}
  */
-@unocss;
+
+/* ${$tr("init.template.unoCssResetComment")} */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ${$tr("init.template.unoCssBodyComment")} */
+body {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.dark body {
+  background: linear-gradient(to bottom, #0f172a, #1e293b);
+  color: #e2e8f0;
+}
+
+/* ${$tr("init.template.unoCssCustomComment")} */
 `;
     await writeTextFile(
       join(targetDir, "src", "assets", "uno.css"),
@@ -617,10 +676,10 @@ export function Layout(props: LayoutProps): VNode {
             href="/"
             className="text-lg font-semibold tracking-tight text-slate-800 hover:text-indigo-600 transition-colors dark:text-slate-200 dark:hover:text-indigo-400"
           >
-            @dreamer/view
+            ${headerTitle}
           </a>
           <div className="flex items-center gap-2">
-            <ul className="flex items-center gap-1">
+            <ul className="flex list-none items-center gap-1">
               {navItems.map((item) => {
                 const isActive = currentPath === item.path;
                 return (
@@ -640,7 +699,7 @@ export function Layout(props: LayoutProps): VNode {
             <button
               type="button"
               onClick={() => toggleTheme()}
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-lg border-0 bg-transparent p-2 text-slate-600 outline-none hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
               title={isDark ? ${
     JSON.stringify($tr("init.template.switchToLight"))
   } : ${JSON.stringify($tr("init.template.switchToDark"))}}
@@ -650,14 +709,26 @@ export function Layout(props: LayoutProps): VNode {
             >
               {isDark ? (
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
               ) : (
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
                 </svg>
               )}
             </button>
+            <a
+              href="https://github.com/shuliangfu/view"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border-0 bg-transparent p-2 text-slate-600 outline-none hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              title="GitHub"
+              aria-label="GitHub"
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+              </svg>
+            </a>
           </div>
         </nav>
       </header>

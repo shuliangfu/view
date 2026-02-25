@@ -8,7 +8,7 @@
  * @module @dreamer/view/server/types
  */
 
-import type { Logger } from "@dreamer/logger";
+import type { Logger, LoggerConfig } from "@dreamer/logger";
 import type { Plugin } from "@dreamer/plugin";
 import type {
   BuildPlugin,
@@ -182,34 +182,6 @@ export interface AppAssetsConfig {
 // ==================== 应用完整配置（view.config.ts 的 default export 类型） ====================
 
 /**
- * Server 日志配置（与 @dreamer/logger LoggerConfig 子集兼容，供 view.config 的 logger 使用）
- */
-export interface AppLoggerConfig {
-  /** 日志级别，默认 "info" */
-  level?: "debug" | "info" | "warn" | "error" | "fatal";
-  /** 日志格式，默认 "text" */
-  format?: "text" | "json" | "color";
-  /** 输出配置：控制台、文件等 */
-  output?: {
-    console?: boolean;
-    auto?: boolean;
-    file?: {
-      path: string;
-      rotate?: boolean;
-      maxSize?: number;
-      maxFiles?: number;
-    };
-    custom?: (message: string) => void | Promise<void>;
-  };
-  /** 是否启用颜色（默认自动检测） */
-  color?: boolean;
-  /** 是否显示时间戳 */
-  showTime?: boolean;
-  /** 是否显示级别标签（如 [info]、[error]），默认 true */
-  showLevel?: boolean;
-}
-
-/**
  * View 应用完整配置（AppConfig）
  *
  * view.config.ts 或 view.config.json 的 default export 应满足此类型。
@@ -222,8 +194,8 @@ export interface AppConfig {
   version?: string;
   /** 默认语言（可选，如 "en-US"、"zh-CN"，用于 i18n、日志等） */
   language?: string;
-  /** Server 日志配置（可选），未设时使用默认：level info、format text、output console */
-  logger?: AppLoggerConfig;
+  /** Server 日志配置（可选），直接使用 @dreamer/logger 的 LoggerConfig，未设时使用默认：level info、format text、output console */
+  logger?: LoggerConfig;
   /** 服务器相关：dev 与 prod 的 port、host、dev 下 hmr/watch */
   server?: AppServerConfig;
   /** 编译相关：入口、输出、压缩、sourcemap、splitting、plugins 等 */
