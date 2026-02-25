@@ -7,6 +7,61 @@
 
 ---
 
+## [1.1.1] - 2026-02-25
+
+### 新增
+
+- **CLI i18n（9 种语言）**：与 dweb 一致，支持 de-DE、en-US、es-ES、fr-FR、
+  id-ID、ja-JP、ko-KR、pt-BR、zh-CN；新增各语言 locale JSON，并更新
+  `src/server/utils/i18n.ts` 中的 `Locale` 类型与列表。
+- **init 模板 i18n**：UnoCSS 的 `view.config.ts` 中 content 注释与 `uno.css`
+  的头部/ reset/ body/ 自定义层注释均使用 i18n（
+  `unocssContentComment`、`unoCssHeaderComment`、`unoCssResetComment`、
+  `unoCssBodyComment`、`unoCssCustomComment`），9 种语言均已翻译。
+- **init deno.json 模板**：生成项目的 `deno.json` 增加
+  `version: "1.0.0"`、`description`（项目名 + 脚手架说明）、`author`（
+  `USER`/`USERNAME`）、`license: "MIT"`、`keywords`、`nodeModulesDir: "auto"`。
+- **init UnoCSS**：`view.config.ts` 中 `unocssPlugin` 增加 `content` 数组（ 如
+  `./src/**/*.{ts,tsx}`、`./src/**/*.html`、`./src/assets/index.html`） 及 i18n
+  多行 JSDoc 注释；UnoCSS 依赖改为 `@unocss/core`（不再使用 `unocss`）。
+- **init uno.css 模板**：由仅含 `@unocss` 的占位改为完整基础样式：reset（
+  box-sizing、html/body/a）、默认 body 与 `.dark body` 渐变与文字色（
+  首屏一致）、可选自定义层注释；段落注释均 i18n。
+- **setup 安装成功**：安装成功后输出当前安装的 @dreamer/view 版本（如
+  `view-cli  v1.1.1  安装成功。`）；成功文案使用 `{version}` 占位与 i18n。
+
+### 变更
+
+- **init 插件模板**：抽出共用的 `staticPlugin` 配置，tailwind/unocss/无样式
+  三处复用同一片段。
+- **init 布局**：项目名为 view-app 时头部标题显示 `@dreamer/view`；导航 `<ul>`
+  增加 `list-none`；主题切换与 GitHub 链接按钮增加
+  `border-0 bg-transparent outline-none`，去除默认边框与焦点框。
+- **init 主题图标**：主题为 dark 时显示月亮图标，为 light 时显示太阳图标（
+  与当前主题一致）。
+- **Logger 配置类型**：`AppConfig.logger` 与 `setLoggerConfig()` 改为直接使用
+  `@dreamer/logger` 的 `LoggerConfig`；移除 `src/server/types.ts` 中的本地
+  `AppLoggerConfig`。
+- **examples/view.config.ts**：logger 段注释改为写在字段上方（JSDoc 风格）；
+  `color`、`output.console` 注释补充 `true | false | "auto"` 及自动行为说明。
+- **init 模板**：生成的 `view.config.ts` 中 logger 块取消注释并与 examples
+  一致（注释在字段上方，`color: "auto"`、`console: "auto"`、`path:
+  "logs/app.log"`）；9
+  种语言的 logger 注释 i18n 已更新（
+  `viewConfigLoggerComment`、`loggerColorComment`、`loggerOutputConsoleComment`
+  含 "auto" 说明）。
+
+### 修复
+
+- **zh-CN init 模板**：补全 404 页标题的 `notFoundRouteTitle` 文案。
+
+### 依赖
+
+- `@dreamer/runtime-adapter`: ^1.0.17 → ^1.0.18
+- `@dreamer/plugins`: ^1.0.7 → ^1.0.8
+
+---
+
 ## [1.1.0] - 2026-02-25
 
 ### 新增
