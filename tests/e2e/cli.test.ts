@@ -205,13 +205,17 @@ describe("CLI：start", () => {
   afterAll(async () => {
     if (startProcess) {
       try {
-        startProcess.kill(15); // SIGTERM
+        startProcess.kill(9); // SIGKILL 确保进程立即退出，避免 afterAll 在 Bun/macOS 上超时
       } catch {
         // ignore
       }
       startProcess = null;
     }
-    await cleanupAllBrowsers();
+    // 限制 cleanup 等待时间，避免 afterAll 超过默认 5s 导致 Bun 报 timeout
+    await Promise.race([
+      cleanupAllBrowsers(),
+      new Promise<void>((r) => setTimeout(r, 4000)),
+    ]);
   });
 
   it(
