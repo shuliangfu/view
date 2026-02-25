@@ -67,6 +67,41 @@ const START_URL = `http://127.0.0.1:${START_PORT}`;
 /** init 测试输出目录（项目内 tests/data，绝对路径），afterAll 清理 */
 const INIT_OUT_DIR = resolve(VIEW_ROOT, "tests", "data", "init-e2e");
 
+/**
+ * 将子进程的 stdout/stderr（ReadableStream）读到底，返回完整 buffer。
+ * 用于 spawn 后与 status 一起 await，便于超时 kill 后仍能拿到部分输出做诊断。
+ */
+async function readStreamToEnd(
+  stream: ReadableStream<Uint8Array> | null,
+): Promise<Uint8Array> {
+  if (!stream || typeof stream.getReader !== "function") {
+    return new Uint8Array(0);
+  }
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+  } finally {
+    try {
+      reader.releaseLock?.();
+    } catch {
+      // ignore
+    }
+  }
+  const len = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
+  return out;
+}
+
 describe("CLI：init", () => {
   afterAll(async () => {
     try {
@@ -125,6 +160,9 @@ describe("CLI：init", () => {
   );
 });
 
+/** build 子进程最大等待时间（ms），超时则 kill 进程，避免 CI 卡死时测试一直挂起 */
+const BUILD_PROCESS_TIMEOUT_MS = 60_000;
+
 describe("CLI：build", () => {
   it(
     "在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件",
@@ -139,10 +177,58 @@ describe("CLI：build", () => {
         stdout: "piped",
         stderr: "piped",
       });
-      const out = await cmd.output();
-      if (!out.success) {
-        const stderr = new TextDecoder().decode(out.stderr ?? []);
-        const stdout = new TextDecoder().decode(out.stdout ?? []);
+      const child = cmd.spawn();
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, rej) => {
+        timeoutId = setTimeout(
+          () =>
+            rej(
+              new Error(
+                `view build timed out after ${
+                  BUILD_PROCESS_TIMEOUT_MS / 1000
+                }s (process will be killed)`,
+              ),
+            ),
+          BUILD_PROCESS_TIMEOUT_MS,
+        );
+      });
+      const statusPromise = Promise.resolve(child.status);
+      const stdoutPromise = readStreamToEnd(
+        child.stdout as ReadableStream<Uint8Array> | null,
+      );
+      const stderrPromise = readStreamToEnd(
+        child.stderr as ReadableStream<Uint8Array> | null,
+      );
+
+      let result: {
+        code: number | null;
+        success: boolean;
+        stdout: Uint8Array;
+        stderr: Uint8Array;
+      };
+      try {
+        result = await Promise.race([
+          Promise.all([statusPromise, stdoutPromise, stderrPromise]).then(
+            ([s, so, se]) => ({
+              code: s.code,
+              success: s.success,
+              stdout: so,
+              stderr: se,
+            }),
+          ),
+          timeoutPromise,
+        ]);
+        clearTimeout(timeoutId);
+        timeoutId = undefined;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        child.kill(9);
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(msg);
+      }
+      if (!result.success) {
+        const stderr = new TextDecoder().decode(result.stderr ?? []);
+        const stdout = new TextDecoder().decode(result.stdout ?? []);
         throw new Error(
           `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
             stdout || "(empty)"
@@ -168,7 +254,8 @@ describe("CLI：build", () => {
         }
       }
     },
-    { timeout: 45_000 },
+    // 子进程 60s 超时会 kill，测试总超时略大于进程超时以收尾
+    { timeout: BUILD_PROCESS_TIMEOUT_MS + 15_000 },
   );
 });
 
