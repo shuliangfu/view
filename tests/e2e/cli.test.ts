@@ -167,7 +167,7 @@ describe("CLI：build", () => {
         }
       }
     },
-    { timeout: 15_000 },
+    { timeout: 45_000 },
   );
 });
 
@@ -176,11 +176,11 @@ function entryPointForBrowser(): string {
   return join(VIEW_ROOT, "tests", "e2e", "browser-stub.js");
 }
 
-/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径/file URL 以兼容 Windows */
+/** start 用例用浏览器访问页面（与用户一致），避免测试进程 fetch 在部分环境下连不上 127.0.0.1；entryPoint 用绝对路径/file URL 以兼容 Windows；CI Mac 上 build+start+浏览器较慢，放宽超时 */
 const startBrowserConfig = {
   sanitizeOps: false,
   sanitizeResources: false,
-  timeout: 60_000,
+  timeout: 120_000,
   browser: {
     enabled: true,
     headless: true,
