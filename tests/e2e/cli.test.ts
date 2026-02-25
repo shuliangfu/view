@@ -31,6 +31,9 @@ import {
   expect,
   it,
 } from "@dreamer/test";
+import { setViewLocale } from "../../src/server/utils/i18n.ts";
+
+setViewLocale("zh-CN");
 
 /** 规整路径：消除 .. 与 .；Windows 盘符路径（/D:/ 或 D:/）不输出前导 /，避免 mkdir/cwd 报错 */
 function normalizeAbsolutePath(p: string): string {
@@ -238,6 +241,7 @@ describe("CLI：start", () => {
         stderr: "piped",
       });
       const child = startCmd.spawn();
+      child.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
       startProcess = child;
 
       // 后台消费 stdout/stderr，避免管道满导致子进程阻塞；收集两者便于超时时报错
