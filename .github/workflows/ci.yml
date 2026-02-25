@@ -11,21 +11,21 @@ jobs:
   test-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - name: Show @dreamer/test version
         run: node -e "const p=require('./package.json');console.log('@dreamer/test:', p.dependencies?.['@dreamer/test']||p.devDependencies?.['@dreamer/test']||'n/a')"
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@v1
         with:
           deno-version: v2.5
 
       - name: Cache dependencies
         run: deno cache src/mod.ts tests/
 
-      # 预拉 examples 依赖（含 npm:tailwindcss），避免 build 用例在 CI 上冷缓存超时或卡住
-      - name: Cache examples dependencies
-        run: cd examples && deno cache ../src/cli.ts
+      # 预拉并预热：deno cache 只缓存 CLI 入口，npm:tailwindcss 由 esbuild 在 build 时解析，故直接跑一次 build 预热
+      - name: Warm examples build cache
+        run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -42,17 +42,17 @@ jobs:
   test-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@v1
         with:
           deno-version: v2.5
 
       - name: Cache dependencies
         run: deno cache src/mod.ts tests/
 
-      - name: Cache examples dependencies
-        run: cd examples && deno cache ../src/cli.ts
+      - name: Warm examples build cache
+        run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -69,17 +69,17 @@ jobs:
   test-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@v1
         with:
           deno-version: v2.5
 
       - name: Cache dependencies
         run: deno cache src/mod.ts tests/
 
-      - name: Cache examples dependencies
-        run: cd examples && deno cache ../src/cli.ts
+      - name: Warm examples build cache
+        run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -96,7 +96,7 @@ jobs:
   test-linux-bun:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -107,6 +107,9 @@ jobs:
 
       - name: Install examples dependencies (Bun)
         run: cd examples && bun install
+
+      - name: Warm examples build cache
+        run: cd examples && bun run ../src/cli.ts build
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -117,7 +120,7 @@ jobs:
   test-macos-bun:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -128,6 +131,9 @@ jobs:
 
       - name: Install examples dependencies (Bun)
         run: cd examples && bun install
+
+      - name: Warm examples build cache
+        run: cd examples && bun run ../src/cli.ts build
 
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
@@ -140,7 +146,7 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\.playwright-browsers
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -151,6 +157,9 @@ jobs:
 
       - name: Install examples dependencies (Bun)
         run: cd examples && bun install
+
+      - name: Warm examples build cache
+        run: cd examples && bun run ../src/cli.ts build
 
       # Windows 上浏览器测试由上方 test-windows (Deno) 覆盖。
       # Bun 在 Windows 存在已知 bug（chromium.launch() 卡住不返回，见 oven-sh/bun#15679）
