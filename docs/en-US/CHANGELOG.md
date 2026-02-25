@@ -63,6 +63,8 @@ and this project adheres to
 
 - **zh-CN init template**: Added missing `notFoundRouteTitle` key for 404 page
   title.
+- **e2e CLI start afterAll**: Use SIGKILL and cap cleanup wait so afterAll
+  finishes within 5s on Bun macOS (avoids test timeout).
 
 ### Dependencies
 

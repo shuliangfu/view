@@ -54,6 +54,8 @@
 ### 修复
 
 - **zh-CN init 模板**：补全 404 页标题的 `notFoundRouteTitle` 文案。
+- **e2e CLI start afterAll**：改用 SIGKILL 并限制 cleanup 等待时间，在 Bun macOS
+  上 5s 内完成，避免测试超时。
 
 ### 依赖
 
