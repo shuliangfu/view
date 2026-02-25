@@ -3,6 +3,12 @@
  *
  * beforeAll 直接启动 examples 的 dev 服务器（无需先 build），浏览器通过 goto 打开该地址，
  * 对每个示例页执行主要交互（点击、输入等）并断言 DOM 效果。
+ *
+ * CI 依赖说明：启动时 cwd=examples，但执行的入口是 view 的 src/cli.ts（deno task dev / bun run dev），
+ * 因此 view.config.ts 的 dynamic import 解析用的是 **view** 的 deno.json/package.json，不是 examples 的。
+ * 若 examples/view.config.ts 里 import 了 @dreamer/plugins（tailwind、static），则 view 的根配置必须声明
+ * @dreamer/plugins，否则 CI 会报 Cannot find module '@dreamer/plugins/tailwindcss'。本地通过可能是因为
+ * 已有 cache 或 monorepo 下 node_modules 已安装。view/deno.json 与 view/package.json 已包含 @dreamer/plugins。
  */
 
 import {
@@ -246,17 +252,19 @@ describe("浏览器测试（examples 入口）", () => {
       "src/views",
       "src/router/routers.tsx",
     );
-    // examples 为 Deno 项目（deno.json tasks）；Bun 下用 deno task dev 启动更可靠，Deno 下用 task dev
+    // 使用 inherit 避免 pipe 未消费导致缓冲区满、子进程写日志阻塞（CI 上易触发，本地不易复现）
     const cmd = createCommand(
       execPath(),
       {
         args: IS_DENO ? ["task", "dev"] : ["run", "dev"],
         cwd: examplesDir,
-        stdout: "piped",
-        stderr: "piped",
+        stdout: "inherit",
+        stderr: "inherit",
       },
     );
     serverProcess = cmd.spawn();
+    serverProcess.unref(); // 立即 unref，避免子进程句柄阻止当前进程自动退出
+
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
       try {
@@ -267,15 +275,7 @@ describe("浏览器测试（examples 入口）", () => {
       }
       await new Promise((r) => setTimeout(r, 200));
     }
-    let errMsg = "Examples dev server did not start within 15s";
-    if (serverProcess?.stderr) {
-      const stderrText = await readStreamText(serverProcess.stderr);
-      if (stderrText.trim()) errMsg += "\n--- stderr ---\n" + stderrText.trim();
-    }
-    if (serverProcess?.stdout) {
-      const stdoutText = await readStreamText(serverProcess.stdout);
-      if (stdoutText.trim()) errMsg += "\n--- stdout ---\n" + stdoutText.trim();
-    }
+    let errMsg = "Examples dev server did not start within 15s. With stdout/stderr inherit, see CI log for server output.";
     throw new Error(errMsg);
   });
 

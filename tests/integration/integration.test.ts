@@ -9,6 +9,10 @@ import { createReactive } from "@dreamer/view/reactive";
 import type { VNode } from "@dreamer/view";
 import { FragmentType } from "../../src/dom/shared.ts";
 
+import { setViewLocale } from "../../src/server/utils/i18n.ts";
+
+setViewLocale("zh-CN");
+
 function text(s: string): VNode {
   return { type: "#text", props: { nodeValue: s }, children: [] };
 }
