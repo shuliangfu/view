@@ -7,6 +7,26 @@
 
 ---
 
+## [1.1.2] - 2026-02-25
+
+### 新增
+
+- **init .vscode**：生成项目现包含 `.vscode/settings.json`（按 Deno 或 Bun
+  区分：格式化、编辑器、i18n-ally）与
+  `.vscode/i18n-ally-custom-framework.yml`（识别 `$t`/`$tr`）。
+
+### 变更
+
+- **version -v 输出**：`setVersion()` 字符串末尾加 `\n\n`，与 shell 提示符
+  之间留空行（由 @dreamer/console 根 Command 处理）。
+
+### 修复
+
+- **e2e CLI start afterAll**：改用 SIGKILL 并限制 cleanup 等待时间，在 Bun macOS
+  上 5s 内完成，避免测试超时。
+
+---
+
 ## [1.1.1] - 2026-02-25
 
 ### 新增

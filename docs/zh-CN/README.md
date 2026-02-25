@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.1**（2026-02-25）：CLI i18n（9 种语言）；init 模板 i18n 与 logger
-块；LoggerConfig 直接使用 @dreamer/logger；examples logger 注释；e2e start
-稳定性与 afterAll 超时修复。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.2**（2026-02-25）：init 生成 .vscode/settings.json 与
+i18n-ally-custom-framework.yml；version -v 空行；e2e afterAll
+超时修复。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

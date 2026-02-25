@@ -20,7 +20,6 @@ import { Command } from "@dreamer/console";
 import { args } from "@dreamer/runtime-adapter";
 import { $tr } from "./server/utils/i18n.ts";
 import { getViewVersion } from "./server/utils/version.ts";
-import { logger } from "./server/utils/logger.ts";
 
 /**
  * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出），文案走 i18n
@@ -36,8 +35,9 @@ function buildVersionStr(version: string): string {
  * @returns Command 实例，可调用 .parse() 等执行
  */
 export function createCLI(version: string): Command {
+  // setVersion 的字符串会由 @dreamer/console 在 -v/--version 时 console.log 输出，末尾加空行
   const cli = new Command("view-cli", $tr("cli.description")).setVersion(
-    buildVersionStr(version),
+    "\n" + buildVersionStr(version) + "\n",
   );
 
   // ---------------------------------------------------------------------------
@@ -158,14 +158,6 @@ export function createCLI(version: string): Command {
     });
 
   // ---------------------------------------------------------------------------
-  // version — 显示版本（与 --version / -v 等效）
-  // ---------------------------------------------------------------------------
-  cli
-    .command("version", $tr("cli.versionDesc"))
-    .alias("v")
-    .action(() => {
-      logger.info(buildVersionStr(version));
-    });
 
   return cli;
 }

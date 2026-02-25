@@ -174,7 +174,16 @@
       "loggerFilePathComment": "日志文件路径",
       "loggerRotateComment": "是否按大小轮转",
       "loggerMaxSizeComment": "单文件最大字节（如 10MB）",
-      "loggerMaxFilesComment": "轮转保留文件数"
+      "loggerMaxFilesComment": "轮转保留文件数",
+      "vscodeDeno": "Deno 配置",
+      "vscodeBun": "Bun / TypeScript 配置",
+      "vscodeFormat": "格式化配置",
+      "vscodeEditor": "编辑器基础配置",
+      "vscodeCss": "CSS / Tailwind 配置",
+      "vscodeAssoc": "文件关联",
+      "vscodeExclude": "文件排除",
+      "vscodeSearchExclude": "搜索排除",
+      "vscodeI18n": "i18n-ally 配置"
     }
   },
   "generate": {

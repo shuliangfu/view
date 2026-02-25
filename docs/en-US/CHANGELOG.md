@@ -8,6 +8,26 @@ and this project adheres to
 
 ---
 
+## [1.1.2] - 2026-02-25
+
+### Added
+
+- **init .vscode**: Generated project now includes `.vscode/settings.json` (Deno
+  or Bun format: formatter, editor, i18n-ally) and
+  `.vscode/i18n-ally-custom-framework.yml` for `$t`/`$tr` recognition.
+
+### Changed
+
+- **version -v output**: `setVersion()` string ends with `\n\n` so a blank line
+  appears before the shell prompt (handled by root Command in @dreamer/console).
+
+### Fixed
+
+- **e2e CLI start afterAll**: Use SIGKILL and cap cleanup wait so afterAll
+  finishes within 5s on Bun macOS (avoids test timeout).
+
+---
+
 ## [1.1.1] - 2026-02-25
 
 ### Added

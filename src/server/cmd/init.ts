@@ -5,6 +5,7 @@
  * 生成 views 下约定特殊文件 _app.tsx、_layout.tsx、_loading.tsx、_404.tsx、_error.tsx（路由扫描自动屏蔽）与路由页 home/about，风格参考 view/examples。
  */
 
+import { interactiveMenu } from "@dreamer/console";
 import {
   cwd,
   ensureDir,
@@ -16,10 +17,9 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { interactiveMenu } from "@dreamer/console";
 import { $tr, detectLocale } from "../utils/i18n.ts";
-import { getPluginsVersion, getViewVersion } from "../utils/version.ts";
 import { logger } from "../utils/logger.ts";
+import { getPluginsVersion, getViewVersion } from "../utils/version.ts";
 
 /** 运行时：Deno 仅生成 deno.json；Bun 生成 package.json、.npmrc、tsconfig.json */
 type Runtime = "deno" | "bun";
@@ -30,6 +30,242 @@ type Style = "tailwind" | "unocss" | "none";
 /** ANSI green for success message */
 const GREEN = "\x1b[32m";
 const RESET = "\x1b[0m";
+
+/**
+ * i18n-ally 自定义框架配置：识别 $t() / $tr()（view、dweb 等包通用），无注释
+ */
+function getI18nAllyCustomFrameworkYml(): string {
+  return `monopoly: true∫
+
+languageIds:
+  - javascript
+  - typescript
+  - javascriptreact
+  - typescriptreact
+
+usageMatchRegex:
+  - "[^\\\\w\\\\d]\\\\$t(?:r)?\\\\(['\\\"\`]({key})['\\\"\`]"
+  - "[^\\\\w\\\\d]\\\\$t(?:r)?\\\\(['\\\"\`]({key})['\\\"\`]\\\\s*,"
+  - "[^\\\\w\\\\d]\\\\$t(?:r)?\\\\(['\\\"\`]({key})['\\\"\`]\\\\s*,.*?['\\\"\`][a-z]{2}-[A-Z]{2}['\\\"\`]\\\\s*\\\\)"
+
+refactorTemplates:
+  - '$t("$1")'
+  - '$tr("$1")'
+`;
+}
+
+/**
+ * 根据运行时生成 .vscode/settings.json：Deno 用 denoland.vscode-deno，Bun 用 vscode.typescript-language-features
+ */
+function getVscodeSettingsJson(runtime: Runtime): string {
+  if (runtime === "bun") {
+    return `{
+  // ==================== ${$tr("init.template.vscodeBun")} ====================
+  // ${$tr("init.template.vscodeFormat")}
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true
+  },
+  // ==================== ${
+      $tr("init.template.vscodeEditor")
+    } ====================
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "editor.rulers": [120],
+  "editor.wordWrap": "off",
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": false,
+  "editor.suggestSelection": "first",
+  "editor.snippetSuggestions": "top",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": false,
+  "editor.minimap.enabled": true,
+  // ==================== ${$tr("init.template.vscodeCss")} ====================
+  "css.lint.unknownAtRules": "ignore",
+  // ==================== ${
+      $tr("init.template.vscodeAssoc")
+    } ====================
+  "files.associations": {
+    "*.tsx": "typescriptreact",
+    "*.ts": "typescript"
+  },
+  // ==================== ${
+      $tr("init.template.vscodeExclude")
+    } ====================
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.bun": true
+  },
+  // ==================== ${
+      $tr("init.template.vscodeSearchExclude")
+    } ====================
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.bun": true,
+    "**/dist": true,
+    "**/runtime": true
+  },
+  // ==================== ${
+      $tr("init.template.vscodeI18n")
+    } ====================
+  "i18n-ally.localesPaths": ["src/locales"],
+  "i18n-ally.pathMatcher": "{locale}.{ext}",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.sortKeys": true,
+  "i18n-ally.namespace": false,
+  "i18n-ally.enabledParsers": ["json"],
+  "i18n-ally.sourceLanguage": "zh-CN",
+  "i18n-ally.displayLanguage": "zh-CN",
+  "i18n-ally.translate.engines": ["deepl", "google"],
+  "i18n-ally.extract.keygenStyle": "PascalCase",
+  "i18n-ally.enabledFrameworks": ["react", "i18next", "general", "custom"],
+  "i18n-ally.regex.key": ".*?",
+  "i18n-ally.extract.autoDetect": true
+}
+`;
+  }
+  // Deno 运行时
+  return `{
+  // ==================== ${
+    $tr("init.template.vscodeDeno")
+  } ====================
+  "deno.enable": true,
+  "deno.lint": true,
+  // ==================== ${
+    $tr("init.template.vscodeFormat")
+  } ====================
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true
+  },
+  // ==================== ${
+    $tr("init.template.vscodeEditor")
+  } ====================
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "editor.rulers": [120],
+  "editor.wordWrap": "off",
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": false,
+  "editor.suggestSelection": "first",
+  "editor.snippetSuggestions": "top",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": false,
+  "editor.minimap.enabled": true,
+  // ==================== ${$tr("init.template.vscodeCss")} ====================
+  "css.lint.unknownAtRules": "ignore",
+  // ==================== ${
+    $tr("init.template.vscodeAssoc")
+  } ====================
+  "files.associations": {
+    "*.tsx": "typescriptreact",
+    "*.ts": "typescript"
+  },
+  // ==================== ${
+    $tr("init.template.vscodeExclude")
+  } ====================
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.deno": true
+  },
+  // ==================== ${
+    $tr("init.template.vscodeSearchExclude")
+  } ====================
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.deno": true,
+    "**/dist": true,
+    "**/runtime": true
+  },
+  // ==================== ${
+    $tr("init.template.vscodeI18n")
+  } ====================
+  "i18n-ally.localesPaths": ["src/locales"],
+  "i18n-ally.pathMatcher": "{locale}.{ext}",
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.sortKeys": true,
+  "i18n-ally.namespace": false,
+  "i18n-ally.enabledParsers": ["json"],
+  "i18n-ally.sourceLanguage": "zh-CN",
+  "i18n-ally.displayLanguage": "zh-CN",
+  "i18n-ally.translate.engines": ["deepl", "google"],
+  "i18n-ally.extract.keygenStyle": "PascalCase",
+  "i18n-ally.enabledFrameworks": ["react", "i18next", "general", "custom"],
+  "i18n-ally.regex.key": ".*?",
+  "i18n-ally.extract.autoDetect": true
+}
+`;
+}
 
 /**
  * CLI 入口：由 @dreamer/console 的 action 调用
@@ -409,6 +645,21 @@ export default config;
     );
     addFile("tsconfig.json");
   }
+
+  // ---------------------------------------------------------------------------
+  // .vscode/settings.json（按 Deno/Bun 生成）、.vscode/i18n-ally-custom-framework.yml
+  // ---------------------------------------------------------------------------
+  await ensureDir(join(targetDir, ".vscode"));
+  await writeTextFile(
+    join(targetDir, ".vscode", "settings.json"),
+    getVscodeSettingsJson(runtime),
+  );
+  addFile(".vscode/settings.json");
+  await writeTextFile(
+    join(targetDir, ".vscode", "i18n-ally-custom-framework.yml"),
+    getI18nAllyCustomFrameworkYml(),
+  );
+  addFile(".vscode/i18n-ally-custom-framework.yml");
 
   // ---------------------------------------------------------------------------
   // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 或 tsconfig include 引用）
