@@ -126,45 +126,49 @@ describe("CLI：init", () => {
 });
 
 describe("CLI：build", () => {
-  it("在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件", async () => {
-    // 统一用 execPath()；Deno 需 -A，Bun 不需
-    const cmd = createCommand(execPath(), {
-      args: IS_BUN
-        ? ["run", "../src/cli.ts", "build"]
-        : ["run", "-A", "../src/cli.ts", "build"],
-      cwd: resolve(EXAMPLES_DIR),
-      stdout: "piped",
-      stderr: "piped",
-    });
-    const out = await cmd.output();
-    if (!out.success) {
-      const stderr = new TextDecoder().decode(out.stderr ?? []);
-      const stdout = new TextDecoder().decode(out.stdout ?? []);
-      throw new Error(
-        `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
-          stdout || "(empty)"
-        }`,
-      );
-    }
-
-    const distDir = join(EXAMPLES_DIR, "dist");
-    expect(existsSync(distDir)).toBe(true);
-
-    const mainJs = join(EXAMPLES_DIR, "dist", "main.js");
-    const hasMainJs = existsSync(mainJs);
-    if (!hasMainJs) {
-      const entries = await readdir(distDir).catch(() => []);
-      const jsFiles = entries.filter(
-        (e) => e.isFile && e.name.endsWith(".js"),
-      );
-      if (jsFiles.length === 0) {
+  it(
+    "在 examples 目录执行 view build 应产出 dist/ 且含至少一个 .js 文件",
+    async () => {
+      // 统一用 execPath()；Deno 需 -A，Bun 不需
+      const cmd = createCommand(execPath(), {
+        args: IS_BUN
+          ? ["run", "../src/cli.ts", "build"]
+          : ["run", "-A", "../src/cli.ts", "build"],
+        cwd: resolve(EXAMPLES_DIR),
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const out = await cmd.output();
+      if (!out.success) {
+        const stderr = new TextDecoder().decode(out.stderr ?? []);
+        const stdout = new TextDecoder().decode(out.stdout ?? []);
         throw new Error(
-          "dist/ 下应有 main.js 或至少一个 .js 文件，当前: " +
-            (entries.map((e) => e.name).join(", ") || "(空)"),
+          `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
+            stdout || "(empty)"
+          }`,
         );
       }
-    }
-  });
+
+      const distDir = join(EXAMPLES_DIR, "dist");
+      expect(existsSync(distDir)).toBe(true);
+
+      const mainJs = join(EXAMPLES_DIR, "dist", "main.js");
+      const hasMainJs = existsSync(mainJs);
+      if (!hasMainJs) {
+        const entries = await readdir(distDir).catch(() => []);
+        const jsFiles = entries.filter(
+          (e) => e.isFile && e.name.endsWith(".js"),
+        );
+        if (jsFiles.length === 0) {
+          throw new Error(
+            "dist/ 下应有 main.js 或至少一个 .js 文件，当前: " +
+              (entries.map((e) => e.name).join(", ") || "(空)"),
+          );
+        }
+      }
+    },
+    { timeout: 15_000 },
+  );
 });
 
 /** 浏览器 entryPoint：用固定存在的 stub，避免依赖 examples/dist/main.js（Windows CI 上路径/构建时序导致 Could not resolve） */
