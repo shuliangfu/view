@@ -51,6 +51,16 @@ and this project adheres to
   UnoCSS, or custom plugins; plugins run in registration order (e.g. tailwind
   then static) and participate in request/response via onRequest/onResponse.
 
+### Fixed
+
+- **init dependencies**: When user selects Tailwind or UnoCSS, generated
+  `deno.json` / `package.json` now include `tailwindcss` or `unocss` so the
+  generated project builds without missing deps.
+- **CI (Deno Mac)**: E2E CLI tests pass `stdin: "null"` to build/start
+  subprocesses and use longer timeouts (build 45s, start 120s) so tests pass in
+  CI without TTY. Requires @dreamer/esbuild ^1.0.40 (buildModuleCache passes
+  stdin to deno info/eval).
+
 ---
 
 ## [1.0.32] - 2026-02-24

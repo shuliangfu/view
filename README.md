@@ -1107,9 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.0.32** (2026-02-24): Layout codegen and init template with root layout;
-KEY_VIEW_ROUTER/getGlobal/setGlobal from router; init options.runtime for CI.
-See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.1.0** (2026-02-25): Dev server refactor; init style choice
+(Tailwind/UnoCSS/None) with deps; init template improvements; route CSS cleanup;
+image compression/hashing; plugin config. Fixed: init adds tailwind/unocss to
+generated project when selected; CLI e2e stdin/timeouts for CI. See
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
 
 ---
 

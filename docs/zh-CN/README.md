@@ -1060,9 +1060,10 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.0.32**（2026-02-24）：布局 codegen 与 init 模板含根布局；router 导出
-KEY_VIEW_ROUTER/getGlobal/setGlobal；init 支持 options.runtime 便于
-CI。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.0**（2026-02-25）：开发服务器重构；init
+样式选择（Tailwind/UnoCSS/不需要）及依赖写入；init 模板增强；路由 CSS
+清理；图片压缩与 hash；插件配置。修复：init 按选择写入 tailwind/unocss 依赖；CLI
+e2e 在 CI 下 stdin/超时。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

@@ -275,7 +275,8 @@ describe("浏览器测试（examples 入口）", () => {
       }
       await new Promise((r) => setTimeout(r, 200));
     }
-    let errMsg = "Examples dev server did not start within 15s. With stdout/stderr inherit, see CI log for server output.";
+    let errMsg =
+      "Examples dev server did not start within 15s. With stdout/stderr inherit, see CI log for server output.";
     throw new Error(errMsg);
   });
 
