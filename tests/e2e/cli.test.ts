@@ -67,41 +67,6 @@ const START_URL = `http://127.0.0.1:${START_PORT}`;
 /** init 测试输出目录（项目内 tests/data，绝对路径），afterAll 清理 */
 const INIT_OUT_DIR = resolve(VIEW_ROOT, "tests", "data", "init-e2e");
 
-/**
- * 将子进程的 stdout/stderr（ReadableStream）读到底，返回完整 buffer。
- * 用于 spawn 后与 status 一起 await，便于超时 kill 后仍能拿到部分输出做诊断。
- */
-async function readStreamToEnd(
-  stream: ReadableStream<Uint8Array> | null,
-): Promise<Uint8Array> {
-  if (!stream || typeof stream.getReader !== "function") {
-    return new Uint8Array(0);
-  }
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) chunks.push(value);
-    }
-  } finally {
-    try {
-      reader.releaseLock?.();
-    } catch {
-      // ignore
-    }
-  }
-  const len = chunks.reduce((a, c) => a + c.length, 0);
-  const out = new Uint8Array(len);
-  let off = 0;
-  for (const c of chunks) {
-    out.set(c, off);
-    off += c.length;
-  }
-  return out;
-}
-
 describe("CLI：init", () => {
   afterAll(async () => {
     try {
@@ -160,8 +125,48 @@ describe("CLI：init", () => {
   );
 });
 
-/** build 子进程最大等待时间（ms），超时则 kill 进程，避免 CI 卡死时测试一直挂起 */
-const BUILD_PROCESS_TIMEOUT_MS = 60_000;
+/** build 子进程最大等待时间（ms），超时则 kill 进程；CI 冷缓存或 npm 解析可能较慢，故放宽至 120s */
+const BUILD_PROCESS_TIMEOUT_MS = 120_000;
+
+/**
+ * 将 stream 读到底并追加到 chunks，返回在 stream 结束时 resolve 的 Promise。
+ * 用于与 status 一起 race，超时 kill 后可用已累积内容做诊断。
+ */
+function drainToChunks(
+  stream: ReadableStream<Uint8Array> | null,
+  chunks: Uint8Array[],
+): Promise<void> {
+  if (!stream || typeof stream.getReader !== "function") {
+    return Promise.resolve();
+  }
+  const reader = stream.getReader();
+  const read = (): Promise<void> =>
+    reader.read().then(({ done, value }) => {
+      if (value) chunks.push(value);
+      if (done) return;
+      return read();
+    });
+  return read().finally(() => {
+    try {
+      reader.releaseLock?.();
+    } catch {
+      // ignore
+    }
+  });
+}
+
+/** 将 chunk 数组拼成字符串 */
+function decodeChunks(chunks: Uint8Array[]): string {
+  if (chunks.length === 0) return "";
+  const len = chunks.reduce((a, c) => a + c.length, 0);
+  const buf = new Uint8Array(len);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.length;
+  }
+  return new TextDecoder().decode(buf);
+}
 
 describe("CLI：build", () => {
   it(
@@ -178,6 +183,16 @@ describe("CLI：build", () => {
         stderr: "piped",
       });
       const child = cmd.spawn();
+      const stdoutChunks: Uint8Array[] = [];
+      const stderrChunks: Uint8Array[] = [];
+      const stdoutDrain = drainToChunks(
+        child.stdout as ReadableStream<Uint8Array> | null,
+        stdoutChunks,
+      );
+      const stderrDrain = drainToChunks(
+        child.stderr as ReadableStream<Uint8Array> | null,
+        stderrChunks,
+      );
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, rej) => {
         timeoutId = setTimeout(
@@ -193,27 +208,21 @@ describe("CLI：build", () => {
         );
       });
       const statusPromise = Promise.resolve(child.status);
-      const stdoutPromise = readStreamToEnd(
-        child.stdout as ReadableStream<Uint8Array> | null,
-      );
-      const stderrPromise = readStreamToEnd(
-        child.stderr as ReadableStream<Uint8Array> | null,
-      );
 
       let result: {
         code: number | null;
         success: boolean;
-        stdout: Uint8Array;
-        stderr: Uint8Array;
+        stdout: string;
+        stderr: string;
       };
       try {
         result = await Promise.race([
-          Promise.all([statusPromise, stdoutPromise, stderrPromise]).then(
-            ([s, so, se]) => ({
+          Promise.all([statusPromise, stdoutDrain, stderrDrain]).then(
+            ([s]) => ({
               code: s.code,
               success: s.success,
-              stdout: so,
-              stderr: se,
+              stdout: decodeChunks(stdoutChunks),
+              stderr: decodeChunks(stderrChunks),
             }),
           ),
           timeoutPromise,
@@ -223,12 +232,20 @@ describe("CLI：build", () => {
       } catch (e) {
         clearTimeout(timeoutId);
         child.kill(9);
+        const partialStderr = decodeChunks(stderrChunks);
+        const partialStdout = decodeChunks(stdoutChunks);
         const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(msg);
+        throw new Error(
+          partialStderr || partialStdout
+            ? `${msg}\nstderr (partial): ${
+              partialStderr || "(empty)"
+            }\nstdout (partial): ${partialStdout || "(empty)"}`
+            : msg,
+        );
       }
       if (!result.success) {
-        const stderr = new TextDecoder().decode(result.stderr ?? []);
-        const stdout = new TextDecoder().decode(result.stdout ?? []);
+        const stderr = result.stderr ?? "";
+        const stdout = result.stdout ?? "";
         throw new Error(
           `view build failed. stderr: ${stderr || "(empty)"}; stdout: ${
             stdout || "(empty)"
