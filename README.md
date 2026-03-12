@@ -1107,9 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.2** (2026-02-25): init .vscode/settings.json and
-i18n-ally-custom-framework.yml; version -v blank line; e2e afterAll timeout fix.
-See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full details.
+**v1.1.3** (2026-03-12): Dynamic child single-node optimization—no wrapper span
+when getter returns one element; `data-view-dynamic` on the element to avoid
+layout/style impact. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full
+details.
 
 ---
 
