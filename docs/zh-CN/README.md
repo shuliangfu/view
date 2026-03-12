@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.2**（2026-02-25）：init 生成 .vscode/settings.json 与
-i18n-ally-custom-framework.yml；version -v 空行；e2e afterAll
-超时修复。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.3**（2026-03-12）：动态子节点单节点优化——getter 返回单一元素时不再 外包
+span，直接在该元素上设置 `data-view-dynamic`，避免多余 DOM 与样式
+影响。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

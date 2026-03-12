@@ -40,6 +40,7 @@ import {
 } from "./shared.ts";
 import {
   registerDirectiveUnmount,
+  runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
 import { collectVIfGroup, createReconcile, hasAnyKey } from "./reconcile.ts";
@@ -218,6 +219,9 @@ export function normalizeChildren(children: unknown): ChildItem[] {
  * @param parentNamespace - 父级命名空间（如 SVG），用于创建子元素
  * @param ifContext - 可选，v-else / v-else-if 的上下文
  */
+/** 给元素设置 data-view-dynamic，用于无包装 span 时的动态子节点挂载点 */
+const DATA_VIEW_DYNAMIC = "data-view-dynamic";
+
 export function appendDynamicChild(
   parent: Element | DocumentFragment,
   getter: () => unknown,
@@ -225,13 +229,15 @@ export function appendDynamicChild(
   ifContext?: IfContext,
 ): void {
   const doc = (globalThis as { document: Document }).document;
-  const placeholder = createDynamicSpan(doc);
-  parent.appendChild(placeholder);
+  let container: Element = createDynamicSpan(doc);
+  parent.appendChild(container);
 
   /** 上一轮 getter 展开结果，用于与本次做 reconcile，避免整块 replaceChildren 导致 input 等失焦 */
   let lastItems: ChildItem[] = [];
+  /** 当前是否为「单节点模式」：容器即实际节点（如 button），无包装 span */
+  let isSingleMode = false;
 
-  registerPlaceholderEffect(placeholder as Element, () => {
+  registerPlaceholderEffect(container, () => {
     const value = getter();
     let items = normalizeChildren(value);
     // getter 返回单个 Fragment（如 () => ( <> ... </> )）时展开为其 children，使 lastItems/DOM 槽位一致，避免 reconcile 误删节点导致 input 失焦
@@ -245,21 +251,55 @@ export function appendDynamicChild(
       items = normalizeChildren(frag.props?.children ?? frag.children ?? []);
     }
     const ctx = ifContext ?? { lastVIf: true };
+
+    // 单节点优化：getter 返回单个非 Fragment、非 getter 的 VNode 且渲染为单元素时，直接以该元素为容器，不包 span，避免多一层 DOM 影响样式
+    if (
+      items.length === 1 &&
+      !isSignalGetter(items[0]) &&
+      typeof items[0] !== "function" &&
+      !checkFragment(items[0] as VNode)
+    ) {
+      const node = createElement(items[0] as VNode, parentNamespace, ctx);
+      if (node.nodeType === 1) {
+        const el = node as Element;
+        if (container.parentNode === parent) {
+          runDirectiveUnmount(container);
+          parent.replaceChild(el, container);
+        }
+        el.setAttribute(DATA_VIEW_DYNAMIC, "");
+        container = el;
+        isSingleMode = true;
+        lastItems = items;
+        bindDeferredEventListeners(el);
+        return;
+      }
+    }
+
+    // 多节点或 Fragment 或 getter：若当前是单节点模式，先换回 span 再走通用逻辑
+    if (isSingleMode) {
+      const span = createDynamicSpan(doc);
+      runDirectiveUnmount(container);
+      parent.replaceChild(span, container);
+      container = span;
+      isSingleMode = false;
+      lastItems = [];
+    }
+
     if (items.length > 0 && hasAnyKey(items)) {
       rec.reconcileKeyedChildren(
-        placeholder as Element,
+        container,
         lastItems,
         items,
         parentNamespace,
         ctx,
       );
       lastItems = items;
-      bindDeferredEventListeners(placeholder as Element);
+      bindDeferredEventListeners(container);
       return;
     }
     if (items.length === 0) {
-      runDirectiveUnmountOnChildren(placeholder);
-      placeholder.replaceChildren();
+      runDirectiveUnmountOnChildren(container);
+      container.replaceChildren();
       lastItems = [];
       return;
     }
@@ -274,21 +314,21 @@ export function appendDynamicChild(
           frag.appendChild(createElement(v as VNode, parentNamespace, ctx));
         }
       }
-      runDirectiveUnmountOnChildren(placeholder);
-      placeholder.replaceChildren(frag);
+      runDirectiveUnmountOnChildren(container);
+      container.replaceChildren(frag);
       lastItems = items;
-      bindDeferredEventListeners(placeholder as Element);
+      bindDeferredEventListeners(container);
       return;
     }
     rec.reconcileChildren(
-      placeholder as Element,
+      container,
       lastItems,
       items,
       parentNamespace,
       ctx,
     );
     lastItems = items;
-    bindDeferredEventListeners(placeholder as Element);
+    bindDeferredEventListeners(container);
   });
 }
 

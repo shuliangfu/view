@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.1.3] - 2026-03-12
+
+### Fixed
+
+- **Dynamic child (no wrapper span):** When a dynamic child (signal getter or
+  function) returns a single non-Fragment VNode that renders to one DOM element
+  (e.g. a button), the framework now uses that element as the mount point with
+  `data-view-dynamic` instead of wrapping it in an extra `<span>`. This avoids
+  an extra DOM node and prevents the wrapper from affecting layout or styles
+  (e.g. flex/grid). Multi-child or Fragment results still use the inner span as
+  before.
+
+---
+
 ## [1.1.2] - 2026-02-25
 
 ### Added
