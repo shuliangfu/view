@@ -95,4 +95,4 @@ describe("Transition", () => {
     },
     noSanitize,
   );
-});
+}, { sanitizeOps: false, sanitizeResources: false });

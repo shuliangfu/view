@@ -8,6 +8,68 @@ and this project adheres to
 
 ---
 
+## [1.1.4] - 2026-03-14
+
+### Added
+
+- **Unified escape module (`src/escape.ts`)**: Centralized `escapeForText`,
+  `escapeForAttr`, and `escapeForAttrHtml` for stringify, meta, and runtime.
+  Replaces per-file escape logic to ensure consistent XSS-safe output and a
+  single place to maintain.
+- **`getCreateRootDeps(deps)` in runtime-shared**: Returns the createRoot
+  dependency object so runtime, runtime-csr, and runtime-hybrid all pass their
+  implementations through one contract. Reduces duplicate key lists and prevents
+  missing updates when adding or changing deps.
+- **Directive name normalization module (`src/directive-name.ts`)**: Extracted
+  `directiveNameToCamel` and `directiveNameToKebab` into a dedicated module;
+  `directive.ts` imports and re-exports them so the public API is unchanged and
+  only one file needs to be maintained for name conversion rules.
+- **Optimization analysis doc (`docs/OPTIMIZATION_ANALYSIS.md`)**: Documents
+  performance, security, and code-reuse opportunities with completion status
+  (e.g. escape, removeCloak, reconcileKeyedChildren, applyProps,
+  getStaticPropsFingerprint, flushQueue, getCreateRootDeps, directive-name).
+- **Memory leak analysis doc (`docs/MEMORY_LEAK_ANALYSIS.md`)**: Describes
+  lifecycle and cleanup for effects, roots, signals, directives, caches, and
+  router; documents the store/proxy subscriber fix and low-risk items
+  (getterWarnedKeys, router.stop(), refs).
+
+### Changed
+
+- **Performance – removeCloak**: Handle container’s own `data-view-cloak` first,
+  then iterate over `querySelectorAll("[data-view-cloak]")` result with a
+  for-loop instead of `Array.from(…)` and `unshift(container)` to avoid extra
+  array allocation.
+- **Performance – reconcileKeyedChildren**: Build `keyToWrapper` by iterating
+  `container.children` with an index-based for-loop instead of
+  `Array.from(container.children)` to avoid one array allocation per reconcile.
+- **Performance – applyProps**: Replaced `Object.entries(props)` and
+  style-object `Object.entries(value)` with `for-in` plus
+  `Object.prototype.hasOwnProperty.call` so the hot path does not allocate
+  iterator or entry arrays.
+- **Performance – getStaticPropsFingerprint**: Use `for-in` to collect entries;
+  replace `JSON.stringify(entries)` with a deterministic key built from sorted
+  entries (`k1\0v1\0…`) to avoid large string allocation; style branch uses
+  for-in and single-string concatenation instead of
+  `Object.entries(…).map(…).join`.
+- **Performance – flushQueue**: Use an index-based for-loop over
+  `state.queueCopy` instead of for-of to avoid iterator allocation; same
+  semantics, slightly friendlier for some engines.
+- **generateHydrationScript**: Nonce and scriptSrc now use `escapeForAttr` from
+  the shared escape module for consistent attribute escaping.
+
+### Fixed
+
+- **Memory leak – store and proxy subscribers**: When an effect that read from a
+  store (or from `createNestedProxy` / reactive state) was disposed, it was
+  never removed from the store’s or proxy’s `subscribers` Set, so disposed
+  effects were retained and the Sets could grow. Both `store.ts`
+  (createRootStoreProxy get trap) and `proxy.ts` (createNestedProxy get trap)
+  now call `onCleanup(() => subscribers.delete(effect))` when adding the current
+  effect to subscribers, so cleanup or re-run of the effect removes it from the
+  Set, matching signal subscription behavior.
+
+---
+
 ## [1.1.3] - 2026-03-12
 
 ### Fixed

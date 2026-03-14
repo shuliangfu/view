@@ -198,7 +198,9 @@ export function createReconcile(deps: ReconcileDeps): {
   ): void {
     const doc = (globalThis as { document: Document }).document;
     const keyToWrapper = new Map<string, Element>();
-    for (const child of Array.from(container.children)) {
+    const children = container.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
       const key = (child as Element).getAttribute?.("data-key");
       if (key != null) keyToWrapper.set(key, child as Element);
     }

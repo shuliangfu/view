@@ -21,7 +21,7 @@
  */
 
 import { DEFAULT_STORE_KEY, KEY_STORE_REGISTRY } from "./constants.ts";
-import { createMemo } from "./effect.ts";
+import { createMemo, onCleanup } from "./effect.ts";
 import { getGlobalOrDefault } from "./globals.ts";
 import { createNestedProxy } from "./proxy.ts";
 import { schedule } from "./scheduler.ts";
@@ -230,7 +230,10 @@ function createRootStoreProxy<T extends Record<string, unknown>>(
         return (t as unknown as Record<symbol, T>)[STORE_INTERNAL];
       }
       const effect = getCurrentEffect();
-      if (effect) subscribers.add(effect);
+      if (effect) {
+        subscribers.add(effect);
+        onCleanup(() => subscribers.delete(effect));
+      }
       const state = (t as unknown as Record<symbol, T>)[STORE_INTERNAL];
       const value = state[key as keyof T];
       if (value !== null && typeof value === "object") {

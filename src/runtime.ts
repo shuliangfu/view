@@ -22,12 +22,14 @@ import {
 import { bindDeferredEventListeners } from "./dom/props.ts";
 import type { SSROptions } from "./dom.ts";
 import { KEY_VIEW_DATA, KEY_VIEW_SSR } from "./constants.ts";
+import { escapeForAttr } from "./escape.ts";
 import { setGlobal } from "./globals.ts";
 import {
   createCreateRoot,
   createHydrateRoot,
   createReactiveRootWith,
   createRender,
+  getCreateRootDeps,
   NOOP_ROOT,
   resolveMountContainer,
 } from "./runtime-shared.ts";
@@ -37,18 +39,20 @@ import type { MountOptions, Root, VNode } from "./types.ts";
 
 /** 创建根并挂载（实现来自 runtime-shared，依赖从 dom/effect 注入） */
 export const createRoot: (fn: () => VNode, container: Element) => Root =
-  createCreateRoot({
-    createEffect,
-    createRunDisposersCollector,
-    setCurrentScope,
-    isDOMEnvironment,
-    createRenderTriggerSignal: () => createSignal(0),
-    expandVNode,
-    createNodeFromExpanded,
-    patchRoot,
-    runDirectiveUnmount,
-    bindDeferredEventListeners,
-  });
+  createCreateRoot(
+    getCreateRootDeps({
+      createEffect,
+      createRunDisposersCollector,
+      setCurrentScope,
+      isDOMEnvironment,
+      createRenderTriggerSignal: () => createSignal(0),
+      expandVNode,
+      createNodeFromExpanded,
+      patchRoot,
+      runDirectiveUnmount,
+      bindDeferredEventListeners,
+    }),
+  );
 
 /** 便捷方法：创建根并挂载（等同于 createRoot(fn, container)），由 runtime-shared.createRender 统一实现 */
 export const render: (fn: () => VNode, container: Element) => Root =
@@ -194,9 +198,7 @@ export function generateHydrationScript(
     nonce,
   } = options;
   const parts: string[] = [];
-  const nonceAttr = nonce
-    ? ` nonce="${String(nonce).replace(/"/g, "&quot;")}"`
-    : "";
+  const nonceAttr = nonce ? ` nonce="${escapeForAttr(String(nonce))}"` : "";
   if (data !== undefined) {
     const payload = JSON.stringify(data);
     const scriptBody = `window.${dataKey}=JSON.parse(${
@@ -208,7 +210,7 @@ export function generateHydrationScript(
   if (scriptSrc) {
     parts.push(
       `<script type="module" src="${
-        String(scriptSrc).replace(/"/g, "&quot;")
+        escapeForAttr(String(scriptSrc))
       }"${nonceAttr}></script>`,
     );
   }

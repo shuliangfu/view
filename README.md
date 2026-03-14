@@ -1107,10 +1107,15 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.3** (2026-03-12): Dynamic child single-node optimization—no wrapper span
-when getter returns one element; `data-view-dynamic` on the element to avoid
-layout/style impact. See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full
-details.
+**v1.1.4** (2026-03-14): **Added** unified escape module (`src/escape.ts`),
+`getCreateRootDeps()` in runtime-shared, directive-name module
+(`src/directive-name.ts`), and docs (OPTIMIZATION_ANALYSIS.md,
+MEMORY_LEAK_ANALYSIS.md). **Changed** performance:
+removeCloak/reconcileKeyedChildren (no Array.from),
+applyProps/getStaticPropsFingerprint (for-in, deterministic key), flushQueue
+(indexed for-loop), generateHydrationScript (escapeForAttr). **Fixed** memory
+leak: store and proxy subscribers now removed on effect cleanup via `onCleanup`.
+Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

@@ -1060,9 +1060,14 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.3**（2026-03-12）：动态子节点单节点优化——getter 返回单一元素时不再 外包
-span，直接在该元素上设置 `data-view-dynamic`，避免多余 DOM 与样式
-影响。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.4**（2026-03-14）：**新增** 统一 escape
+模块（`src/escape.ts`）、runtime-shared 中
+`getCreateRootDeps()`、指令名模块（`src/directive-name.ts`）及优化/内存泄漏分析文档。**变更**
+性能：removeCloak/reconcileKeyedChildren 去掉
+Array.from，applyProps/getStaticPropsFingerprint 使用 for-in
+与确定性键，flushQueue 使用索引 for 循环，generateHydrationScript 使用
+escapeForAttr。**修复** 内存泄漏：store 与 proxy 的订阅者在 effect 清理时通过
+onCleanup 移除。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

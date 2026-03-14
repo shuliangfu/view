@@ -7,6 +7,7 @@
  * - `createNestedProxy(target, subscribers, proxyCache)`：创建嵌套 Proxy，读写与 createEffect 联动
  */
 
+import { onCleanup } from "./effect.ts";
 import { schedule } from "./scheduler.ts";
 import { getCurrentEffect } from "./signal.ts";
 
@@ -20,7 +21,10 @@ export function createNestedProxy<T extends object>(
   const proxy = new Proxy(target, {
     get(t, key: string) {
       const effect = getCurrentEffect();
-      if (effect) subscribers.add(effect);
+      if (effect) {
+        subscribers.add(effect);
+        onCleanup(() => subscribers.delete(effect));
+      }
       const value = Reflect.get(t, key);
       if (value !== null && typeof value === "object") {
         return createNestedProxy(
