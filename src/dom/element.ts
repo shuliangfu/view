@@ -30,6 +30,7 @@ import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import { isDOMEnvironment } from "../types.ts";
 import { applyProps, bindDeferredEventListeners } from "./props.ts";
+import { collectVIfGroup, createReconcile, hasAnyKey } from "./reconcile.ts";
 import type { IfContext } from "./shared.ts";
 import {
   createDynamicSpan,
@@ -43,7 +44,6 @@ import {
   runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
-import { collectVIfGroup, createReconcile, hasAnyKey } from "./reconcile.ts";
 
 /** 在 placeholder 上创建 effect 并注册卸载时 dispose，供 v-if/v-for/动态子节点等多处复用 */
 function registerPlaceholderEffect(
@@ -594,6 +594,28 @@ export function createElement(
     const isReactiveVIf = typeof vIfRaw === "function" ||
       isSignalGetter(vIfRaw);
     if (isReactiveVIf) {
+      const vnodeWithoutVIf = {
+        ...vnode,
+        props: { ...props, vIf: undefined, "v-if": undefined },
+      };
+      const innerNode = createElement(
+        vnodeWithoutVIf,
+        parentNamespace,
+        ifContext,
+      );
+      // 单元素优化：直接以该元素为根，用 effect 切换 display，避免多一层 span 包裹
+      if (innerNode.nodeType === 1) {
+        const el = innerNode as HTMLElement;
+        registerPlaceholderEffect(el, () => {
+          const show = getVIfValue(props);
+          el.style.display = show ? "" : "none";
+          if (ifContext) ifContext.lastVIf = show;
+        });
+        const show = getVIfValue(props);
+        el.style.display = show ? "" : "none";
+        if (ifContext) ifContext.lastVIf = show;
+        return el;
+      }
       const placeholder = doc.createElement("span");
       placeholder.setAttribute(V_IF_ATTR, "");
       registerPlaceholderContent(
@@ -602,10 +624,7 @@ export function createElement(
           const show = getVIfValue(props);
           if (show) {
             const next = createElement(
-              {
-                ...vnode,
-                props: { ...props, vIf: undefined, "v-if": undefined },
-              },
+              vnodeWithoutVIf,
               parentNamespace,
               ifContext,
             );
