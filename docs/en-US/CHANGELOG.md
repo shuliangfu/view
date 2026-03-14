@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.1.5] - 2026-03-14
+
+### Changed
+
+- **vIf single-element optimization**: When reactive `vIf` content (getter or
+  signal) renders to a single DOM element (e.g. a root `<div>`), the framework
+  now uses that element as the root and toggles visibility via `style.display`
+  in an effect instead of wrapping it in a `<span data-view-v-if>`. This removes
+  the extra wrapper span for modals, toasts, or any component that returns a
+  single element with `vIf`. Multi-root or non-element content still uses the
+  span placeholder.
+
+---
+
 ## [1.1.4] - 2026-03-14
 
 ### Added

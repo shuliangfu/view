@@ -1060,14 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.4**（2026-03-14）：**新增** 统一 escape
-模块（`src/escape.ts`）、runtime-shared 中
-`getCreateRootDeps()`、指令名模块（`src/directive-name.ts`）及优化/内存泄漏分析文档。**变更**
-性能：removeCloak/reconcileKeyedChildren 去掉
-Array.from，applyProps/getStaticPropsFingerprint 使用 for-in
-与确定性键，flushQueue 使用索引 for 循环，generateHydrationScript 使用
-escapeForAttr。**修复** 内存泄漏：store 与 proxy 的订阅者在 effect 清理时通过
-onCleanup 移除。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.5**（2026-03-14）：**变更** vIf 单元素优化：当响应式 vIf 内容渲染为单个
+DOM 元素时，直接以该元素为根并用 effect 切换 `style.display`，不再外包
+span，去掉弹窗/Toast 等多余一层。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -1086,6 +1081,35 @@ onCleanup 移除。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
+## Effect 作用域与渲染 thunk
+
+根在构建整棵树时（例如 `createRoot(() => <App />, container)` 或
+`createReactiveRoot(container, getState, buildTree)`），**本次运行过程中读到的所有
+signal 都会由根 effect 追踪**。因此若子组件直接返回带有响应式指令的 JSX（例如
+`vIf={() => isOpen()}`），**根**会订阅 `isOpen`。之后该 signal
+变化（例如弹窗打开）时，根 effect 会重跑、整棵树重建，**父组件里的
+`createEffect` 会再次执行**，可能造成副作用重复（例如布局逻辑执行两次）。
+
+**解决办法：渲染 thunk。** 当组件**返回一个函数**，由该函数再返回 VNode（例如
+`return () => ( <div vIf={() => isOpen()}>...</div> )`）时，该槽位会在**独立
+effect** 中渲染（见 CHANGELOG [1.0.4]）。此时 signal 只在这个内部 effect
+里被读取，**只有该 effect**
+会订阅，根不会订阅。弹窗打开时只会重跑弹窗子树，根和布局等 effect 不会重跑。
+
+**何时使用：**
+
+- **弹窗、Toast、抽屉**：建议使用
+  `return () => ( ... )`，这样打开/关闭不会触发根或父级 effect 重跑。
+- **重量级条件 UI**：由组件内部 signal
+  控制显隐或内容、且挂在公共根（如布局）下的组件，返回 thunk
+  可避免根订阅，减少整树重跑。
+
+**提醒**：指令请使用 **getter**（例如 `vIf={() => isOpen()}`，不要用
+`vIf={isOpen()}`）。使用 getter 时，订阅会挂在执行该指令的 effect
+上；使用普通值会让根订阅并在更新时重跑整棵树（见 CHANGELOG [1.0.4]）。
+
+---
+
 ## 📝 注意事项
 
 - **无虚拟 DOM**：更新由 signal/store/reactive 的订阅驱动；根以细粒度 patch
@@ -1094,6 +1118,10 @@ onCleanup 移除。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
   `{count}`、`value={() => name()}`、`vShow={() => visible()}`）以便引擎追踪并更新。
 - **JSX 配置**：在 deno.json 中设置 `compilerOptions.jsx: "react-jsx"` 与
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"`。
+- **Effect 作用域**：对使用本地 signal 的弹窗/Toast/条件块（如
+  `vIf={() => isOpen()}`），建议组件**返回 thunk**（`return () => ( ... )`），
+  这样根不会订阅、父级 effect 不会重跑；见
+  [Effect 作用域与渲染 thunk](#effect-作用域与渲染-thunk)。
 - **类型安全**：完整 TypeScript 支持；导出 VNode、Root 及 effect/signal
   相关类型。
 

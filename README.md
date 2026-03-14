@@ -1107,15 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.4** (2026-03-14): **Added** unified escape module (`src/escape.ts`),
-`getCreateRootDeps()` in runtime-shared, directive-name module
-(`src/directive-name.ts`), and docs (OPTIMIZATION_ANALYSIS.md,
-MEMORY_LEAK_ANALYSIS.md). **Changed** performance:
-removeCloak/reconcileKeyedChildren (no Array.from),
-applyProps/getStaticPropsFingerprint (for-in, deterministic key), flushQueue
-(indexed for-loop), generateHydrationScript (escapeForAttr). **Fixed** memory
-leak: store and proxy subscribers now removed on effect cleanup via `onCleanup`.
-Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.5** (2026-03-14): **Changed** vIf single-element optimization: when
+reactive vIf content renders to one DOM element, use that element as root and
+toggle `style.display` in an effect instead of wrapping in a span, removing the
+extra wrapper for modals/toasts. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -1134,6 +1130,39 @@ See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
 ---
 
+## Effect scope and render thunk
+
+When the root builds the tree (e.g. `createRoot(() => <App />, container)` or
+`createReactiveRoot(container, getState, buildTree)`), **every signal read
+during that single run is tracked by the root effect**. So if a child component
+returns JSX that contains a reactive directive like `vIf={() => isOpen()}`, the
+**root** subscribes to `isOpen`. When that signal later changes (e.g. the modal
+opens), the root effect re-runs, the whole tree is re-built, and **parent
+components’ `createEffect` callbacks run again** — which can cause duplicate
+side effects (e.g. layout logic running twice).
+
+**Solution: render thunk.** When a component **returns a function** that returns
+the VNode (e.g. `return () => ( <div vIf={() => isOpen()}>...</div> )`), that
+slot is rendered in its **own effect** (see CHANGELOG [1.0.4]). The signal is
+then read only inside that inner effect, so **only that effect** subscribes; the
+root does not. When the modal opens, only the modal’s subtree re-runs, and the
+root (and e.g. layout effects) do not.
+
+**When to use:**
+
+- **Modals, toasts, drawers**: Prefer `return () => ( ... )` so opening/closing
+  does not re-run the root or parent effects.
+- **Heavy conditional UI**: Any component whose visibility or content is driven
+  by a local signal and that sits under a shared root (e.g. layout) benefits
+  from returning a thunk to avoid the root subscribing.
+
+**Reminder:** Use **getters** for directives (e.g. `vIf={() => isOpen()}`
+instead of `vIf={isOpen()}`). With a getter, the subscription is attached to the
+effect that evaluates the directive; with a plain value the root can subscribe
+and re-run the whole tree on update (see CHANGELOG [1.0.4]).
+
+---
+
 ## 📝 Notes
 
 - **No virtual DOM**: Updates are driven by signal/store/reactive subscriptions;
@@ -1142,6 +1171,11 @@ See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
   `vShow={() => visible()}`) so the engine can track and update.
 - **JSX config**: `compilerOptions.jsx: "react-jsx"` and
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
+- **Effect scope**: For modals/toasts/conditionals that use a local signal (e.g.
+  `vIf={() => isOpen()}`), have the component **return a thunk**
+  (`return () => ( ... )`) so the root does not subscribe and parent effects do
+  not re-run; see
+  [Effect scope and render thunk](#effect-scope-and-render-thunk).
 - **Type safety**: Full TypeScript support; VNode, Root, and effect/signal types
   exported.
 
