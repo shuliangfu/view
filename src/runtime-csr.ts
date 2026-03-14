@@ -20,6 +20,7 @@ import {
   createCreateRoot,
   createReactiveRootWith,
   createRender,
+  getCreateRootDeps,
   NOOP_ROOT,
   resolveMountContainer,
 } from "./runtime-shared.ts";
@@ -29,18 +30,20 @@ import type { MountOptions, Root, VNode } from "./types.ts";
 
 /** 创建根并挂载（实现来自 runtime-shared，依赖从 effect + dom 注入） */
 export const createRoot: (fn: () => VNode, container: Element) => Root =
-  createCreateRoot({
-    createEffect,
-    createRunDisposersCollector,
-    setCurrentScope,
-    isDOMEnvironment,
-    createRenderTriggerSignal: () => createSignal(0),
-    expandVNode,
-    createNodeFromExpanded,
-    patchRoot,
-    runDirectiveUnmount,
-    bindDeferredEventListeners,
-  });
+  createCreateRoot(
+    getCreateRootDeps({
+      createEffect,
+      createRunDisposersCollector,
+      setCurrentScope,
+      isDOMEnvironment,
+      createRenderTriggerSignal: () => createSignal(0),
+      expandVNode,
+      createNodeFromExpanded,
+      patchRoot,
+      runDirectiveUnmount,
+      bindDeferredEventListeners,
+    }),
+  );
 
 /** 便捷方法：创建根并挂载，由 runtime-shared.createRender 统一实现 */
 export const render: (fn: () => VNode, container: Element) => Root =

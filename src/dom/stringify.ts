@@ -8,6 +8,7 @@
  * - `createElementToStream(vnode, options?)`：将 VNode 转为 HTML 流（生成器）
  */
 
+import { escapeForAttr, escapeForText } from "../escape.ts";
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";
@@ -49,21 +50,6 @@ const voidElements = new Set([
   "wbr",
 ]);
 
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function escapeAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
 /** SSR 专用：将 children 规范化为 VNode 数组，getter 会调用一次取当前值；单次遍历收集减少 flatMap 中间数组 */
 function normalizeChildrenForSSR(children: unknown): VNode[] {
   if (isEmptyChild(children)) return [];
@@ -90,13 +76,29 @@ const STATIC_ATTR_CACHE_MAX = 200;
 const staticAttrCache = new Map<string, string>();
 
 /**
+ * 将已排序的 [key, stringValue][] 转为确定性缓存键（k1\0v1\0k2\0v2），
+ * 替代 JSON.stringify(entries)，避免嵌套转义与更大串分配。
+ */
+function fingerprintKeyFromEntries(entries: [string, string][]): string {
+  if (entries.length === 0) return "";
+  let s = entries[0][0] + "\0" + entries[0][1];
+  for (let i = 1; i < entries.length; i++) {
+    s += "\0" + entries[i][0] + "\0" + entries[i][1];
+  }
+  return s;
+}
+
+/**
  * 若 props 为纯静态（无 getter、无指令输出），返回用于缓存的指纹；否则返回 null 表示不缓存。
+ * 使用 for-in 与确定性键（替代 JSON.stringify）减少分配。
  */
 function getStaticPropsFingerprint(
   props: Record<string, unknown>,
 ): string | null {
   const entries: [string, string][] = [];
-  for (const [key, value] of Object.entries(props)) {
+  for (const key in props) {
+    if (!Object.prototype.hasOwnProperty.call(props, key)) continue;
+    const value = props[key];
     if (
       key === "children" || key === "key" || key === "ref" ||
       key === "dangerouslySetInnerHTML"
@@ -115,20 +117,24 @@ function getStaticPropsFingerprint(
     }
     let str: string;
     if (key === "style" && typeof value === "object" && value !== null) {
-      str = Object.entries(value as Record<string, unknown>)
-        .map(([k, val]) =>
-          `${k.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "")}: ${
-            val == null ? "" : String(val)
-          }`
-        )
-        .join("; ");
+      const styleObj = value as Record<string, unknown>;
+      let styleStr = "";
+      for (const k in styleObj) {
+        if (!Object.prototype.hasOwnProperty.call(styleObj, k)) continue;
+        const val = styleObj[k];
+        const part = `${
+          k.replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "")
+        }: ${val == null ? "" : String(val)}`;
+        styleStr = styleStr ? styleStr + "; " + part : part;
+      }
+      str = styleStr;
     } else {
       str = String(value);
     }
     entries.push([key, str]);
   }
   entries.sort((a, b) => a[0].localeCompare(b[0]));
-  return JSON.stringify(entries);
+  return fingerprintKeyFromEntries(entries);
 }
 
 /**
@@ -157,7 +163,7 @@ function stringifyAttributes(props: Record<string, unknown>): string {
     if (typeof v === "function") continue;
     if (v == null || v === false) continue;
     if (v === true) {
-      parts.push(escapeAttr(key));
+      parts.push(escapeForAttr(key));
       continue;
     }
     let str: string;
@@ -173,11 +179,11 @@ function stringifyAttributes(props: Record<string, unknown>): string {
       str = String(v);
     }
     if (key === "className") {
-      parts.push(`class="${escapeAttr(str)}"`);
+      parts.push(`class="${escapeForAttr(str)}"`);
     } else if (key === "htmlFor") {
-      parts.push(`for="${escapeAttr(str)}"`);
+      parts.push(`for="${escapeForAttr(str)}"`);
     } else {
-      parts.push(`${escapeAttr(key)}="${escapeAttr(str)}"`);
+      parts.push(`${escapeForAttr(key)}="${escapeForAttr(str)}"`);
     }
   }
   const result = parts.length ? " " + parts.join(" ") : "";
@@ -216,7 +222,7 @@ function* walkElementChildrenStream(
       const v = item as VNode;
       if (v.key != null && v.key !== undefined) {
         const key = String(v.key);
-        yield `<span data-view-keyed data-key="${escapeAttr(key)}">`;
+        yield `<span data-view-keyed data-key="${escapeForAttr(key)}">`;
         yield* walkVNodeForSSR(v, ctx, options);
         yield "</span>";
       } else {
@@ -281,7 +287,7 @@ function* walkVNodeForSSR(
   const tag = vnode.type as string;
   if (typeof tag !== "string") return;
   if (tag === "#text") {
-    yield escapeText(
+    yield escapeForText(
       String((vnode.props as { nodeValue?: unknown }).nodeValue ?? ""),
     );
     return;
@@ -340,7 +346,7 @@ function* walkVNodeForSSR(
     if (!getVShowValue(props)) attrs += ' style="display:none"';
   }
   if (vnode.key != null && vnode.key !== undefined) {
-    attrs += ` data-key="${escapeAttr(String(vnode.key))}"`;
+    attrs += ` data-key="${escapeForAttr(String(vnode.key))}"`;
   }
   const ctx = ifContext ?? { lastVIf: true };
   yield `<${tag}${attrs}>`;

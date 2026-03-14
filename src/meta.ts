@@ -8,15 +8,7 @@
  * - `applyMetaToHead(metadata, titleSuffix?, fallbackTitle?)`：将 metadata 同步到 document.head（浏览器用）
  */
 
-/** 对字符串做 HTML 转义，避免注入 */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeForAttrHtml } from "./escape.ts";
 
 /**
  * 根据 metadata 生成要插入 <head> 的 HTML 片段（供服务端 dev/build 注入首屏）
@@ -35,7 +27,7 @@ export function getMetaHeadFragment(
     "";
   const parts: string[] = [];
   if (title) {
-    parts.push(`<title>${escapeHtml(title + titleSuffix)}</title>`);
+    parts.push(`<title>${escapeForAttrHtml(title + titleSuffix)}</title>`);
   }
   const push = (attr: "name" | "property", key: string, value: unknown) => {
     const s = value != null && typeof value !== "string"
@@ -43,7 +35,9 @@ export function getMetaHeadFragment(
       : value;
     if (typeof s !== "string" || !s.trim()) return;
     parts.push(
-      `<meta ${attr}="${escapeHtml(key)}" content="${escapeHtml(s)}">`,
+      `<meta ${attr}="${escapeForAttrHtml(key)}" content="${
+        escapeForAttrHtml(s)
+      }">`,
     );
   };
   // 遍历 metadata 下除 title、og 外的所有字段，支持用户自定义 name 类 meta

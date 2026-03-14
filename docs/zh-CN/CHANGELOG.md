@@ -7,6 +7,56 @@
 
 ---
 
+## [1.1.4] - 2026-03-14
+
+### 新增
+
+- **统一 escape 模块（`src/escape.ts`）**：集中提供
+  `escapeForText`、`escapeForAttr`、`escapeForAttrHtml`，供
+  stringify、meta、runtime 使用，替代原先各文件内联转义，保证输出一致且防
+  XSS，仅需维护一处。
+- **runtime-shared 中 `getCreateRootDeps(deps)`**：返回 createRoot
+  所需依赖对象，runtime、runtime-csr、runtime-hybrid
+  均通过该契约传入各自实现，减少重复键列表并在新增/修改依赖时避免漏改。
+- **指令名规范化模块（`src/directive-name.ts`）**：将 `directiveNameToCamel` 与
+  `directiveNameToKebab` 抽离到独立模块；`directive.ts` 引用并 re-export，对外
+  API 不变，仅在一处维护名称转换规则。
+- **优化分析文档（`docs/OPTIMIZATION_ANALYSIS.md`）**：记录性能、安全与代码复用方面的可优化点及完成状态（如
+  escape、removeCloak、reconcileKeyedChildren、applyProps、getStaticPropsFingerprint、flushQueue、getCreateRootDeps、directive-name）。
+- **内存泄漏分析文档（`docs/MEMORY_LEAK_ANALYSIS.md`）**：说明
+  effect、根卸载、signal、指令、缓存、router 的生命周期与清理；记录 store/proxy
+  订阅者修复及低风险项（getterWarnedKeys、router.stop()、ref）。
+
+### 变更
+
+- **性能 – removeCloak**：先处理 container 自身的 `data-view-cloak`，再对
+  `querySelectorAll("[data-view-cloak]")` 结果用 for 循环遍历，不再使用
+  `Array.from(…)` 与 `unshift(container)`，减少一次数组分配。
+- **性能 – reconcileKeyedChildren**：通过 for 索引遍历 `container.children` 构建
+  `keyToWrapper`，不再使用 `Array.from(container.children)`，减少一次数组分配。
+- **性能 – applyProps**：用 for-in 配合 hasOwn 替代 `Object.entries(props)` 及
+  style 对象的 `Object.entries(value)`，热点路径不再分配迭代器与条目数组。
+- **性能 – getStaticPropsFingerprint**：用 for-in
+  收集条目；用基于排序后条目的确定性键（`k1\0v1\0…`）替代
+  `JSON.stringify(entries)`，避免大字符串分配；style 分支改为 for-in
+  与单串拼接。
+- **性能 – flushQueue**：对 `state.queueCopy` 使用索引 for 循环替代
+  for-of，避免迭代器分配，语义不变，对部分引擎更友好。
+- **generateHydrationScript**：nonce 与 scriptSrc 改为使用统一 escape 模块的
+  `escapeForAttr`，保证属性转义一致。
+
+### 修复
+
+- **内存泄漏 – store 与 proxy 订阅者**：当曾读取 store（或 createNestedProxy /
+  响应式状态）的 effect 被 dispose 时，未从 store 或 proxy 的 `subscribers` Set
+  中移除，导致已销毁的 effect 被长期引用、Set 可能持续增长。现已在
+  `store.ts`（createRootStoreProxy get trap）与 `proxy.ts`（createNestedProxy
+  get trap）中，在将当前 effect 加入 subscribers 时调用
+  `onCleanup(() => subscribers.delete(effect))`，effect 清理或重跑时会从 Set
+  中移除，与 signal 订阅行为一致。
+
+---
+
 ## [1.1.3] - 2026-03-12
 
 ### 修复

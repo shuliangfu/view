@@ -50,11 +50,16 @@ export function resolveMountContainer(
 /**
  * 移除容器及其子树上的 data-view-cloak 属性，配合 CSS [data-view-cloak]{display:none} 减少 FOUC。
  * createRoot 首次 append 后、hydrate 激活后均由运行时调用，业务侧无需手动移除。
+ * 先处理容器自身再遍历子节点，避免 Array.from 分配中间数组。
  */
 export function removeCloak(container: Element): void {
-  const list = Array.from(container.querySelectorAll("[data-view-cloak]"));
-  if (container.hasAttribute("data-view-cloak")) list.unshift(container);
-  for (const el of list) el.removeAttribute("data-view-cloak");
+  if (container.hasAttribute("data-view-cloak")) {
+    container.removeAttribute("data-view-cloak");
+  }
+  const list = container.querySelectorAll("[data-view-cloak]");
+  for (let i = 0; i < list.length; i++) {
+    list[i].removeAttribute("data-view-cloak");
+  }
 }
 
 /**
@@ -100,6 +105,14 @@ export type CreateRootDeps = {
   /** 节点入文档后对子树补绑事件，保证「先入文档再绑事件」 */
   bindDeferredEventListeners: (root: Node) => void;
 };
+
+/**
+ * 返回 createRoot 所需依赖对象，供 runtime / runtime-csr / runtime-hybrid 传入各自实现后复用。
+ * 集中「公共 deps 键」契约，新增或修改依赖时只需改 CreateRootDeps 类型，各入口需补全实现。
+ */
+export function getCreateRootDeps(deps: CreateRootDeps): CreateRootDeps {
+  return deps;
+}
 
 /** hydrate 依赖：在 CreateRootDeps 基础上增加 hydrateFromExpanded、runDirectiveUnmountOnChildren（先 expand 再 hydrate，组件只跑一次） */
 export type HydrateRootDeps = CreateRootDeps & {

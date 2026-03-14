@@ -75,7 +75,10 @@ export function applyProps(
     el.setAttribute("data-view-cloak", "");
   }
 
-  for (const [key, value] of Object.entries(props)) {
+  // 使用 for-in + hasOwn 替代 Object.entries，避免分配迭代器与 [key,value] 条目数组（热点路径）
+  for (const key in props) {
+    if (!Object.prototype.hasOwnProperty.call(props, key)) continue;
+    const value = props[key];
     if (key === "children" || key === "key") continue;
     if (isDirectiveProp(key)) continue;
 
@@ -201,7 +204,10 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
     if (typeof value === "string") {
       if (style.cssText !== value) style.cssText = value;
     } else if (typeof value === "object") {
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const styleObj = value as Record<string, unknown>;
+      for (const k in styleObj) {
+        if (!Object.prototype.hasOwnProperty.call(styleObj, k)) continue;
+        const v = styleObj[k];
         const str = v == null ? "" : String(v);
         const cur = (style as unknown as Record<string, string>)[k];
         if (cur !== str) (style as unknown as Record<string, string>)[k] = str;

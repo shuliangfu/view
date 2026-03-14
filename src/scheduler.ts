@@ -27,6 +27,7 @@ function getGlobalSchedulerState(): SchedulerState {
 
 /**
  * 清空当前队列并依次执行所有任务（在微任务中调用）
+ * 使用索引 for 循环替代 for-of，避免迭代器分配，对部分引擎更友好。
  */
 function flushQueue(): void {
   const state = getGlobalSchedulerState();
@@ -34,7 +35,8 @@ function flushQueue(): void {
   state.queueCopy.length = 0;
   state.queueCopy.push(...state.queue);
   state.queue.clear();
-  for (const run of state.queueCopy) run();
+  const copy = state.queueCopy;
+  for (let i = 0; i < copy.length; i++) copy[i]();
 }
 
 /**
