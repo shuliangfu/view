@@ -265,6 +265,8 @@ export function appendDynamicChild(
         if (container.parentNode === parent) {
           runDirectiveUnmount(container);
           parent.replaceChild(el, container);
+        } else {
+          parent.appendChild(el);
         }
         el.setAttribute(DATA_VIEW_DYNAMIC, "");
         container = el;
@@ -275,12 +277,16 @@ export function appendDynamicChild(
       }
     }
 
-    // 多节点或 Fragment 或 getter：若当前是单节点模式，先换回 span 再走通用逻辑
+    // 多节点或 Fragment 或 getter：若当前是单节点模式，先换回包装再走通用逻辑
     if (isSingleMode) {
-      const span = createDynamicContainer(doc);
+      const wrap = createDynamicContainer(doc);
       runDirectiveUnmount(container);
-      parent.replaceChild(span, container);
-      container = span;
+      if (container.parentNode === parent) {
+        parent.replaceChild(wrap, container);
+      } else {
+        parent.appendChild(wrap);
+      }
+      container = wrap;
       isSingleMode = false;
       lastItems = [];
     }

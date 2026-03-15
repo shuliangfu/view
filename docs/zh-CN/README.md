@@ -1060,10 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.7**（2026-03-15）：**变更** SSR keyed/dynamic 去包装：keyed 在首元素打
-`data-key`；动态块在首元素打 `data-view-dynamic` 与 index（纯文本时用 span
-包裹）。**变更** 动态占位改为无样式 div（`createDynamicContainer`），移除
-`createDynamicSpan`。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.8**（2026-03-15）：**修复** appendDynamicChild replaceChild
+NotFoundError：先判断 `container.parentNode === parent`，若 container 已被
+移出则改为 appendChild。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
