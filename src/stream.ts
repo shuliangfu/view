@@ -19,25 +19,67 @@ import type { SSROptions } from "./dom.ts";
 import type { VNode } from "./types.ts";
 import { setGlobal } from "./globals.ts";
 
-const SSR_DOCUMENT_MESSAGE =
-  "document is not available during server-side rendering. Do not use document or window in components rendered with renderToString() or renderToStream(). Use conditional checks (e.g. if (typeof document !== 'undefined')) or move the logic to client-only code (e.g. createEffect, onMount).";
-
-function createSSRDocumentGuard(): Document {
+/**
+ * SSR 时替换 globalThis.document 的占位对象（与 runtime.ts 一致）：常用属性和方法写全，避免业务代码访问时报错。
+ */
+function createSSRDocumentShim(): Document {
+  const style = { overflow: "" };
+  const body = { style };
+  const docElement = { style: {} };
+  const safeStub = new Proxy({} as Record<string, unknown>, {
+    get(_, key: string) {
+      if (key === "style") return { overflow: "" };
+      return safeStub;
+    },
+  });
+  const noop = () => safeStub;
+  const returnNull = () => null;
+  const returnEmptyList = () => [];
   return new Proxy({} as Document, {
-    get() {
-      throw new Error(SSR_DOCUMENT_MESSAGE);
+    get(_, key: string) {
+      switch (key) {
+        case "body":
+          return body;
+        case "documentElement":
+          return docElement;
+        case "head":
+          return safeStub;
+        case "createElement":
+        case "createTextNode":
+        case "createDocumentFragment":
+          return noop;
+        case "getElementById":
+        case "querySelector":
+          return returnNull;
+        case "querySelectorAll":
+        case "getElementsByClassName":
+        case "getElementsByTagName":
+        case "getElementsByTagNameNS":
+          return returnEmptyList;
+        case "appendChild":
+        case "removeChild":
+        case "insertBefore":
+        case "replaceChild":
+          return noop;
+        case "documentURI":
+        case "URL":
+        case "title":
+        case "characterSet":
+          return "";
+        case "defaultView":
+          return null;
+        default:
+          return safeStub;
+      }
     },
   });
 }
 
-/**
- * 尝试将 globalThis.document 替换为 guard；浏览器中 document 只读时返回 null，调用方不替换、不恢复。
- */
-function trySwapDocumentForSSR(guard: Document): Document | null {
+function trySwapDocumentForSSR(shim: Document): Document | null {
   const g = globalThis as { document?: Document };
   try {
     const orig = g.document;
-    g.document = guard;
+    g.document = shim;
     return orig ?? null;
   } catch {
     return null;
@@ -46,7 +88,7 @@ function trySwapDocumentForSSR(guard: Document): Document | null {
 
 /**
  * 流式 SSR：将根组件渲染为逐块输出的字符串生成器，便于边渲染边写入响应。
- * 执行期间设置 KEY_VIEW_SSR，便于 getDocument() 等在误用 document 时抛出明确错误。
+ * 执行期间设置 KEY_VIEW_SSR，并将 globalThis.document 替换为不抛错的 shim，业务代码可直接写 document。
  *
  * @param fn - 根组件函数，返回 VNode
  * @param options - 可选；allowRawHtml 为 false 时 dangerouslySetInnerHTML 输出转义文本（安全），默认不转义
@@ -61,8 +103,8 @@ export function renderToStream(
   return (function* () {
     setGlobal(KEY_VIEW_SSR, true);
     const g = globalThis as { document?: Document };
-    const guard = createSSRDocumentGuard();
-    const origDoc = trySwapDocumentForSSR(guard);
+    const shim = createSSRDocumentShim();
+    const origDoc = trySwapDocumentForSSR(shim);
     try {
       yield* inner;
     } finally {

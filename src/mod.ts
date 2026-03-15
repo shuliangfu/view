@@ -20,12 +20,6 @@
  * render(() => <div>{count()}</div>, document.getElementById("root")!);
  */
 
-export {
-  createSignal,
-  getCurrentEffect,
-  isSignalGetter,
-  setCurrentEffect,
-} from "./signal.ts";
 export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
 export { getDocument } from "./globals.ts";
 export {
@@ -39,6 +33,13 @@ export {
   renderToString,
 } from "./runtime.ts";
 export type { HydrationScriptOptions } from "./runtime.ts";
+export {
+  createSignal,
+  getCurrentEffect,
+  isSignalGetter,
+  setCurrentEffect,
+} from "./signal.ts";
+export { isDOMEnvironment } from "./types.ts";
 export type {
   EffectDispose,
   MountOptions,
@@ -48,4 +49,3 @@ export type {
   SignalTuple,
   VNode,
 } from "./types.ts";
-export { isDOMEnvironment } from "./types.ts";

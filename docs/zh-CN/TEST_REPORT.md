@@ -2,35 +2,34 @@
 
 ## 测试概览
 
-| 项目     | 说明                                                                                                                                               |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 测试包   | @dreamer/view                                                                                                                                      |
-| 版本     | 1.0.20                                                                                                                                             |
-| 测试框架 | @dreamer/test ^1.0.8                                                                                                                               |
-| 测试时间 | 2026-02-18                                                                                                                                         |
-| DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E）                                                                                                       |
-| 运行命令 | **Deno**：`deno test -A tests/`；**Bun**：`bun test --preload ./tests/dom-setup.ts tests/`（preload 注入 happy-dom，供单元/集成测试使用 document） |
+| 项目     | 说明                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 测试包   | @dreamer/view                                                                                                                        |
+| 版本     | 1.1.8                                                                                                                                |
+| 测试框架 | @dreamer/test ^1.0.15                                                                                                                |
+| 测试时间 | 2026-03-16                                                                                                                           |
+| DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E）                                                                                         |
+| 运行命令 | **Deno**：`deno test -A tests/`；**Bun**：`bun test tests/`（Bun 下可加 `--preload ./tests/dom-setup.ts` 在无 DOM 时注入 happy-dom） |
 
 ## 测试结果
 
 ### Deno
 
-- **总测试数**：435
-- **通过**：435
+- **总测试数**：444
+- **通过**：444
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 2 分 23 秒
+- **执行时间**：约 1 分 30 秒
 
 ### Bun
 
-- **总测试数**：410
-- **通过**：410
+- **总测试数**：418
+- **通过**：418
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 2 分 24 秒（26 个测试文件，含 E2E 浏览器与 CLI）
-- **说明**：需使用 `--preload ./tests/dom-setup.ts`，在无 DOM 环境下注入
-  happy-dom，否则依赖 `document` 的单元/集成用例会因 SSR guard 或缺少 document
-  而失败。
+- **执行时间**：约 76 秒（27 个测试文件，含 E2E 浏览器与 CLI）
+- **说明**：无 DOM 环境时建议使用 `--preload ./tests/dom-setup.ts`，否则依赖
+  `document` 的单元/集成用例可能因 SSR guard 或缺少 document 而失败。
 
 > 两种运行时（Deno / Bun）下用例均全部通过；Bun 与 Deno
 > 的测试数量差异来自运行器统计方式不同，覆盖的测试文件与场景一致。
@@ -62,6 +61,7 @@
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 14     | ✅ 全部通过 |
 | unit/ssr-directives.test.ts      | 6      | ✅ 全部通过 |
+| unit/ssr-document-shim.test.ts   | 9      | ✅ 全部通过 |
 | unit/store.test.ts               | 29     | ✅ 全部通过 |
 | unit/stream.test.ts              | 7      | ✅ 全部通过 |
 | unit/transition.test.ts          | 7      | ✅ 全部通过 |
@@ -217,7 +217,16 @@
 
 - ✅ SSR vIf / vElseIf / vElse、vFor、vShow
 
-### 18. Store (unit/store.test.ts) - 29 tests
+### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 9 tests
+
+- ✅ 组件内访问 `document.body.style.overflow` 不抛错且输出 HTML
+- ✅ 组件内 `document.getElementById` / `querySelector` 返回 null 不抛错
+- ✅ 组件内 `document.querySelectorAll` 返回空数组不抛错
+- ✅ 设置并读取 `document.body.style.overflow` 不抛错
+- ✅ `renderToString` / `renderToStream` 执行完毕后 `globalThis.document` 被恢复
+- ✅ 流式 SSR 时组件内访问 document 不抛错
+
+### 19. Store (unit/store.test.ts) - 29 tests
 
 - ✅ createStore：仅 state 时 [get, set]、空 state、get() 响应式、set
   updater、嵌套属性
@@ -232,37 +241,37 @@
 - ✅ 同一 key 返回已有实例（状态共享）；setState updater；getters/actions
   非函数项跳过；Proxy ownKeys/展开
 
-### 19. Stream (unit/stream.test.ts) - 7 tests
+### 20. Stream (unit/stream.test.ts) - 7 tests
 
 - ✅ renderToStream：返回生成器；简单 div 输出 HTML；文本子节点转义；**普通
   函数子节点** 输出返回值（非源码）；keyed 子节点输出 data-view-keyed；void
   元素无闭合标签
 
-### 20. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
+### 21. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
 - ✅ getRoutePathForChangedPath：/views/home → "/"、/views/{segment} →
   "/{segment}"、Windows 路径
 - ✅ getHmrVersionGetter / **VIEW_HMR_BUMP**：版本 getter 与 bump
 
-### 21. Compiler (unit/compiler.test.ts) - 13 tests
+### 22. Compiler (unit/compiler.test.ts) - 13 tests
 
 - ✅ optimize：常量折叠（数字、比较、字符串拼接）、空/无效代码；边界：除数为
   0/取模为 0 不折叠、一元加号折叠、乘除折叠、fileName .tsx 解析
 - ✅ createOptimizePlugin：name 与 setup、自定义 filter 与 readFile；onLoad
   readFile 失败时 catch 返回空字符串
 
-### 22. Proxy (unit/proxy.test.ts) - 5 tests
+### 23. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy：get/set 与 target 一致、嵌套代理、proxyCache 复用
 
 ## 测试覆盖分析
 
-| 类别       | 覆盖说明                                                                                                                                                                                                                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 接口方法   | createSignal、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、指令、Boundary、Runtime/SSR、scheduler、meta、proxy、compiler、stream 等均有用例 |
-| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空等                                                                                                                                                                                |
-| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                               |
-| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、CLI init/build/start、浏览器多页与导航                                                                                                                                           |
+| 类别       | 覆盖说明                                                                                                                                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 接口方法   | createSignal、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、指令、Boundary、Runtime/SSR、**SSR document shim**、scheduler、meta、proxy、compiler、stream 等均有用例 |
+| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空等                                                                                                                                                                                                       |
+| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                                                      |
+| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、CLI init/build/start、浏览器多页与导航                                                                                                                                                                  |
 
 ## 优点
 
@@ -274,11 +283,12 @@
 
 ## 结论
 
-当前 @dreamer/view 在 **Deno** 下 435 个用例、**Bun** 下 410
+当前 @dreamer/view 在 **Deno** 下 444 个用例、**Bun** 下 418
 个用例（统计方式不同），**全部通过**，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString
-全分支覆盖、renderToStream）、**applyProps**（ref、vShow/vCloak、dangerouslySetInnerHTML、value/checked
+全分支覆盖、renderToStream、**SSR document shim**：组件内访问 document
+不抛错且执行后恢复）、**applyProps**（ref、vShow/vCloak、dangerouslySetInnerHTML、value/checked
 响应式、事件、class、style、attribute、自定义指令）、Store（persist、getters/actions、边界）、Reactive、Boundary、meta（getMetaHeadFragment、applyMetaToHead、边界）、proxy、compiler（常量折叠边界、插件
 onLoad
 catch）、stream、build/HMR、CLI（init/build/start）、浏览器示例流程，以及**集成**：getter

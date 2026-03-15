@@ -7,6 +7,27 @@
 
 ---
 
+## [1.1.9] - 2026-03-16
+
+### 新增
+
+- **SSR document shim** 在 `renderToString` 与 `renderToStream` 执行期间，运行时
+  会临时将 `globalThis.document` 替换为占位对象，使组件内访问 `document`（如
+  `document.body.style.overflow`）不抛错。占位提供
+  `body`、`head`、`createElement`、 `getElementById`（返回
+  null）、`querySelector`（null）、`querySelectorAll`（空数组）
+  等。渲染结束后恢复原始 `document`。
+- **SSR document shim 测试** 新增 `tests/unit/ssr-document-shim.test.ts`（9
+  个用例）， 覆盖 SSR 期间组件访问 document 及 `renderToString` /
+  `renderToStream` 执行后恢复。
+
+### 文档
+
+- 测试报告与 README（中英文）更新：444 用例（Deno）、418（Bun），测试日期
+  2026-03-16，并补充 SSR document shim 覆盖说明。
+
+---
+
 ## [1.1.8] - 2026-03-15
 
 ### 修复
