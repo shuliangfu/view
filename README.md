@@ -1107,10 +1107,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.5** (2026-03-14): **Changed** vIf single-element optimization: when
-reactive vIf content renders to one DOM element, use that element as root and
-toggle `style.display` in an effect instead of wrapping in a span, removing the
-extra wrapper for modals/toasts. Full history:
+**v1.1.6** (2026-03-15): **Fixed** SSR when component returns a getter function:
+server now invokes the function once and renders the resolved VNode(s), fixing
+blank areas for component-return-getter patterns (e.g. ui-view). Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

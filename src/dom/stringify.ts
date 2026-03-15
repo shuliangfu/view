@@ -258,9 +258,15 @@ function* walkVNodeForSSR(
     const binding = getContextBinding(type, props);
     if (binding) pushContext(binding.id, binding.value);
     try {
-      const result: VNode | VNode[] | null = type(props);
+      const result: VNode | VNode[] | (() => VNode | VNode[] | null) | null =
+        type(props);
       if (result == null) return;
-      const nodes = Array.isArray(result) ? result : [result];
+      // 组件可能返回 getter 函数（如 return () => <div>...</div>），SSR 时调用一次取当前 VNode 并展开输出，不插入额外包装节点
+      const resolved = typeof result === "function"
+        ? (result as () => VNode | VNode[] | null)()
+        : result;
+      if (resolved == null) return;
+      const nodes = Array.isArray(resolved) ? resolved : [resolved];
       if (isErrorBoundary(type)) {
         try {
           for (const n of nodes) {

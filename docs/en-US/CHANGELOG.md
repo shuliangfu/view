@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.1.6] - 2026-03-15
+
+### Fixed
+
+- **SSR when component returns a getter function**: In `walkVNodeForSSR`, when a
+  component returns a function (e.g. `return () => <div>...</div>`), the server
+  now invokes that function once and walks the resolved VNode(s) so the content
+  is rendered instead of being skipped. Previously such components produced no
+  HTML on the server and could cause blank areas (e.g. in apps using
+  component-return-getter patterns like ui-view). No extra wrapper node is
+  emitted.
+
+---
+
 ## [1.1.5] - 2026-03-14
 
 ### Changed
