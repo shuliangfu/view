@@ -643,9 +643,9 @@ describe("浏览器测试（examples 入口）", () => {
     for (let i = 0; i < 8; i++) {
       await new Promise((r) => setTimeout(r, 120));
       text = await getMainText(t);
-      if (text.includes("checked：true")) break;
+      if (/checked：[ \n]*true/.test(text)) break;
     }
-    expect(text).toContain("checked：true");
+    expect(text).toMatch(/checked：[ \n]*true/);
     await clickButtonByText(t, "再次聚焦");
     await new Promise((r) => setTimeout(r, 80));
     text = await getMainText(t);

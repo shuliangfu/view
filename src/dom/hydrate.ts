@@ -23,7 +23,7 @@ import type { ChildItem, ExpandedRoot } from "./element.ts";
 import { appendDynamicChild, normalizeChildren } from "./element.ts";
 import { applyProps } from "./props.ts";
 import type { IfContext } from "./shared.ts";
-import { createDynamicSpan, isFragment } from "./shared.ts";
+import { createDynamicContainer, isFragment } from "./shared.ts";
 import { runDirectiveUnmountOnChildren } from "./unmount.ts";
 
 /** 开发环境下收集 vnode 树的节点描述（tag/key）用于与 DOM 对比；ifContext 会随 vIf/vElse/vElseIf 更新以与 hydrateFromList 一致 */
@@ -251,7 +251,7 @@ function hydrateFromList(
   // 组件可能返回函数（动态槽），此时不能当作 VNode 递归；与 createElement 一致，用占位 + appendDynamicChild
   if (typeof vnode === "function") {
     const doc = (globalThis as { document: Document }).document;
-    const wrap = createDynamicSpan(doc);
+    const wrap = createDynamicContainer(doc);
     if (nodes[index]) {
       (nodes[index] as Node).parentNode?.replaceChild(wrap, nodes[index]);
     }
@@ -288,7 +288,7 @@ function hydrateFromList(
     let i = index;
     for (const c of children) {
       if (isSignalGetter(c)) {
-        const wrap = createDynamicSpan(
+        const wrap = createDynamicContainer(
           (globalThis as { document: Document }).document,
         );
         if (nodes[i]) {
@@ -342,7 +342,7 @@ function hydrateFromList(
   let next = 0;
   for (const item of childItems) {
     if (isSignalGetter(item)) {
-      const wrap = createDynamicSpan(
+      const wrap = createDynamicContainer(
         (globalThis as { document: Document }).document,
       );
       if (childList[next]) {
@@ -379,7 +379,7 @@ function hydrateFromExpandedItem(
 ): number {
   if (typeof item === "function") {
     const doc = (globalThis as { document: Document }).document;
-    const wrap = createDynamicSpan(doc);
+    const wrap = createDynamicContainer(doc);
     if (nodes[index]) {
       (nodes[index] as Node).parentNode?.replaceChild(wrap, nodes[index]);
     }
@@ -417,7 +417,7 @@ function hydrateFromExpandedItem(
     let i = index;
     for (const c of children) {
       if (isSignalGetter(c)) {
-        const wrap = createDynamicSpan(
+        const wrap = createDynamicContainer(
           (globalThis as { document: Document }).document,
         );
         if (nodes[i]) {
@@ -467,7 +467,7 @@ function hydrateFromExpandedItem(
   let next = 0;
   for (const childItem of childItems) {
     if (isSignalGetter(childItem)) {
-      const wrap = createDynamicSpan(
+      const wrap = createDynamicContainer(
         (globalThis as { document: Document }).document,
       );
       if (childList[next]) {

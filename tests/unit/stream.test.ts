@@ -64,12 +64,12 @@ describe("renderToStream", () => {
     const gen = renderToStream(() => vnode);
     const html = [...gen].join("");
     expect(html).toContain("stream-fn");
-    expect(html).toContain("<span>");
+    expect(html).toContain("<span"); // 可能带 data-view-dynamic 等属性
     expect(html).not.toContain("() =>");
   });
 
-  /** 流式 SSR 下带 key 子节点输出 data-view-keyed */
-  it("带 key 子节点时流式输出含 data-view-keyed", () => {
+  /** 流式 SSR 下带 key 子节点在首元素上输出 data-key（已去 keyed 包装） */
+  it("带 key 子节点时流式输出含 data-key", () => {
     const vnode: VNode = {
       type: "div",
       props: {
@@ -83,7 +83,6 @@ describe("renderToStream", () => {
       key: null,
     };
     const html = [...renderToStream(() => vnode)].join("");
-    expect(html).toContain("data-view-keyed");
     expect(html).toContain('data-key="k1"');
     expect(html).toContain("x");
   });

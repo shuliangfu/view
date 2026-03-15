@@ -4,7 +4,7 @@
  * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element / stringify / hydrate 复用。
  *
  * **本模块导出：**
- * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`、`createDynamicSpan(doc)`
+ * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`、`createDynamicContainer(doc)`
  */
 
 import type { VNode } from "../types.ts";
@@ -75,13 +75,13 @@ export function createTextVNode(value: unknown): VNode {
 }
 
 /**
- * 创建带 data-view-dynamic 属性的 span 占位元素，用于动态子节点（如 signal getter）的挂载容器。
+ * 创建带 data-view-dynamic 的无样式 div 占位元素，用于动态子节点（如 signal getter）的挂载容器。
  *
  * @param doc - Document 实例
- * @returns 新创建的 span 元素
+ * @returns 新创建的 div 元素（无 class、无 style）
  */
-export function createDynamicSpan(doc: Document): Element {
-  const el = doc.createElement("span");
+export function createDynamicContainer(doc: Document): Element {
+  const el = doc.createElement("div");
   el.setAttribute("data-view-dynamic", "");
   return el;
 }

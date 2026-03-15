@@ -8,11 +8,8 @@
  * - `createElementToStream(vnode, options?)`：将 VNode 转为 HTML 流（生成器）
  */
 
-import { escapeForAttr, escapeForText } from "../escape.ts";
-import { isSignalGetter } from "../signal.ts";
-import type { VNode } from "../types.ts";
 import { getErrorBoundaryFallback, isErrorBoundary } from "../boundary.ts";
-import { normalizeChildren } from "./element.ts";
+import { getContextBinding, popContext, pushContext } from "../context.ts";
 import {
   getVElseIfValue,
   getVElseShow,
@@ -23,7 +20,10 @@ import {
   hasStructuralDirective,
   isDirectiveProp,
 } from "../directive.ts";
-import { getContextBinding, popContext, pushContext } from "../context.ts";
+import { escapeForAttr, escapeForText } from "../escape.ts";
+import { isSignalGetter } from "../signal.ts";
+import type { VNode } from "../types.ts";
+import { normalizeChildren } from "./element.ts";
 import type { IfContext, SSROptions } from "./shared.ts";
 import {
   createTextVNode,
@@ -201,53 +201,77 @@ function stringifyAttributes(props: Record<string, unknown>): string {
 }
 
 /**
- * 元素子节点 SSR 遍历：与客户端 1:1 对应，动态子节点（getter/function）包一层 div，keyed 包 span。
+ * 元素子节点 SSR 遍历：不追加包装节点；keyed 在首元素上注入 data-key，dynamic 在首节点打 data-view-dynamic。
  * 供 walkVNodeForSSR 在元素标签内 yield* 使用。
  */
 function* walkElementChildrenStream(
   rawChildren: unknown,
   ctx: IfContext,
   options: SSROptions | undefined,
+  injectDynamicIndex?: number,
 ): Generator<string> {
   const items = normalizeChildren(rawChildren);
+  let dynamicIndex = injectDynamicIndex ?? 0;
   for (const item of items) {
     if (typeof item === "function" || isSignalGetter(item)) {
       const resolved = normalizeChildrenForSSR((item as () => unknown)());
-      yield "<div data-view-dynamic>";
-      for (const c of resolved) {
-        yield* walkVNodeForSSR(c, ctx, options);
-      }
-      yield "</div>";
-    } else {
-      const v = item as VNode;
-      if (v.key != null && v.key !== undefined) {
-        const key = String(v.key);
-        yield `<span data-view-keyed data-key="${escapeForAttr(key)}">`;
-        yield* walkVNodeForSSR(v, ctx, options);
+      const idx = dynamicIndex++;
+      const firstElIdx = resolved.findIndex(
+        (c) => typeof c.type === "string" && c.type !== "#text",
+      );
+      if (firstElIdx === -1) {
+        // 动态子节点全是文本时无元素可打标，用 span 包裹以便挂 data-view-dynamic 与 index
+        yield `<span data-view-dynamic data-view-dynamic-index="${idx}">`;
+        for (const c of resolved) {
+          yield* walkVNodeForSSR(c, ctx, options);
+        }
         yield "</span>";
       } else {
-        yield* walkVNodeForSSR(v, ctx, options);
+        for (let i = 0; i < resolved.length; i++) {
+          yield* walkVNodeForSSR(
+            resolved[i],
+            ctx,
+            options,
+            undefined,
+            i === firstElIdx ? idx : undefined,
+          );
+        }
       }
+    } else {
+      const v = item as VNode;
+      const key = v.key != null && v.key !== undefined
+        ? String(v.key)
+        : undefined;
+      yield* walkVNodeForSSR(v, ctx, options, key);
     }
   }
 }
 
 /**
  * 统一 SSR 遍历：按 VNode 树 yield 逐块 HTML，string 与 stream 入口复用此逻辑。
+ * 可选 injectKey / injectDynamicIndex：在本次子树中第一次输出元素时注入到该元素上，用于去包装（keyed/dynamic）。
  * Fragment → 组件 → #text → 标签（v-if/v-else/v-for/v-show）→ 属性与子节点。
  */
 function* walkVNodeForSSR(
   vnode: VNode,
   ifContext?: IfContext,
   options?: SSROptions,
+  injectKey?: string,
+  injectDynamicIndex?: number,
 ): Generator<string> {
   if (isFragment(vnode)) {
     const ctx = ifContext ?? { lastVIf: true };
     const children = normalizeChildrenForSSR(
       vnode.props.children ?? vnode.children,
     );
-    for (const c of children) {
-      yield* walkVNodeForSSR(c, ctx, options);
+    for (let i = 0; i < children.length; i++) {
+      yield* walkVNodeForSSR(
+        children[i],
+        ctx,
+        options,
+        i === 0 ? injectKey : undefined,
+        i === 0 ? injectDynamicIndex : undefined,
+      );
     }
     return;
   }
@@ -269,19 +293,33 @@ function* walkVNodeForSSR(
       const nodes = Array.isArray(resolved) ? resolved : [resolved];
       if (isErrorBoundary(type)) {
         try {
-          for (const n of nodes) {
-            yield* walkVNodeForSSR(n, ifContext, options);
+          for (let i = 0; i < nodes.length; i++) {
+            yield* walkVNodeForSSR(
+              nodes[i],
+              ifContext,
+              options,
+              i === 0 ? injectKey : undefined,
+              i === 0 ? injectDynamicIndex : undefined,
+            );
           }
         } catch (e) {
           yield* walkVNodeForSSR(
             getErrorBoundaryFallback(props)(e),
             ifContext,
             options,
+            injectKey,
+            injectDynamicIndex,
           );
         }
       } else {
-        for (const n of nodes) {
-          yield* walkVNodeForSSR(n, ifContext, options);
+        for (let i = 0; i < nodes.length; i++) {
+          yield* walkVNodeForSSR(
+            nodes[i],
+            ifContext,
+            options,
+            i === 0 ? injectKey : undefined,
+            i === 0 ? injectDynamicIndex : undefined,
+          );
         }
       }
     } finally {
@@ -351,8 +389,14 @@ function* walkVNodeForSSR(
   if (hasDirective(props, "vShow")) {
     if (!getVShowValue(props)) attrs += ' style="display:none"';
   }
-  if (vnode.key != null && vnode.key !== undefined) {
+  if (injectKey != null && injectKey !== "") {
+    attrs += ` data-key="${escapeForAttr(injectKey)}"`;
+  } else if (vnode.key != null && vnode.key !== undefined) {
     attrs += ` data-key="${escapeForAttr(String(vnode.key))}"`;
+  }
+  if (injectDynamicIndex !== undefined) {
+    attrs +=
+      ` data-view-dynamic data-view-dynamic-index="${injectDynamicIndex}"`;
   }
   const ctx = ifContext ?? { lastVIf: true };
   yield `<${tag}${attrs}>`;
@@ -361,6 +405,7 @@ function* walkVNodeForSSR(
       props.children ?? vnode.children,
       ctx,
       options,
+      undefined,
     );
     yield `</${tag}>`;
   }

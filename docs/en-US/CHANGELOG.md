@@ -8,6 +8,32 @@ and this project adheres to
 
 ---
 
+## [1.1.7] - 2026-03-15
+
+### Changed
+
+- **SSR/keyed: no wrapper node** Keyed children are no longer wrapped in a
+  `<span data-view-keyed>`. The `data-key` attribute is injected on the first
+  element of each keyed item in SSR and set on the content root on the client.
+  Reconcile uses the content root directly (patch or range replace), avoiding
+  extra DOM and layout issues (e.g. Grid/Flex).
+- **SSR/dynamic: no wrapper div** Dynamic children (getter/function) no longer
+  emit a wrapping `<div data-view-dynamic>`. The first element of each dynamic
+  block gets `data-view-dynamic` and `data-view-dynamic-index`; when the block
+  is pure text, a single `<span>` wrapper is emitted so the marker can be
+  placed.
+- **Dynamic placeholder is a div** `createDynamicContainer(doc)` now creates an
+  unstyled `div` (replacing the previous span). `createDynamicSpan` has been
+  removed; all call sites use `createDynamicContainer`.
+
+### Fixed
+
+- Tests updated for the new SSR output (no `data-view-keyed`; `<span>` may have
+  attributes). E2E checkbox assertion allows newline between "checked：" and
+  "true".
+
+---
+
 ## [1.1.6] - 2026-03-15
 
 ### Fixed

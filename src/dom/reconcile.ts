@@ -6,24 +6,23 @@
  * @internal 仅由 element.ts 使用，不对外导出
  */
 
-import { CONTEXT_SCOPE_TYPE } from "../context.ts";
 import {
-  KEYED_WRAPPER_ATTR,
   V_FOR_ATTR,
   V_IF_ATTR,
   V_IF_GROUP_ATTR,
   V_ONCE_FROZEN_ATTR,
 } from "../constants.ts";
+import { CONTEXT_SCOPE_TYPE } from "../context.ts";
 import { hasDirective } from "../directive.ts";
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import { applyProps } from "./props.ts";
 import type { IfContext } from "./shared.ts";
-import { createDynamicSpan, isFragment as checkFragment } from "./shared.ts";
 import {
-  runDirectiveUnmount,
-  runDirectiveUnmountOnChildren,
-} from "./unmount.ts";
+  createDynamicContainer,
+  isFragment as checkFragment,
+} from "./shared.ts";
+import { runDirectiveUnmount } from "./unmount.ts";
 
 /** 与 element 中 ChildItem 一致：静态 VNode 或动态 getter */
 export type ChildItem = VNode | (() => unknown);
@@ -70,6 +69,40 @@ function getItemKey(item: ChildItem, index: number): string {
   if (isSignalGetter(item) || typeof item === "function") return `@${index}`;
   const k = (item as VNode).key;
   return k != null ? String(k) : `@${index}`;
+}
+
+/** 从带 data-key 的首节点起，找到该 keyed 区间的最后一个节点（到下一个 data-key 或末尾为止） */
+function getLastOfKeyedRange(_container: Element, firstNode: Node): Node {
+  let last: Node = firstNode;
+  let n: Node | null = firstNode.nextSibling;
+  while (n) {
+    if (
+      n.nodeType === 1 &&
+      (n as Element).getAttribute?.("data-key") != null
+    ) break;
+    last = n;
+    n = n.nextSibling;
+  }
+  return last;
+}
+
+/** 将 data-key 打到根上：单元素则打在该元素上，Fragment 则打在 firstElementChild 上 */
+function setDataKeyOnRoot(node: Node, key: string): void {
+  if (node.nodeType === 1) {
+    (node as Element).setAttribute("data-key", key);
+    return;
+  }
+  if (node.nodeType === 11) {
+    const first = (node as DocumentFragment).firstElementChild;
+    if (first) first.setAttribute("data-key", key);
+  }
+}
+
+/** 将节点或 Fragment 转为可插入 DOM 的节点数组 */
+function getNodesArray(node: Node): Node[] {
+  if (node.nodeType === 1 || node.nodeType === 3) return [node];
+  if (node.nodeType === 11) return Array.from(node.childNodes);
+  return [node];
 }
 
 /** 判断 ChildItem 列表是否包含任意带 key 的 VNode，供 element 的 appendDynamicChild 使用 */
@@ -187,7 +220,7 @@ export function createReconcile(deps: ReconcileDeps): {
   } = deps;
 
   /**
-   * 按 key 协调列表：复用已有 DOM 节点（同 key 时 patch 子节点而非整节点替换），减少重挂
+   * 按 key 协调列表：不追加包装节点，data-key 打在内容根上；复用同 key 的 DOM 做 patch 或按范围替换。
    */
   function reconcileKeyedChildren(
     container: Element,
@@ -197,12 +230,13 @@ export function createReconcile(deps: ReconcileDeps): {
     ifContext?: IfContext,
   ): void {
     const doc = (globalThis as { document: Document }).document;
-    const keyToWrapper = new Map<string, Element>();
-    const children = container.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      const key = (child as Element).getAttribute?.("data-key");
-      if (key != null) keyToWrapper.set(key, child as Element);
+    const keyToFirstNode = new Map<string, Node>();
+    for (let i = 0; i < container.childNodes.length; i++) {
+      const node = container.childNodes[i];
+      if (node.nodeType === 1) {
+        const key = (node as Element).getAttribute?.("data-key");
+        if (key != null) keyToFirstNode.set(key, node);
+      }
     }
     const keyToOldItem = new Map<string, ChildItem>();
     for (let i = 0; i < oldItems.length; i++) {
@@ -210,46 +244,61 @@ export function createReconcile(deps: ReconcileDeps): {
     }
     const resultNodes: Node[] = [];
     const ctx = ifContext ?? { lastVIf: true };
+
+    function getNewNodes(v: VNode, key: string): Node[] {
+      const node = createElement(v, parentNamespace, ctx);
+      setDataKeyOnRoot(node, key);
+      return getNodesArray(node);
+    }
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (isSignalGetter(item)) {
-        const wrap = createDynamicSpan(doc);
+        const wrap = createDynamicContainer(doc);
         appendDynamicChild(wrap, item as () => unknown, parentNamespace, ctx);
         resultNodes.push(wrap);
         continue;
       }
       const v = item as VNode;
       const key = getItemKey(v, i);
-      const wrapper = keyToWrapper.get(key);
+      const existingFirst = keyToFirstNode.get(key);
       const oldItem = keyToOldItem.get(key);
-      const canPatch = wrapper?.firstChild != null &&
-        oldItem != null &&
-        !isSignalGetter(oldItem) &&
-        typeof oldItem !== "function";
-      if (wrapper && canPatch) {
-        keyToWrapper.delete(key);
-        patchNode(
-          wrapper.firstChild as Node,
-          oldItem as VNode,
-          v,
-          parentNamespace,
-          ctx,
-        );
-        resultNodes.push(wrapper);
-      } else if (wrapper) {
-        keyToWrapper.delete(key);
-        runDirectiveUnmountOnChildren(wrapper);
-        wrapper.replaceChildren(createElement(v, parentNamespace, ctx));
-        resultNodes.push(wrapper);
+      keyToFirstNode.delete(key);
+
+      if (existingFirst) {
+        const existingLast = getLastOfKeyedRange(container, existingFirst);
+        const canPatch = existingFirst === existingLast &&
+          existingFirst.nodeType === 1 &&
+          oldItem != null &&
+          !isSignalGetter(oldItem) &&
+          typeof oldItem !== "function";
+        if (canPatch) {
+          patchNode(
+            existingFirst,
+            oldItem as VNode,
+            v,
+            parentNamespace,
+            ctx,
+          );
+          resultNodes.push(existingFirst);
+        } else {
+          resultNodes.push(...getNewNodes(v, key));
+        }
       } else {
-        const newWrapper = doc.createElement("span");
-        newWrapper.setAttribute(KEYED_WRAPPER_ATTR, "");
-        newWrapper.setAttribute("data-key", key);
-        newWrapper.appendChild(createElement(v, parentNamespace, ctx));
-        resultNodes.push(newWrapper);
+        resultNodes.push(...getNewNodes(v, key));
       }
     }
-    for (const w of keyToWrapper.values()) runDirectiveUnmount(w);
+
+    for (const first of keyToFirstNode.values()) {
+      const last = getLastOfKeyedRange(container, first);
+      for (
+        let n: Node | null = first;
+        n !== null;
+        n = n === last ? null : n.nextSibling
+      ) {
+        if (n.nodeType === 1) runDirectiveUnmount(n as Element);
+      }
+    }
     container.replaceChildren(...resultNodes);
   }
 
@@ -414,14 +463,14 @@ export function createReconcile(deps: ReconcileDeps): {
       if (i >= oldItems.length || !existing) {
         const node = isSignalGetter(newItem) || typeof newItem === "function"
           ? (() => {
-            const span = createDynamicSpan(doc);
+            const wrap = createDynamicContainer(doc);
             appendDynamicChild(
-              span,
+              wrap,
               newItem as () => unknown,
               parentNamespace,
               ifContext,
             );
-            return span;
+            return wrap;
           })()
           : createElement(newItem as VNode, parentNamespace, ifContext);
         if (domIndex < parent.childNodes.length) {
@@ -448,14 +497,14 @@ export function createReconcile(deps: ReconcileDeps): {
         parent.replaceChild(
           newIsGetter
             ? (() => {
-              const span = createDynamicSpan(doc);
+              const wrap = createDynamicContainer(doc);
               appendDynamicChild(
-                span,
+                wrap,
                 newItem as () => unknown,
                 parentNamespace,
                 ifContext,
               );
-              return span;
+              return wrap;
             })()
             : createElement(newItem as VNode, parentNamespace, ifContext),
           existing,

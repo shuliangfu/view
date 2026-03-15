@@ -7,6 +7,28 @@
 
 ---
 
+## [1.1.7] - 2026-03-15
+
+### 变更
+
+- **SSR/keyed：不再包一层节点** 带 key 的子节点不再包在 `<span data-view-keyed>`
+  内；`data-key` 在 SSR 时注入到该 keyed 项的首元素上，客户端在内容根上设置；
+  协调时直接以内容根做 patch 或按范围替换，避免多余 DOM 与布局问题（如
+  Grid/Flex）。
+- **SSR/dynamic：不再包 div** 动态子节点（getter/函数）不再输出包裹用
+  `<div data-view-dynamic>`；每个动态块的首元素打 `data-view-dynamic` 与
+  `data-view-dynamic-index`；当块内容为纯文本时，改为输出一个 `<span>` 包裹
+  以便打标。
+- **动态占位改为 div** `createDynamicContainer(doc)` 改为创建无样式 `div`（替代
+  原 span）。已移除 `createDynamicSpan`，所有调用改为 `createDynamicContainer`。
+
+### 修复
+
+- 测试随新 SSR 输出更新（不再含 `data-view-keyed`；`<span>` 可带属性）。E2E
+  勾选断言允许「checked：」与「true」之间换行。
+
+---
+
 ## [1.1.6] - 2026-03-15
 
 ### 修复
