@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.5**（2026-03-14）：**变更** vIf 单元素优化：当响应式 vIf 内容渲染为单个
-DOM 元素时，直接以该元素为根并用 effect 切换 `style.display`，不再外包
-span，去掉弹窗/Toast 等多余一层。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.6**（2026-03-15）：**修复** SSR 下组件返回 getter 函数时的渲染：服务端会
+调用该函数一次并输出得到的 VNode，修复 component-return-getter 写法（如
+ui-view）导致的首屏空白。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
