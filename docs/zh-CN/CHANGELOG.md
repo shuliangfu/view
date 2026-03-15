@@ -7,6 +7,17 @@
 
 ---
 
+## [1.1.8] - 2026-03-15
+
+### 修复
+
+- **appendDynamicChild replaceChild NotFoundError** 从单节点模式切回多节点（或
+  切到单节点）时，先判断 `container.parentNode === parent` 再执行
+  `parent.replaceChild(...)`；若 container 已被移出（如被兄弟 effect 或 keyed
+  协调替换），则改为 `appendChild`，避免 DOM 操作抛错。
+
+---
+
 ## [1.1.7] - 2026-03-15
 
 ### 变更

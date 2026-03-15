@@ -8,6 +8,19 @@ and this project adheres to
 
 ---
 
+## [1.1.8] - 2026-03-15
+
+### Fixed
+
+- **appendDynamicChild replaceChild NotFoundError** When switching from
+  single-node mode back to multi-node (or when switching to single-node), the
+  code now checks `container.parentNode === parent` before calling
+  `parent.replaceChild(...)`. If the container was already removed (e.g. by a
+  sibling effect or keyed reconcile), it uses `appendChild` instead so the DOM
+  update does not throw.
+
+---
+
 ## [1.1.7] - 2026-03-15
 
 ### Changed
