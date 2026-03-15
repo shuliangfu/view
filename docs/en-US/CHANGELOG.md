@@ -8,6 +8,27 @@ and this project adheres to
 
 ---
 
+## [1.1.9] - 2026-03-16
+
+### Added
+
+- **SSR document shim** During `renderToString` and `renderToStream`, the
+  runtime temporarily replaces `globalThis.document` with a shim so that
+  component code can access `document` (e.g. `document.body.style.overflow`)
+  without throwing. The shim provides `body`, `head`, `createElement`,
+  `getElementById` (null), `querySelector` (null), `querySelectorAll` (empty
+  array), etc. After render, the original `document` is restored.
+- **SSR document shim tests** New unit tests in
+  `tests/unit/ssr-document-shim.test.ts` (9 tests) covering component access to
+  document during SSR and restoration after `renderToString` / `renderToStream`.
+
+### Docs
+
+- TEST_REPORT (en/zh) and README (en/zh) updated: 444 tests (Deno), 418 (Bun),
+  test date 2026-03-16, and SSR document shim coverage.
+
+---
+
 ## [1.1.8] - 2026-03-15
 
 ### Fixed

@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-435%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-444%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -1107,10 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.8** (2026-03-15): **Fixed** appendDynamicChild replaceChild
-NotFoundError: guard with `container.parentNode === parent` and use
-`appendChild` when container was already removed. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.9** (2026-03-16): **Added** SSR document shim during
+renderToString/renderToStream so component code can access document without
+throwing; document restored after render. **Added** unit tests for SSR document
+shim (9 tests). **Docs** TEST_REPORT and README updated (444 tests). Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -1118,14 +1119,16 @@ NotFoundError: guard with `container.parentNode === parent` and use
 
 | Metric      | Value      |
 | ----------- | ---------- |
-| Test date   | 2026-02-17 |
-| Total tests | 435        |
-| Passed      | 435 ✅     |
+| Test date   | 2026-03-16 |
+| Total tests | 444 (Deno) |
+| Passed      | 444 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
-| Duration    | ~2m        |
+| Duration    | ~1m30s     |
 
-See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
+Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
+(component access to document does not throw). See
+[TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
 ---
 

@@ -103,33 +103,71 @@ export function createReactiveRoot<T>(
 }
 
 /**
- * 将根组件渲染为 HTML 字符串（SSR/SSG，无浏览器 API）
- * 执行期间设置 KEY_VIEW_SSR，便于 getDocument() 等在误用 document 时抛出明确错误。
- *
- * @param fn 根组件函数
- * @param options allowRawHtml 为 false 时 v-html 输出转义文本（安全场景）；默认 v-html 在服务端不转义
- * @returns HTML 字符串
+ * SSR 时替换 globalThis.document 的占位对象（服务端没有真实 DOM，不依赖原生 Document 类型）。
+ * 返回的是普通 Proxy，仅用 Document 做类型标注；常用属性和方法写全，避免业务代码访问时报错或拿不到合理值。
  */
-const SSR_DOCUMENT_MESSAGE =
-  "document is not available during server-side rendering. Do not use document or window in components rendered with renderToString() or renderToStream(). Use conditional checks (e.g. if (typeof document !== 'undefined')) or move the logic to client-only code (e.g. createEffect, onMount).";
-
-function createSSRDocumentGuard(): Document {
+function createSSRDocumentShim(): Document {
+  const style = { overflow: "" };
+  const body = { style };
+  const docElement = { style: {} };
+  const safeStub = new Proxy({} as Record<string, unknown>, {
+    get(_, key: string) {
+      if (key === "style") return { overflow: "" };
+      return safeStub;
+    },
+  });
+  const noop = () => safeStub;
+  const returnNull = () => null;
+  const returnEmptyList = () => [];
   return new Proxy({} as Document, {
-    get() {
-      throw new Error(SSR_DOCUMENT_MESSAGE);
+    get(_, key: string) {
+      switch (key) {
+        case "body":
+          return body;
+        case "documentElement":
+          return docElement;
+        case "head":
+          return safeStub;
+        case "createElement":
+        case "createTextNode":
+        case "createDocumentFragment":
+          return noop;
+        case "getElementById":
+        case "querySelector":
+          return returnNull;
+        case "querySelectorAll":
+        case "getElementsByClassName":
+        case "getElementsByTagName":
+        case "getElementsByTagNameNS":
+          return returnEmptyList;
+        case "appendChild":
+        case "removeChild":
+        case "insertBefore":
+        case "replaceChild":
+          return noop;
+        case "documentURI":
+        case "URL":
+        case "title":
+        case "characterSet":
+          return "";
+        case "defaultView":
+          return null;
+        default:
+          return safeStub;
+      }
     },
   });
 }
 
 /**
- * 尝试将 globalThis.document 替换为 guard（仅当运行环境允许写入时，如 Node/Deno 服务端）。
+ * 尝试将 globalThis.document 替换为 shim（仅当运行环境允许写入时，如 Node/Deno 服务端）。
  * 浏览器中 window.document 为只读 getter，赋值会抛错，此时返回 null 表示未替换。
  */
-function trySwapDocumentForSSR(guard: Document): Document | null {
+function trySwapDocumentForSSR(shim: Document): Document | null {
   const g = globalThis as { document?: Document };
   try {
     const orig = g.document;
-    g.document = guard;
+    g.document = shim;
     return orig ?? null;
   } catch {
     return null;
@@ -143,10 +181,9 @@ export function renderToString(
   setGlobal(KEY_VIEW_SSR, true);
   const g = globalThis as {
     document?: Document;
-    __VIEW_ORIG_DOCUMENT__?: Document;
   };
-  const guard = createSSRDocumentGuard();
-  const origDoc = trySwapDocumentForSSR(guard);
+  const shim = createSSRDocumentShim();
+  const origDoc = trySwapDocumentForSSR(shim);
   try {
     const vnode = fn();
     return createElementToString(vnode, undefined, options);

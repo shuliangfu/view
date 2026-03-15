@@ -2,35 +2,35 @@
 
 ## Test Overview
 
-| Item            | Description                                                                                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Package         | @dreamer/view                                                                                                                                                        |
-| Version         | 1.0.20                                                                                                                                                               |
-| Test framework  | @dreamer/test ^1.0.8                                                                                                                                                 |
-| Test date       | 2026-02-18                                                                                                                                                           |
-| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                                                   |
-| Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test --preload ./tests/dom-setup.ts tests/` (preload injects happy-dom for unit/integration tests that need document) |
+| Item            | Description                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Package         | @dreamer/view                                                                                                                      |
+| Version         | 1.1.8                                                                                                                              |
+| Test framework  | @dreamer/test ^1.0.15                                                                                                              |
+| Test date       | 2026-03-16                                                                                                                         |
+| DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                 |
+| Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test tests/` (use `--preload ./tests/dom-setup.ts` when no DOM to inject happy-dom) |
 
 ## Test Results
 
 ### Deno
 
-- **Total tests**: 435
-- **Passed**: 435
+- **Total tests**: 444
+- **Passed**: 444
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~2m 23s
+- **Duration**: ~1m 30s
 
 ### Bun
 
-- **Total tests**: 410
-- **Passed**: 410
+- **Total tests**: 418
+- **Passed**: 418
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~2m 24s (26 test files, including E2E browser and CLI)
-- **Note**: Use `--preload ./tests/dom-setup.ts` so happy-dom is injected when
-  no DOM is present; otherwise unit/integration tests that need `document` fail
-  (SSR guard or missing document).
+- **Duration**: ~76s (27 test files, including E2E browser and CLI)
+- **Note**: Use `--preload ./tests/dom-setup.ts` when no DOM is present so
+  unit/integration tests that need `document` do not fail (SSR guard or missing
+  document).
 
 > Both runtimes (Deno / Bun) pass all tests; the count difference is due to
 > runner reporting, with the same test files and coverage.
@@ -62,6 +62,7 @@
 | unit/scheduler.test.ts           | 5     | ✅ All passed |
 | unit/signal.test.ts              | 14    | ✅ All passed |
 | unit/ssr-directives.test.ts      | 6     | ✅ All passed |
+| unit/ssr-document-shim.test.ts   | 9     | ✅ All passed |
 | unit/store.test.ts               | 29    | ✅ All passed |
 | unit/stream.test.ts              | 7     | ✅ All passed |
 | unit/transition.test.ts          | 7     | ✅ All passed |
@@ -233,7 +234,20 @@
 
 - ✅ SSR vIf / vElseIf / vElse, vFor, vShow
 
-### 18. Store (unit/store.test.ts) - 29 tests
+### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 9 tests
+
+- ✅ Component accessing `document.body.style.overflow` does not throw and
+  outputs HTML
+- ✅ Component calling `document.getElementById` / `querySelector` returns null
+  without throwing
+- ✅ Component calling `document.querySelectorAll` returns empty array without
+  throwing
+- ✅ Setting and reading `document.body.style.overflow` does not throw
+- ✅ `globalThis.document` is restored after `renderToString` / `renderToStream`
+  finishes
+- ✅ Streaming SSR: component accessing document does not throw
+
+### 19. Store (unit/store.test.ts) - 29 tests
 
 - ✅ createStore: [get, set] for state only, empty state, get() reactive, set
   updater, nested props
@@ -249,19 +263,19 @@
 - ✅ Same key returns existing instance (state shared); setState updater;
   getters/actions non-function entries skipped; Proxy ownKeys / spread
 
-### 19. Stream (unit/stream.test.ts) - 7 tests
+### 20. Stream (unit/stream.test.ts) - 7 tests
 
 - ✅ renderToStream: returns generator; simple div yields HTML; text children
   escaped; **plain function as child** renders return value (no source code);
   keyed children output data-view-keyed; void elements no closing tag
 
-### 20. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
+### 21. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
 - ✅ getRoutePathForChangedPath: /views/home → "/", /views/{segment} →
   "/{segment}", Windows path
 - ✅ getHmrVersionGetter / **VIEW_HMR_BUMP**: version getter and bump
 
-### 21. Compiler (unit/compiler.test.ts) - 13 tests
+### 22. Compiler (unit/compiler.test.ts) - 13 tests
 
 - ✅ optimize: constant folding (numeric, comparison, string concat),
   empty/invalid code; edge: divide/modulo by zero (no fold), unary plus fold,
@@ -269,19 +283,19 @@
 - ✅ createOptimizePlugin: name and setup, custom filter and readFile; onLoad
   readFile failure catch returns empty string
 
-### 22. Proxy (unit/proxy.test.ts) - 5 tests
+### 23. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy: get/set consistent with target, nested proxy, proxyCache
   reuse
 
 ## Test Coverage Analysis
 
-| Category          | Coverage                                                                                                                                                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| API methods       | createSignal, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, directives, Boundary, Runtime/SSR, scheduler, meta, proxy, compiler, stream covered by tests |
-| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, etc.                                                                                                                                                                            |
-| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                           |
-| Integration & E2E | createRoot + events + signal, v-model, createReactive form, fine-grained update, CLI init/build/start, browser multi-page and navigation                                                                                                                           |
+| Category          | Coverage                                                                                                                                                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API methods       | createSignal, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, directives, Boundary, Runtime/SSR, **SSR document shim**, scheduler, meta, proxy, compiler, stream covered by tests |
+| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, etc.                                                                                                                                                                                                   |
+| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                                                  |
+| Integration & E2E | createRoot + events + signal, v-model, createReactive form, fine-grained update, CLI init/build/start, browser multi-page and navigation                                                                                                                                                  |
 
 ## Advantages
 
@@ -293,15 +307,16 @@
 
 ## Conclusion
 
-All tests for @dreamer/view pass under **Deno** (435 tests) and **Bun** (410
+All tests for @dreamer/view pass under **Deno** (444 tests) and **Bun** (418
 tests; count differs by runner). 100% pass rate. Coverage includes signals,
 reactivity, scheduler, router, resource, context, directives, runtime and SSR
 (createRoot, render, **mount**, **createReactiveRoot**, hydrate, renderToString
-with full branch coverage, renderToStream), **applyProps** (ref, vShow/vCloak,
-dangerouslySetInnerHTML, value/checked reactive, events, class, style,
-attributes, custom directives), store (persist, getters/actions, edge cases),
-reactive, boundary, meta (getMetaHeadFragment, applyMetaToHead, edge cases),
-proxy, compiler (constant folding edge cases, plugin onLoad catch), stream,
-build/HMR, CLI (init/build/start), browser example flows, and **integration**:
-getter-returning-Fragment input focus preservation, suitable for release and
-documentation.
+with full branch coverage, renderToStream, **SSR document shim**: component
+access to document does not throw and document is restored after render),
+**applyProps** (ref, vShow/vCloak, dangerouslySetInnerHTML, value/checked
+reactive, events, class, style, attributes, custom directives), store (persist,
+getters/actions, edge cases), reactive, boundary, meta (getMetaHeadFragment,
+applyMetaToHead, edge cases), proxy, compiler (constant folding edge cases,
+plugin onLoad catch), stream, build/HMR, CLI (init/build/start), browser example
+flows, and **integration**: getter-returning- Fragment input focus preservation,
+suitable for release and documentation.
