@@ -33,7 +33,7 @@ import { applyProps, bindDeferredEventListeners } from "./props.ts";
 import { collectVIfGroup, createReconcile, hasAnyKey } from "./reconcile.ts";
 import type { IfContext } from "./shared.ts";
 import {
-  createDynamicSpan,
+  createDynamicContainer,
   createTextVNode,
   isEmptyChild,
   isFragment as checkFragment,
@@ -229,7 +229,7 @@ export function appendDynamicChild(
   ifContext?: IfContext,
 ): void {
   const doc = (globalThis as { document: Document }).document;
-  let container: Element = createDynamicSpan(doc);
+  let container: Element = createDynamicContainer(doc);
   parent.appendChild(container);
 
   /** 上一轮 getter 展开结果，用于与本次做 reconcile，避免整块 replaceChildren 导致 input 等失焦 */
@@ -277,7 +277,7 @@ export function appendDynamicChild(
 
     // 多节点或 Fragment 或 getter：若当前是单节点模式，先换回 span 再走通用逻辑
     if (isSingleMode) {
-      const span = createDynamicSpan(doc);
+      const span = createDynamicContainer(doc);
       runDirectiveUnmount(container);
       parent.replaceChild(span, container);
       container = span;
@@ -307,7 +307,7 @@ export function appendDynamicChild(
       const frag = doc.createDocumentFragment();
       for (const v of items) {
         if (isSignalGetter(v)) {
-          const inner = createDynamicSpan(doc);
+          const inner = createDynamicContainer(doc);
           frag.appendChild(inner);
           appendDynamicChild(inner, v as () => unknown, parentNamespace, ctx);
         } else {
@@ -510,7 +510,7 @@ export function createElement(
       const result: VNode | VNode[] | (() => VNode) | null = type(props);
       if (result == null) return doc.createTextNode("");
       if (typeof result === "function") {
-        const placeholder = createDynamicSpan(doc);
+        const placeholder = createDynamicContainer(doc);
         appendDynamicChild(
           placeholder,
           result as () => unknown,

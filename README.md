@@ -1107,9 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.6** (2026-03-15): **Fixed** SSR when component returns a getter function:
-server now invokes the function once and renders the resolved VNode(s), fixing
-blank areas for component-return-getter patterns (e.g. ui-view). Full history:
+**v1.1.7** (2026-03-15): **Changed** SSR keyed/dynamic no wrapper: keyed
+children use `data-key` on first element; dynamic blocks use
+`data-view-dynamic` + index on first element (or span when pure text).
+**Changed** Dynamic placeholder is now an unstyled div
+(`createDynamicContainer`); `createDynamicSpan` removed. Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

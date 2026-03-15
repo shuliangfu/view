@@ -68,7 +68,7 @@ describe("renderToString", () => {
       children: [] as VNode[],
     }));
     expect(html).toContain("from-function");
-    expect(html).toContain("<span>");
+    expect(html).toContain("<span"); // 可能带 data-view-dynamic 等属性，不要求裸 <span>
     // 若未对函数做“调用再展开”，会输出函数源码，HTML 中会出现 "() =>" 或 "function"
     expect(html).not.toContain("() =>");
   });
@@ -328,8 +328,8 @@ describe("renderToString", () => {
     expect(html).toContain("c2");
   });
 
-  /** 子节点带 key 时输出 data-view-keyed 包裹与 data-key */
-  it("带 key 的子节点输出 data-view-keyed 与 data-key", () => {
+  /** 子节点带 key 时在首元素上输出 data-key（已去 keyed 包装，不再输出 data-view-keyed） */
+  it("带 key 的子节点输出 data-key 于首元素", () => {
     const html = renderToString(() => ({
       type: "div",
       props: {
@@ -348,7 +348,6 @@ describe("renderToString", () => {
       },
       children: [] as VNode[],
     }));
-    expect(html).toContain("data-view-keyed");
     expect(html).toContain('data-key="k1"');
     expect(html).toContain("a");
   });
