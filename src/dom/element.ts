@@ -41,7 +41,6 @@ import {
 } from "./shared.ts";
 import {
   registerDirectiveUnmount,
-  runDirectiveUnmount,
   runDirectiveUnmountOnChildren,
 } from "./unmount.ts";
 
@@ -219,9 +218,6 @@ export function normalizeChildren(children: unknown): ChildItem[] {
  * @param parentNamespace - 父级命名空间（如 SVG），用于创建子元素
  * @param ifContext - 可选，v-else / v-else-if 的上下文
  */
-/** 给元素设置 data-view-dynamic，用于无包装 span 时的动态子节点挂载点 */
-const DATA_VIEW_DYNAMIC = "data-view-dynamic";
-
 /** reconcile 与 appendDynamicChild 的引用，供动态子节点 effect 运行时使用，避免循环依赖 */
 const recRef = {
   current: null as unknown as ReturnType<typeof createReconcile>,
@@ -238,6 +234,12 @@ const appendDynamicChildRef = {
 /**
  * 返回「动态子节点」的 effect 函数体，供 appendDynamicChild 与 updateDynamicChild 复用。
  * containerRef 使单节点优化时可更新当前容器引用；使用 recRef/appendDynamicChildRef 以便在 createReconcile 之前定义。
+ *
+ * 单节点优化（Form/FormItem/Password 等返回单一根节点时）：
+ * - 不替换占位：占位容器（div）始终保留，effect 始终挂在其上，避免 dispose 导致 Resource 等不更新。
+ * - 首次：在占位内 replaceChildren(单节点)，并记录 lastSingleVNode / singleMountedNode。
+ * - 再次运行：对 singleMountedNode 做 patchRoot 增量更新，不整棵 replace，从而保留 input 焦点。
+ * - 单→多切换：仅清空占位内容并替换为多节点内容，不 replace 占位本身。
  */
 function getDynamicChildEffectBody(
   containerRef: { current: Element },
@@ -248,6 +250,10 @@ function getDynamicChildEffectBody(
   const doc = (globalThis as { document: Document }).document;
   let lastItems: ChildItem[] = [];
   let isSingleMode = false;
+  /** 上一轮单节点 VNode，用于本轮 patch 增量更新，避免 replace 导致失焦 */
+  let lastSingleVNode: VNode | null = null;
+  /** 当前挂载的单节点 DOM，patch 时对其做 patchRoot */
+  let singleMountedNode: Node | null = null;
   const ctx = ifContext ?? { lastVIf: true };
 
   return () => {
@@ -268,41 +274,52 @@ function getDynamicChildEffectBody(
       items = normalizeChildren(frag.props?.children ?? frag.children ?? []);
     }
 
+    // 单节点且为原生元素（form/div 等）：保留占位、patch 更新，避免 replace 导致 Password 等 input 失焦
     if (
       items.length === 1 &&
       !isSignalGetter(items[0]) &&
       typeof items[0] !== "function" &&
       !checkFragment(items[0] as VNode)
     ) {
-      const node = createElement(items[0] as VNode, parentNamespace, ctx);
+      const singleVNode = items[0] as VNode;
+      const node = createElement(singleVNode, parentNamespace, ctx);
       if (node.nodeType === 1) {
         const el = node as Element;
-        const parent = container.parentNode;
-        if (parent) {
-          runDirectiveUnmount(container);
-          parent.replaceChild(el, container);
-        } else {
-          container.appendChild(el);
+        const parent = singleMountedNode?.parentNode ?? container;
+        if (
+          lastSingleVNode !== null &&
+          singleMountedNode !== null &&
+          parent !== null
+        ) {
+          rec.patchRoot(
+            parent as Element,
+            singleMountedNode,
+            lastSingleVNode,
+            singleVNode,
+          );
+          lastSingleVNode = singleVNode;
+          // patch 可能 replace 了子节点（如 ContextScope），需同步为当前挂载节点，否则下次 patch 会作用在已脱离的节点上
+          if (container.firstChild) singleMountedNode = container.firstChild;
+          bindDeferredEventListeners(container);
+          return;
         }
-        el.setAttribute(DATA_VIEW_DYNAMIC, "");
-        containerRef.current = el;
+        runDirectiveUnmountOnChildren(container);
+        container.replaceChildren(el);
+        singleMountedNode = el;
+        lastSingleVNode = singleVNode;
         isSingleMode = true;
+        containerRef.current = container;
         lastItems = items;
-        bindDeferredEventListeners(el);
+        bindDeferredEventListeners(container);
         return;
       }
     }
 
     if (isSingleMode) {
-      const wrap = createDynamicContainer(doc);
-      runDirectiveUnmount(container);
-      const parent = container.parentNode;
-      if (parent) {
-        parent.replaceChild(wrap, container);
-      } else {
-        container.appendChild(wrap);
-      }
-      containerRef.current = wrap;
+      runDirectiveUnmountOnChildren(container);
+      container.replaceChildren();
+      singleMountedNode = null;
+      lastSingleVNode = null;
       isSingleMode = false;
       lastItems = [];
     }
@@ -324,6 +341,8 @@ function getDynamicChildEffectBody(
       runDirectiveUnmountOnChildren(container);
       container.replaceChildren();
       lastItems = [];
+      singleMountedNode = null;
+      lastSingleVNode = null;
       return;
     }
     if (lastItems.length === 0) {

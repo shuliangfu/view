@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.11**（2026-03-16）：**修复** patchNode 同组件返回 getter
-时复用容器（Password input 失焦）。**新增** zh-TW
-语言；协调器焦点/容器复用测试（10 个）。**文档** 测试报告 454/427。完整历史见
+**v1.1.12**（2026-03-16）：**修复** 动态子节点单节点保留占位并 patch（Password
+焦点）。E2E Boundary/Portal 使用 waitForMainToContain；SSR document shim 单测
+sanitizeOps。**新增** Form 示例页、e2e 密码焦点断言、焦点保留单测。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---

@@ -209,6 +209,21 @@ async function getMainText(
   })) as string;
 }
 
+/** 轮询直到 main 内文本包含 substring，或超时（ms）；用于路由切换后等待页面渲染完成 */
+async function waitForMainToContain(
+  t: { browser?: { evaluate: (fn: () => string) => Promise<unknown> } },
+  substring: string,
+  maxWaitMs = 3000,
+): Promise<string> {
+  const step = 150;
+  for (let elapsed = 0; elapsed < maxWaitMs; elapsed += step) {
+    const text = await getMainText(t);
+    if (text.includes(substring)) return text;
+    await new Promise((r) => setTimeout(r, step));
+  }
+  return getMainText(t);
+}
+
 /** 获取当前 document.title（用于断言 afterRoute 标题同步） */
 async function getDocumentTitle(
   t: { browser?: { evaluate: (fn: () => string) => Promise<unknown> } },
@@ -384,6 +399,54 @@ describe("浏览器测试（examples 入口）", () => {
     expect(text).toContain("createContext");
   }, exampleBrowserConfig);
 
+  it("首页点击「Form」卡片进入 Form 页", async (t) => {
+    if (!t?.browser) return;
+    await navigate(t, "/");
+    await new Promise((r) => setTimeout(r, 200));
+    const ok = await clickButtonByText(t, "Form");
+    expect(ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 300));
+    const text = await getMainText(t);
+    expect(text).toContain("密码框焦点保留验证");
+  }, exampleBrowserConfig);
+
+  it(
+    "Form 页：密码框输入后焦点保留（getter 重跑 patch 不 replace）",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/form");
+      await new Promise((r) => setTimeout(r, 300));
+      const filled = await t.browser!.evaluate(() => {
+        const input = document.querySelector<HTMLInputElement>(
+          '[data-testid="form-password-input"]',
+        );
+        if (!input) return false;
+        input.focus();
+        input.value = "test123";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        return true;
+      });
+      expect(filled).toBe(true);
+      await new Promise((r) => setTimeout(r, 200));
+      // 原 bug：值在、但光标/焦点丢失（整棵 replace 导致 input 被换新节点）。修复后应焦点仍在。
+      const result = await t.browser!.evaluate(() => {
+        const input = document.querySelector<HTMLInputElement>(
+          '[data-testid="form-password-input"]',
+        );
+        return {
+          hasInput: input !== null,
+          focusRetained: input !== null && document.activeElement === input,
+          valueOk: input !== null &&
+            (input as HTMLInputElement).value === "test123",
+        };
+      });
+      expect(result.hasInput).toBe(true);
+      expect(result.valueOk).toBe(true);
+      expect(result.focusRetained).toBe(true);
+    },
+    exampleBrowserConfig,
+  );
+
   it("首页点击「Runtime」卡片进入 Runtime 页", async (t) => {
     if (!t?.browser) return;
     await navigate(t, "/");
@@ -428,8 +491,7 @@ describe("浏览器测试（examples 入口）", () => {
     await new Promise((r) => setTimeout(r, 200));
     const ok = await clickButtonByText(t, "Portal");
     expect(ok).toBe(true);
-    await new Promise((r) => setTimeout(r, 300));
-    const text = await getMainText(t);
+    const text = await waitForMainToContain(t, "createPortal");
     expect(text).toContain("createPortal");
     expect(text).toContain("打开 Modal");
     const title = await getDocumentTitle(t);
