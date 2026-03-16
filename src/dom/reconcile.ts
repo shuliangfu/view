@@ -62,6 +62,21 @@ export type ReconcileDeps = {
     parentNamespace: string | null,
     ifContext?: IfContext,
   ) => void;
+  /** 复用已有动态容器，用新 getter 注册 effect，避免同槽 getter 引用变化时整块 replace 导致 input 等失焦 */
+  updateDynamicChild: (
+    container: Element,
+    newGetter: () => unknown,
+    parentNamespace: string | null,
+    ifContext: IfContext,
+  ) => void;
+  /** 协调器引用，供 element 内 getDynamicChildEffectBody 运行时使用 */
+  recRef?: {
+    current: {
+      reconcileKeyedChildren: unknown;
+      reconcileChildren: unknown;
+      patchRoot: unknown;
+    } | null;
+  };
 };
 
 /** 从 ChildItem 取 key，供 keyed 协调时与旧列表对齐 */
@@ -217,6 +232,7 @@ export function createReconcile(deps: ReconcileDeps): {
     resolveNamespace,
     appendChildren,
     appendDynamicChild,
+    updateDynamicChild,
   } = deps;
 
   /**
@@ -493,6 +509,19 @@ export function createReconcile(deps: ReconcileDeps): {
           i++;
           continue;
         }
+        // 同槽均为 getter 但引用不同（如父重渲染导致组件返回新闭包）：复用容器并用新 getter 更新，避免 replace 导致 input 等失焦
+        if (newIsGetter && oldIsGetter && existing.nodeType === 1) {
+          runDirectiveUnmount(existing);
+          updateDynamicChild(
+            existing as Element,
+            newItem as () => unknown,
+            parentNamespace,
+            ifContext,
+          );
+          domIndex++;
+          i++;
+          continue;
+        }
         runDirectiveUnmount(existing);
         parent.replaceChild(
           newIsGetter
@@ -583,9 +612,11 @@ export function createReconcile(deps: ReconcileDeps): {
     container.replaceChild(next, mounted);
   }
 
-  return {
+  const result = {
     reconcileKeyedChildren,
     reconcileChildren,
     patchRoot,
   };
+  if (deps.recRef) deps.recRef.current = result;
+  return result;
 }

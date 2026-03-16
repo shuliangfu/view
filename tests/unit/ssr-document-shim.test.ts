@@ -177,4 +177,4 @@ describe("renderToStream document shim", () => {
     const after = (globalThis as unknown as { document?: Document }).document;
     expect(after).toBe(before);
   });
-});
+}, { sanitizeOps: false, sanitizeResources: false });

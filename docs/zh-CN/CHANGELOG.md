@@ -7,6 +7,18 @@
 
 ---
 
+## [1.1.10] - 2026-03-16
+
+### 修复
+
+- **Reconcile：同槽两 getter 引用不同时复用容器** 当旧、新槽项均为组件 getter
+  但引用不同（如父组件重渲染时 `() => <Password />`）时，协调器不再整块
+  替换动态子节点容器，而是复用已有容器并调用
+  `updateDynamicChild(container, newGetter, ...)`，对新 getter 结果做原地
+  patch，避免 Password 等使用 `return () => ( ... )` 的组件内 input 失焦。
+
+---
+
 ## [1.1.9] - 2026-03-16
 
 ### 新增

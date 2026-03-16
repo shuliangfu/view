@@ -8,6 +8,23 @@ and this project adheres to
 
 ---
 
+## [1.1.10] - 2026-03-16
+
+### Fixed
+
+- **Reconcile: reuse container when same slot has two getters (different
+  reference)** When both old and new slot items are component getters but the
+  getter reference changed (e.g. parent re-render with `() => <Password />`),
+  the reconciler no longer replaces the whole dynamic child container. It now
+  reuses the existing container and calls
+  `updateDynamicChild(container,
+  newGetter, ...)` so the new getter’s result
+  is patched in place. This avoids input focus loss in components like Password
+  that use `return () => ( ...
+  )` while keeping the getter pattern.
+
+---
+
 ## [1.1.9] - 2026-03-16
 
 ### Added

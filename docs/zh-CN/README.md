@@ -1060,10 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.9**（2026-03-16）：**新增** SSR document
-shim，renderToString/renderToStream 期间组件内访问 document
-不抛错，渲染后恢复。**新增** SSR document shim 单元测试（9 个）。**文档**
-测试报告与 README 更新（444 用例）。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.10**（2026-03-16）：**修复** 同槽两 getter 引用不同时协调器复用容器并
+patch，避免使用 `return () => ( ... )` 的组件内 input 失焦。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
