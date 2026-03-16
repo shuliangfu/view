@@ -8,6 +8,33 @@ and this project adheres to
 
 ---
 
+## [1.1.11] - 2026-03-16
+
+### Fixed
+
+- **patchNode: reuse container when same component returns getter** When the
+  existing DOM is a dynamic container (`data-view-dynamic`) and old/new VNodes
+  are the same component (e.g. `<Password />`), the reconciler now calls
+  `getComponentGetter` and `updateDynamicChild` instead of replacing the node.
+  Fixes input focus loss in components like Password when the parent re-renders
+  (component slot was previously always replaced in patchNode).
+
+### Added
+
+- **zh-TW locale** CLI and server i18n now support Traditional Chinese
+  (`zh-TW`). New `src/server/locales/zh-TW.json`; `Locale` and `VIEW_LOCALES`
+  (10 locales).
+- **Reconcile focus/container reuse tests** New unit tests in
+  `tests/unit/reconcile-focus-reuse.test.ts` (10 tests): same-slot getter reuse,
+  same-component patch reuse, getter/static edges, getter returns null.
+
+### Docs
+
+- TEST_REPORT (en/zh) updated: 454 tests (Deno), 427 (Bun), reconcile
+  focus/container reuse coverage.
+
+---
+
 ## [1.1.10] - 2026-03-16
 
 ### Fixed

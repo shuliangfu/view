@@ -393,6 +393,27 @@ function updateDynamicChild(
 }
 
 /**
+ * 调用组件取 getter（含 context），供 patchNode 同组件复用动态容器时用。
+ * 与 createElement 中函数组件的调用方式一致，仅返回 getter 不创建 DOM。
+ */
+function getComponentGetter(
+  type: (props: Record<string, unknown>) => unknown,
+  props: Record<string, unknown>,
+): (() => unknown) | null {
+  const binding = getContextBinding(
+    type as (props: Record<string, unknown>) => VNode | VNode[] | null,
+    props,
+  );
+  if (binding) pushContext(binding.id, binding.value);
+  try {
+    const result = type(props);
+    return typeof result === "function" ? (result as () => unknown) : null;
+  } finally {
+    if (binding) popContext(binding.id);
+  }
+}
+
+/**
  * 创建 vIf/vElseIf/vElse 组的占位节点：单一 effect 内按顺序求值，渲染第一个为 true 的分支，保证 getter 被读、effect 能订阅
  */
 function createVIfGroupPlaceholder(
@@ -509,6 +530,7 @@ const rec = createReconcile({
   appendDynamicChild,
   updateDynamicChild,
   recRef,
+  getComponentGetter,
 });
 
 /**

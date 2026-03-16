@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-444%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-454%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -1107,10 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.10** (2026-03-16): **Fixed** Reconcile reuses container when same slot
-has two getters (different reference); patch instead of replace to avoid input
-focus loss in components using `return () => ( ... )`. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.11** (2026-03-16): **Fixed** patchNode reuses container when same
+component returns getter (Password input focus). **Added** zh-TW locale;
+reconcile focus/container reuse tests (10). **Docs** TEST_REPORT 454/427. Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -1119,8 +1119,8 @@ focus loss in components using `return () => ( ... )`. Full history:
 | Metric      | Value      |
 | ----------- | ---------- |
 | Test date   | 2026-03-16 |
-| Total tests | 444 (Deno) |
-| Passed      | 444 ✅     |
+| Total tests | 454 (Deno) |
+| Passed      | 454 ✅     |
 | Failed      | 0          |
 | Pass rate   | 100%       |
 | Duration    | ~1m30s     |

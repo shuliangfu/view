@@ -7,6 +7,31 @@
 
 ---
 
+## [1.1.11] - 2026-03-16
+
+### 修复
+
+- **patchNode：同组件且返回 getter 时复用容器** 当现有 DOM 为动态容器
+  （`data-view-dynamic`）且旧/新 VNode 为同一组件（如 `<Password />`）时，协调器
+  改为调用 `getComponentGetter` 与 `updateDynamicChild`，不再整节点
+  replace。修复 父组件重渲染时 Password 等组件内 input 失焦（此前 patchNode
+  对组件槽位一律 replace）。
+
+### 新增
+
+- **zh-TW 语言** CLI 与 server i18n 现支持繁体中文（`zh-TW`）。新增
+  `src/server/locales/zh-TW.json`，`Locale` 与 `VIEW_LOCALES` 共 10 种语言。
+- **协调器焦点/容器复用测试** 新增
+  `tests/unit/reconcile-focus-reuse.test.ts`（10 个用例）：同槽 getter
+  复用、同组件 patch 复用、getter/静态边界、getter 返回 null。
+
+### 文档
+
+- 测试报告（中英文）更新：454
+  用例（Deno）、427（Bun），协调器焦点/容器复用覆盖。
+
+---
+
 ## [1.1.10] - 2026-03-16
 
 ### 修复
