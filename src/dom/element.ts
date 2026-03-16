@@ -222,25 +222,42 @@ export function normalizeChildren(children: unknown): ChildItem[] {
 /** 给元素设置 data-view-dynamic，用于无包装 span 时的动态子节点挂载点 */
 const DATA_VIEW_DYNAMIC = "data-view-dynamic";
 
-export function appendDynamicChild(
-  parent: Element | DocumentFragment,
+/** reconcile 与 appendDynamicChild 的引用，供动态子节点 effect 运行时使用，避免循环依赖 */
+const recRef = {
+  current: null as unknown as ReturnType<typeof createReconcile>,
+};
+const appendDynamicChildRef = {
+  current: null as unknown as ((
+    parent: Element | DocumentFragment,
+    getter: () => unknown,
+    parentNamespace: string | null,
+    ifContext?: IfContext,
+  ) => void),
+};
+
+/**
+ * 返回「动态子节点」的 effect 函数体，供 appendDynamicChild 与 updateDynamicChild 复用。
+ * containerRef 使单节点优化时可更新当前容器引用；使用 recRef/appendDynamicChildRef 以便在 createReconcile 之前定义。
+ */
+function getDynamicChildEffectBody(
+  containerRef: { current: Element },
   getter: () => unknown,
   parentNamespace: string | null,
-  ifContext?: IfContext,
-): void {
+  ifContext: IfContext,
+): () => void {
   const doc = (globalThis as { document: Document }).document;
-  let container: Element = createDynamicContainer(doc);
-  parent.appendChild(container);
-
-  /** 上一轮 getter 展开结果，用于与本次做 reconcile，避免整块 replaceChildren 导致 input 等失焦 */
   let lastItems: ChildItem[] = [];
-  /** 当前是否为「单节点模式」：容器即实际节点（如 button），无包装 span */
   let isSingleMode = false;
+  const ctx = ifContext ?? { lastVIf: true };
 
-  registerPlaceholderEffect(container, () => {
+  return () => {
+    const rec = recRef.current;
+    const appendDynamicChildFn = appendDynamicChildRef.current;
+    if (!rec || !appendDynamicChildFn) return;
+
+    let container = containerRef.current;
     const value = getter();
     let items = normalizeChildren(value);
-    // getter 返回单个 Fragment（如 () => ( <> ... </> )）时展开为其 children，使 lastItems/DOM 槽位一致，避免 reconcile 误删节点导致 input 失焦
     if (
       items.length === 1 &&
       !isSignalGetter(items[0]) &&
@@ -250,9 +267,7 @@ export function appendDynamicChild(
       const frag = items[0] as VNode;
       items = normalizeChildren(frag.props?.children ?? frag.children ?? []);
     }
-    const ctx = ifContext ?? { lastVIf: true };
 
-    // 单节点优化：getter 返回单个非 Fragment、非 getter 的 VNode 且渲染为单元素时，直接以该元素为容器，不包 span，避免多一层 DOM 影响样式
     if (
       items.length === 1 &&
       !isSignalGetter(items[0]) &&
@@ -262,14 +277,15 @@ export function appendDynamicChild(
       const node = createElement(items[0] as VNode, parentNamespace, ctx);
       if (node.nodeType === 1) {
         const el = node as Element;
-        if (container.parentNode === parent) {
+        const parent = container.parentNode;
+        if (parent) {
           runDirectiveUnmount(container);
           parent.replaceChild(el, container);
         } else {
-          parent.appendChild(el);
+          container.appendChild(el);
         }
         el.setAttribute(DATA_VIEW_DYNAMIC, "");
-        container = el;
+        containerRef.current = el;
         isSingleMode = true;
         lastItems = items;
         bindDeferredEventListeners(el);
@@ -277,19 +293,20 @@ export function appendDynamicChild(
       }
     }
 
-    // 多节点或 Fragment 或 getter：若当前是单节点模式，先换回包装再走通用逻辑
     if (isSingleMode) {
       const wrap = createDynamicContainer(doc);
       runDirectiveUnmount(container);
-      if (container.parentNode === parent) {
+      const parent = container.parentNode;
+      if (parent) {
         parent.replaceChild(wrap, container);
       } else {
-        parent.appendChild(wrap);
+        container.appendChild(wrap);
       }
-      container = wrap;
+      containerRef.current = wrap;
       isSingleMode = false;
       lastItems = [];
     }
+    container = containerRef.current;
 
     if (items.length > 0 && hasAnyKey(items)) {
       rec.reconcileKeyedChildren(
@@ -315,7 +332,7 @@ export function appendDynamicChild(
         if (isSignalGetter(v)) {
           const inner = createDynamicContainer(doc);
           frag.appendChild(inner);
-          appendDynamicChild(inner, v as () => unknown, parentNamespace, ctx);
+          appendDynamicChildFn(inner, v as () => unknown, parentNamespace, ctx);
         } else {
           frag.appendChild(createElement(v as VNode, parentNamespace, ctx));
         }
@@ -335,7 +352,44 @@ export function appendDynamicChild(
     );
     lastItems = items;
     bindDeferredEventListeners(container);
-  });
+  };
+}
+
+export function appendDynamicChild(
+  parent: Element | DocumentFragment,
+  getter: () => unknown,
+  parentNamespace: string | null,
+  ifContext?: IfContext,
+): void {
+  const doc = (globalThis as { document: Document }).document;
+  const container = createDynamicContainer(doc);
+  parent.appendChild(container);
+  appendDynamicChildRef.current = appendDynamicChild;
+  const containerRef = { current: container };
+  const ctx = ifContext ?? { lastVIf: true };
+  registerPlaceholderEffect(
+    container,
+    getDynamicChildEffectBody(containerRef, getter, parentNamespace, ctx),
+  );
+}
+
+/** 复用已有动态容器，用新 getter 注册 effect，供 reconcile 在「同槽 getter 引用变化」时调用，避免整块 replace 导致 input 失焦 */
+function updateDynamicChild(
+  container: Element,
+  newGetter: () => unknown,
+  parentNamespace: string | null,
+  ifContext: IfContext,
+): void {
+  const containerRef = { current: container };
+  registerPlaceholderEffect(
+    container,
+    getDynamicChildEffectBody(
+      containerRef,
+      newGetter,
+      parentNamespace,
+      ifContext,
+    ),
+  );
 }
 
 /**
@@ -453,6 +507,8 @@ const rec = createReconcile({
   resolveNamespace,
   appendChildren,
   appendDynamicChild,
+  updateDynamicChild,
+  recRef,
 });
 
 /**

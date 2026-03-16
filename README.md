@@ -1107,11 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.9** (2026-03-16): **Added** SSR document shim during
-renderToString/renderToStream so component code can access document without
-throwing; document restored after render. **Added** unit tests for SSR document
-shim (9 tests). **Docs** TEST_REPORT and README updated (444 tests). Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.10** (2026-03-16): **Fixed** Reconcile reuses container when same slot
+has two getters (different reference); patch instead of replace to avoid input
+focus loss in components using `return () => ( ... )`. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
