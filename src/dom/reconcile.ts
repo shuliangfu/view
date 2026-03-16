@@ -77,6 +77,11 @@ export type ReconcileDeps = {
       patchRoot: unknown;
     } | null;
   };
+  /** 调用组件取 getter（含 context），供 patchNode 同组件复用动态容器时用，避免 replace 导致 input 失焦 */
+  getComponentGetter?: (
+    type: (props: Record<string, unknown>) => unknown,
+    props: Record<string, unknown>,
+  ) => (() => unknown) | null;
 };
 
 /** 从 ChildItem 取 key，供 keyed 协调时与旧列表对齐 */
@@ -233,6 +238,7 @@ export function createReconcile(deps: ReconcileDeps): {
     appendChildren,
     appendDynamicChild,
     updateDynamicChild,
+    getComponentGetter,
   } = deps;
 
   /**
@@ -375,6 +381,23 @@ export function createReconcile(deps: ReconcileDeps): {
     }
 
     if (typeof newV.type === "function") {
+      // 同组件且当前为动态容器时复用容器并用新 getter 更新，避免 replace 导致 Password 等 input 失焦
+      const el = dom.nodeType === 1 ? (dom as Element) : null;
+      if (
+        el?.getAttribute?.("data-view-dynamic") != null &&
+        oldV.type === newV.type &&
+        getComponentGetter
+      ) {
+        const newGetter = getComponentGetter(
+          newV.type as (props: Record<string, unknown>) => unknown,
+          (newV.props ?? {}) as Record<string, unknown>,
+        );
+        if (typeof newGetter === "function") {
+          runDirectiveUnmount(el);
+          updateDynamicChild(el, newGetter, parentNamespace, ifContext);
+          return;
+        }
+      }
       const parent = dom.parentNode;
       if (!parent) return;
       const next = createElement(newV, parentNamespace, ifContext);

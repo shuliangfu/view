@@ -4,7 +4,7 @@
  * @fileoverview view 包 i18n 桥接（仅服务端/CLI）：使用 $tr + 模块实例，不挂全局；供 CLI 输出与服务端抛错使用。
  *
  * 未传 lang 时按环境变量（LANGUAGE / LC_ALL / LANG）检测语言。默认 en-US。
- * 文案来自 src/server/locales/*.json（与 dweb 一致支持 9 种语言）。本模块位于 server/utils/i18n.ts。
+ * 文案来自 src/server/locales/*.json（支持 10 种语言，含 zh-TW）。本模块位于 server/utils/i18n.ts。
  */
 
 import {
@@ -23,8 +23,9 @@ import jaJP from "../locales/ja-JP.json" with { type: "json" };
 import koKR from "../locales/ko-KR.json" with { type: "json" };
 import ptBR from "../locales/pt-BR.json" with { type: "json" };
 import zhCN from "../locales/zh-CN.json" with { type: "json" };
+import zhTW from "../locales/zh-TW.json" with { type: "json" };
 
-/** 支持的 locale（与 dweb 一致：9 种）；英语使用 en-US */
+/** 支持的 locale（含 zh-TW 共 10 种）；英语使用 en-US */
 export type Locale =
   | "de-DE"
   | "en-US"
@@ -34,7 +35,8 @@ export type Locale =
   | "ja-JP"
   | "ko-KR"
   | "pt-BR"
-  | "zh-CN";
+  | "zh-CN"
+  | "zh-TW";
 
 /** 默认语言（与框架统一为 en-US） */
 export const DEFAULT_LOCALE: Locale = "en-US";
@@ -50,6 +52,7 @@ const VIEW_LOCALES: Locale[] = [
   "ko-KR",
   "pt-BR",
   "zh-CN",
+  "zh-TW",
 ];
 
 const LOCALE_DATA: Record<string, TranslationData> = {
@@ -62,6 +65,7 @@ const LOCALE_DATA: Record<string, TranslationData> = {
   "ko-KR": koKR as TranslationData,
   "pt-BR": ptBR as TranslationData,
   "zh-CN": zhCN as TranslationData,
+  "zh-TW": zhTW as TranslationData,
 };
 
 /** init 时创建的 view cmd 实例，不挂全局，$tr 专用 */
@@ -112,7 +116,7 @@ export function setViewLocale(locale: Locale): void {
 }
 
 /**
- * 将配置中的 language 字符串规范为 Locale（de-DE / en-US / es-ES / fr-FR / id-ID / ja-JP / ko-KR / pt-BR / zh-CN），不匹配则返回 null
+ * 将配置中的 language 字符串规范为 Locale（含 zh-TW 等），不匹配则返回 null
  */
 export function normalizeLanguageToLocale(
   lang: string | undefined,
