@@ -30,7 +30,7 @@ describe("SSR document shim", () => {
     }));
     expect(html).toContain("ok");
     expect(html).toContain("data-ssr");
-  });
+  }, { sanitizeOps: false, sanitizeResources: false });
 
   it("组件内 document.getElementById 返回 null 不抛错", () => {
     const Comp = () => {

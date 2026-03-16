@@ -7,6 +7,38 @@
 
 ---
 
+## [1.1.12] - 2026-03-16
+
+### 修复
+
+- **动态子节点单节点：保留占位并 patch 不 replace** 在
+  `getDynamicChildEffectBody` 中，当 getter 返回单个原生根节点（如 Form/FormItem
+  根）时，不再用该节点 replace 占位容器；改为在占位内渲染单节点， 后续重跑时用
+  `patchRoot` 增量更新。彻底修复 Form + FormItem + Password
+  输入时光标丢失。patch 后同步 `singleMountedNode`，保证 ContextScope
+  等被替换子节点仍正确。
+- **E2E Boundary/Portal** 使用 `waitForMainToContain` 轮询 main 内容（最多
+  3s），在断言前等待路由切换与渲染完成，避免加载慢时 main 为空导致偶发失败。
+- **SSR document shim 单测** 其中一条用例增加 `sanitizeOps: false`，避免 timer
+  泄漏误报。
+
+### 新增
+
+- **Form 示例页** 新增 `examples/src/views/form/`，含 Form + FormItem +
+  密码框（与 ui-view 结构一致），用于焦点保留验证。
+- **首页 Form 卡片** 示例首页增加 Form 入口，链接至 `/form`。
+- **E2E：Form 页与密码框焦点** 进入 Form 页、在密码框输入后断言
+  `document.activeElement` 仍为该 input（焦点保留）。
+- **单测：密码焦点** 在 `reconcile-focus-reuse.test.ts` 中新增用例：getter
+  返回单根 div 包 input，signal 更新后复用同一 input 节点（证明 patch
+  路径，真实浏览器下焦点保留）。
+
+### 文档
+
+- 变更日志（中/英）与 README 变更章节更新至 1.1.12。
+
+---
+
 ## [1.1.11] - 2026-03-16
 
 ### 修复

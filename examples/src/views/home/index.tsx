@@ -216,6 +216,23 @@ const ModuleIcons: Record<string, () => VNode> = {
       />
     </svg>
   ),
+  /** Form + FormItem + 密码框焦点验证 */
+  form: () => (
+    <svg
+      className="h-8 w-8 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+    </svg>
+  ),
 };
 
 /** 首页功能模块配置：标题、描述、链接、强调色、图标 key */
@@ -322,6 +339,14 @@ const HOME_MODULES: Array<{
     iconKey: "transition",
     accent: "border-l-sky-500 bg-sky-500/5 dark:bg-sky-500/10",
     accentText: "text-sky-600 dark:text-sky-400",
+  },
+  {
+    title: "Form",
+    desc: "Form + FormItem + 密码框，验证 getter 重跑时焦点保留",
+    href: "/form",
+    iconKey: "form",
+    accent: "border-l-violet-500 bg-violet-500/5 dark:bg-violet-500/10",
+    accentText: "text-violet-600 dark:text-violet-400",
   },
 ];
 

@@ -1107,10 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.11** (2026-03-16): **Fixed** patchNode reuses container when same
-component returns getter (Password input focus). **Added** zh-TW locale;
-reconcile focus/container reuse tests (10). **Docs** TEST_REPORT 454/427. Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.12** (2026-03-16): **Fixed** dynamic child single-node keeps placeholder
+and patches in place (Password focus). E2E Boundary/Portal waitForMainToContain;
+SSR document shim test sanitizeOps. **Added** Form example page, e2e password
+focus assertion, unit test for focus retention. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

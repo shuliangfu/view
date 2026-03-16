@@ -8,6 +8,41 @@ and this project adheres to
 
 ---
 
+## [1.1.12] - 2026-03-16
+
+### Fixed
+
+- **Dynamic child single-node: keep placeholder and patch instead of replace**
+  In `getDynamicChildEffectBody`, when the getter returns a single native
+  element (e.g. Form/FormItem root), the placeholder container is no longer
+  replaced; the single node is rendered inside the placeholder and subsequent
+  runs use `patchRoot` to update in place. This fully fixes input focus loss in
+  Form + FormItem + Password when typing. After patch, `singleMountedNode` is
+  synced so ContextScope or other replaced children remain correct.
+- **E2E Boundary/Portal** Use `waitForMainToContain` to poll for main content
+  (up to 3s) so route change and render complete before assertions; avoids flaky
+  empty main on slow load.
+- **SSR document shim test** One test now uses `sanitizeOps: false` to avoid
+  timer-leak false positives.
+
+### Added
+
+- **Form example page** New `examples/src/views/form/` with Form + FormItem +
+  password input (same structure as ui-view) for focus retention verification.
+- **Home Form card** Form entry on examples home with link to `/form`.
+- **E2E: Form page and password focus** Tests for navigating to Form page and
+  asserting that after typing in the password field, `document.activeElement` is
+  still the input (focus retained).
+- **Unit test: password focus** New case in `reconcile-focus-reuse.test.ts`:
+  getter returns single root div wrapping input; after signal update, same input
+  node is reused (proves patch path, focus retained in real browser).
+
+### Docs
+
+- Changelog (en/zh) and README changelog section updated for 1.1.12.
+
+---
+
 ## [1.1.11] - 2026-03-16
 
 ### Fixed

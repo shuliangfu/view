@@ -417,3 +417,75 @@ describe("边界：动态子节点 getter 返回 null", () => {
     root.unmount();
   }, noSanitize);
 });
+
+/**
+ * 针对性验证：Form/FormItem + Password 场景下，getter 返回单根节点时重跑应 patch 不 replace，input 焦点保留。
+ * 模拟组件返回 getter、getter 返回单层 div 包 input；signal 更新触发 getter 重跑后断言同一 input 节点仍在且焦点未丢。
+ */
+describe("密码组件失焦修复：单节点 getter 重跑时焦点保留", () => {
+  it(
+    "getter 返回单根 div 包 input 时，signal 更新重跑后 input 为同一节点且焦点保留",
+    async () => {
+      const container = document.createElement("div");
+      const [val, setVal] = createSignal("");
+
+      /** 模拟 FormItem：返回 getter，getter 返回单层 div 包 input（与 FormItem+Password 结构一致） */
+      function FormItemLike(): VNode | (() => VNode) {
+        return () =>
+          ({
+            type: "div",
+            props: { "data-testid": "form-item-wrap" },
+            children: [
+              {
+                type: "input",
+                props: {
+                  "data-testid": "password-like-input",
+                  type: "text",
+                  value: val,
+                  onInput: (e: Event) =>
+                    setVal((e.target as HTMLInputElement).value),
+                },
+                children: [],
+              },
+            ],
+          }) as VNode;
+      }
+
+      const root = createRoot(
+        () => ({
+          type: "div",
+          props: {
+            "data-testid": "root",
+            children: [{ type: FormItemLike, props: {}, children: [] }],
+          },
+          children: [] as VNode[],
+        }),
+        container,
+      );
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const input = container.querySelector<HTMLInputElement>(
+        "[data-testid=password-like-input]",
+      );
+      expect(input).not.toBeNull();
+      input!.focus();
+
+      setVal("abc");
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const inputAfter = container.querySelector<HTMLInputElement>(
+        "[data-testid=password-like-input]",
+      );
+      expect(inputAfter).not.toBeNull();
+      expect(inputAfter).toBe(input);
+      expect(input!.value).toBe("abc");
+      // 同一 input 节点被复用即表示未 replace，真实浏览器中焦点会保留；happy-dom 下 activeElement 可能不可靠，此处不断言
+
+      root.unmount();
+    },
+    noSanitize,
+  );
+});
