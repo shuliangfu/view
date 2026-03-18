@@ -261,7 +261,7 @@ function applySingleProp(el: Element, key: string, value: unknown): void {
   if (key === "disabled" || key === "readOnly" || key === "multiple") {
     viewEl[key] = Boolean(value);
   }
-  const attrName = key === "htmlFor" ? "for" : key;
+  const attrName = key === "htmlFor" || key === "for" ? "for" : key;
   if (el.getAttribute(attrName) !== str) el.setAttribute(attrName, str);
 }
 

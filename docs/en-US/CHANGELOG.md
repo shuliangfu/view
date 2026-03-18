@@ -8,6 +8,18 @@ and this project adheres to
 
 ---
 
+## [1.1.13] - 2026-03-18
+
+### Changed
+
+- **SSR and client: support both `class`/`className` and `for`/`htmlFor`** In
+  stringify, output HTML attribute `class` for both `class` and `className`, and
+  `for` for both `htmlFor` and `for`. In `getStaticPropsFingerprint`, normalize
+  to canonical keys so equivalent props share cache. In `props.ts`, treat `for`
+  the same as `htmlFor` when setting the attribute.
+
+---
+
 ## [1.1.12] - 2026-03-16
 
 ### Fixed

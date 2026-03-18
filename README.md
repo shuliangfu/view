@@ -1107,11 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.12** (2026-03-16): **Fixed** dynamic child single-node keeps placeholder
-and patches in place (Password focus). E2E Boundary/Portal waitForMainToContain;
-SSR document shim test sanitizeOps. **Added** Form example page, e2e password
-focus assertion, unit test for focus retention. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.13** (2026-03-18): **Changed** SSR and client support both
+`class`/`className` and `for`/`htmlFor`; stringify outputs canonical HTML
+attributes; fingerprint normalization for cache sharing; props apply `for` same
+as `htmlFor`. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

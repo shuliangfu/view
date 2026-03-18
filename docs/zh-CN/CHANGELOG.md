@@ -7,6 +7,17 @@
 
 ---
 
+## [1.1.13] - 2026-03-18
+
+### 变更
+
+- **SSR 与客户端：同时支持 class/className 与 for/htmlFor** stringify 中将
+  `class` 与 `className` 均输出为 HTML 的 `class`，`htmlFor` 与 `for` 均输出为
+  `for`。`getStaticPropsFingerprint` 中规范化为统一 key 以便等效 props 共享
+  缓存。`props.ts` 中设置属性时 `for` 与 `htmlFor` 同等处理。
+
+---
+
 ## [1.1.12] - 2026-03-16
 
 ### 修复

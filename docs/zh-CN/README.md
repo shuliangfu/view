@@ -1060,10 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.12**（2026-03-16）：**修复** 动态子节点单节点保留占位并 patch（Password
-焦点）。E2E Boundary/Portal 使用 waitForMainToContain；SSR document shim 单测
-sanitizeOps。**新增** Form 示例页、e2e 密码焦点断言、焦点保留单测。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.13**（2026-03-18）：**变更** SSR 与客户端同时支持 class/className 与
+for/htmlFor；stringify 输出规范 HTML 属性；指纹规范化以共享缓存；props 中 for 与
+htmlFor 同等处理。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

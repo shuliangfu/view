@@ -91,11 +91,12 @@ function fingerprintKeyFromEntries(entries: [string, string][]): string {
 /**
  * 若 props 为纯静态（无 getter、无指令输出），返回用于缓存的指纹；否则返回 null 表示不缓存。
  * 使用 for-in 与确定性键（替代 JSON.stringify）减少分配。
+ * class/className 与 for/htmlFor 规范化为同一 HTML 属性名，使等效 props 共享缓存。
  */
 function getStaticPropsFingerprint(
   props: Record<string, unknown>,
 ): string | null {
-  const entries: [string, string][] = [];
+  const map = new Map<string, string>();
   for (const key in props) {
     if (!Object.prototype.hasOwnProperty.call(props, key)) continue;
     const value = props[key];
@@ -104,7 +105,7 @@ function getStaticPropsFingerprint(
       key === "dangerouslySetInnerHTML"
     ) continue;
     if (key === "vCloak" || key === "v-cloak") {
-      entries.push([key, ""]);
+      map.set(key, "");
       continue;
     }
     if (isDirectiveProp(key)) continue;
@@ -112,7 +113,7 @@ function getStaticPropsFingerprint(
     if (typeof value === "function") continue;
     if (value == null || value === false) continue;
     if (value === true) {
-      entries.push([key, "true"]);
+      map.set(key, "true");
       continue;
     }
     let str: string;
@@ -131,9 +132,14 @@ function getStaticPropsFingerprint(
     } else {
       str = String(value);
     }
-    entries.push([key, str]);
+    const canonicalKey = key === "className"
+      ? "class"
+      : key === "htmlFor"
+      ? "for"
+      : key;
+    map.set(canonicalKey, str);
   }
-  entries.sort((a, b) => a[0].localeCompare(b[0]));
+  const entries = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   return fingerprintKeyFromEntries(entries);
 }
 
@@ -178,9 +184,9 @@ function stringifyAttributes(props: Record<string, unknown>): string {
     } else {
       str = String(v);
     }
-    if (key === "className") {
+    if (key === "className" || key === "class") {
       parts.push(`class="${escapeForAttr(str)}"`);
-    } else if (key === "htmlFor") {
+    } else if (key === "htmlFor" || key === "for") {
       parts.push(`for="${escapeForAttr(str)}"`);
     } else {
       parts.push(`${escapeForAttr(key)}="${escapeForAttr(str)}"`);
