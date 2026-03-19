@@ -1107,10 +1107,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.13** (2026-03-18): **Changed** SSR and client support both
-`class`/`className` and `for`/`htmlFor`; stringify outputs canonical HTML
-attributes; fingerprint normalization for cache sharing; props apply `for` same
-as `htmlFor`. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.14** (2026-03-19): **Fixed** Component returning getter now produces only
+one `data-view-dynamic`; `createElement` registers effect on a single container
+instead of calling `appendDynamicChild` (which created a second container). Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

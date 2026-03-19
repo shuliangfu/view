@@ -1060,9 +1060,10 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.13**（2026-03-18）：**变更** SSR 与客户端同时支持 class/className 与
-for/htmlFor；stringify 输出规范 HTML 属性；指纹规范化以共享缓存；props 中 for 与
-htmlFor 同等处理。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.14**（2026-03-19）：**修复** 组件返回 getter 时仅产生一层
+`data-view-dynamic`；`createElement` 在单一容器上注册 effect，不再调用
+`appendDynamicChild`（避免多建一层容器）。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

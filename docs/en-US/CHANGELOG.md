@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [1.1.14] - 2026-03-19
+
+### Fixed
+
+- **Component returning getter: single data-view-dynamic** When a function
+  component returns a getter (e.g. `return () => ( <div>...</div> )`),
+  `createElement` no longer created a placeholder and then called
+  `appendDynamicChild`, which created a second dynamic container. It now creates
+  one container and registers the effect on it directly, so only one
+  `data-view-dynamic` node appears (e.g. under a Carousel or similar
+  getter-returning component).
+
+---
+
 ## [1.1.13] - 2026-03-18
 
 ### Changed

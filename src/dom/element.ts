@@ -612,15 +612,22 @@ export function createElement(
     try {
       const result: VNode | VNode[] | (() => VNode) | null = type(props);
       if (result == null) return doc.createTextNode("");
+      // 组件返回 getter 时：只创建一个 dynamic 容器并在其上注册 effect，不再调用 appendDynamicChild，
+      // 否则 appendDynamicChild 会再建一层容器导致出现两层 data-view-dynamic
       if (typeof result === "function") {
-        const placeholder = createDynamicContainer(doc);
-        appendDynamicChild(
-          placeholder,
-          result as () => unknown,
-          parentNamespace,
-          ifContext,
+        const container = createDynamicContainer(doc);
+        const containerRef = { current: container };
+        const ctx = ifContext ?? { lastVIf: true };
+        registerPlaceholderEffect(
+          container,
+          getDynamicChildEffectBody(
+            containerRef,
+            result as () => unknown,
+            parentNamespace,
+            ctx,
+          ),
         );
-        return placeholder;
+        return container;
       }
       const nodes = Array.isArray(result) ? result : [result];
       if (nodes.length === 0) return doc.createTextNode("");
