@@ -7,6 +7,19 @@
 
 ---
 
+## [1.2.0] - 2026-03-19
+
+### 修复
+
+- **动态 getter 单节点为组件时：用展开结果做 patch** 当 getter 返回单个组件（如
+  `{ () => ( <Carousel ... /> ) }`）时，`getDynamicChildEffectBody` 改为用
+  `expandVNode` 取得组件输出（如轮播根 div）并以此做 `patchRoot`，不再传入组件
+  VNode。这样会对同一棵 DOM 做增量更新（只改
+  style/children）而不是整块替换，轮播 滑动过渡生效，且仅该槽位状态（如
+  current）变化时不会触发整页重渲染或其它状态重置。
+
+---
+
 ## [1.1.14] - 2026-03-19
 
 ### 修复
