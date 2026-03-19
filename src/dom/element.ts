@@ -274,7 +274,7 @@ function getDynamicChildEffectBody(
       items = normalizeChildren(frag.props?.children ?? frag.children ?? []);
     }
 
-    // 单节点且为原生元素（form/div 等）：保留占位、patch 更新，避免 replace 导致 Password 等 input 失焦
+    // 单节点且为原生元素或组件（form/div/Carousel 等）：保留占位、patch 更新，避免 replace 导致失焦或轮播无过渡
     if (
       items.length === 1 &&
       !isSignalGetter(items[0]) &&
@@ -286,18 +286,52 @@ function getDynamicChildEffectBody(
       if (node.nodeType === 1) {
         const el = node as Element;
         const parent = singleMountedNode?.parentNode ?? container;
+        // 组件单节点时用展开后的 VNode 做 patch，否则 patchNode 会走组件分支并 replace 整块，导致无过渡、状态重置。
+        // 若 expandVNode 得到 [getter]（组件返回 getter），则在此处调用 getter 并展开返回值，得到可 patch 的树；不在全局 expandVNode 里调用，否则会破坏 createRoot 的根展开树（根子节点会变成 getter 内容而非 dynamic 容器）。
+        let expandedForPatch: ExpandedRoot =
+          typeof singleVNode.type === "function"
+            ? expandVNode(singleVNode)
+            : singleVNode;
+        if (
+          Array.isArray(expandedForPatch) &&
+          expandedForPatch.length === 1 &&
+          typeof expandedForPatch[0] === "function"
+        ) {
+          const getter = expandedForPatch[0] as () => VNode | VNode[] | null;
+          const v = getter();
+          if (v != null) {
+            const nodes = Array.isArray(v) ? v : [v];
+            if (nodes.length === 1) {
+              expandedForPatch = expandVNode(nodes[0] as VNode);
+            } else if (nodes.length > 1) {
+              const out: ChildItem[] = [];
+              for (const n of nodes) {
+                const e = expandVNode(n as VNode);
+                if (Array.isArray(e)) out.push(...e);
+                else out.push(e);
+              }
+              expandedForPatch = out;
+            }
+          }
+        }
+        const newExpanded = Array.isArray(expandedForPatch)
+          ? expandedForPatch[0]
+          : expandedForPatch;
         if (
           lastSingleVNode !== null &&
           singleMountedNode !== null &&
-          parent !== null
+          parent !== null &&
+          newExpanded != null &&
+          typeof newExpanded === "object" &&
+          "type" in newExpanded
         ) {
           rec.patchRoot(
             parent as Element,
             singleMountedNode,
             lastSingleVNode,
-            singleVNode,
+            newExpanded,
           );
-          lastSingleVNode = singleVNode;
+          lastSingleVNode = newExpanded;
           // patch 可能 replace 了子节点（如 ContextScope），需同步为当前挂载节点，否则下次 patch 会作用在已脱离的节点上
           if (container.firstChild) singleMountedNode = container.firstChild;
           bindDeferredEventListeners(container);
@@ -306,7 +340,11 @@ function getDynamicChildEffectBody(
         runDirectiveUnmountOnChildren(container);
         container.replaceChildren(el);
         singleMountedNode = el;
-        lastSingleVNode = singleVNode;
+        lastSingleVNode = newExpanded != null &&
+            typeof newExpanded === "object" &&
+            "type" in newExpanded
+          ? newExpanded
+          : singleVNode;
         isSingleMode = true;
         containerRef.current = container;
         lastItems = items;
@@ -884,7 +922,8 @@ export function expandVNode(vnode: VNode): ExpandedRoot {
       if (result == null) {
         return createTextVNode("");
       }
-      // 组件返回函数时视为「渲染 thunk」：该槽位作为动态子节点在独立 effect 中运行，组件体只执行一次，signal 状态得以保持
+      // 组件返回函数时视为「渲染 thunk」：该槽位作为动态子节点在独立 effect 中运行，组件体只执行一次，signal 状态得以保持。
+      // 不在全局 expandVNode 里调用 getter，否则 createRoot 的根展开树会变成「div 子为 input」，与真实 DOM（div > data-view-dynamic 容器 > input）不一致，patch 会误删容器。仅在 getDynamicChildEffectBody 内对「单节点组件且 expand 得到 [getter]」再求值并展开。
       if (typeof result === "function") {
         return [result as () => unknown];
       }

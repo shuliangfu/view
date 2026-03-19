@@ -8,6 +8,21 @@ and this project adheres to
 
 ---
 
+## [1.2.0] - 2026-03-19
+
+### Fixed
+
+- **Dynamic getter single-node component: patch expanded output** When a getter
+  returns a single component (e.g. `{ () => ( <Carousel ... /> ) }`),
+  `getDynamicChildEffectBody` now uses `expandVNode` to get the component’s
+  output (e.g. the carousel root div) and passes that to `patchRoot` instead of
+  the component VNode. This makes the runtime patch the same DOM (update
+  style/children) instead of replacing the whole block, so carousel slide
+  transition works and other page state is not reset when only that slot’s state
+  (e.g. `current`) changes.
+
+---
+
 ## [1.1.14] - 2026-03-19
 
 ### Fixed

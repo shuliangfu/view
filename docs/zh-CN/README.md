@@ -1060,9 +1060,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.1.14**（2026-03-19）：**修复** 组件返回 getter 时仅产生一层
-`data-view-dynamic`；`createElement` 在单一容器上注册 effect，不再调用
-`appendDynamicChild`（避免多建一层容器）。完整历史见
+**v1.2.0**（2026-03-19）：**修复** 动态 getter 单节点为组件时改为用展开后的
+VNode 做 patch，对同一棵 DOM 增量更新（如轮播滑动过渡生效），不再整块替换；仅该
+槽位状态变化时不再触发整页重渲染或其它状态重置。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---

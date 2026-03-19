@@ -1107,10 +1107,11 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.1.14** (2026-03-19): **Fixed** Component returning getter now produces only
-one `data-view-dynamic`; `createElement` registers effect on a single container
-instead of calling `appendDynamicChild` (which created a second container). Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.2.0** (2026-03-19): **Fixed** Dynamic getter single-node component now uses
+expanded VNode for patch so the same DOM is updated (e.g. carousel slide
+transition works) instead of full replace; avoids page-wide re-render and state
+reset when only that slot’s state changes. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
