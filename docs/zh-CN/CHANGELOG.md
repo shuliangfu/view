@@ -7,6 +7,18 @@
 
 ---
 
+## [1.1.14] - 2026-03-19
+
+### 修复
+
+- **组件返回 getter 时只产生一层 data-view-dynamic** 当函数组件返回 getter（如
+  `return () => ( <div>...</div> )`）时，`createElement` 不再先创建占位再调用
+  `appendDynamicChild`（会再建一层动态容器）。改为只创建一个容器并在其上直接注册
+  effect，因此仅出现一个 `data-view-dynamic` 节点（如 Carousel 等返回 getter 的
+  组件下）。
+
+---
+
 ## [1.1.13] - 2026-03-18
 
 ### 变更
