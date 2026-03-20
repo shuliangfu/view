@@ -29,9 +29,11 @@ export type HydrateContext = {
 /**
  * 对 container 的直系子节点做深度优先遍历，依次 yield 每个节点（先自身，再递归子节点）。
  * 与编译产物 createElement/appendChild/insert 的调用顺序一致，用于按序复用服务端已有 DOM。
+ * 使用 Array.from 避免 TS2488：NodeListOf 在部分 lib 下未声明 [Symbol.iterator]。
  */
 function* walkDepthFirst(container: Node): Generator<Node> {
-  for (const child of container.childNodes) {
+  const children = Array.from(container.childNodes);
+  for (const child of children) {
     yield child;
     if (child.nodeType === NODE_TYPE_ELEMENT) {
       yield* walkDepthFirst(child);
