@@ -3,7 +3,7 @@
  * 路由拦截（beforeRoute、afterRoute）、标题同步等在此统一配置，便于后续扩展。
  */
 
-import { createContext } from "@dreamer/view/context";
+import { createContext, type ProviderChildren } from "@dreamer/view/context";
 import {
   createRouter as createViewRouter,
   type RouteConfig,
@@ -26,7 +26,7 @@ export const RouterContext = createContext<Router | null>(null, "Router");
 /** 在根组件包裹，注入 router，子组件可用 useRouter() 获取（兼容用法，推荐直接用 RouterContext.Provider） */
 export function RouterProvider(props: {
   router: Router;
-  children: VNode | VNode[];
+  children: ProviderChildren;
 }): VNode | VNode[] | null {
   return RouterContext.Provider({
     value: props.router,

@@ -1,15 +1,23 @@
 /**
- * 客户端 Hybrid 入口：含 createRoot、render、hydrate、mount，不含 renderToString、generateHydrationScript。体积介于 csr 与主包之间。
+ * **Hybrid 客户端**入口：含 `createRoot`、`render`、`mount` 与完整 Signal/Effect API，**不含** `renderToString`、`generateHydrationScript`。包体积介于 `@dreamer/view/csr` 与主入口之间。
+ *
+ * 全编译场景下模板内的 `insert` 由编译器注入（通常从 `@dreamer/view/compiler` 导入）；手写挂载函数若需 `insert`，请从 `@dreamer/view` 或 `@dreamer/view/compiler` 另行导入。
  *
  * @module @dreamer/view/hybrid
  * @packageDocumentation
  *
- * **导出：** createSignal、createEffect、createMemo、onCleanup、createRoot、render、hydrate、mount、getCurrentEffect、setCurrentEffect、isSignalGetter、isDOMEnvironment；类型同 csr
+ * **导出：** `createSignal`、`createEffect`、`createMemo`、`onCleanup`、`createRoot`、`render`、`mount`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`unwrapSignalGetterValue`、`isDOMEnvironment`
  *
- * 服务端用主包或 stream 出 HTML，客户端用本入口激活。mount 有子节点则 hydrate，否则 render。
+ * **类型：** `MountOptions`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`EffectDispose`（与 csr 一致）
  *
  * @example
- * mount("#root", () => <App />);  // 有 SSR 内容则 hydrate，否则 render
+ * ```ts
+ * import { mount, createSignal } from "jsr:@dreamer/view/hybrid";
+ * const [n, setN] = createSignal(0);
+ * mount("#root", (el) => {
+ *   el.textContent = String(n());
+ * });
+ * ```
  */
 
 export {
@@ -17,16 +25,10 @@ export {
   getCurrentEffect,
   isSignalGetter,
   setCurrentEffect,
+  unwrapSignalGetterValue,
 } from "./signal.ts";
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
-export {
-  createReactiveRoot,
-  createReactiveRootHydrate,
-  createRoot,
-  hydrate,
-  mount,
-  render,
-} from "./runtime-hybrid.ts";
+export { createRoot, mount, render } from "./runtime-hybrid.ts";
 export type {
   MountOptions,
   Root,

@@ -9,27 +9,31 @@ import {
   AssetsProcessor,
   BuilderClient,
   type ClientConfig,
+  type PluginBuild,
 } from "@dreamer/esbuild";
 import { createLogger } from "@dreamer/logger";
-import { createOptimizePlugin } from "../../compiler.ts";
 import {
   basename,
   dirname,
   existsSync,
+  fromFileUrl,
   join,
   mkdir,
   readFile,
+  readTextFile,
   relative,
   resolve,
   setEnv,
   writeFile,
 } from "@dreamer/runtime-adapter";
+import { createOptimizePlugin } from "../../optimize.ts";
 import {
   KEY_HMR_BUMP,
   KEY_HMR_CHUNK_FOR_PATH,
   KEY_HMR_CLEAR_ROUTE_CACHE,
   KEY_VIEW_ROOT,
 } from "../../constants.ts";
+import { compileSource } from "../../jsx-compiler/transform.ts";
 import { $tr } from "../utils/i18n.ts";
 import { logger } from "../utils/logger.ts";
 import type { AppConfig } from "./config.ts";
@@ -264,15 +268,61 @@ export function getRoutePathForChangedPath(
   return "/" + segment;
 }
 
+/**
+ * 对所有 .tsx 执行 JSX 编译（compileSource），将文件中所有 return <jsx> 替换为 return (parent) => { insert(parent, ...) }，
+ * insert 从主包 @dreamer/view 拉取；编译后子组件返回 (parent) => void，由 insert 直接调用挂载，无需 expandVNode。
+ * 同时处理 namespace "file"（相对路径解析出的 .tsx，如 ./views/_layout.tsx）。
+ */
+function createRootCompilePlugin(): NonNullable<ClientConfig["plugins"]>[0] {
+  const handleTsxLoad = async (args: { path: string }) => {
+    // 兼容 esbuild 传入的 file:// URL（动态 import 的 chunk 可能为此形式）
+    const pathToRead =
+      typeof args.path === "string" && args.path.startsWith("file://")
+        ? fromFileUrl(args.path)
+        : args.path;
+    let source = await readTextFile(pathToRead).catch(() => "");
+    if (!source && pathToRead !== args.path) {
+      source = await readTextFile(args.path).catch(() => "");
+    }
+    if (!source) {
+      console.warn(
+        "[view] compileSource 读取失败，该 .tsx 将走默认 JSX 可能产生 VNode: " +
+          args.path,
+      );
+      return undefined;
+    }
+    const pathAbs = resolve(pathToRead);
+    const out = compileSource(source, pathAbs, {
+      insertImportPath: "@dreamer/view",
+    });
+    return {
+      contents: out,
+      loader: "tsx" as const,
+      resolveDir: dirname(pathAbs),
+    };
+  };
+
+  return {
+    name: "view-root-compile",
+    setup(build: PluginBuild) {
+      // 默认 namespace（空）：入口等直接 file 路径
+      build.onLoad({ filter: /\.tsx$/ }, handleTsxLoad);
+      // namespace "file"：相对路径/别名解析出的 .tsx（如 ./views/_layout.tsx），否则走默认 file 加载器不会编译
+      build.onLoad({ filter: /\.tsx$/, namespace: "file" }, handleTsxLoad);
+    },
+  };
+}
+
 function resolvePlugins(
   buildConfig: AppConfig["build"],
   forProduction: boolean,
 ): ClientConfig["plugins"] {
   const userPlugins = buildConfig?.plugins ?? [];
-  if (!forProduction) return userPlugins;
+  const rootCompile = createRootCompilePlugin();
+  if (!forProduction) return [rootCompile, ...userPlugins];
   const optimize = buildConfig?.optimize !== false;
-  if (!optimize) return userPlugins;
-  return [createOptimizePlugin(/\.tsx$/), ...userPlugins];
+  if (!optimize) return [rootCompile, ...userPlugins];
+  return [rootCompile, createOptimizePlugin(/\.tsx$/), ...userPlugins];
 }
 
 /**

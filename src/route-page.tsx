@@ -1,15 +1,12 @@
-// @ts-nocheck — 本文件使用 classic JSX，不依赖全局 JSX 类型；jsx.d.ts 已从发布排除，避免 JSR「modifying global types」报错。
 /**
- * 懒加载路由页组件：按 path 缓存 createResource，避免每次渲染新建导致死循环；
+ * 懒加载路由页组件（编译态）：按 path 缓存 createResource，返回 (parent)=>void。
  * 支持 component 为 () => import(...) 动态导入，加载中/错误/内容三态 UI 内聚在此。
  * 支持页面过渡：静默等待时占位防白屏，内容用 transitionWrapper 包一层；浏览器环境下会自动注入淡入动画样式。
  *
  * @module @dreamer/view/route-page
  * 由 @dreamer/view/router 统一导出，使用方式：import { RoutePage } from "jsr:@dreamer/view/router"
- *
- * 使用 classic JSX + 适配器，避免 JSR 发布时对 jsxImportSource/jsx-runtime 的错误解析（mod.ts/jsx-runtime 等）。
  */
-/** @jsx jsx */
+
 import {
   KEY_HMR_CHUNK_FOR_PATH,
   KEY_HMR_CLEAR_ROUTE_CACHE,
@@ -17,33 +14,21 @@ import {
 import { createEffect, createScopeWithDisposers } from "./effect.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { getHmrVersionGetter } from "./hmr.ts";
-import { jsx as runtimeJsx } from "./jsx-runtime.ts";
 import { createResource } from "./resource.ts";
 import type {
   LayoutComponentModule,
+  MountFn,
   RouteMatch,
   RouteMatchWithRouter,
   Router,
 } from "./router.ts";
+import { runDirectiveUnmountOnChildren } from "./dom/unmount.ts";
 import { createSignal } from "./signal.ts";
-import type { VNode } from "./types.ts";
 
-/** classic 转换 (type, props, ...children) 适配为 view 运行时 jsx(type, propsWithChildren, key) */
-function jsx(
-  type: import("./types.ts").VNode["type"],
-  props: Record<string, unknown> | null,
-  ...children: unknown[]
-): import("./types.ts").VNode {
-  const merged = props && typeof props === "object" && !Array.isArray(props)
-    ? { ...props, children }
-    : { children: props != null ? [props, ...children] : children };
-  return runtimeJsx(type, merged, null);
-}
-
-/** 懒加载模块可能为 default 或命名导出 RouteLoading */
+/** 懒加载模块：default 返回挂载函数，供 RoutePage 挂载到容器 */
 type LoadingModule = {
-  default?: (m?: unknown) => VNode;
-  RouteLoading?: (m?: unknown) => VNode;
+  default?: (m?: unknown) => MountFn;
+  RouteLoading?: (m?: unknown) => MountFn;
 };
 
 /** Resource getter 返回类型（与 createResource 一致） */
@@ -54,33 +39,16 @@ type ResourceGetter = () => {
   refetch: () => void;
 };
 
-/** 按 path 缓存 resource getter，避免每次渲染新建 createResource 导致死循环 */
 const resourceCache = new Map<string, ResourceGetter>();
-
-/** 按 path 缓存 _loading 组件的 resource getter；作用域仅当前目录，子目录不继承 */
 const loadingComponentCache = new Map<string, ResourceGetter>();
 
-/**
- * 不再按 path 缓存页面 VNode：缓存会导致页面内 signal 更新时 effect 重跑仍用旧 VNode，
- * 不再执行页面组件，从而无法读到最新 signal（如 Boundary 页的 shouldThrow），点击无反应。
- * 每次 effect 都执行 data.default(match) 以保持页面内响应式与点击生效。
- */
-
-/**
- * 按 path + key 缓存页面内 state（createSignal），供 match.getState(key, initial) 使用。
- * 页面组件内写 createSignal(initial) 会因每次重跑新建 signal 导致点击无反应；
- * 通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]，写组件体内也可生效。
- * path 变化时清空上一 path 的缓存，避免占用内存且不影响其他路由。
- */
 const pathStateStore = new Map<
   string,
   Map<string, ReturnType<typeof createSignal>>
 >();
 let prevPathForState = "";
 
-/** 上一路由 path，用于切换时移除该路由由 esbuild 注入的 dweb-css-* 样式 */
 let prevPathForCssCleanup = "";
-/** 当前路由切换时已存在的 dweb-css id 集合，用于区分「当前 chunk 新注入」与 main/全局样式，只给前者打 data-view-route-path */
 const dwebCssIdsSnapshot = new Set<string>();
 
 function getPageState<T>(
@@ -101,15 +69,11 @@ function getPageState<T>(
       () => T,
       (value: T | ((prev: T) => T)) => void,
     ];
-    keyMap.set(key, tuple);
+    keyMap.set(key, tuple as [() => unknown, (value: unknown) => void]);
   }
   return tuple;
 }
 
-/**
- * 按 path 的 effect 作用域：resource 内部 effect 登记到此 scope，不随根 effect 重跑被 dispose，
- * 否则 _loading 先加载触发根重跑时会 dispose 掉页面 resource 的 effect，index 加载完成时 generation 已 -1 导致不 setState。
- */
 const pathScopes = new Map<
   string,
   ReturnType<typeof createScopeWithDisposers>
@@ -126,7 +90,6 @@ function getScopeForPath(
   return scope;
 }
 
-/** HMR 无感刷新前由 __HMR_REFRESH__ 置为 true，本模块执行时清空缓存以便拉新 chunk */
 if (getGlobal<boolean>(KEY_HMR_CLEAR_ROUTE_CACHE)) {
   for (const scope of pathScopes.values()) scope.runDisposers();
   pathScopes.clear();
@@ -135,32 +98,20 @@ if (getGlobal<boolean>(KEY_HMR_CLEAR_ROUTE_CACHE)) {
   setGlobal(KEY_HMR_CLEAR_ROUTE_CACHE, false);
 }
 
-/** 内联样式类型（与 DOM style 一致） */
 export type RoutePageStyle = Record<string, string>;
 
-/** 错误态 / 加载态 / 过渡各元素的 class，未传时使用默认 Tailwind 类 */
 export interface RoutePageClasses {
-  /** 错误态容器 */
   errorSection?: string;
-  /** 错误态标题 */
   errorTitle?: string;
-  /** 错误态错误信息 */
   errorMessage?: string;
-  /** 重试按钮 */
   retryButton?: string;
-  /** 加载态容器 */
   loadingSection?: string;
-  /** 加载态转圈图标 */
   loadingSpinner?: string;
-  /** 加载态提示文字 */
   loadingText?: string;
-  /** 静默等待时的占位容器（避免白屏），需继承背景如 bg-inherit */
   transitionPlaceholder?: string;
-  /** 页面内容外层过渡容器，配合 CSS 动画实现淡入，见模块注释 */
   transitionWrapper?: string;
 }
 
-/** 错误态 / 加载态 / 过渡各元素的内联 style，传入则使用，不传则不应用内联样式 */
 export interface RoutePageStyles {
   errorSection?: RoutePageStyle;
   errorTitle?: RoutePageStyle;
@@ -173,7 +124,6 @@ export interface RoutePageStyles {
   transitionWrapper?: RoutePageStyle;
 }
 
-/** 默认 class（Tailwind），使用方未传 classes 时使用 */
 const DEFAULT_CLASSES: Required<RoutePageClasses> = {
   errorSection:
     "rounded-2xl border border-red-200/80 bg-red-50/90 p-12 shadow-lg backdrop-blur dark:border-red-800/80 dark:bg-red-950/90 sm:p-16 flex flex-col items-center justify-center min-h-[280px]",
@@ -192,13 +142,9 @@ const DEFAULT_CLASSES: Required<RoutePageClasses> = {
   transitionWrapper: "view-route-page-enter",
 };
 
-/** RoutePage 可选文案，未传时使用英文默认值 */
 export interface RoutePageLabels {
-  /** 加载失败时标题，默认 "Failed to load page" */
   errorTitle?: string;
-  /** 重试按钮文案，默认 "Retry" */
   retryText?: string;
-  /** 加载中提示文案，默认 "Loading…" */
   loadingText?: string;
 }
 
@@ -206,30 +152,136 @@ const DEFAULT_ERROR_TITLE = "Failed to load page";
 const DEFAULT_RETRY_TEXT = "Retry";
 const DEFAULT_LOADING_TEXT = "Loading…";
 
+function getDoc(): Document {
+  return (globalThis as { document: Document }).document;
+}
+
+/** 挂载错误态 UI 到 parent */
+function mountErrorSection(
+  parent: Node,
+  opts: {
+    errorTitle: string;
+    message: string;
+    retryText: string;
+    refetch: () => void;
+    cls: (k: keyof RoutePageClasses) => string;
+    sty: (k: keyof RoutePageStyles) => RoutePageStyle | undefined;
+  },
+): void {
+  const doc = getDoc();
+  const section = doc.createElement("section");
+  section.className = opts.cls("errorSection");
+  const s = opts.sty("errorSection");
+  if (s) Object.assign(section.style, s);
+
+  const pTitle = doc.createElement("p");
+  pTitle.className = opts.cls("errorTitle");
+  const st = opts.sty("errorTitle");
+  if (st) Object.assign(pTitle.style, st);
+  pTitle.textContent = opts.errorTitle;
+  section.appendChild(pTitle);
+
+  const pMsg = doc.createElement("p");
+  pMsg.className = opts.cls("errorMessage");
+  const sm = opts.sty("errorMessage");
+  if (sm) Object.assign(pMsg.style, sm);
+  pMsg.textContent = opts.message;
+  section.appendChild(pMsg);
+
+  const btn = doc.createElement("button");
+  btn.type = "button";
+  btn.className = opts.cls("retryButton");
+  const sb = opts.sty("retryButton");
+  if (sb) Object.assign(btn.style, sb);
+  btn.textContent = opts.retryText;
+  btn.addEventListener("click", () => opts.refetch());
+  section.appendChild(btn);
+
+  parent.appendChild(section);
+}
+
+/** 挂载加载态（转圈+文案）到 parent */
+function mountLoadingSection(
+  parent: Node,
+  opts: {
+    loadingText: string;
+    cls: (k: keyof RoutePageClasses) => string;
+    sty: (k: keyof RoutePageStyles) => RoutePageStyle | undefined;
+  },
+): void {
+  const doc = getDoc();
+  const section = doc.createElement("section");
+  section.className = opts.cls("loadingSection");
+  const s = opts.sty("loadingSection");
+  if (s) Object.assign(section.style, s);
+
+  const spinner = doc.createElement("div");
+  spinner.className = opts.cls("loadingSpinner");
+  spinner.setAttribute("aria-hidden", "true");
+  const sp = opts.sty("loadingSpinner");
+  if (sp) Object.assign(spinner.style, sp);
+  section.appendChild(spinner);
+
+  const p = doc.createElement("p");
+  p.className = opts.cls("loadingText");
+  const st = opts.sty("loadingText");
+  if (st) Object.assign(p.style, st);
+  p.textContent = opts.loadingText;
+  section.appendChild(p);
+
+  parent.appendChild(section);
+}
+
+/** 挂载过渡占位（静默等待）到 parent */
+function mountTransitionPlaceholder(
+  parent: Node,
+  opts: {
+    cls: (k: keyof RoutePageClasses) => string;
+    sty: (k: keyof RoutePageStyles) => RoutePageStyle | undefined;
+  },
+): void {
+  const doc = getDoc();
+  const div = doc.createElement("div");
+  div.className = opts.cls("transitionPlaceholder");
+  div.setAttribute("aria-hidden", "true");
+  const s = opts.sty("transitionPlaceholder");
+  if (s) Object.assign(div.style, s);
+  parent.appendChild(div);
+}
+
+/** 挂载过渡包装 + 内容到 parent；contentMount 为页面或 layout 链的挂载函数。
+ * 先 appendChild(div) 再 contentMount(div)，保证 contentMount 内执行 ref(el) 时节点已在文档中（isConnected 为 true）。
+ */
+function mountTransitionWrapper(
+  parent: Node,
+  contentMount: MountFn,
+  opts: {
+    cls: (k: keyof RoutePageClasses) => string;
+    sty: (k: keyof RoutePageStyles) => RoutePageStyle | undefined;
+  },
+): void {
+  const doc = getDoc();
+  const div = doc.createElement("div");
+  div.className = opts.cls("transitionWrapper");
+  const s = opts.sty("transitionWrapper");
+  if (s) Object.assign(div.style, s);
+  parent.appendChild(div);
+  contentMount(div);
+}
+
 /**
- * 根据当前 match 渲染懒加载路由页：component 为 Promise（动态 import）时用 createResource 加载并取 default 渲染。
- * 同一 path 复用缓存的 resource；加载中显示转圈，失败显示错误+重试，成功渲染 data.default(matchWithRouter)。
- * 文案可通过 labels 传入自定义，默认英文。
- *
- * @param props.match - 当前路由匹配结果（含 path、component、metadata 等）
- * @param props.router - 路由器实例，与 match 一并传入子页面
- * @param props.showLoading - 可选，为 true 时加载中显示转圈/文案，为 false 时静默等待不渲染 loading UI，默认 true
- * @param props.labels - 可选，errorTitle / retryText / loadingText 自定义文案
- * @param props.classes - 可选，各元素 class，未传时使用默认 Tailwind 类
- * @param props.styles - 可选，各元素内联 style，传入则应用
- * @returns 加载中/错误/页面内容的 VNode
+ * 编译态 RoutePage：返回 (parent)=>void，在 effect 中根据 resource 状态挂载 error/loading/content。
  */
 export function RoutePage(props: {
   match: RouteMatch;
   router: Router;
-  /** 为 true 时加载中显示 loading UI，为 false 时静默等待（不显示转圈），默认 true */
   showLoading?: boolean;
   labels?: RoutePageLabels;
   classes?: RoutePageClasses;
   styles?: RoutePageStyles;
-}): VNode {
+}): MountFn {
   const path = props.match.path;
-  // path 变化时清理上一 path 的缓存与 scope，避免长时间 SPA 导航导致内存持续增长（见 ANALYSIS_REPORT 1.2）
+
   if (prevPathForState && prevPathForState !== path) {
     const prev = prevPathForState;
     pathStateStore.delete(prev);
@@ -240,9 +292,8 @@ export function RoutePage(props: {
   }
   prevPathForState = path;
 
-  // 路由切换时：移除上一路由由 esbuild 内联注入的 style[data-view-route-path]，再快照当前 dweb-css id，避免误删 main 包全局样式
   if (path !== prevPathForCssCleanup) {
-    const doc = (globalThis as { document?: Document }).document;
+    const doc = getDoc();
     if (doc?.head) {
       doc
         .querySelectorAll(
@@ -263,10 +314,10 @@ export function RoutePage(props: {
   const matchWithRouter: RouteMatchWithRouter = {
     ...props.match,
     router: props.router,
-    /** 按 path+key 稳定的 state，页面内写 getState(key, initial) 即可在组件体内用「类 useState」且点击生效 */
     getState: <T,>(key: string, initialValue: T) =>
       getPageState(path, key, initialValue),
   };
+
   const labels = props.labels ?? {};
   const errorTitle = labels.errorTitle ?? DEFAULT_ERROR_TITLE;
   const retryText = labels.retryText ?? DEFAULT_RETRY_TEXT;
@@ -277,44 +328,18 @@ export function RoutePage(props: {
     classes[key] ?? DEFAULT_CLASSES[key];
   const sty = (key: keyof RoutePageStyles) => styles[key];
 
-  /** 若有 _loading 且已加载完成则返回其 VNode，否则返回 null（复用两处「未就绪 / minDelay 未到」分支） */
-  const tryCustomLoading = (): VNode | null => {
+  /** 若有 _loading 且已加载完成则返回其 MountFn，否则返回 null */
+  const tryCustomLoading = (): MountFn | null => {
     const loadingGetter = loadingComponentCache.get(path);
     if (!loadingGetter) return null;
     const loadingState = loadingGetter();
     if (loadingState.loading || !loadingState.data) return null;
     const Load = loadingState.data.default ?? loadingState.data.RouteLoading;
-    return typeof Load === "function" ? (Load(matchWithRouter) as VNode) : null;
-  };
-  /** 根据 showLoading 返回默认 loading 区块或过渡占位（复用两处分支，减少重复 JSX） */
-  const loadingOrPlaceholder = (show: boolean): VNode => {
-    if (show) {
-      return (
-        <section
-          className={cls("loadingSection")}
-          style={sty("loadingSection")}
-        >
-          <div
-            className={cls("loadingSpinner")}
-            style={sty("loadingSpinner")}
-            aria-hidden="true"
-          />
-          <p className={cls("loadingText")} style={sty("loadingText")}>
-            {loadingText}
-          </p>
-        </section>
-      );
-    }
-    return (
-      <div
-        className={cls("transitionPlaceholder")}
-        style={sty("transitionPlaceholder")}
-        aria-hidden="true"
-      />
-    ) as VNode;
+    return typeof Load === "function"
+      ? (Load(matchWithRouter) as MountFn)
+      : null;
   };
 
-  /** HMR 时 version 变化使本组件重跑；若有该 path 的 chunk 待更新则清掉缓存，让下面重新 createResource 并走 loader 里的 override，避免继续用旧 resource 显示旧内容（如「核心 333」） */
   getHmrVersionGetter()();
   const chunkMap = getGlobal<Record<string, string>>(KEY_HMR_CHUNK_FOR_PATH);
   if (chunkMap?.[path]) {
@@ -329,10 +354,10 @@ export function RoutePage(props: {
   if (props.match.loading) {
     let loadingGetter = loadingComponentCache.get(path);
     if (!loadingGetter) {
-      const loadingLoader = props.match.loading;
+      const loadingLoader = props.match.loading!;
       loadingGetter = createResource(
         () => path + ":loading",
-        () => loadingLoader().then((mod) => mod),
+        () => loadingLoader().then((mod) => mod as LoadingModule),
         { scope: pathScope },
       );
       loadingComponentCache.set(path, loadingGetter);
@@ -351,9 +376,9 @@ export function RoutePage(props: {
         const overrideUrl = chunkMap?.[path];
         if (overrideUrl && chunkMap) {
           delete chunkMap[path];
-          const pageMod = (await import(/* @vite-ignore */ overrideUrl)) as {
-            default: (m?: unknown) => VNode;
-          };
+          const pageMod = (await import(
+            /* @vite-ignore */ overrideUrl
+          )) as { default: (m?: unknown) => MountFn };
           if (!match.layouts?.length) {
             return {
               default: (m?: unknown) => pageMod.default(m ?? matchWithRouter),
@@ -362,57 +387,55 @@ export function RoutePage(props: {
           const layoutMods = await Promise.all(
             match.layouts.map((loader) => loader()),
           ) as LayoutComponentModule[];
-          return {
-            default: (m?: unknown) => {
-              let inner: VNode = pageMod.default(m ?? matchWithRouter);
-              for (let i = layoutMods.length - 1; i >= 0; i--) {
-                inner = layoutMods[i].default({ children: inner });
-              }
-              return inner;
-            },
-          };
+          let innerMount: MountFn = (p) => pageMod.default(matchWithRouter)(p);
+          for (let i = layoutMods.length - 1; i >= 0; i--) {
+            const layout = layoutMods[i];
+            const prev = innerMount;
+            innerMount = (p) => layout.default({ children: prev })(p);
+          }
+          return { default: () => innerMount };
         }
         const result = match.component(matchWithRouter) as unknown;
         const pageMod =
           result && typeof (result as Promise<unknown>).then === "function"
-            ? (await result as { default: (m?: unknown) => VNode })
-            : { default: () => result as VNode };
+            ? (await result as { default: (m?: unknown) => MountFn })
+            : {
+              default: () => (result as MountFn),
+            };
+        const pageMountFn = typeof pageMod.default === "function"
+          ? pageMod.default(matchWithRouter)
+          : null;
+        if (typeof pageMountFn !== "function") {
+          throw new Error(
+            `[RoutePage] 页面模块 default 导出调用后未返回挂载函数（应为 (parent)=>void），路径: ${path}。请确认该 .tsx 已经 compileSource 编译。`,
+          );
+        }
         if (!match.layouts?.length) {
-          return {
-            default: (m?: unknown) => pageMod.default(m ?? matchWithRouter),
-          };
+          return { default: () => pageMountFn };
         }
         const layoutMods = await Promise.all(
           match.layouts.map((loader) => loader()),
         ) as LayoutComponentModule[];
-        return {
-          default: (m?: unknown) => {
-            // layouts 顺序为 [根, 子]，应从内到外包裹：先包子再包根，根在最外层
-            let inner: VNode = pageMod.default(m ?? matchWithRouter);
-            for (let i = layoutMods.length - 1; i >= 0; i--) {
-              inner = layoutMods[i].default({ children: inner });
-            }
-            return inner;
-          },
-        };
+        let innerMount: MountFn = (p) => pageMountFn(p);
+        for (let i = layoutMods.length - 1; i >= 0; i--) {
+          const layout = layoutMods[i];
+          const prev = innerMount;
+          innerMount = (p) => layout.default({ children: prev })(p);
+        }
+        return { default: () => innerMount };
       },
       { scope: pathScope },
     );
     resourceCache.set(path, resourceGetter);
   }
 
-  /**
-   * 在组件体内直接读取 resource，使当前渲染（根 effect 或父组件）建立对 resource 的订阅；
-   * 这样 resource 更新时由同一作用域重跑，避免用「动态子 getter」导致 Boundary/Suspense 整页刷新或重载。
-   */
   const { data, loading, error, refetch } = resourceGetter();
   const pageReady = !error && !loading && data != null;
 
-  // 当前路由就绪后，把「新出现」的 esbuild 注入的 style[data-dweb-css-id] 标记为当前路由，切走时移除
   createEffect(() => {
     const currentPath = path;
     const ready = pageReady;
-    const doc = (globalThis as { document?: Document }).document;
+    const doc = getDoc();
     if (!doc?.head || !ready) return;
     doc.querySelectorAll("style[data-dweb-css-id]").forEach((el) => {
       const id = (el as HTMLStyleElement).id ||
@@ -425,47 +448,64 @@ export function RoutePage(props: {
     });
   });
 
-  if (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return (
-      <section className={cls("errorSection")} style={sty("errorSection")}>
-        <p className={cls("errorTitle")} style={sty("errorTitle")}>
-          {errorTitle}
-        </p>
-        <p className={cls("errorMessage")} style={sty("errorMessage")}>
-          {message}
-        </p>
-        <button
-          type="button"
-          className={cls("retryButton")}
-          style={sty("retryButton")}
-          onClick={() => refetch()}
-        >
-          {retryText}
-        </button>
-      </section>
-    );
-  }
+  /** 返回挂载函数：挂到 parent 后，在 effect 里根据状态替换为 error/loading/content */
+  const mount = (parent: Node): void => {
+    const doc = getDoc();
+    const container = doc.createElement("div");
+    parent.appendChild(container);
 
-  /* 页面组件未就绪：若页面 export const loading = false 则不显示任何 loading；否则优先 _loading，再默认转圈。
-   * 不包 key 的 wrapper，直接返回单一子节点，由上层 #root 处做整体替换，避免多次点击链接后 #root 下堆积多个 div。 */
-  if (!pageReady) {
-    if (props.match.skipLoading) {
-      return null as unknown as VNode;
-    }
-    const custom = tryCustomLoading();
-    if (custom) return custom;
-    return loadingOrPlaceholder(props.showLoading === true);
-  }
+    createEffect(() => {
+      const { data: d, loading: ld, error: err } = resourceGetter();
+      runDirectiveUnmountOnChildren(container);
+      if (container.replaceChildren) container.replaceChildren();
 
-  /* 页面就绪：直接显示内容，不包 key，保证 #root 下始终只有一个子节点被替换 */
-  const content = data.default(matchWithRouter);
-  return (
-    <div
-      className={cls("transitionWrapper")}
-      style={sty("transitionWrapper")}
-    >
-      {content}
-    </div>
-  ) as VNode;
+      if (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        mountErrorSection(container, {
+          errorTitle,
+          message,
+          retryText,
+          refetch,
+          cls,
+          sty,
+        });
+        return;
+      }
+
+      if (!d || ld) {
+        if (props.match.skipLoading) return;
+        const custom = tryCustomLoading();
+        if (custom) {
+          custom(container);
+          return;
+        }
+        if (props.showLoading === true) {
+          mountLoadingSection(container, { loadingText, cls, sty });
+        } else {
+          mountTransitionPlaceholder(container, { cls, sty });
+        }
+        return;
+      }
+
+      const defaultMount = d.default;
+      if (!defaultMount || typeof defaultMount !== "function") return;
+      const contentMount = defaultMount(matchWithRouter);
+      if (typeof contentMount !== "function") {
+        const msg =
+          "[RoutePage] 页面 default(match) 未返回挂载函数，可能未走 compileSource。";
+        mountErrorSection(container, {
+          errorTitle,
+          message: msg,
+          retryText,
+          refetch,
+          cls,
+          sty,
+        });
+        return;
+      }
+      mountTransitionWrapper(container, contentMount, { cls, sty });
+    });
+  };
+
+  return mount;
 }

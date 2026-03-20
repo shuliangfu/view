@@ -10,7 +10,7 @@
  * **链接拦截（interceptLinks）：** 仅左键、同源 http(s) 链接会拦截；不拦截：target≠_self、download、data-native、
  * 同页锚点（pathname+search 相同且仅 hash）、hash 模式下 #section（非 #/path）、修饰键/非左键、跨域或无效 href。
  *
- * **导出函数：** createRouter、buildPath
+ * **导出函数：** createRouter、buildPath、mountWithRouter
  *
  * **导出类型：** RouteGuardResult、RouteGuard、RouteGuardAfter、RouteConfig、RouteMatch、GetState、
  * RoutePageMatch、NavigateTo、CreateRouterOptions、Router、RouteMatchWithRouter、RouteComponentModule、LayoutComponentModule
@@ -29,7 +29,6 @@
  * ```
  */
 
-import type { VNode } from "./types.ts";
 import { applyMetaToHead } from "./meta.ts";
 import { createSignal } from "./signal.ts";
 
@@ -83,25 +82,30 @@ function hasHistory(): boolean {
 }
 
 /**
+ * 编译态挂载函数：接收父节点并挂载内容，RoutePage 与路由/布局组件统一使用此形态。
+ */
+export type MountFn = (parent: Node) => void;
+
+/**
  * 懒加载路由模块：动态 import 返回的模块形状。
- * RoutePage 会取 default 并传入 match 渲染；用于 route 配置中的 component: () => import("...")。
+ * RoutePage 会取 default 并传入 match，得到 MountFn 后挂载；用于 route 配置中的 component: () => import("...")。
  */
 export type RouteComponentModule = {
-  /** 接收可选 RouteMatch，返回该页面的 VNode */
-  default: (match?: RouteMatch) => VNode;
+  /** 接收可选 RouteMatch，返回该页面的挂载函数 (parent)=>void */
+  default: (match?: RouteMatch) => MountFn;
 };
 
 /**
- * 布局组件模块：用于嵌套布局，default 接收 { children } 包裹子内容。
+ * 布局组件模块：用于嵌套布局，default 接收 { children: MountFn } 包裹子内容。
  */
 export type LayoutComponentModule = {
-  /** 接收 children（当前路由渲染的 VNode），返回包裹后的 VNode */
-  default: (props: { children: VNode | VNode[] }) => VNode;
+  /** 接收 children（子内容挂载函数），返回包裹后的挂载函数 */
+  default: (props: { children: MountFn }) => MountFn;
 };
 
 /**
  * 单条路由配置：path 支持动态参数 :param，可选 metadata 供守卫或布局使用。
- * component 支持同步（返回 VNode）或懒加载（返回 Promise<{ default: (match?) => VNode }>）。
+ * component 支持同步（返回 MountFn）或懒加载（返回 Promise<{ default: (match?) => MountFn }>）。
  *
  * @example
  * { path: "/", component: () => <Home />, metadata: { title: "首页" } }
@@ -112,10 +116,10 @@ export interface RouteConfig {
   /** 路径模式，支持 :param（如 /user/:id） */
   path: string;
   /**
-   * 渲染该路由的组件：同步时返回 VNode，懒加载时返回 Promise<{ default: (match?) => VNode }>（如 () => import("./Page.tsx")）
+   * 渲染该路由的组件：同步时返回 MountFn，懒加载时返回 Promise<{ default: (match?) => MountFn }>（如 () => import("./Page.tsx")）
    */
   component:
-    | ((match: RouteMatch) => VNode)
+    | ((match: RouteMatch) => MountFn)
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 路由元信息，如 title、requiresAuth，供守卫或布局读取 */
   metadata?: Record<string, unknown>;
@@ -172,9 +176,9 @@ export interface RouteMatch {
   query: Record<string, string>;
   /** 当前完整路径（pathname） */
   fullPath: string;
-  /** 渲染该路由的组件（同步返回 VNode 或懒加载返回 Promise<RouteComponentModule>） */
+  /** 渲染该路由的组件（同步返回 MountFn 或懒加载返回 Promise<RouteComponentModule>） */
   component:
-    | ((match: RouteMatch) => VNode)
+    | ((match: RouteMatch) => MountFn)
     | ((match: RouteMatch) => Promise<RouteComponentModule>);
   /** 该路由的 metadata（若配置了） */
   metadata?: Record<string, unknown>;
@@ -866,6 +870,12 @@ export function createRouter(options: CreateRouterOptions): Router {
     stop,
   };
 }
+
+/**
+ * 根容器 + 路由器一站式挂载：内部 `createEffect` 订阅路由、同键去重、指令卸载后整树重挂。
+ * 业务侧只需 `mountWithRouter("#root", router, (r) => <App router={r} />)`。
+ */
+export { mountWithRouter } from "./router-mount.ts";
 
 /**
  * 懒加载路由页组件与配套类型，从 route-page 统一导出便于从 router 入口使用。

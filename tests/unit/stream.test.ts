@@ -1,100 +1,39 @@
 /**
- * @fileoverview 流式 SSR 单元测试：renderToStream
+ * @fileoverview 流式 SSR 单元测试：renderToStream（编译路径 fn(container)）
  */
 
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { renderToStream } from "../../src/stream.ts";
-import type { VNode } from "../../src/types.ts";
+import { insert } from "@dreamer/view/compiler";
+import { renderToStream } from "@dreamer/view/stream";
 
 describe("renderToStream", () => {
-  it("应返回生成器", () => {
-    const gen = renderToStream(() => null as unknown as VNode);
+  it("应返回异步生成器", async () => {
+    const gen = renderToStream((el) => insert(el, "x"));
     expect(typeof gen.next).toBe("function");
-    expect(typeof gen[Symbol.iterator]).toBe("function");
+    expect(typeof gen[Symbol.asyncIterator]).toBe("function");
   });
 
-  it("简单 div 应 yield 出含标签的字符串", () => {
-    const vnode: VNode = {
-      type: "div",
-      props: { className: "root", children: [] },
-      key: null,
-    };
-    const gen = renderToStream(() => vnode);
+  it("应按根级子节点顺序 yield HTML 片段", async () => {
     const chunks: string[] = [];
-    for (const chunk of gen) {
+    for await (
+      const chunk of renderToStream((el) => {
+        insert(el, "A");
+        insert(el, "B");
+      })
+    ) {
       chunks.push(chunk);
     }
-    const html = chunks.join("");
-    expect(html).toContain("div");
-    expect(html).toContain("root");
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]).toBe("A");
+    expect(chunks[1]).toBe("B");
   });
 
-  it("文本子节点应被转义输出", () => {
-    const vnode: VNode = {
-      type: "span",
-      props: {
-        children: [{ type: "#text", props: { nodeValue: "hello" }, key: null }],
-      },
-      key: null,
-    };
-    const gen = renderToStream(() => vnode);
-    const html = [...gen].join("");
-    expect(html).toContain("hello");
-  });
-
-  /** 流式 SSR 下子节点为普通函数时，应渲染函数返回值而非函数源码（与 renderToString 一致） */
-  it("子节点为普通函数时流式输出应渲染返回值而非函数源码", () => {
-    const vnode: VNode = {
-      type: "div",
-      props: {
-        children: () =>
-          ({
-            type: "span",
-            props: {},
-            children: [{
-              type: "#text",
-              props: { nodeValue: "stream-fn" },
-              key: null,
-            }],
-          }) as VNode,
-      },
-      key: null,
-    };
-    const gen = renderToStream(() => vnode);
-    const html = [...gen].join("");
-    expect(html).toContain("stream-fn");
-    expect(html).toContain("<span"); // 可能带 data-view-dynamic 等属性
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 流式 SSR 下带 key 子节点在首元素上输出 data-key（已去 keyed 包装） */
-  it("带 key 子节点时流式输出含 data-key", () => {
-    const vnode: VNode = {
-      type: "div",
-      props: {
-        children: [{
-          type: "span",
-          props: {},
-          key: "k1",
-          children: [{ type: "#text", props: { nodeValue: "x" }, key: null }],
-        }],
-      },
-      key: null,
-    };
-    const html = [...renderToStream(() => vnode)].join("");
-    expect(html).toContain('data-key="k1"');
-    expect(html).toContain("x");
-  });
-
-  /** 流式 SSR 下 void 元素无闭合标签 */
-  it("void 元素流式输出无闭合标签", () => {
-    const html = [...renderToStream(() => ({
-      type: "br",
-      props: {},
-      key: null,
-    } as VNode))].join("");
-    expect(html).toMatch(/<br[\s>]/);
-    expect(html).not.toContain("</br>");
+  it("单子节点时 yield 一次", async () => {
+    const chunks: string[] = [];
+    for await (const chunk of renderToStream((el) => insert(el, "only"))) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(["only"]);
   });
 }, { sanitizeOps: false, sanitizeResources: false });

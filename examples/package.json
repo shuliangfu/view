@@ -9,6 +9,8 @@
   },
   "imports": {
     "@dreamer/view": "../src/mod.ts",
+    "@dreamer/view/ssr": "../src/mod-ssr.ts",
+    "@dreamer/view/compiler": "../src/compiler/mod.ts",
     "@dreamer/view/jsx-runtime": "../src/jsx-runtime.ts",
     "@dreamer/view/jsx-dev-runtime": "../src/jsx-runtime.ts",
     "@dreamer/view/store": "../src/store.ts",
@@ -24,7 +26,8 @@
   },
   "dependencies": {
     "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
-    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.8",
+    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.9",
+    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.1.1",
     "tailwindcss": "npm:tailwindcss@4.2.0"
   }
 }

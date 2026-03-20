@@ -1,0 +1,118 @@
+/**
+ * SSR 单元测试：renderToString、renderToStream。
+ * 不依赖真实 DOM，服务端用伪 document 执行 fn(container) 后序列化。
+ */
+
+import { describe, expect, it } from "@dreamer/test";
+import {
+  createSSRDocument,
+  insert,
+  renderToStream,
+  renderToString,
+} from "@dreamer/view/compiler";
+
+describe("createSSRDocument", () => {
+  it("返回的 document 具备 createElement、createTextNode 且可生成可序列化节点", () => {
+    const doc = createSSRDocument();
+    expect(typeof doc.createElement).toBe("function");
+    expect(typeof doc.createTextNode).toBe("function");
+    const el = doc.createElement("span");
+    const text = doc.createTextNode("hi");
+    expect(el.tagName).toBe("span");
+    expect(el.serialize()).toContain("<span");
+    expect(text.nodeValue).toBe("hi");
+    expect(text.serialize()).toBe("hi");
+  });
+});
+
+describe("renderToString", () => {
+  it("应返回根容器 innerHTML 字符串", () => {
+    const html = renderToString((el) => {
+      insert(el, "hello");
+    });
+    expect(typeof html).toBe("string");
+    expect(html).toBe("hello");
+  });
+
+  it("insert 静态多段应串联", () => {
+    const html = renderToString((el) => {
+      insert(el, "A");
+      insert(el, "B");
+    });
+    expect(html).toBe("AB");
+  });
+
+  it("getter 在 SSR 下只执行一次并输出当前值", () => {
+    let count = 0;
+    const html = renderToString((el) => {
+      insert(el, () => {
+        count++;
+        return String(count);
+      });
+    });
+    expect(html).toBe("1");
+    expect(count).toBe(1);
+  });
+
+  it("应转义文本防 XSS", () => {
+    const html = renderToString((el) => {
+      insert(el, "<script>alert(1)</script>");
+    });
+    expect(html).toContain("&lt;");
+    expect(html).not.toContain("<script>");
+  });
+
+  it("createElement + setAttribute + appendChild 应输出标签", () => {
+    type SSRDoc = ReturnType<typeof createSSRDocument>;
+    const html = renderToString((el) => {
+      const doc = (globalThis as unknown as { document: SSRDoc }).document;
+      const span = doc.createElement("span");
+      span.setAttribute("class", "foo");
+      span.appendChild(doc.createTextNode("bar"));
+      el.appendChild(span);
+    });
+    expect(html).toContain("<span");
+    expect(html).toContain('class="foo"');
+    expect(html).toContain("bar");
+    expect(html).toContain("</span>");
+  });
+
+  it("options.containerTag 可指定根容器标签（仅影响内部，返回仍为 innerHTML）", () => {
+    const html = renderToString((el) => insert(el, "x"), {
+      containerTag: "main",
+    });
+    expect(html).toBe("x");
+  });
+
+  it("options.dataViewSsr 为 false 时不加 data-view-ssr（不影响返回的 innerHTML）", () => {
+    const html = renderToString((el) => insert(el, "y"), {
+      dataViewSsr: false,
+    });
+    expect(html).toBe("y");
+  });
+});
+
+describe("renderToStream", () => {
+  it("应按根级子节点顺序 yield HTML 片段", async () => {
+    const chunks: string[] = [];
+    for await (
+      const chunk of renderToStream((el) => {
+        insert(el, "A");
+        insert(el, "B");
+      })
+    ) {
+      chunks.push(chunk);
+    }
+    expect(chunks.length).toBe(2);
+    expect(chunks[0]).toBe("A");
+    expect(chunks[1]).toBe("B");
+  });
+
+  it("单子节点时 yield 一次", async () => {
+    const chunks: string[] = [];
+    for await (const chunk of renderToStream((el) => insert(el, "only"))) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual(["only"]);
+  });
+});

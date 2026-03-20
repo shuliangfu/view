@@ -4,9 +4,9 @@
  * @module @dreamer/view/signal
  * @packageDocumentation
  *
- * **导出函数：** createSignal、getCurrentEffect、setCurrentEffect、markSignalGetter、isSignalGetter
+ * **导出函数：** `createSignal`、`getCurrentEffect`、`setCurrentEffect`、`markSignalGetter`、`isSignalGetter`、`unwrapSignalGetterValue`
  *
- * **导出常量：** SIGNAL_GETTER_MARKER
+ * **导出常量：** `SIGNAL_GETTER_MARKER`（一般通过 `isSignalGetter` 判断即可）
  */
 
 import { KEY_CURRENT_EFFECT } from "./constants.ts";
@@ -46,6 +46,9 @@ type Subscriber = Set<() => void>;
  *
  * @param initialValue 初始值
  * @returns [getter, setter] 元组：getter 读值并登记依赖，setter 写值并通知依赖
+ *
+ * **注意：** setter 若收到 `function`，会当作 `(prev) => next` 更新函数，而非「状态值本身是函数」。
+ * 若 `T` 含函数类型（如存 MountFn），须用 `set((prev) => fnValue)` 写入，参见 `boundary.ts` 的 `setSuspenseResolvedState`。
  *
  * @example
  * const [count, setCount] = createSignal(0);
@@ -112,4 +115,21 @@ export function markSignalGetter<T>(getter: () => T): () => T {
 export function isSignalGetter(fn: unknown): fn is () => unknown {
   return typeof fn === "function" &&
     (fn as unknown as Record<symbol, boolean>)[SIGNAL_GETTER_MARKER] === true;
+}
+
+/**
+ * 若 `value` 为带 `SIGNAL_GETTER_MARKER` 的 getter（`createSignal` / `createMemo` 等返回值），
+ * 则执行一次 `value()` 并返回结果；否则原样返回。
+ *
+ * 用于 `insertReactive` 文本插值：编译产物 `{ count }` 会生成「getter 返回 `count` 引用」而非 `count()`，
+ * 若不在这里调用，则 `toNode` 会把函数当成不可显示值而插入空文本，且 effect 无法订阅 signal。
+ *
+ * @param value - `insertReactive` 内层 getter 的返回值或任意值
+ * @returns 解包后的展示用值；非 signal getter 时原样返回
+ */
+export function unwrapSignalGetterValue(value: unknown): unknown {
+  if (typeof value === "function" && isSignalGetter(value)) {
+    return (value as () => unknown)();
+  }
+  return value;
 }

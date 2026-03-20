@@ -31,14 +31,26 @@ export interface TransitionOptions {
 
 type ShowGetter = () => boolean;
 
-/** 将 children 规范为 VNode 数组 */
+/**
+ * 将 children 规范为可挂载子项数组（VNode 或单参挂载函数）。
+ * 编译产物常为单参挂载函数 (parent)=>void，若当作无参 getter 调用则 parent 为 undefined，会导致 appendChild 报错。
+ */
 function normalizeTransitionChildren(
-  children: VNode | VNode[] | (() => VNode | VNode[]) | undefined,
-): VNode[] {
+  children:
+    | VNode
+    | VNode[]
+    | (() => VNode | VNode[])
+    | ((parent: Node) => void)
+    | undefined,
+): (VNode | (() => unknown))[] {
   if (children == null) return [];
-  if (Array.isArray(children)) return children;
+  if (Array.isArray(children)) return children as (VNode | (() => unknown))[];
   if (typeof children === "function") {
-    const v = children();
+    // 单参为挂载函数，不能无参调用；直接作为单项交给 mount 时传入 parent
+    if ((children as (...args: unknown[]) => unknown).length === 1) {
+      return [children as () => unknown];
+    }
+    const v = (children as () => VNode | VNode[])();
     return Array.isArray(v) ? v : v != null ? [v] : [];
   }
   return [children];
@@ -82,7 +94,10 @@ export function Transition(
     if (visible) {
       setPhase("entered");
     } else {
-      if (phase() === "entered") {
+      // 必须用 untrack 读 phase：否则 setPhase("leaving") 会让本 effect 因订阅 phase 而立刻重跑，
+      // 上一轮 return 的 clearTimeout 会取消 setTimeout，永远无法进入 "left"，隐藏无效果。
+      const p = untrack(() => phase());
+      if (p === "entered") {
         setPhase("leaving");
         const ms = Math.max(0, duration);
         const id = setTimeout(() => setPhase("left"), ms);
@@ -96,10 +111,11 @@ export function Transition(
     if (p === "left") return null;
     const nodes = normalizeTransitionChildren(children);
     const cls = p === "leaving" ? leave : enter;
+    // 运行时 mountVNodeTree → normalizeChildren / mountChildItemForVnode 支持 children 中含单参挂载函数
     return {
       type: tag,
-      props: { class: cls, children: nodes },
-      children: nodes,
+      props: { class: cls, children: nodes as VNode[] },
+      children: nodes as VNode[],
     };
   };
 }

@@ -25,6 +25,7 @@ import {
   directiveNameToKebab,
 } from "./directive-name.ts";
 import { getGlobalOrDefault } from "./globals.ts";
+import { insert } from "./compiler/insert.ts";
 import { isSignalGetter } from "./signal.ts";
 import type { VNode } from "./types.ts";
 
@@ -157,7 +158,7 @@ export function getDirectiveValue(value: unknown): unknown {
 }
 
 /**
- * 从 value/arg/modifiers 构造 DirectiveBinding，供 dom 层在 applyProps 时调用自定义指令。
+ * 从 value/arg/modifiers 构造 DirectiveBinding，供自定义指令使用（路线 C 下无 applyProps，仅保留 API 供扩展）。
  *
  * @param value - 绑定值（可为 getter，会在此处求值）
  * @param arg - 可选参数
@@ -298,6 +299,9 @@ export function getVShowValue(props: Record<string, unknown>): boolean {
  * @param effectFn - 创建 effect 的函数（如 createEffect），用于响应式更新
  * @param registerUnmount - 可选，登记指令 unmount 回调的函数（如 registerDirectiveUnmount）
  */
+/** v-insert / vInsert：将 getter 作为插入点，仅该节点内容随 signal 更新，不触发整树重跑。与 insert(parent, getter) 语义一致。 */
+const V_INSERT_KEYS = new Set(["vInsert", "v-insert"]);
+
 export function applyDirectives(
   el: Element,
   props: Record<string, unknown>,
@@ -306,7 +310,16 @@ export function applyDirectives(
 ): void {
   for (const [key, value] of Object.entries(props)) {
     if (key === "children" || key === "key") continue;
-    if (BUILTIN_DIRECTIVE_PROPS.has(key)) continue; // 内置指令已在 createElement / applyProps 中处理
+    if (BUILTIN_DIRECTIVE_PROPS.has(key)) continue; // 内置指令原在 createElement / applyProps 中处理（路线 C 已移除）
+    // v-insert：传 getter（不求值），在元素下做 insert(el, getter)，仅此处随依赖更新
+    if (
+      V_INSERT_KEYS.has(key) && typeof value === "function" && registerUnmount
+    ) {
+      const getter = value as () => string | number | Node | null | undefined;
+      const dispose = insert(el, getter);
+      if (typeof dispose === "function") registerUnmount(el, dispose);
+      continue;
+    }
     const directive = getDirective(key);
     if (!directive) continue;
     const binding = createBinding(value);
@@ -336,3 +349,8 @@ export function applyDirectives(
     }
   }
 }
+
+/** 供编译器产物使用：applyDirectives 需传入的卸载登记函数，从 dom 复用以避免编译时解析 @dreamer/view/dom 子路径 */
+export { registerDirectiveUnmount } from "./dom.ts";
+/** 根节点整棵 removeChild 前应对子树执行，与 RoutePage.replaceChildren 前行为一致 */
+export { runDirectiveUnmountOnChildren } from "./dom/unmount.ts";

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "@dreamer/test";
 import { createSignal, isSignalGetter } from "@dreamer/view";
-import { markSignalGetter } from "../../src/signal.ts";
+import { markSignalGetter, unwrapSignalGetterValue } from "../../src/signal.ts";
 
 describe("createSignal", () => {
   it("应返回 [getter, setter] 元组", () => {
@@ -110,5 +110,18 @@ describe("markSignalGetter", () => {
     const fn = () => 42;
     const marked = markSignalGetter(fn);
     expect(marked()).toBe(42);
+  });
+});
+
+describe("unwrapSignalGetterValue", () => {
+  it("对 signal getter 应调用并返回值", () => {
+    const [get] = createSignal(7);
+    expect(unwrapSignalGetterValue(get)).toBe(7);
+  });
+
+  it("对非标记函数应原样返回", () => {
+    const f = () => 1;
+    expect(unwrapSignalGetterValue(f)).toBe(f);
+    expect(unwrapSignalGetterValue("x")).toBe("x");
   });
 });

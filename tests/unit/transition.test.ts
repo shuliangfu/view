@@ -95,4 +95,28 @@ describe("Transition", () => {
     },
     noSanitize,
   );
+
+  /**
+   * 回归：若 effect 内直接读 phase()，leaving 会触发 effect 重跑并 clearTimeout，永远无法 left。
+   * 此处等待超过 duration 后必须为 null。
+   */
+  it(
+    "show 为 false 且超过 duration 后应卸载为 left（getter 返回 null）",
+    async () => {
+      const [visible, setVisible] = createSignal(true);
+      const getter = Transition({
+        show: () => visible(),
+        enter: "e",
+        leave: "l",
+        duration: 15,
+        children: textVNode("x"),
+      });
+      setVisible(false);
+      await Promise.resolve();
+      await Promise.resolve();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(getter()).toBeNull();
+    },
+    noSanitize,
+  );
 }, { sanitizeOps: false, sanitizeResources: false });

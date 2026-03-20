@@ -5,7 +5,6 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import type { VNode } from "@dreamer/view";
-import { createRoot, createSignal } from "@dreamer/view";
 import {
   CONTEXT_SCOPE_TYPE,
   createContext,
@@ -73,60 +72,4 @@ describe("Provider", () => {
   });
 });
 
-/**
- * 与示例页相同用法：createRoot + Provider(value=signal getter) + 子组件 useContext 读值；
- * 不改 signal 时显示默认，setTheme 后子组件应更新（复现「点击无反应」问题）。
- */
-describe("Provider + useContext (createRoot)", () => {
-  it("Provider value 为 signal getter 时，set 后消费者 DOM 应更新", async () => {
-    const ThemeContext = createContext<"light" | "dark">("light");
-    const [theme, setTheme] = createSignal<"light" | "dark">("light");
-
-    function Consumer(): VNode {
-      const value = ThemeContext.useContext();
-      return {
-        type: "span",
-        props: { "data-theme": value },
-        children: [{
-          type: "#text",
-          props: { nodeValue: value },
-          children: [],
-        }],
-      };
-    }
-
-    function Root(): VNode {
-      const providerResult = ThemeContext.Provider({
-        value: theme,
-        children: { type: Consumer, props: {}, children: [] },
-      }) as VNode;
-      return {
-        type: "div",
-        props: {},
-        children: [providerResult],
-      };
-    }
-
-    const container = document.createElement("div");
-    const root = createRoot(() => Root(), container);
-
-    let span = container.querySelector("span[data-theme]");
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe("light");
-
-    setTheme("dark");
-    await Promise.resolve();
-    // effect 重跑会 replaceChildren，需重新 query 取当前 DOM
-    span = container.querySelector("span[data-theme]");
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe("dark");
-    expect(span!.getAttribute("data-theme")).toBe("dark");
-
-    setTheme("light");
-    await Promise.resolve();
-    span = container.querySelector("span[data-theme]");
-    expect(span!.textContent).toBe("light");
-
-    root.unmount();
-  });
-}, { sanitizeOps: false, sanitizeResources: false });
+// 旧版 createRoot(() => VNode) 已废弃，Context 在路线 C 下与编译产物 + insert 配合使用，不再单独测 createRoot+Provider DOM 更新。

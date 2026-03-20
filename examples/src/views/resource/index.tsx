@@ -17,13 +17,19 @@ export const metadata = {
   keywords: "createResource, Suspense, 异步数据",
 };
 
-/** 模拟 API：延迟 800ms 返回；name 使用「用户ID：1」格式，避免用 - 被误认为负数 */
+/**
+ * 模拟 API：延迟 800ms 返回；name 使用「用户ID：1」格式，避免用 - 被误认为负数。
+ * 约 1/3 概率 reject（随机数 % 3 === 0），用于演示 createResource 的 error 与 Suspense 子树需自行 catch。
+ */
 function fakeApi(id: number): Promise<{ id: number; name: string }> {
-  return new Promise((resolve) => {
-    setTimeout(
-      () => resolve({ id, name: `用户ID：${id}` }),
-      800,
-    );
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (Math.floor(Math.random() * 3) % 3 === 0) {
+        reject(new Error(`模拟网络错误（id=${id}）`));
+      } else {
+        resolve({ id, name: `用户ID：${id}` });
+      }
+    }, 800);
   });
 }
 
@@ -66,20 +72,8 @@ export function ResourceDemo(): VNode {
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
             {() => {
               const r = user();
-              if (r.loading) {
-                return (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    加载中…
-                  </span>
-                );
-              }
-              if (r.error) {
-                return (
-                  <span className="text-red-600 dark:text-red-400">
-                    错误：{String(r.error)}
-                  </span>
-                );
-              }
+              if (r.loading) return "加载中…";
+              if (r.error) return `错误：${String(r.error)}`;
               return r.data ? `data: ${r.data.name}` : "无数据";
             }}
           </p>
@@ -87,33 +81,39 @@ export function ResourceDemo(): VNode {
         <div className={block}>
           <h3 className={subTitle}>有 source（id 变化自动请求）</h3>
           <p className="mb-3 flex flex-wrap gap-2">
-            <button type="button" className={btn} onClick={() => setUserId(1)}>
+            <button
+              type="button"
+              className={userId() === 1
+                ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
+                : btn}
+              onClick={() => setUserId(1)}
+            >
               id=1
             </button>
-            <button type="button" className={btn} onClick={() => setUserId(2)}>
+            <button
+              type="button"
+              className={userId() === 2
+                ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
+                : btn}
+              onClick={() => setUserId(2)}
+            >
               id=2
             </button>
-            <button type="button" className={btn} onClick={() => setUserId(3)}>
+            <button
+              type="button"
+              className={userId() === 3
+                ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
+                : btn}
+              onClick={() => setUserId(3)}
+            >
               id=3
             </button>
           </p>
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
             {() => {
               const r = userById();
-              if (r.loading) {
-                return (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    加载中…
-                  </span>
-                );
-              }
-              if (r.error) {
-                return (
-                  <span className="text-red-600 dark:text-red-400">
-                    错误：{String(r.error)}
-                  </span>
-                );
-              }
+              if (r.loading) return "加载中…";
+              if (r.error) return `错误：${String(r.error)}`;
               return r.data ? `data: ${r.data.name}` : "无数据";
             }}
           </p>
@@ -127,11 +127,17 @@ export function ResourceDemo(): VNode {
               </p>
             }
           >
-            {fakeApi(99).then((d) => (
-              <span className="text-slate-600 dark:text-slate-300">
-                加载到：{d.name}
-              </span>
-            ))}
+            {fakeApi(99)
+              .then((d) => (
+                <span className="text-slate-600 dark:text-slate-300">
+                  加载到：{d.name}
+                </span>
+              ))
+              .catch((err: unknown) => (
+                <span className="text-red-600 dark:text-red-400">
+                  错误：{String(err)}
+                </span>
+              ))}
           </Suspense>
         </div>
       </div>
