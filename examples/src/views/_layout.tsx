@@ -68,11 +68,12 @@ interface LayoutProps {
   children?: VNode | VNode[];
 }
 
-/** GitHub 图标（24x24），用于 Navbar 外链 */
+/** GitHub 图标（24x24），用于 Navbar 外链；用 fill-* 直接着色，避免仅靠 currentColor 受全局 CSS 影响 */
 const GitHubIcon = () => (
   <svg
-    className="h-6 w-6 text-slate-600 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
-    fill="currentColor"
+    className="h-6 w-6 shrink-0 fill-slate-600 transition-colors hover:fill-slate-900 dark:fill-slate-400 dark:hover:fill-slate-200"
+    width={24}
+    height={24}
     viewBox="0 0 24 24"
     aria-hidden="true"
   >
@@ -87,7 +88,7 @@ const GitHubIcon = () => (
 /** 太阳图标（light 模式时显示，点击切到 dark） */
 const SunIcon = () => (
   <svg
-    className="h-5 w-5"
+    className="h-5 w-5 text-slate-600 dark:text-slate-400"
     fill="currentColor"
     viewBox="0 0 20 20"
     aria-hidden="true"
@@ -103,8 +104,9 @@ const SunIcon = () => (
 /** 月亮图标（dark 模式时显示，点击切到 light） */
 const MoonIcon = () => (
   <svg
-    className="h-5 w-5"
-    fill="currentColor"
+    className="h-5 w-5 shrink-0 fill-slate-600 dark:fill-slate-400"
+    width={20}
+    height={20}
     viewBox="0 0 20 20"
     aria-hidden="true"
   >
@@ -217,7 +219,7 @@ export function Layout(props: LayoutProps): VNode {
             <button
               type="button"
               onClick={() => toggleTheme()}
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
               title={isDark ? "切换到浅色" : "切换到深色"}
               aria-label={isDark ? "切换到浅色" : "切换到深色"}
             >
@@ -227,7 +229,7 @@ export function Layout(props: LayoutProps): VNode {
               href="https://github.com/shuliangfu/view"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
               title="view 模板引擎 — GitHub"
             >
               <GitHubIcon />

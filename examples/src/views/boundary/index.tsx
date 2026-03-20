@@ -2,7 +2,9 @@
  * Boundary：ErrorBoundary、Suspense
  *
  * - ErrorBoundary：捕获子树错误，显示 fallback(error)
- * - Suspense：children 为 Promise 或 getter 返回 Promise 时先显示 fallback，resolve 后显示内容
+ * - Suspense：children 为无参 getter（如 () => asyncPromise()），getter 返回 Promise 时先显示 fallback，
+ *   Promise resolve 后显示内容；getter 返回 null/undefined 时也显示 fallback。示例中 asyncPromise 由 effect 在首帧设置，
+ *   故先见「加载中…」，约 1s 后变为「异步内容已加载」。
  */
 
 import type { VNode } from "@dreamer/view";
@@ -29,18 +31,20 @@ function Thrower(props: { shouldThrow?: boolean }): VNode {
  * 模拟异步内容：约 1s 后 resolve 的 Promise。
  * 在 createEffect 里调用并写入 signal，避免在渲染路径里每次调用产生新 Promise；
  * signal 放在模块级，这样 BoundaryDemo 重渲染时不会新建 signal、不会丢已设的 Promise。
+ *
+ * 注意：不在 setTimeout 回调内写 JSX，否则编译器会把「箭头 + JSX」误包成根挂载函数，
+ * 导致 resolve 从未被调用、Promise 永远 pending、Suspense 一直显示 fallback。
+ * 此处用 (parent)=>void 挂载函数，与 Suspense 期望的 resolve 值一致。
  */
 function createAsyncContentPromise(): Promise<VNode> {
   return new Promise((resolve) => {
-    setTimeout(
-      () =>
-        resolve(
-          <span className="text-slate-600 dark:text-slate-300">
-            异步内容已加载
-          </span>,
-        ),
-      1000,
-    );
+    setTimeout(() => {
+      resolve(
+        <span className="text-slate-600 dark:text-slate-300">
+          异步内容已加载
+        </span>,
+      );
+    }, 1000);
   });
 }
 
@@ -93,14 +97,13 @@ export function BoundaryDemo(): VNode {
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Suspense
           </h3>
+          {/* 说明：children 传 getter 返回的 Promise（初始为 null 时显示 fallback）；Promise resolve 后显示「异步内容已加载」。仅传 asyncPromise() 便于 effect 正确追踪，避免一直停在 fallback。null 转 undefined 以满足 children 类型。 */}
           <Suspense
             fallback={
               <p className="text-slate-500 dark:text-slate-400">加载中…</p>
             }
           >
-            {asyncPromise() ?? (
-              <p className="text-slate-500 dark:text-slate-400">加载中…</p>
-            )}
+            {asyncPromise() ?? undefined}
           </Suspense>
         </div>
       </div>

@@ -1,14 +1,16 @@
 /**
- * @module @dreamer/view/dom
- * @description
- * View 模板引擎 — DOM 绑定（聚合导出）。将 VNode 转为真实 DOM（浏览器）或 HTML 字符串（SSR）。实现已按职责拆分为 dom/element、dom/stringify、dom/hydrate、dom/props、dom/shared、dom/unmount。
+ * **DOM 辅助**聚合导出：Fragment 工具类型、SSR 相关类型、指令卸载钩子，以及子节点规范化（兼容/类型用途）。
  *
- * **本模块导出：**
- * - 类型与工具：`FragmentType`、`IfContext`、`SSROptions`、`isFragment`（来自 dom/shared）
- * - 指令卸载：`registerDirectiveUnmount`、`runDirectiveUnmount`、`runDirectiveUnmountOnChildren`（来自 dom/unmount）
- * - 元素与 patch：`appendDynamicChild`、`ChildItem`、`createElement`、`createNodeFromExpanded`、`ExpandedRoot`、`expandVNode`、`normalizeChildren`、`patchRoot`（来自 dom/element）
- * - SSR：`createElementToStream`、`createElementToString`（来自 dom/stringify）
- * - `hydrateElement`、`hydrateFromExpanded`（来自 dom/hydrate）
+ * 现代用法下视图更新由编译产物与 `insert` / `insertReactive` 完成；本模块主要为类型复用、指令生命周期与少量工具函数。
+ *
+ * @module @dreamer/view/dom
+ * @packageDocumentation
+ *
+ * **来自 `dom/shared`：** `FragmentType`、`isFragment`、`IfContext`、`SSROptions`
+ *
+ * **来自 `dom/unmount`：** `registerDirectiveUnmount`、`runDirectiveUnmount`、`runDirectiveUnmountOnChildren`
+ *
+ * **来自 `dom/element`：** `normalizeChildren`
  */
 
 export {
@@ -24,20 +26,4 @@ export {
   runDirectiveUnmountOnChildren,
 } from "./dom/unmount.ts";
 
-export {
-  appendDynamicChild,
-  type ChildItem,
-  createElement,
-  createNodeFromExpanded,
-  type ExpandedRoot,
-  expandVNode,
-  normalizeChildren,
-  patchRoot,
-} from "./dom/element.ts";
-
-export {
-  createElementToStream,
-  createElementToString,
-} from "./dom/stringify.ts";
-
-export { hydrateElement, hydrateFromExpanded } from "./dom/hydrate.ts";
+export { normalizeChildren } from "./dom/element.ts";

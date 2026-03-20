@@ -8,6 +8,50 @@ and this project adheres to
 
 ---
 
+## [1.3.0] - 2026-03-20
+
+### Changed
+
+- **Public API JSDoc and module documentation** All exported entry points and
+  public APIs now have full JSDoc. Every export path has `@module` and
+  `@packageDocumentation` with a clear description and export list; exported
+  functions and types have `@param`, `@returns`, and where useful `@example`.
+  Internal-only wording (e.g. "路线 C") has been removed from user-facing module
+  descriptions.
+- **compiler/mod.ts** The module tag was corrected from `@dreamer/view/runtime`
+  to `@dreamer/view/compiler`, and the full export list (insert, createRoot,
+  hydrate, SSR, props, signal/effect re-exports, types) is documented.
+- **Main and subpath entries** `mod.ts`, `mod-ssr.ts`, `mod-csr.ts`,
+  `mod-hybrid.ts` now document all exports and clarify usage (e.g. hybrid/csr do
+  not export `insert`; use main or compiler when needed). `dom.ts`,
+  `globals.ts`, `ref.ts`, `compiled.ts`, `jsx-compiler/mod.ts`,
+  `compiler/insert-replacing.ts`, `optimize.ts`, and
+  `compiler/active-document.ts` have consistent module docs.
+- **Runtime and compiler** `runtime.ts` file header and `insertReactive`,
+  `InsertValueWithMount` JSDoc expanded; `compiler/insert.ts` and
+  `jsx-compiler/transform.ts` module descriptions updated and aligned with
+  public usage. `compileSource` and `jsxToRuntimeFunction` in the JSX compiler
+  have full parameter and return documentation.
+- **Examples** `examples/package.json` imports and dependencies are synced with
+  `examples/deno.json`: added `@dreamer/view/ssr`, `@dreamer/view/compiler`, and
+  `@dreamer/esbuild`; all JSR/npm deps (image, plugins, esbuild, tailwindcss)
+  are listed with matching versions.
+
+### Docs
+
+- **TEST_REPORT (en/zh)** Updated to reflect current runs: 442 tests (Deno), 409
+  (Bun), 34 test files, date 2026-03-20, duration ~1m54s (Deno) / ~82s (Bun).
+  Test file table updated: added compiled-runtime, form-page-compile,
+  jsx-compiler, ref-dom, ref, router-mount, runtime-props, ssr-compiled,
+  unmount; removed props, ssr-directives, reconcile-focus-reuse; adjusted counts
+  for boundary, context, integration, portal, runtime, signal,
+  ssr-document-shim, stream, transition, and E2E browser.
+- **README (en/zh)** Test summary section and badge updated: 442 passed (Deno) /
+  409 (Bun), test date 2026-03-20, duration and file count for both runtimes.
+  Links to TEST_REPORT unchanged.
+
+---
+
 ## [1.2.0] - 2026-03-19
 
 ### Fixed

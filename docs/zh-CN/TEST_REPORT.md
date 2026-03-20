@@ -5,9 +5,9 @@
 | 项目     | 说明                                                                                                                                 |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 测试包   | @dreamer/view                                                                                                                        |
-| 版本     | 1.1.10                                                                                                                               |
+| 版本     | 1.2.0                                                                                                                                |
 | 测试框架 | @dreamer/test ^1.0.15                                                                                                                |
-| 测试时间 | 2026-03-16                                                                                                                           |
+| 测试时间 | 2026-03-20                                                                                                                           |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E）                                                                                         |
 | 运行命令 | **Deno**：`deno test -A tests/`；**Bun**：`bun test tests/`（Bun 下可加 `--preload ./tests/dom-setup.ts` 在无 DOM 时注入 happy-dom） |
 
@@ -15,19 +15,19 @@
 
 ### Deno
 
-- **总测试数**：454
-- **通过**：454
+- **总测试数**：442
+- **通过**：442
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 30 秒
+- **执行时间**：约 1 分 54 秒
 
 ### Bun
 
-- **总测试数**：427
-- **通过**：427
+- **总测试数**：409
+- **通过**：409
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 85 秒（28 个测试文件，含 E2E 浏览器与 CLI）
+- **执行时间**：约 82 秒（34 个测试文件，含 E2E 浏览器与 CLI）
 - **说明**：无 DOM 环境时建议使用 `--preload ./tests/dom-setup.ts`，否则依赖
   `document` 的单元/集成用例可能因 SSR guard 或缺少 document 而失败。
 
@@ -36,40 +36,46 @@
 
 ### 测试文件统计
 
-| 测试文件                           | 测试数 | 状态        |
-| ---------------------------------- | ------ | ----------- |
-| e2e/cli.test.ts                    | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts   | 63     | ✅ 全部通过 |
-| integration/integration.test.ts    | 14     | ✅ 全部通过 |
-| unit/boundary.test.ts              | 13     | ✅ 全部通过 |
-| unit/build-hmr.test.ts             | 5      | ✅ 全部通过 |
-| unit/compiler.test.ts              | 13     | ✅ 全部通过 |
-| unit/context.test.ts               | 8      | ✅ 全部通过 |
-| unit/directive.test.ts             | 25     | ✅ 全部通过 |
-| unit/effect.test.ts                | 15     | ✅ 全部通过 |
-| unit/globals.test.ts               | 5      | ✅ 全部通过 |
-| unit/hmr.test.ts                   | 3      | ✅ 全部通过 |
-| unit/jsx-runtime.test.ts           | 6      | ✅ 全部通过 |
-| unit/meta.test.ts                  | 21     | ✅ 全部通过 |
-| unit/portal.test.ts                | 5      | ✅ 全部通过 |
-| unit/props.test.ts                 | 55     | ✅ 全部通过 |
-| unit/proxy.test.ts                 | 5      | ✅ 全部通过 |
-| unit/reactive.test.ts              | 7      | ✅ 全部通过 |
-| unit/resource.test.ts              | 8      | ✅ 全部通过 |
-| unit/router.test.ts                | 40     | ✅ 全部通过 |
-| unit/runtime.test.ts               | 50     | ✅ 全部通过 |
-| unit/scheduler.test.ts             | 5      | ✅ 全部通过 |
-| unit/signal.test.ts                | 14     | ✅ 全部通过 |
-| unit/ssr-directives.test.ts        | 6      | ✅ 全部通过 |
-| unit/reconcile-focus-reuse.test.ts | 10     | ✅ 全部通过 |
-| unit/ssr-document-shim.test.ts     | 9      | ✅ 全部通过 |
-| unit/store.test.ts                 | 29     | ✅ 全部通过 |
-| unit/stream.test.ts                | 7      | ✅ 全部通过 |
-| unit/transition.test.ts            | 7      | ✅ 全部通过 |
+| 测试文件                         | 测试数 | 状态        |
+| -------------------------------- | ------ | ----------- |
+| e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts | 65     | ✅ 全部通过 |
+| integration/integration.test.ts  | 5      | ✅ 全部通过 |
+| unit/boundary.test.ts            | 16     | ✅ 全部通过 |
+| unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
+| unit/compiled-runtime.test.ts    | 23     | ✅ 全部通过 |
+| unit/compiler.test.ts            | 13     | ✅ 全部通过 |
+| unit/context.test.ts             | 7      | ✅ 全部通过 |
+| unit/directive.test.ts           | 25     | ✅ 全部通过 |
+| unit/effect.test.ts              | 15     | ✅ 全部通过 |
+| unit/form-page-compile.test.ts   | 3      | ✅ 全部通过 |
+| unit/globals.test.ts             | 5      | ✅ 全部通过 |
+| unit/hmr.test.ts                 | 3      | ✅ 全部通过 |
+| unit/jsx-compiler.test.ts        | 32     | ✅ 全部通过 |
+| unit/jsx-runtime.test.ts         | 6      | ✅ 全部通过 |
+| unit/meta.test.ts                | 21     | ✅ 全部通过 |
+| unit/portal.test.ts              | 6      | ✅ 全部通过 |
+| unit/proxy.test.ts               | 5      | ✅ 全部通过 |
+| unit/reactive.test.ts            | 7      | ✅ 全部通过 |
+| unit/ref-dom.test.ts             | 4      | ✅ 全部通过 |
+| unit/ref.test.ts                 | 3      | ✅ 全部通过 |
+| unit/resource.test.ts            | 8      | ✅ 全部通过 |
+| unit/router-mount.test.ts        | 2      | ✅ 全部通过 |
+| unit/router.test.ts              | 40     | ✅ 全部通过 |
+| unit/runtime-props.test.ts       | 15     | ✅ 全部通过 |
+| unit/runtime.test.ts             | 20     | ✅ 全部通过 |
+| unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
+| unit/signal.test.ts              | 16     | ✅ 全部通过 |
+| unit/ssr-compiled.test.ts        | 11     | ✅ 全部通过 |
+| unit/ssr-document-shim.test.ts   | 3      | ✅ 全部通过 |
+| unit/store.test.ts               | 29     | ✅ 全部通过 |
+| unit/stream.test.ts              | 4      | ✅ 全部通过 |
+| unit/transition.test.ts          | 8      | ✅ 全部通过 |
+| unit/unmount.test.ts             | 6      | ✅ 全部通过 |
 
 ## 功能测试详情
 
-### 1. Boundary (unit/boundary.test.ts) - 13 tests
+### 1. Boundary (unit/boundary.test.ts) - 16 tests
 
 - ✅ isErrorBoundary 对 ErrorBoundary 组件返回 true、对其它函数返回 false
 - ✅ getErrorBoundaryFallback：fallback 为函数/VNode/undefined/null 等边界
@@ -83,7 +89,7 @@
 - ✅ examples 目录下 view build：产出 dist/ 且含 main.js
 - ✅ build 后 view start：启动服务并用浏览器打开首页（多页面示例）
 
-### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 63 tests
+### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 65 tests
 
 - ✅ 首页挂载与多页面入口、各卡片进入
   Signal/Store/Boundary/指令/Reactive/Resource/Context/Runtime/Router 页
@@ -99,7 +105,7 @@
 - ✅ **Loading 页**：/loading 懒加载完成后显示加载态示例与 _loading 说明
 - ✅ 顶部导航与路由跳转、Layout 主题、404 与返回首页
 
-### 4. Context (unit/context.test.ts) - 8 tests
+### 4. Context (unit/context.test.ts) - 7 tests
 
 - ✅ createContext 返回 Provider 与 useContext；无 Provider 时返回 defaultValue
 - ✅ 边界：defaultValue 为 undefined 时无 Provider 则 useContext() 为 undefined
@@ -123,7 +129,7 @@
 - ✅ createMemo：非函数抛错、getter 与缓存、依赖变更重算、effect 中读取
   memo、返回 undefined/null 边界
 
-### 7. 集成 (integration/integration.test.ts) - 14 tests
+### 7. 集成 (integration/integration.test.ts) - 5 tests
 
 - ✅ createRoot + 事件 + signal：按钮 onClick 更新 signal、DOM 随 signal 更新
 - ✅ 多事件类型：onClick 与 onChange 等绑定
@@ -180,7 +186,7 @@
 - ✅ interceptLinks：同源 &lt;a&gt; 拦截、target=_blank/download/data-native
   不拦截、hash 锚点、修饰键/右键不拦截、interceptLinks: false
 
-### 14. Runtime (unit/runtime.test.ts) - 50 tests
+### 14. Runtime (unit/runtime.test.ts) - 20 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点；**SSR 分支覆盖**：
   null/undefined 子节点、signal getter
@@ -207,7 +213,7 @@
 - ✅ schedule：任务在微任务中执行；同一 tick 多次 schedule 批量执行
 - ✅ unschedule：flush 前取消则不执行；只移除指定任务
 
-### 16. Signal (unit/signal.test.ts) - 14 tests
+### 16. Signal (unit/signal.test.ts) - 16 tests
 
 - ✅ createSignal：[getter, setter]、初始值、setter 与 updater、Object.is
   相同值不更新
@@ -218,7 +224,7 @@
 
 - ✅ SSR vIf / vElseIf / vElse、vFor、vShow
 
-### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 9 tests
+### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 3 tests
 
 - ✅ 组件内访问 `document.body.style.overflow` 不抛错且输出 HTML
 - ✅ 组件内 `document.getElementById` / `querySelector` 返回 null 不抛错
@@ -242,7 +248,7 @@
 - ✅ 同一 key 返回已有实例（状态共享）；setState updater；getters/actions
   非函数项跳过；Proxy ownKeys/展开
 
-### 20. Stream (unit/stream.test.ts) - 7 tests
+### 20. Stream (unit/stream.test.ts) - 4 tests
 
 - ✅ renderToStream：返回生成器；简单 div 输出 HTML；文本子节点转义；**普通
   函数子节点** 输出返回值（非源码）；keyed 子节点输出 data-view-keyed；void
@@ -299,7 +305,7 @@
 
 ## 结论
 
-当前 @dreamer/view 在 **Deno** 下 454 个用例、**Bun** 下 427
+当前 @dreamer/view 在 **Deno** 下 442 个用例、**Bun** 下 409
 个用例（统计方式不同），**全部通过**，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString

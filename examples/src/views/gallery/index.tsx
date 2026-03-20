@@ -5,7 +5,7 @@
  * 预览支持放大、缩小、拖拽平移（无独立 API，本页内实现）。
  */
 
-import { createEffect, createSignal } from "@dreamer/view";
+import { createEffect, createRef, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 import { extractInfo } from "@dreamer/image/client";
 import type { ImageInfo } from "@dreamer/image/client";
@@ -61,6 +61,10 @@ export default function Gallery(): VNode {
   const [scale, setScale] = createSignal(1);
   const [position, setPosition] = createSignal({ x: 0, y: 0 });
   let dragStartRef: DragStart | null = null;
+  /** 刚结束拖动时置 true，遮罩 onClick 不关闭；下一 tick 置回 false，避免误关后再次点击无法关闭 */
+  let justFinishedDragRef = false;
+  /** 响应式 DOM ref：模板写 `ref={imageWrapRef}`，编译器生成 `ref.current = el`，setter 更新内部 signal，effect 读 `ref.current` 即可订阅 */
+  const imageWrapRef = createRef<HTMLElement>();
 
   // 当选中图片变化时，用 @dreamer/image/client 的 extractInfo 获取尺寸、格式、大小
   createEffect(() => {
@@ -83,6 +87,22 @@ export default function Gallery(): VNode {
       setScale(1);
       setPosition({ x: 0, y: 0 });
     }
+  });
+
+  // 关闭查看器时清空 ref，避免持有已脱离节点；配合编译器「仅 el.isConnected 时赋 ref」避免再次打开后 ref 指到旧节点
+  createEffect(() => {
+    if (selectedIndex() === null) {
+      imageWrapRef.current = null;
+    }
+  });
+  // 直接更新图片容器的 transform，避免重建 DOM 导致闪动；读 imageWrapRef.current 订阅响应式 ref
+  createEffect(() => {
+    const el = imageWrapRef.current;
+    if (!el) return;
+    const pos = position();
+    const scl = scale();
+    el.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(${scl})`;
+    el.style.transformOrigin = "center center";
   });
 
   const zoomIn = () => setScale((s) => Math.min(MAX_SCALE, s + SCALE_STEP));
@@ -111,6 +131,12 @@ export default function Gallery(): VNode {
       });
     };
     const onUp = () => {
+      if (dragStartRef !== null) {
+        justFinishedDragRef = true;
+        globalThis.setTimeout(() => {
+          justFinishedDragRef = false;
+        }, 0);
+      }
       dragStartRef = null;
       globalThis.removeEventListener("mousemove", onMove);
       globalThis.removeEventListener("mouseup", onUp);
@@ -178,7 +204,10 @@ export default function Gallery(): VNode {
             role="dialog"
             aria-modal="true"
             aria-label="图片预览"
-            onClick={() => setSelectedIndex(null)}
+            onClick={() => {
+              if (justFinishedDragRef) return;
+              setSelectedIndex(null);
+            }}
           >
             {/* 顶部：仅关闭按钮 */}
             <div
@@ -219,23 +248,31 @@ export default function Gallery(): VNode {
                 }
               }}
             >
-              <div
-                data-gallery-image-wrap
-                className="flex items-center justify-center transition-transform duration-100 ease-out cursor-grab active:cursor-grabbing"
-                style={{
-                  transform:
-                    `translate(${position().x}px, ${position().y}px) scale(${scale()})`,
-                  transformOrigin: "center center",
-                }}
-                onMouseDown={handleImageMouseDown}
-              >
-                <img
-                  src={GALLERY_IMAGES[selectedIndex()!].src}
-                  alt={GALLERY_IMAGES[selectedIndex()!].alt}
-                  className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl select-none pointer-events-none"
-                  draggable={false}
-                />
-              </div>
+              {
+                /*
+                 * ref={imageWrapRef} 由编译器生成 ref.current 赋值；须用 createRef()，普通 { current } 不触发响应式
+                 */
+              }
+              {() => {
+                const idx = selectedIndex();
+                if (idx === null) return null;
+                const img = GALLERY_IMAGES[idx];
+                return (
+                  <div
+                    ref={imageWrapRef}
+                    data-gallery-image-wrap
+                    className="flex items-center justify-center cursor-grab active:cursor-grabbing"
+                    onMouseDown={handleImageMouseDown}
+                  >
+                    <img
+                      src={img.src}
+                      alt={img.alt}
+                      className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl select-none pointer-events-none"
+                      draggable={false}
+                    />
+                  </div>
+                );
+              }}
             </div>
 
             {/* 图片下方：放大、缩小、1:1 与百分比，便于看见 */}
@@ -268,23 +305,25 @@ export default function Gallery(): VNode {
                 1:1
               </button>
               <span className="ml-2 text-sm font-medium text-white/90">
-                {Math.round(scale() * 100)}%
+                {() => `${Math.round(scale() * 100)}%`}
               </span>
             </div>
 
-            {/* 底部信息栏：extractInfo 尺寸、格式、大小 */}
-            {imageInfo() && (
-              <div
-                className="shrink-0 border-t border-white/10 px-4 py-2 text-center text-sm text-white/90"
-                onClick={(e: Event) => e.stopPropagation()}
-              >
-                {imageInfo()!.width} × {imageInfo()!.height}
-                {" · "}
-                {imageInfo()!.format.toUpperCase()}
-                {" · "}
-                {formatSize(imageInfo()!.size)}
-              </div>
-            )}
+            {/* 底部信息栏：单次读取 imageInfo，避免多段 insertReactive 在 info 被清空瞬间仍访问 .width */}
+            {() => {
+              const info = imageInfo();
+              if (!info) return null;
+              return (
+                <div
+                  className="shrink-0 border-t border-white/10 px-4 py-2 text-center text-sm text-white/90"
+                  onClick={(e: Event) => e.stopPropagation()}
+                >
+                  {`${info.width} × ${info.height} · ${info.format.toUpperCase()} · ${
+                    formatSize(info.size)
+                  }`}
+                </div>
+              );
+            }}
           </div>
         )}
     </div>

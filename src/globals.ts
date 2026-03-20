@@ -1,15 +1,21 @@
 /**
+ * 基于 `globalThis` 的键值存取，与内部 `KEY_*` 常量配合；扩展或调试时可使用 `setGlobal` / `getGlobal`。
+ *
+ * `getDocument()` 在 SSR 标记开启时会抛错，供业务区分环境（详见函数说明）。
+ *
  * @module @dreamer/view/globals
- * @description
- * 统一从 globalThis 读/写「按 key 存」的全局状态，与 constants 中的 KEY_* 配合使用，便于集中管理。
- * 各模块应通过本模块的 getGlobal / setGlobal / getGlobalOrDefault 访问，避免分散写 globalThis 强转。
- * @internal 由 directive、route-page、store、context、scheduler、signal、hmr 统一使用，键名见 constants.ts
+ * @packageDocumentation
+ *
+ * **导出：** `getGlobal`、`setGlobal`、`getGlobalOrDefault`、`getDocument`
  */
 
 import { KEY_VIEW_SSR } from "./constants.ts";
 
 /**
- * 从 globalThis 读取指定 key 的值
+ * 从 `globalThis` 读取指定键的值（不存在则 `undefined`）。
+ *
+ * @param key - 字符串键名，与框架内部 `KEY_*` 或自定义键一致
+ * @returns 已存储的值，或 `undefined`
  */
 export function getGlobal<T = unknown>(key: string): T | undefined {
   if (typeof globalThis === "undefined") return undefined;
@@ -39,7 +45,10 @@ export function getDocument(): Document {
 }
 
 /**
- * 向 globalThis 写入指定 key 的值
+ * 向 `globalThis` 写入指定键的值（覆盖已有值）。
+ *
+ * @param key - 字符串键名
+ * @param value - 任意可序列化引用或对象
  */
 export function setGlobal(key: string, value: unknown): void {
   if (typeof globalThis === "undefined") return;
@@ -47,7 +56,11 @@ export function setGlobal(key: string, value: unknown): void {
 }
 
 /**
- * 从 globalThis 读取 key；若不存在则用 factory 生成并写入后返回，保证同 key 只创建一次
+ * 从 `globalThis` 读取键；若不存在则调用 `factory` 创建、写入并返回（同键单例）。
+ *
+ * @param key - 字符串键名
+ * @param factory - 无参工厂，仅在键缺失时调用一次
+ * @returns 已存在或新创建的值
  */
 export function getGlobalOrDefault<T>(
   key: string,

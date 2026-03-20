@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-454%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-442%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -68,11 +68,13 @@ bunx jsr add @dreamer/view
 `deno add` or `bunx jsr add` with the same subpath):
 
 ```bash
-# Main entry: signal/effect/memo, createRoot, render, mount, renderToString, hydrate
+# Main entry: signal/effect/memo, createRoot, render, mount, generateHydrationScript
 deno add jsr:@dreamer/view
+# SSR: renderToString, renderToStream, getActiveDocument, createSSRDocument (use when doing SSR)
+deno add jsr:@dreamer/view/ssr
 # CSR-only: smaller bundle, no renderToString/hydrate/generateHydrationScript
 deno add jsr:@dreamer/view/csr
-# Hybrid: createRoot, render, mount, hydrate (for client-side activation after SSR)
+# Hybrid: createRoot, render, mount (no generateHydrationScript; use compiler's hydrate for activation)
 deno add jsr:@dreamer/view/hybrid
 # Store: reactive state, getters, actions, optional persist (e.g. localStorage)
 deno add jsr:@dreamer/view/store
@@ -92,11 +94,75 @@ deno add jsr:@dreamer/view/transition
 deno add jsr:@dreamer/view/boundary
 # Directive: built-in vIf/vFor/vShow and registerDirective for custom
 deno add jsr:@dreamer/view/directive
-# Stream: renderToStream for streaming SSR
+# Stream: renderToStream for streaming SSR (also available from /ssr)
 deno add jsr:@dreamer/view/stream
-# Compiler: optimize, createOptimizePlugin for build-time optimizations (optional)
+# Compiler: insert, hydrate, renderToString, etc. (aligned with view-cli full compile)
 deno add jsr:@dreamer/view/compiler
+# Optimize: build-time optimize / createOptimizePlugin (optional, uses TypeScript API)
+deno add jsr:@dreamer/view/optimize
 ```
+
+---
+
+## Entry points and subpaths
+
+Exports are split by **bundle size and responsibility**. Choose the right entry
+for your use case so you don’t pull SSR code when building CSR-only.
+
+### Main entry `jsr:@dreamer/view`
+
+For **CSR / hybrid client**: signals, effects, **insert** family, `createRoot` /
+`render` / **mount**, `generateHydrationScript`, `getDocument`, `mergeProps` /
+`spreadIntrinsicProps` / `scheduleFunctionRef`, etc.
+
+**No longer exported from main** (moved to subpaths to keep default bundle
+small):
+
+| Former main usage                        | Import from                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `renderToString`, `renderToStream`       | `jsr:@dreamer/view/ssr` or `jsr:@dreamer/view/stream` (stream only)                         |
+| `getActiveDocument`, `createSSRDocument` | `jsr:@dreamer/view/ssr` (or `jsr:@dreamer/view/compiler` when hand-writing compiled output) |
+
+**Standalone `hydrate(fn, container)`**: Exported from
+**`jsr:@dreamer/view/compiler`**. The `fn` must be the **same** compiled
+`(container) => void` used with **`renderToString(fn)`** (or streaming SSR);
+client calls it on a container that already has server HTML to reuse DOM by
+insert points and bind effects.
+
+**`mount(container, fn, options?)`** (main / csr / hybrid): Current behavior is
+to resolve the container then call **`render(fn, el)`**; it **does not**
+auto-switch to hydrate based on whether the container has children. For hybrid
+apps, call **`hydrate`** explicitly on the client (import from **compiler**).
+
+**Removed API**: **`createReactiveRoot`** is no longer provided. Use
+**createRoot** + **signal** or **mountWithRouter** instead (see examples below).
+
+### SSR subpath `jsr:@dreamer/view/ssr`
+
+Aggregates server-side APIs: **renderToString**, **renderToStream**,
+**getActiveDocument**, **setSSRShadowDocument**, **createSSRDocument**, and
+types SSROptions, SSRElement, etc. Add this subpath only when doing SSR or build
+scripts.
+
+### Compiler / full runtime `jsr:@dreamer/view/compiler`
+
+Aligns with **view-cli** output: **`(container) => void` + insert**. Exports
+**insert**, **insertReactive**, **createRoot**, **render**, **hydrate**,
+**renderToString**, **renderToStream**, **getActiveDocument**,
+**createSSRDocument**, etc. Use for full-compile apps or when the toolchain uses
+`insertImportPath: "@dreamer/view/compiler"`.
+
+**view-cli build**: For `.tsx`, `compileSource` with
+`insertImportPath: "@dreamer/view"` will **automatically add**
+`import { getActiveDocument } from "@dreamer/view/compiler"` when the output
+needs `getActiveDocument()` (main entry no longer exports it).
+**init**-generated `deno.json` only needs to map `jsr:@dreamer/view@^…`;
+subpaths are resolved via JSR **exports**.
+
+### Other subpaths
+
+`csr`, `hybrid`, `router`, `store`, `directive`, etc. are unchanged; see
+**Optional subpaths** and **Modules and exports** below.
 
 ---
 
@@ -165,10 +231,10 @@ notFound route (path `*`).
   component (e.g. `export default function Home() { ... }`). Using only a named
   export and then `export default Home` can cause runtime error "data.default is
   not a function"; use a single direct default export.
-- **export meta**: You can export a `meta` object (title, description, keywords,
-  author, og) from a route file; it is merged into that route’s config when
-  `routers.tsx` is generated. If `meta` is absent, `title` is inferred from the
-  file path.
+- **export metadata**: You can export a **`metadata`** object (title,
+  description, keywords, author, og) from a route file; it is merged into that
+  route’s metadata when `routers.tsx` is generated. If `export metadata` is
+  absent, `title` is inferred from the file path.
 
 ### view.config
 
@@ -240,22 +306,22 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
 - **Core**
   - `createSignal` / `createEffect` / `createMemo` — reactive primitives;
     effects re-run when tracked signals change (microtask).
-  - `createRoot` / `render` — mount reactive root; fine-grained DOM patch, no
-    full tree replace.
-  - `mount(container, fn, options?)` — unified entry: `container` may be a
-    selector (e.g. `"#root"`) or `Element`; if container has children,
-    **hydrate** (hybrid/full), else **render**. Options: `hydrate` (force),
-    `noopIfNotFound` (return empty Root when selector misses). Reduces branching
-    and mental load.
-  - `createReactiveRoot` — mount a **state-driven** root: you pass
-    `(container, getState, buildTree)`; when `getState()` changes (e.g. a
-    signal), the tree is rebuilt and patched in place. Use for SPA shells where
-    “page state” is owned outside View (e.g. router) and View only renders from
-    that state.
-  - `renderToString` — SSR/SSG HTML; optional `allowRawHtml: false` for escaping
-    raw HTML (see [Security](#-security)).
-  - `hydrate` — activate server-rendered markup; `generateHydrationScript` for
-    hybrid apps.
+  - `insert` / `insertReactive` / `insertStatic` / `insertMount` — insert-point
+    primitives; shared by compiled output and hand-written CSR (main entry).
+  - `createRoot` / `render` — mount reactive root; updates driven by insert +
+    effect, no full-tree virtual DOM diff.
+  - `mount(container, fn, options?)` — resolves container then
+    **`render(fn, el)`**; **`options.noopIfNotFound`** applies (return empty
+    Root when selector not found). **Client hydration** use
+    **`hydrate(fn, container)`** from **`jsr:@dreamer/view/compiler`** (same
+    `fn` as SSR). `MountOptions.hydrate` may not match implementation; refer to
+    source.
+  - `generateHydrationScript` — inject activation script (hybrid apps; main
+    entry).
+  - **`renderToString`** / **`renderToStream`** / **`getActiveDocument`** —
+    moved to **`jsr:@dreamer/view/ssr`** (stream also at
+    `jsr:@dreamer/view/stream`); optional `allowRawHtml: false` (see
+    [Security](#-security)).
 - **Store** (`@dreamer/view/store`)
   - `createStore` — reactive store with state, getters, actions, and optional
     persist (e.g. localStorage).
@@ -305,8 +371,8 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
 Minimal client-side app:
 
 ```tsx
-// main.tsx
-import { createRoot, createSignal } from "jsr:@dreamer/view";
+// main.tsx: root function is (container) => void, use insert inside to attach UI
+import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
 import type { VNode } from "jsr:@dreamer/view";
 
 function App(): VNode {
@@ -320,13 +386,18 @@ function App(): VNode {
 }
 
 const container = document.getElementById("root")!;
-createRoot(() => <App />, container);
+createRoot((el) => {
+  insert(el, () => <App />);
+}, container);
 ```
 
 Use **getters** in JSX for reactive content (`{count}`). Forms: **value** +
 **onInput** / **onChange** with createSignal or createReactive. Events:
 `onClick`, `onInput`, `onChange` (camelCase). Ref: `ref={(el) => { ... }}` or
-`ref={refObj}`. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
+`ref={refObj}`. For reactive DOM refs (e.g. `createEffect` must re-run when the
+node mounts), use `createRef()` and `ref={myRef}` so the compiler’s
+`ref.current = el` updates an internal signal; plain `{ current: null }` does
+not trigger effects. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
 
 ---
 
@@ -484,61 +555,66 @@ See **registerDirective** in “More API code examples” and **Modules and expo
 
 Short examples for APIs not yet shown in the sections above.
 
-**createReactiveRoot and forceRender (external state / external router)**
+**createRoot / render (external router / external state)**
 
-When the “page” or “route” state is **owned by View as a signal**, use
-**createReactiveRoot**: pass `(container, getState, buildTree)`; when
-`getState()` changes (e.g. a signal), the tree is rebuilt and patched in place.
-Ideal for SPA shells where you want View to react automatically to route
-changes.
+Root API is **`createRoot(fn, container)`** / **`render(fn, container)`**:
+**`fn`** is **`(container: Element) => void`**; use **`insert(container, …)`**
+inside to attach UI (same shape as **view-cli** compiled output).
 
-When you use **createRoot** / **render** but the driver (e.g. a third-party
-router) is **outside View and not a signal**, the root effect only re-runs when
-its tracked signals change. After each route (or other external) change, call
-**root.forceRender()** to force one re-run and re-render the tree. The returned
-`Root` from `createRoot`/`render` includes `forceRender` for this case.
+- **view-cli + file-based routes**: Root uses `router.getCurrentRouteSignal()()`
+  to drive `<RoutePage />`; framework and signals handle updates.
+- **Custom SPA + `@dreamer/view/router`**: Use **`mountWithRouter`** so the
+  router signal drives the tree.
+- **State in View signals**: Read signals in the root **insert** getter or in
+  children for fine-grained updates; see
+  [Effect scope and render thunk](#effect-scope-and-render-thunk).
+- **External non-reactive navigation**: **`root.unmount()`** then **`mount`** /
+  **`render`** again, or put “current page” in a **signal** and switch subtree
+  inside the same root.
 
 ```ts
-import {
-  createReactiveRoot,
-  createRoot,
-  createSignal,
-  render,
-} from "jsr:@dreamer/view";
+import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
 
-// Option A: route state is a signal → createReactiveRoot (auto patch on change)
-const [pageState, setPageState] = createSignal({ route: "home", id: null });
 const container = document.getElementById("root")!;
 
-const root = createReactiveRoot(container, pageState, (state) => {
-  if (state.route === "home") return <Home />;
-  if (state.route === "user") return <User id={state.id} />;
-  return <NotFound />;
-});
-// setPageState({ route: "user", id: "1" }) → tree patches in place. root.unmount() when tearing down.
-
-// Option B: external router, no signal → createRoot + forceRender after route change
-const root2 = createRoot(() => <App />, container);
-externalRouter.onChange(() => root2.forceRender?.());
+// Switch page inside root with a signal (recommended)
+const [route, setRoute] = createSignal<"home" | "user">("home");
+createRoot(
+  (el) => {
+    insert(el, () => (route() === "home" ? <Home /> : <User />));
+  },
+  container,
+);
 ```
 
 **CSR entry (client-only, smaller bundle)**
 
 When you don't need SSR or hydrate, import from `view/csr` for a smaller bundle
-(no renderToString, hydrate, generateHydrationScript):
+(no renderToString, hydrate, generateHydrationScript). **Does not export
+insert**: when using **mount**, import **insert** from the main entry or
+**compiler** (see CSR example below).
 
 ```tsx
-import { createSignal, mount } from "jsr:@dreamer/view/csr";
 import type { VNode } from "jsr:@dreamer/view";
+import { insert } from "jsr:@dreamer/view";
+import { createSignal, mount } from "jsr:@dreamer/view/csr";
 
 function App(): VNode {
   const [count, setCount] = createSignal(0);
   return <div onClick={() => setCount(count() + 1)}>Count: {count}</div>;
 }
-// mount accepts selector or Element; CSR always renders (no hydrate)
-mount("#root", () => <App />);
+// mount: resolve container then render; fn must be (el) => void + insert
+mount("#root", (el) => {
+  insert(el, () => <App />);
+});
 // Optional: noop when selector not found instead of throwing
-mount("#maybe-missing", () => <App />, { noopIfNotFound: true });
+mount(
+  "#maybe-missing",
+  (el) => {
+    insert(el, () => <App />);
+  },
+  { noopIfNotFound: true },
+);
 ```
 
 **onCleanup (cleanup inside effect)**
@@ -557,29 +633,44 @@ createEffect(() => {
 **renderToString (SSR)**
 
 ```ts
-import { renderToString } from "jsr:@dreamer/view";
+import { insert } from "jsr:@dreamer/view";
+import { renderToString } from "jsr:@dreamer/view/ssr";
 
-const html = renderToString(() => <div>Hello SSR</div>);
+const html = renderToString((el) => {
+  insert(el, () => "Hello SSR");
+});
 // optional: allowRawHtml: false to escape dangerouslySetInnerHTML
-const safe = renderToString(() => <App />, { allowRawHtml: false });
+const safe = renderToString((el) => {
+  insert(el, () => <App />);
+}, { allowRawHtml: false });
 ```
 
 **hydrate + generateHydrationScript (hybrid)**
 
 ```ts
-// Server: output HTML + inject hydration script
-import { generateHydrationScript, renderToString } from "jsr:@dreamer/view";
-const html = renderToString(() => <App />);
+// Server: output HTML + inject hydration script (fn must match client hydrate)
+import { generateHydrationScript, insert } from "jsr:@dreamer/view";
+import { renderToString } from "jsr:@dreamer/view/ssr";
+
+function rootFn(el: Element) {
+  insert(el, () => <App />);
+}
+
+const html = renderToString(rootFn);
 const script = generateHydrationScript({ scriptSrc: "/client.js" });
 // return html + script
 
-// Client (e.g. from jsr:@dreamer/view/hybrid): activate
-import { hydrate } from "jsr:@dreamer/view/hybrid";
-hydrate(() => <App />, document.getElementById("root")!);
+// Client: explicit hydrate (from compiler; hybrid entry does not export hydrate)
+import { hydrate } from "jsr:@dreamer/view/compiler";
 
-// Or use mount: selector + auto hydrate/render (has children → hydrate, else render)
+hydrate(rootFn, document.getElementById("root")!);
+
+// If only CSR (empty container), use hybrid or main mount with same (el)=>void shape
 import { mount } from "jsr:@dreamer/view/hybrid";
-mount("#root", () => <App />);
+
+mount("#root", (el) => {
+  insert(el, () => <App />);
+});
 ```
 
 **SSR: safe document access**
@@ -723,21 +814,25 @@ registerDirective("v-focus", {
 **renderToStream**
 
 ```ts
+import { insert } from "jsr:@dreamer/view";
 import { renderToStream } from "jsr:@dreamer/view/stream";
 
-const stream = renderToStream(() => <App />);
+const stream = renderToStream((el) => {
+  insert(el, () => <App />);
+});
 for (const chunk of stream) response.write(chunk);
-// or ReadableStream.from(renderToStream(() => <App />))
+// or ReadableStream.from(renderToStream((el) => { insert(el, () => <App />); }))
 ```
 
-**Compiler: optimize / createOptimizePlugin**
+**Optimize: optimize / createOptimizePlugin**
 
 `view-cli build` enables the optimize plugin by default for `.tsx` (constant
 folding and static hoisting). Use `build.optimize: false` in view.config to
-disable. With a custom bundler, add the plugin manually:
+disable. With a custom bundler, import from **`jsr:@dreamer/view/optimize`**
+(not compiler):
 
 ```ts
-import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/compiler";
+import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/optimize";
 
 const out = optimize(sourceCode, "App.tsx");
 // esbuild plugin
@@ -873,37 +968,54 @@ store, stream, boundary, portal, transition, etc.; import those from subpaths
 (e.g. `@dreamer/view/router`) so unused modules are not bundled (tree-shake
 friendly).
 
-| Export                                      | Description                                                                                                                                                 |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **createSignal**                            | Returns `[getter, setter]`; getter in effect registers dependency                                                                                           |
-| **createEffect**                            | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                       |
-| **createMemo**                              | Cached derived getter                                                                                                                                       |
-| **onCleanup**                               | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                   |
-| **getCurrentEffect** / **setCurrentEffect** | Current effect (internal)                                                                                                                                   |
-| **isSignalGetter**                          | Detect signal getter                                                                                                                                        |
-| **createRoot**                              | Create reactive root; returns Root with **unmount** and **forceRender** (for external router integration)                                                   |
-| **createReactiveRoot**                      | Create state-driven root: `(container, getState, buildTree)`; state changes trigger patch                                                                   |
-| **render**                                  | Mount root: `render(() => <App />, container)`                                                                                                              |
-| **mount**                                   | Unified mount: `mount(container, fn, options?)`; container = selector or Element; has children → hydrate, else render; options: `hydrate`, `noopIfNotFound` |
-| **renderToString**                          | SSR: root to HTML string                                                                                                                                    |
-| **hydrate**                                 | Activate server-rendered HTML in the browser                                                                                                                |
-| **generateHydrationScript**                 | Generate hydration script tag (hybrid apps)                                                                                                                 |
-| **getDocument**                             | Safe document access: returns `document` on client; throws a clear error in SSR (use in client-only branches to avoid `document is undefined`)              |
-| **Types**                                   | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions                                                   |
-| **isDOMEnvironment**                        | Whether in DOM environment                                                                                                                                  |
+| Export                                                                               | Description                                                                                                                                                        |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **createSignal**                                                                     | Returns `[getter, setter]`; getter in effect registers dependency                                                                                                  |
+| **createEffect**                                                                     | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                              |
+| **createMemo**                                                                       | Cached derived getter                                                                                                                                              |
+| **onCleanup**                                                                        | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                          |
+| **untrack**                                                                          | Read signals in callback without registering deps (advanced)                                                                                                       |
+| **getCurrentEffect** / **setCurrentEffect**                                          | Current effect (internal)                                                                                                                                          |
+| **isSignalGetter**                                                                   | Detect signal getter                                                                                                                                               |
+| **createRef**                                                                        | Create ref object; use with `ref={refObj}` so effect re-runs when node mounts/unmounts                                                                             |
+| **createRoot**                                                                       | Create root: runs **`fn(container)`** once, use **insert** inside to build UI; returns **Root** (`unmount`, `container`)                                           |
+| **render**                                                                           | Same as **`createRoot(fn, container)`**; **`fn`** is **`(container) => void`** (matches compiled output)                                                           |
+| **mount**                                                                            | Convenience for **`render(fn, el)`**: `container` = selector or Element; **`options.noopIfNotFound`** returns empty Root when not found; **does not** auto-hydrate |
+| **insert** / **insertReactive** / **insertStatic** / **insertMount**                 | Insert-point APIs; aligned with compiler output                                                                                                                    |
+| **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | Compile-time props and function ref (re-exported from compiler)                                                                                                    |
+| **generateHydrationScript**                                                          | Generate hydration script tag (hybrid apps)                                                                                                                        |
+| **hydrate** (explicit API)                                                           | From **`jsr:@dreamer/view/compiler`**; use **`hydrate(fn, container)`** for client hydration (same `fn` as SSR); **mount** does not auto-hydrate                   |
+| **getDocument**                                                                      | Safe document access: returns `document` on client; throws in SSR (use in client-only branches)                                                                    |
+| **Types**                                                                            | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions, ElementRef, InsertParent, InsertValue                   |
+| **setGlobal**                                                                        | Set global document etc. (internal/advanced)                                                                                                                       |
+| **isDOMEnvironment**                                                                 | Whether in DOM environment                                                                                                                                         |
+
+**SSR** (`renderToString`, `renderToStream`, `getActiveDocument`,
+`createSSRDocument`) is on **`jsr:@dreamer/view/ssr`**; omit for CSR-only to
+keep bundle small.
+
+### SSR subpath `jsr:@dreamer/view/ssr`
+
+Exports: **renderToString**, **renderToStream**, **getActiveDocument**,
+**setSSRShadowDocument**, **createSSRDocument**, and types SSROptions,
+SSRElement, SSRNode, SSRTextNode. Import when doing server or streaming SSR.
 
 ### CSR entry `jsr:@dreamer/view/csr`
 
-Client-only bundle: no renderToString, hydrate, generateHydrationScript.
-Exports: createSignal, createEffect, createMemo, onCleanup, createRoot,
-**render**, **mount** (selector or Element, always render), and related types.
+Client-only bundle: no renderToString, hydrate, generateHydrationScript. **Does
+not export insert**: when using **mount**, import **insert** from main or
+**compiler** (see CSR example above). Exports: createSignal, createEffect,
+createMemo, onCleanup, createRoot, **render**, **mount** (selector or Element,
+always render), and related types.
 
 ### Hybrid entry `jsr:@dreamer/view/hybrid`
 
-Client hybrid entry: **createRoot**, **render**, **mount**, **hydrate** (no
-renderToString / generateHydrationScript). Use main or stream for server HTML,
-this entry for client activation. **mount(container, fn)** uses selector or
-Element; if container has children → hydrate, else → render.
+Client lightweight entry: **createRoot**, **render**, **mount** (same mount
+model as csr). **Does not export generateHydrationScript** or
+**renderToString**. **Does not export `hydrate`**: when the container already
+has server HTML, call **`hydrate(fn, container)`** from
+**`jsr:@dreamer/view/compiler`** on the client (`fn` must match SSR). Server
+HTML and scripts can still use main entry’s **generateHydrationScript** etc.
 
 ### JSX runtime `jsr:@dreamer/view/jsx-runtime`
 
@@ -978,10 +1090,21 @@ bundle small.
 
 ### Compiler `jsr:@dreamer/view/compiler`
 
-Build-time optimizations (static hoisting, constant folding); uses TypeScript
-compiler API. **view-cli build** enables `createOptimizePlugin` for production
-by default (applies to `.tsx`). Set `build.optimize: false` in view.config to
-disable.
+**This subpath exports**: **insert**, **insertReactive**, **insertStatic**,
+**createRoot**, **render**, **hydrate**, **renderToString**, **renderToStream**,
+**getActiveDocument**, **createSSRDocument**, **mergeProps** / **splitProps** /
+**spreadIntrinsicProps**, **scheduleFunctionRef**, and signal/effect types —
+aligned with **view-cli** full compile. **view-cli** automatically adds
+`import { getActiveDocument } from "@dreamer/view/compiler"` when
+`insertImportPath` is main and the output needs **getActiveDocument**.
+
+**Does not include** `optimize` / `createOptimizePlugin` (see
+**`jsr:@dreamer/view/optimize`**).
+
+### Optimize `jsr:@dreamer/view/optimize`
+
+Build-time optimization (static hoisting, constant folding); uses **TypeScript
+compiler API**, loaded only when used.
 
 | Export                                       | Description                                            |
 | -------------------------------------------- | ------------------------------------------------------ |
@@ -1040,12 +1163,12 @@ Only a **left-click** on a same-origin `http:`/`https:` link that does not match
 any row above is intercepted and triggers `navigate()` (and guards). Set
 `interceptLinks: false` in options to disable link interception entirely.
 
-**Route files and `export meta` (view-cli):** When using `view-cli dev`, the
+**Route files and `export metadata` (view-cli):** When using `view-cli dev`, the
 file `src/router/routers.tsx` is auto-generated by scanning `src/views`
 (recursive, max 5 levels). For convention files (_app, _layout, _loading, _404,
 _error), path mapping, and view.config, see **Project structure and conventions
-(view-cli)** above. Route files can export a `metadata` object so it is merged
-into the generated route config:
+(view-cli)** above. Route files can export **`metadata`** so it is merged into
+the generated route config:
 
 ```tsx
 // src/views/home/index.tsx (or any route file)
@@ -1069,7 +1192,7 @@ named export and then `export default Home`, the runtime can fail with
 default export.
 
 Supported fields: `title`, `description`, `keywords`, `author`, and `og` (with
-`title`, `description`, `image`). If no `export meta` is present, `title` is
+`title`, `description`, `image`). If no `export metadata` is present, `title` is
 inferred from the file path. The generated `src/router/routers.tsx` is
 gitignored and should not be committed.
 
@@ -1077,28 +1200,25 @@ gitignored and should not be committed.
 
 ## 📚 API quick reference
 
-| Area       | API                                                                                                                                                | Import                         |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Core       | createSignal, createEffect, createMemo, onCleanup, createRoot, createReactiveRoot, render, mount, renderToString, hydrate, generateHydrationScript | `jsr:@dreamer/view`            |
-| Store      | createStore, unregisterStore, withGetters, withActions                                                                                             | `jsr:@dreamer/view/store`      |
-| Reactive   | createReactive                                                                                                                                     | `jsr:@dreamer/view/reactive`   |
-| Context    | createContext                                                                                                                                      | `jsr:@dreamer/view/context`    |
-| Resource   | createResource                                                                                                                                     | `jsr:@dreamer/view/resource`   |
-| Router     | createRouter (scroll: top/restore/false)                                                                                                           | `jsr:@dreamer/view/router`     |
-| Portal     | createPortal(children, container)                                                                                                                  | `jsr:@dreamer/view/portal`     |
-| Transition | Transition (show, enter, leave, duration)                                                                                                          | `jsr:@dreamer/view/transition` |
-| Boundary   | Suspense, ErrorBoundary                                                                                                                            | `jsr:@dreamer/view/boundary`   |
-| Directives | registerDirective, hasDirective, getDirective, …                                                                                                   | `jsr:@dreamer/view/directive`  |
-| Stream     | renderToStream                                                                                                                                     | `jsr:@dreamer/view/stream`     |
+| Area             | API                                                                                                                                                         | Import                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Core             | createSignal, createEffect, createMemo, onCleanup, untrack, createRef, createRoot, render, mount, insert*, mergeProps, generateHydrationScript, getDocument | `jsr:@dreamer/view`            |
+| Compiler runtime | insert, hydrate, renderToString, renderToStream, getActiveDocument, createSSRDocument (overlap with above)                                                  | `jsr:@dreamer/view/compiler`   |
+| Optimize         | optimize, createOptimizePlugin                                                                                                                              | `jsr:@dreamer/view/optimize`   |
+| SSR              | renderToString, renderToStream, getActiveDocument, createSSRDocument                                                                                        | `jsr:@dreamer/view/ssr`        |
+| Store            | createStore, unregisterStore, withGetters, withActions                                                                                                      | `jsr:@dreamer/view/store`      |
+| Reactive         | createReactive                                                                                                                                              | `jsr:@dreamer/view/reactive`   |
+| Context          | createContext                                                                                                                                               | `jsr:@dreamer/view/context`    |
+| Resource         | createResource                                                                                                                                              | `jsr:@dreamer/view/resource`   |
+| Router           | createRouter (scroll: top/restore/false)                                                                                                                    | `jsr:@dreamer/view/router`     |
+| Portal           | createPortal(children, container)                                                                                                                           | `jsr:@dreamer/view/portal`     |
+| Transition       | Transition (show, enter, leave, duration)                                                                                                                   | `jsr:@dreamer/view/transition` |
+| Boundary         | Suspense, ErrorBoundary                                                                                                                                     | `jsr:@dreamer/view/boundary`   |
+| Directives       | registerDirective, hasDirective, getDirective, …                                                                                                            | `jsr:@dreamer/view/directive`  |
+| Stream           | renderToStream                                                                                                                                              | `jsr:@dreamer/view/stream`     |
 
-**Core:** createSignal returns `[getter, setter]`; createEffect runs once then
-re-runs when deps change (microtask); createMemo returns cached getter.
-**Rendering:** createRoot/render mount root; **mount(container, fn, options?)**
-accepts selector or Element and auto hydrate/render (has children → hydrate);
-createReactiveRoot for state-driven roots; renderToString for SSR; hydrate +
-generateHydrationScript for hybrid. **Directives:** vIf, vElse, vElseIf, vFor,
-vShow, vOnce, vCloak (camelCase in JSX). **Types:** VNode, Root, SignalGetter,
-SignalSetter, EffectDispose.
+See **Store (detailed)** and **Modules and exports** above for full
+descriptions.
 
 More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 [docs/en-US](./docs/en-US/) (English).
@@ -1117,14 +1237,14 @@ reset when only that slot’s state changes. Full history:
 
 ## 📊 Test Report
 
-| Metric      | Value      |
-| ----------- | ---------- |
-| Test date   | 2026-03-16 |
-| Total tests | 454 (Deno) |
-| Passed      | 454 ✅     |
-| Failed      | 0          |
-| Pass rate   | 100%       |
-| Duration    | ~1m30s     |
+| Metric      | Value                                |
+| ----------- | ------------------------------------ |
+| Test date   | 2026-03-20                           |
+| Total tests | 442 (Deno) / 409 (Bun)               |
+| Passed      | 442 ✅ / 409 ✅                      |
+| Failed      | 0                                    |
+| Pass rate   | 100%                                 |
+| Duration    | ~1m54s (Deno) / ~82s (Bun, 34 files) |
 
 Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 (component access to document does not throw). See
@@ -1134,14 +1254,14 @@ Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 
 ## Effect scope and render thunk
 
-When the root builds the tree (e.g. `createRoot(() => <App />, container)` or
-`createReactiveRoot(container, getState, buildTree)`), **every signal read
-during that single run is tracked by the root effect**. So if a child component
-returns JSX that contains a reactive directive like `vIf={() => isOpen()}`, the
-**root** subscribes to `isOpen`. When that signal later changes (e.g. the modal
-opens), the root effect re-runs, the whole tree is re-built, and **parent
-components’ `createEffect` callbacks run again** — which can cause duplicate
-side effects (e.g. layout logic running twice).
+When the root builds the tree (e.g.
+**`createRoot((el) => { insert(el, () => <App />); }, container)`**), **every
+signal read during that single run is tracked by the root effect**. So if a
+child component returns JSX that contains a reactive directive like
+`vIf={() => isOpen()}`, the **root** subscribes to `isOpen`. When that signal
+later changes (e.g. the modal opens), the root effect re-runs, the whole tree is
+re-built, and **parent components’ `createEffect` callbacks run again** — which
+can cause duplicate side effects (e.g. layout logic running twice).
 
 **Solution: render thunk.** When a component **returns a function** that returns
 the VNode (e.g. `return () => ( <div vIf={() => isOpen()}>...</div> )`), that

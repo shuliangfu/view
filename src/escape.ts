@@ -2,7 +2,7 @@
  * 统一 HTML/属性转义，供 SSR、meta、hydration 等复用，保证行为一致并集中维护安全规则。
  *
  * @module @dreamer/view/escape
- * @internal 由 dom/stringify、meta、runtime 等使用，不单独导出到 package exports
+ * @internal 由 meta、runtime 等使用，不单独导出到 package exports
  */
 
 /**

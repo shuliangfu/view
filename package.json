@@ -10,14 +10,22 @@
   },
   "exports": {
     ".": "./src/mod.ts",
+    "./cli": "./src/cli.ts",
+    "./setup": "./src/setup.ts",
+    "./csr": "./src/mod-csr.ts",
+    "./hybrid": "./src/mod-hybrid.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
+    "./ref": "./src/ref.ts",
     "./signal": "./src/signal.ts",
     "./effect": "./src/effect.ts",
     "./reactive": "./src/reactive.ts",
     "./boundary": "./src/boundary.ts",
     "./directive": "./src/directive.ts",
     "./resource": "./src/resource.ts",
+    "./compiler": "./src/compiler/mod.ts",
+    "./insert-replacing": "./src/compiler/insert-replacing.ts",
+    "./optimize": "./src/optimize.ts",
     "./context": "./src/context.ts",
     "./stream": "./src/stream.ts",
     "./router": "./src/router.ts",
@@ -25,15 +33,20 @@
     "./portal": "./src/portal.ts",
     "./transition": "./src/transition.ts",
     "./types": "./src/types.ts",
-    "./globals": "./src/globals.ts"
+    "./globals": "./src/globals.ts",
+    "./dom": "./src/dom.ts",
+    "./jsx-compiler": "./src/jsx-compiler/mod.ts",
+    "./compiled": "./src/compiled.ts"
   },
   "scripts": {
-    "test": "bun test --preload ./tests/dom-setup.ts tests/"
+    "test": "bun test --preload ./tests/dom-setup.ts tests/",
+    "build": "deno run -A build.ts"
   },
   "dependencies": {
     "@dreamer/console": "npm:@jsr/dreamer__console@^1.0.12",
-    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.0.40",
+    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.1.1",
     "@dreamer/i18n": "npm:@jsr/dreamer__i18n@^1.0.1",
+    "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
     "@dreamer/logger": "npm:@jsr/dreamer__logger@^1.0.3",
     "@dreamer/plugin": "npm:@jsr/dreamer__plugin@^1.0.2",
     "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.0.9",
@@ -41,9 +54,13 @@
     "@dreamer/server": "npm:@jsr/dreamer__server@^1.0.9",
     "@dreamer/service": "npm:@jsr/dreamer__service@^1.0.2",
     "@dreamer/test": "npm:@jsr/dreamer__test@^1.0.15",
+    "autoprefixer": "npm:autoprefixer@10.4.19",
+    "cssnano": "npm:cssnano@7.0.3",
+    "esbuild": "npm:esbuild@0.27.4",
     "happy-dom": "npm:happy-dom@20.4.0",
+    "postcss": "npm:postcss@8.4.39",
     "tailwindcss": "npm:tailwindcss@4.2.0",
-    "typescript": "5.9.3"
+    "typescript": "npm:typescript@5.9.3"
   },
   "engines": {
     "bun": ">=1.3"

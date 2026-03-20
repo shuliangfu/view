@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createOptimizePlugin, optimize } from "../../src/compiler.ts";
+import { createOptimizePlugin, optimize } from "../../src/optimize.ts";
 
 describe("optimize", () => {
   it("常量折叠：数字字面量加减乘除应被折叠", () => {

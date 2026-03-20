@@ -3,7 +3,7 @@
  */
 
 import { afterEach, describe, expect, it } from "@dreamer/test";
-import type { VNode } from "@dreamer/view";
+import type { MountFn } from "@dreamer/view/router";
 import {
   buildPath,
   createRouter,
@@ -12,34 +12,20 @@ import {
   type RouteMatch,
 } from "@dreamer/view/router";
 
-function textVNode(s: string): VNode {
-  return { type: "#text", props: { nodeValue: s }, children: [] };
+/** 测试用：返回在 parent 下挂载文本的 MountFn */
+function mountText(text: string): MountFn {
+  return (parent) => {
+    const el = globalThis.document?.createTextNode(text);
+    if (el) parent.appendChild(el);
+  };
 }
 
 const routes: RouteConfig[] = [
-  {
-    path: "/",
-    component: () => ({
-      type: "div",
-      props: {},
-      children: [textVNode("Home")],
-    }),
-  },
-  {
-    path: "/about",
-    component: () => ({
-      type: "div",
-      props: {},
-      children: [textVNode("About")],
-    }),
-  },
+  { path: "/", component: () => mountText("Home") },
+  { path: "/about", component: () => mountText("About") },
   {
     path: "/user/:id",
-    component: (m: RouteMatch) => ({
-      type: "div",
-      props: {},
-      children: [textVNode(`User ${m.params.id}`)],
-    }),
+    component: (m: RouteMatch) => mountText(`User ${m.params.id}`),
   },
 ];
 
@@ -329,11 +315,7 @@ describe("router notFound 与 metadata", () => {
         routes,
         notFound: {
           path: "*",
-          component: () => ({
-            type: "div",
-            props: {},
-            children: [textVNode("404")],
-          }),
+          component: () => mountText("404"),
           metadata: { title: "Not Found" },
         },
       });
@@ -359,22 +341,15 @@ describe("router notFound 与 metadata", () => {
       g.history = { pushState: () => {} } as typeof g.history;
       const router = createRouter({
         routes: [
-          {
-            path: "/",
-            component: () => ({ type: "div", props: {}, children: [] }),
-          },
+          { path: "/", component: () => (_parent) => {} },
           {
             path: "/about",
-            component: () => ({ type: "div", props: {}, children: [] }),
+            component: () => (_parent) => {},
             metadata: { title: "关于" },
           },
           {
             path: "/user/:id",
-            component: (m: RouteMatch) => ({
-              type: "div",
-              props: {},
-              children: [textVNode(m.params.id)],
-            }),
+            component: (m: RouteMatch) => mountText(m.params.id),
           },
         ],
       });
@@ -402,7 +377,7 @@ describe("router scroll 选项", () => {
     const origLocation = g.location;
     const origHistory = g.history;
     const origScrollTo = g.scrollTo;
-    let scrollToCalls: [number, number][] = [];
+    const scrollToCalls: [number, number][] = [];
     try {
       g.location = {
         pathname: "/",
@@ -439,7 +414,7 @@ describe("router scroll 选项", () => {
     const origLocation = g.location;
     const origHistory = g.history;
     const origScrollTo = g.scrollTo;
-    let scrollToCalls: [number, number][] = [];
+    const scrollToCalls: [number, number][] = [];
     try {
       g.location = {
         pathname: "/",
@@ -539,7 +514,7 @@ describe("router mode (history / hash)", () => {
     };
   };
 
-  function restore(): void {
+  function _restore(): void {
     g.location = undefined;
     g.history = undefined;
   }

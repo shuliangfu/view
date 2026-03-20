@@ -1,6 +1,8 @@
 /**
- * Form 示例：模拟 Form + FormItem + 密码框结构，用于验证「单节点 getter 重跑时 patch 不 replace、input 焦点保留」。
- * 与 ui-view 的 Form/FormItem/Password 一致：组件返回 getter，view 为占位做 patch 更新，输入时光标不丢。
+ * Form 示例：Form + FormItem + 密码框，验证「value 传 signal getter 时 patch 写回 .value、输入时光标不丢」。
+ * 编译器对自定义组件的子节点统一生成 `(parent)=>void` 挂载函数（不再用会「移空」的 DocumentFragment），
+ * Form 内 `{props.children}` 在 effect 重跑时会再次执行该函数复挂子树；焦点保留由 PasswordInput 受控 value 路径保证。
+ * 注意：同父级若并列 `{signal() && <p/>}`，运行时 insertReactive 不得 replaceChildren 父节点（已由主包 runtime 修复）。
  */
 
 import type { VNode } from "@dreamer/view";
@@ -20,11 +22,11 @@ const inputCls =
 const labelCls =
   "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
 
-/** 模拟 Form：返回 getter，getter 返回 form，使 view 创建动态占位并 patch 更新 */
+/** 表单容器：子节点由编译器作为 `(parent)=>void` 传入，在 `<form>` 内通过 insertReactive 挂入 */
 function Form(
   props: { children?: unknown; onSubmit?: (e: Event) => void },
-): () => VNode {
-  return () => (
+): VNode {
+  return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(e: Event) => {
@@ -37,13 +39,13 @@ function Form(
   );
 }
 
-/** 模拟 FormItem：返回 getter，getter 返回 div 包 label + 输入区，与 Form 组合触发单节点 patch */
+/** 表单项：常规组件 */
 function FormItem(props: {
   label: string;
   id?: string;
   children?: unknown;
-}): () => VNode {
-  return () => (
+}): VNode {
+  return (
     <div className="flex flex-col">
       <label htmlFor={props.id} className={labelCls}>
         {props.label}
@@ -88,8 +90,8 @@ export function FormDemo(): VNode {
         密码框焦点保留验证
       </h2>
       <p className="mb-6 text-slate-600 dark:text-slate-300">
-        下方为 Form + FormItem + 密码框结构（组件返回 getter，与 ui-view
-        一致）。输入时 getter 重跑，view 对占位内节点做 patch 不
+        下方为 Form + FormItem + 密码框。value 使用 signal
+        getter，输入时由运行时 patch 更新控件而非整节点
         replace，光标应保持不丢。e2e 会聚焦输入、键入后断言焦点仍在输入框。
       </p>
 
@@ -127,5 +129,4 @@ export function FormDemo(): VNode {
     </section>
   );
 }
-
 export default FormDemo;

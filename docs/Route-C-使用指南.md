@@ -1,0 +1,288 @@
+# 路线 C 使用指南（编译路径 + 新运行时）
+
+路线 C 是「JSX 编译器 +
+新运行时」的单一路径：组件只跑一次、表达式级细粒度更新、无整树
+expand/patch。本文说明如何使用 `@dreamer/view/runtime` 与
+`@dreamer/view/jsx-compiler`。
+
+---
+
+## 一、与主入口的关系
+
+主入口 `@dreamer/view` 的 `createRoot`、`render`、`mount` 已统一为路线 C
+新标准：`fn(container) => void`，内部即
+`createRoot`/`render`（与主入口一致）。不再提供旧版「() => VNode +
+expand/patch」路径。
+
+| 能力     | 主入口 `@dreamer/view`                                                      | 子路径 `@dreamer/view/runtime` + jsx-compiler |
+| -------- | --------------------------------------------------------------------------- | --------------------------------------------- |
+| 更新模型 | 根只跑一次，更新由 insert 内 effect 驱动                                    | 同上                                          |
+| 挂载 API | `createRoot(fn, container)` / `render` / `mount`，fn 为 `(container)=>void` | `createRoot` / `render`，与主入口一致         |
+| 构建     | **必须**用路线 C 编译器处理 JSX（或手写插入点）                             | 同上                                          |
+
+---
+
+## 二、运行时 API（`@dreamer/view/runtime`）
+
+从 `@dreamer/view/runtime` 引入，与编译产物配合使用。
+
+### 挂载
+
+- **`render(fn, container)`**\
+  等价于 `createRoot(fn, container)`。`fn(container)` 只执行一次，内部用
+  `insert(container, ...)` 建立 DOM 与绑定点。
+
+- **`createRoot(fn, container)`**\
+  返回 `{ unmount, container }`。卸载时回收该根下所有通过 insert/effect
+  登记的订阅。
+
+- **`hydrate(fn, container)`**\
+  细粒度水合：`container` 内已有服务端 HTML 时，按插入点顺序复用已有子节点，只绑
+  effect、不整树替换。与 `createRoot` 同一 `fn(container)` 约定；服务端用
+  `renderToString(fn)` 出 HTML，客户端对同一容器调用本函数即可。返回
+  `{ unmount, container }`。
+
+### 插入点与响应式
+
+- **`insert(parent, value)`**
+  - `value` 为函数（getter）：在 effect 中求值，仅该插入点随依赖更新。
+  - `value` 为 string/number/Node：直接插入一次。
+
+- **`createSignal(initial)`**\
+  返回 `[getter, setter]`，与主入口一致。
+
+- **`createEffect(fn)`**\
+  响应式副作用，与主入口一致。
+
+- **`createMemo(fn)`**\
+  只读派生值，与主入口一致。
+
+### Props 工具
+
+- **`mergeProps(...sources)`**\
+  合并多组 props，后者覆盖前者，用于组合默认 props 与传入 props。
+
+- **`splitProps(props, ...keyArrays)`**\
+  按 key 数组拆成多份，避免解构丢响应式。用法见下文「Props 规范」。
+
+---
+
+## 三、JSX 编译器（`@dreamer/view/jsx-compiler`）
+
+构建时使用，不打进运行时 bundle。
+
+### 编译入口
+
+- **`compileSource(source, fileName?)`**\
+  将 TS/JSX 源码中的 `return <jsx>` 形态替换为
+  `return (parent: Element) => { ... }`，并自动注入
+  `import { insert } from "@dreamer/view/runtime"`（若尚未存在）。
+
+### 编译规则
+
+- **元素** `<div>` → `document.createElement` +
+  `appendChild`，子节点递归；属性用 `setAttribute`。
+- **表达式** `{ expr }` → `insert(parent, () => expr)`。
+- **组件** `<Comp />` / `<Comp>...</Comp>` → 运行一次 `Comp(props)`，再
+  `insert(parent, typeof result === 'function' ? result : () => result)`。
+- **Fragment** `<>...</>` → 只处理子节点，不创建包装节点。
+
+### 使用方式
+
+在构建管线中对 `.tsx` 调用编译器，再将产物交给运行时：
+
+```ts
+import { compileSource } from "@dreamer/view/jsx-compiler";
+
+const source = await Deno.readTextFile("App.tsx");
+const compiled = compileSource(source, "App.tsx");
+// 将 compiled 写入输出或交给打包器
+```
+
+---
+
+## 四、Props 规范（好用、可追踪）
+
+- **组件只跑一次**：组件函数在挂载时执行一次，返回 getter 或静态树；后续更新由
+  getter 内读到的 signal 驱动。
+- **传 getter 才能响应式**：父级传 `current={current}`（signal
+  getter），子组件内用 `props.current()` 建立订阅；若传 `current()`
+  则只取到一次值，不会响应。
+- **避免解构丢响应式**：不要在组件顶层解构 `const { x } = props` 再在 JSX 里用
+  `x`，否则只读一次。应用 `props.x` 或使用 **`splitProps`**
+  拆成「要响应的」与「可解构的」：
+
+```ts
+import { splitProps } from "@dreamer/view/runtime";
+
+function MyComponent(props: Props) {
+  const [local, rest] = splitProps(props, ["class", "style"]);
+  // local 可解构；rest 保留为对象，在 JSX 中用 rest.xxx 保持响应式
+  return () => <div class={local.class} {...rest} />;
+}
+```
+
+- **mergeProps**：需要合并默认 props 与传入 props
+  时使用，保证键的覆盖顺序与响应式不丢。
+
+---
+
+## 五、最小示例
+
+### 手写「编译后」形态（不经过编译器）
+
+```ts
+import { createRoot, createSignal, insert } from "@dreamer/view/runtime";
+
+const [count, setCount] = createSignal(0);
+const container = document.getElementById("root")!;
+
+createRoot((el) => {
+  const wrap = document.createElement("div");
+  el.appendChild(wrap);
+  insert(wrap, () => count()); // 仅此处随 count 更新
+}, container);
+```
+
+### 使用编译器编译 JSX
+
+源文件 `App.tsx`：
+
+```tsx
+function App() {
+  return (
+    <div>
+      <span>{count()}</span>
+    </div>
+  );
+}
+```
+
+构建时：
+
+```ts
+import { compileSource } from "@dreamer/view/jsx-compiler";
+
+const compiled = compileSource(source, "App.tsx");
+// 得到：import { insert } from "@dreamer/view/runtime";
+//       function App() { return (parent) => { ... insert(parent, () => count()); ... }; }
+```
+
+再在运行时用 `render((el) => App()(el), container)`
+挂载（或由构建产物统一导出挂载函数）。
+
+### 可运行示例（单测即示例）
+
+- **运行时**：`deno test -A tests/unit/compiled-runtime.test.ts`（手写插入点、列表、轮播、unmount）。
+- **编译器**：`deno test -A tests/unit/jsx-compiler.test.ts`（compileSource
+  对元素与组件的转换）。
+- **SSR**：`deno test -A tests/unit/ssr-compiled.test.ts`（renderToString、renderToStream）。
+
+---
+
+## 六、SSR（服务端渲染）
+
+与客户端同一套编译产物：服务端用伪 `document` 执行 `fn(container)`
+一次，再序列化 `container` 子内容，输出 HTML 或流。
+
+### API（`@dreamer/view/runtime` 或 `@dreamer/view`）
+
+- **`renderToString(fn, options?)`**\
+  服务端将编译后组件输出为 HTML 字符串。`fn(container)` 与客户端
+  `createRoot(fn, container)` 使用同一套 `fn`，结构一致便于首屏与后续水合约定。\
+  `options.containerTag` 默认 `"div"`；`options.dataViewSsr !== false`
+  时根容器带 `data-view-ssr` 标记。
+
+- **`renderToStream(fn, options?)`**\
+  异步生成器，按根级子节点顺序 yield HTML 片段，便于流式 HTTP 响应。
+
+### 水合约定
+
+- 服务端输出可带 `data-view-ssr` 标记，客户端用同一 `fn(container)`
+  挂载。若容器内已注入服务端 HTML，使用 **`hydrate(fn, container)`** 可复用已有
+  DOM、仅绑 effect（见 § 八）。
+
+### 示例
+
+```ts
+import { insert, renderToString } from "@dreamer/view/runtime";
+
+const html = renderToString((el) => {
+  insert(el, () => "Hello");
+});
+// 流式：
+for await (
+  const chunk of renderToStream((el) => {
+    insert(el, "A");
+    insert(el, "B");
+  })
+) {
+  response.write(chunk);
+}
+```
+
+---
+
+## 八、首包与水合
+
+### 多入口与首包
+
+- **全量**
+  `@dreamer/view`：createRoot、render、mount、renderToString、renderToStream、generateHydrationScript，适合需要
+  SSR/流式或全能力的应用。
+- **仅 CSR** `@dreamer/view/csr`：createRoot、render、mount，无 SSR/ hydrate
+  相关 API，首包更小，适合纯客户端 SPA。
+- **Hybrid** `@dreamer/view/hybrid`：与 csr 一致，仅
+  createRoot/render/mount，适合「服务端用主包出
+  HTML、客户端用本入口挂载」的拆分。
+
+**首包优化建议**：纯客户端用 `@dreamer/view/csr`；按路由用动态 `import()`
+加载对应页的编译产物再挂载，避免首屏加载整站所有页面。
+
+```ts
+// 按路由懒加载编译产物
+const PageA = () => import("./pages/A.js"); // 编译后的 (parent) => { ... }
+mount("#root", (el) => {
+  PageA().then((m) => m.default(el));
+});
+```
+
+### 水合策略
+
+- **整挂载**：服务端 `renderToString(fn)` 输出 HTML，客户端用**同一** `fn` 调用
+  `createRoot(fn, container)` 挂载时，会替换 `container` 内容并建立绑定。
+- **细粒度水合（已实现）**：若需复用服务端 DOM、只绑 effect，对**已包含服务端
+  HTML 的**同一容器调用
+  **`hydrate(fn, container)`**。按插入点顺序复用已有子节点，仅对 getter 插入点绑
+  effect，不整树替换。用法：服务端出 HTML 注入 `container` 后，客户端执行
+  `hydrate(fn, container)`（与 `createRoot` 同一 `fn`）。
+
+---
+
+## 九、DX：常见错误与调试建议
+
+### 常见错误
+
+| 现象                             | 原因                                                     | 处理                                                                                                                                     |
+| -------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 某处不随 signal 更新             | 传了值而非 getter，或顶层解构了 props                    | 传 `current` 不传 `current()`；用 `splitProps` 或始终 `props.xxx`                                                                        |
+| 挂载时报错 container not found   | `createRoot`/`mount` 的 container 为 null 或选择器无匹配 | 确保 DOM 已就绪、选择器正确，或使用 `mount(..., { noopIfNotFound: true })`                                                               |
+| 服务端执行时报 document 相关错误 | 在 `renderToString` 的 fn 里用了仅浏览器 API             | 避免在 fn 内直接依赖 `window`/`document`（SSR 时为伪 document）；条件判断 `typeof document !== 'undefined'` 或把逻辑放到客户端 only 分支 |
+
+### 调试建议
+
+- **effect 边界**：每个 `insert(parent, () => expr)` 对应一个
+  effect；更新只发生在该插入点，便于定位「谁在更新」。
+- **signal 来源**：在 getter 内打点或使用支持追踪的调试工具，确认读到的 signal
+  与预期一致。
+- **Props 响应式**：父传 `props.x`（getter）子用 `props.x()`
+  才建立订阅；避免顶层 `const { x } = props` 后只用 `x`。
+
+---
+
+## 十、相关文档
+
+- [View 升级与重构分析](./View-升级与重构分析.md)：路线 C 目标、实施顺序、阶段
+  1～4。
+- [View 与 Solid 对比](./View-vs-Solid-分析.md)：与 Solid 的差异及路线 C
+  对齐点。

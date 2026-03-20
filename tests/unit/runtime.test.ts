@@ -1,465 +1,19 @@
 /**
- * @fileoverview Runtime 单元测试：renderToString、generateHydrationScript、createRoot/render（DOM）、hydrate
+ * @fileoverview Runtime 单元测试：generateHydrationScript、createRoot/render/mount（编译路径 fn(container)=>void）
+ * 注：renderToString 为编译路径，见 tests/unit/ssr-compiled.test.ts
  */
 
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import type { VNode } from "@dreamer/view";
 import {
-  createReactiveRoot,
   createRoot,
   createSignal,
   generateHydrationScript,
-  hydrate,
+  insert,
+  insertReactive,
   mount,
   render,
-  renderToString,
 } from "@dreamer/view";
-
-describe("renderToString", () => {
-  it("应返回根组件渲染的 HTML 字符串", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: { className: "root" },
-      children: [{
-        type: "#text",
-        props: { nodeValue: "hello" },
-        children: [],
-      }],
-    }));
-    expect(typeof html).toBe("string");
-    expect(html).toContain("hello");
-    expect(html).toContain("div");
-    expect(html).toContain("root");
-  });
-
-  it("支持 Fragment 与多子节点", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {},
-      children: [
-        { type: "#text", props: { nodeValue: "a" }, children: [] },
-        { type: "#text", props: { nodeValue: "b" }, children: [] },
-      ],
-    }));
-    expect(html).toContain("a");
-    expect(html).toContain("b");
-  });
-
-  /**
-   * SSR 时子节点为「普通函数」应被调用并渲染其返回值，而不是把函数源码当文本输出。
-   * 对应 hybrid 场景下 { () => ( <> ... </> ) } 写法，修复前会看到 _jsx/=> 等 JS 代码。
-   */
-  it("子节点为普通函数时 SSR 应渲染函数返回值而非函数源码", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: () =>
-          ({
-            type: "span",
-            props: {},
-            children: [{
-              type: "#text",
-              props: { nodeValue: "from-function" },
-              children: [] as VNode[],
-            }],
-          }) as VNode,
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("from-function");
-    expect(html).toContain("<span"); // 可能带 data-view-dynamic 等属性，不要求裸 <span>
-    // 若未对函数做“调用再展开”，会输出函数源码，HTML 中会出现 "() =>" 或 "function"
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 边界：children 为 null 或 undefined 时输出空，不报错 */
-  it("children 为 null 时输出空子节点", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: { children: null },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("<div>");
-    expect(html).toContain("</div>");
-  });
-
-  it("children 为 undefined 时输出空子节点", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {},
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("<div>");
-    expect(html).toContain("</div>");
-  });
-
-  /** SSR 时 signal getter 作为子节点应调用一次取当前值并渲染 */
-  it("子节点为 signal getter 时 SSR 应渲染当前值", () => {
-    const [getVal] = createSignal("signal-value");
-    const html = renderToString(() => ({
-      type: "div",
-      props: { children: getVal },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("signal-value");
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 数组子节点中含函数时，函数应被调用并展开 */
-  it("子节点为数组且含函数时，函数被调用并展开", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: [
-          { type: "#text", props: { nodeValue: "before" }, children: [] },
-          () =>
-            ({
-              type: "span",
-              props: {},
-              children: [{
-                type: "#text",
-                props: { nodeValue: "mid" },
-                children: [] as VNode[],
-              }],
-            }) as VNode,
-          { type: "#text", props: { nodeValue: "after" }, children: [] },
-        ],
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("before");
-    expect(html).toContain("mid");
-    expect(html).toContain("after");
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 子节点为普通函数且返回 null 时，该位置输出空 */
-  it("子节点为函数且返回 null 时输出空", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: () => null as unknown as VNode,
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("<div>");
-    expect(html).toContain("</div>");
-  });
-
-  /** 子节点为数字或字符串时，转为文本节点输出 */
-  it("子节点为数字时转为文本输出", () => {
-    const html = renderToString(() => ({
-      type: "span",
-      props: { children: 42 },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("42");
-  });
-
-  it("子节点为字符串时转为文本输出", () => {
-    const html = renderToString(() => ({
-      type: "span",
-      props: { children: "plain-text" },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("plain-text");
-  });
-
-  /** 子节点为字符串且含 < > & 时应转义，避免注入 */
-  it("子节点字符串中的 < > & 应转义输出", () => {
-    const html = renderToString(() => ({
-      type: "span",
-      props: { children: "<script>&" },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("&lt;script&gt;&amp;");
-    expect(html).not.toContain("<script>");
-  });
-
-  /** 子节点为函数且返回 VNode 数组（非 Fragment）时，全部渲染 */
-  it("子节点为函数且返回 VNode 数组时全部渲染", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: () =>
-          [
-            {
-              type: "span",
-              props: {},
-              children: [{
-                type: "#text",
-                props: { nodeValue: "a" },
-                children: [] as VNode[],
-              }],
-            },
-            {
-              type: "span",
-              props: {},
-              children: [{
-                type: "#text",
-                props: { nodeValue: "b" },
-                children: [] as VNode[],
-              }],
-            },
-          ] as unknown as VNode,
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("a");
-    expect(html).toContain("b");
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 子节点为函数且返回多子节点（Fragment 结构）时，应全部渲染 */
-  it("子节点为函数且返回多子节点时全部渲染", async () => {
-    const { FragmentType } = await import("../../src/dom/shared.ts");
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: () =>
-          ({
-            type: FragmentType,
-            props: {
-              children: [
-                { type: "#text", props: { nodeValue: "one" }, children: [] },
-                { type: "#text", props: { nodeValue: "two" }, children: [] },
-              ],
-            },
-            children: [] as VNode[],
-          }) as VNode,
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("one");
-    expect(html).toContain("two");
-    expect(html).not.toContain("() =>");
-  });
-
-  /** 根为 Fragment、children 为函数时，应调用函数并渲染其返回值 */
-  it("根为 Fragment 且 children 为函数时 SSR 正常渲染", async () => {
-    const { FragmentType } = await import("../../src/dom/shared.ts");
-    const html = renderToString(() =>
-      ({
-        type: FragmentType,
-        props: {
-          children: () =>
-            ({
-              type: "span",
-              props: {},
-              children: [{
-                type: "#text",
-                props: { nodeValue: "fragment-root" },
-                children: [] as VNode[],
-              }],
-            }) as VNode,
-        },
-        children: [] as VNode[],
-      }) as VNode
-    );
-    expect(html).toContain("fragment-root");
-    expect(html).toContain("<span>");
-    expect(html).not.toContain("() =>");
-  });
-
-  // ---------- 分支覆盖：函数组件、keyed、void、attributes、options ----------
-
-  /** 根为函数组件时，SSR 调用组件并渲染其返回值 */
-  it("根为函数组件时 SSR 渲染组件返回值", () => {
-    const Comp = (_props: Record<string, unknown>) =>
-      ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: "from-component" },
-          children: [] as VNode[],
-        }],
-      }) as VNode;
-    const html = renderToString(() => ({
-      type: Comp,
-      props: {},
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("from-component");
-    expect(html).toContain("<span>");
-  });
-
-  /** 函数组件返回 null 时输出空字符串 */
-  it("函数组件返回 null 时输出空", () => {
-    const Comp = (_props: Record<string, unknown>) => null as unknown as VNode;
-    const html = renderToString(() => ({
-      type: Comp,
-      props: {},
-      children: [] as VNode[],
-    }));
-    expect(html).toBe("");
-  });
-
-  /** 函数组件返回 VNode 数组时全部渲染 */
-  it("函数组件返回 VNode 数组时全部渲染", () => {
-    const Comp = (_props: Record<string, unknown>) =>
-      [
-        {
-          type: "span",
-          props: {},
-          children: [{
-            type: "#text",
-            props: { nodeValue: "c1" },
-            children: [],
-          }],
-        },
-        {
-          type: "span",
-          props: {},
-          children: [{
-            type: "#text",
-            props: { nodeValue: "c2" },
-            children: [],
-          }],
-        },
-      ] as unknown as VNode;
-    const html = renderToString(() => ({
-      type: Comp,
-      props: {},
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("c1");
-    expect(html).toContain("c2");
-  });
-
-  /** 子节点带 key 时在首元素上输出 data-key（已去 keyed 包装，不再输出 data-view-keyed） */
-  it("带 key 的子节点输出 data-key 于首元素", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: [
-          {
-            type: "span",
-            props: {},
-            key: "k1",
-            children: [{
-              type: "#text",
-              props: { nodeValue: "a" },
-              children: [],
-            }],
-          },
-        ],
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain('data-key="k1"');
-    expect(html).toContain("a");
-  });
-
-  /** void 元素（如 br）无闭合标签、无 inner 内容 */
-  it("void 元素无闭合标签且无 inner", () => {
-    const html = renderToString(() => ({
-      type: "br",
-      props: {},
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("<br");
-    expect(html).not.toContain("</br>");
-    expect(html).not.toContain("><");
-  });
-
-  /** 数组 children 含 null 时仅渲染非 null 项 */
-  it("数组 children 含 null 时仅渲染非 null 项", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: {
-        children: [
-          null,
-          { type: "#text", props: { nodeValue: "only" }, children: [] },
-          undefined,
-        ],
-      },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("only");
-  });
-
-  /** htmlFor 输出为 for 属性 */
-  it("htmlFor 输出为 for 属性", () => {
-    const html = renderToString(() => ({
-      type: "label",
-      props: { htmlFor: "input-id" },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain('for="input-id"');
-  });
-
-  /** style 对象输出为 style 字符串 */
-  it("style 对象输出为 style 字符串", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: { style: { color: "red", marginTop: "8px" } },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("color");
-    expect(html).toContain("red");
-    expect(html).toContain("margin-top");
-    expect(html).toContain("8px");
-  });
-
-  /** vCloak 输出 data-view-cloak（SSR 时用于 FOUC 隐藏） */
-  it("vCloak 输出 data-view-cloak", () => {
-    const html = renderToString(() => ({
-      type: "div",
-      props: { vCloak: true },
-      children: [] as VNode[],
-    }));
-    expect(html).toContain("data-view-cloak");
-  });
-
-  /** renderToString 传入 options 不报错 */
-  it("传入 options 不报错", () => {
-    const html = renderToString(
-      () => ({
-        type: "div",
-        props: {},
-        children: [] as VNode[],
-      }),
-      { allowRawHtml: false },
-    );
-    expect(html).toContain("<div>");
-  });
-
-  /** 根返回 null 时 createElementToString 会访问 null.type 导致抛错；renderToString 行为明确 */
-  it("根返回 null 时抛错", () => {
-    expect(() => renderToString(() => null as unknown as VNode)).toThrow();
-  });
-
-  /** ErrorBoundary：子组件抛错时 SSR 渲染 fallback */
-  it("ErrorBoundary 子组件抛错时 SSR 渲染 fallback", async () => {
-    const { ErrorBoundary } = await import("../../src/boundary.ts");
-    function ThrowComp(_props: Record<string, unknown>): VNode {
-      throw new Error("child throw");
-    }
-    const fallbackVNode = (e: unknown) =>
-      ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: `caught: ${(e as Error).message}` },
-          children: [] as VNode[],
-        }],
-      }) as VNode;
-    const html = renderToString(() =>
-      ({
-        type: ErrorBoundary,
-        props: {
-          fallback: fallbackVNode,
-          children: { type: ThrowComp, props: {}, children: [] as VNode[] },
-        },
-        children: [] as VNode[],
-      }) as unknown as VNode
-    );
-    expect(html).toContain("caught: child throw");
-  });
-}, { sanitizeOps: false, sanitizeResources: false });
 
 describe("generateHydrationScript", () => {
   it("无参数时应返回空字符串或仅含默认 dataKey 的 script", () => {
@@ -481,15 +35,15 @@ describe("generateHydrationScript", () => {
     expect(out).toContain("script");
     expect(out).toContain("/client.js");
   });
-});
+}, { sanitizeOps: false, sanitizeResources: false });
 
-describe("createRoot / render (DOM)", () => {
+describe("createRoot / render (DOM，新标准 fn(container)=>void)", () => {
   it("应挂载到 container 并返回 Root", () => {
     const container = document.createElement("div");
-    const root = createRoot(
-      () => ({ type: "span", props: {}, children: [] }),
-      container,
-    );
+    const root = createRoot((el) => {
+      const span = document.createElement("span");
+      el.appendChild(span);
+    }, container);
     expect(root.container).toBe(container);
     expect(root.unmount).toBeDefined();
     expect(container.querySelector("span")).not.toBeNull();
@@ -499,31 +53,20 @@ describe("createRoot / render (DOM)", () => {
 
   it("render 等同于 createRoot", () => {
     const container = document.createElement("div");
-    const root = render(
-      () => ({ type: "p", props: {}, children: [] }),
-      container,
-    );
+    const root = render((el) => {
+      const p = document.createElement("p");
+      el.appendChild(p);
+    }, container);
     expect(container.querySelector("p")).not.toBeNull();
     root.unmount();
   });
 
-  it("根组件依赖 signal 时，signal 变更后应更新 DOM", async () => {
+  it("fn 内用 insert(getter) 时，signal 变更后应更新 DOM", async () => {
     const container = document.createElement("div");
     const [get, set] = createSignal(0);
-    const root = createRoot(
-      () => ({
-        type: "span",
-        props: {},
-        children: [
-          {
-            type: "#text",
-            props: { nodeValue: String(get()) },
-            children: [],
-          },
-        ],
-      }),
-      container,
-    );
+    const root = createRoot((el) => {
+      insert(el, () => String(get()));
+    }, container);
     expect(container.textContent).toBe("0");
     set(1);
     await Promise.resolve();
@@ -531,196 +74,53 @@ describe("createRoot / render (DOM)", () => {
     root.unmount();
   });
 
-  it("边界：fn 返回空 Fragment 时挂载空（根返回 null 当前会报错，以空 Fragment 代测）", async () => {
+  /**
+   * JSX `{ count }` 会编成 getter 返回 `count` 引用而非 `count()`；insertReactive 须在 effect 内对 signal getter 解包，
+   * 否则文本为空且 set 后不刷新（Globals 示例曾表现为「按钮点了没反应」）。
+   */
+  it("insert(getter) 在 getter 直接返回 signal getter 时应显示当前值并随 set 更新", async () => {
     const container = document.createElement("div");
-    const { Fragment } = await import("@dreamer/view/jsx-runtime");
-    const root = createRoot(
-      () =>
-        ({ type: Fragment, props: { children: [] }, children: [] }) as VNode,
-      container,
-    );
-    expect(root.container).toBe(container);
+    const [get, set] = createSignal(99);
+    const root = createRoot((el) => {
+      insert(el, () => get as unknown as string);
+    }, container);
+    expect(container.textContent).toBe("99");
+    set(100);
+    await Promise.resolve();
+    expect(container.textContent).toBe("100");
     root.unmount();
   });
 
-  it("边界：container 已有子节点时 createRoot 会覆盖或追加（由实现决定，不抛错）", () => {
+  it("边界：fn 空实现时挂载空", () => {
+    const container = document.createElement("div");
+    const root = createRoot((_el) => {}, container);
+    expect(root.container).toBe(container);
+    expect(container.childNodes.length).toBe(0);
+    root.unmount();
+  });
+
+  it("边界：container 已有子节点时 createRoot 追加内容（不抛错）", () => {
     const container = document.createElement("div");
     const existing = document.createElement("p");
     existing.textContent = "existing";
     container.appendChild(existing);
-    const root = createRoot(
-      () => ({ type: "span", props: {}, children: [] }),
-      container,
-    );
+    const root = createRoot((el) => {
+      const span = document.createElement("span");
+      el.appendChild(span);
+    }, container);
     expect(container.querySelector("span")).not.toBeNull();
+    expect(container.querySelector("p")).not.toBeNull();
     root.unmount();
   });
 
   it("边界：unmount 后再次 set signal 不抛错、不更新 DOM", async () => {
     const container = document.createElement("div");
     const [get, set] = createSignal(0);
-    const root = createRoot(
-      () => ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: String(get()) },
-          children: [],
-        }],
-      }),
-      container,
-    );
+    const root = createRoot((el) => {
+      insert(el, () => String(get()));
+    }, container);
     root.unmount();
     expect(() => set(1)).not.toThrow();
-    await Promise.resolve();
-    expect(container.textContent).toBe("");
-  });
-
-  it("forceRender：外部路由等场景可手动触发根 effect 重跑", async () => {
-    const container = document.createElement("div");
-    let tick = 0;
-    const root = createRoot(
-      () => ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: String(++tick) },
-          children: [],
-        }],
-      }),
-      container,
-    );
-    expect(root.forceRender).toBeDefined();
-    expect(container.textContent).toBe("1");
-    root.forceRender!();
-    await Promise.resolve();
-    expect(container.textContent).toBe("2");
-    root.forceRender!();
-    await Promise.resolve();
-    expect(container.textContent).toBe("3");
-    root.unmount();
-  });
-}, { sanitizeOps: false, sanitizeResources: false });
-
-describe("createReactiveRoot", () => {
-  it("应挂载初始状态对应的 DOM 并返回 Root", () => {
-    const container = document.createElement("div");
-    const getState = () => ({ count: 0, label: "zero" });
-    const root = createReactiveRoot(
-      container,
-      getState,
-      (state) => ({
-        type: "div",
-        props: { "data-count": state.count },
-        children: [{
-          type: "#text",
-          props: { nodeValue: state.label },
-          children: [],
-        }],
-      }),
-    );
-    expect(root.container).toBe(container);
-    expect(root.unmount).toBeDefined();
-    const div = container.querySelector("div");
-    expect(div).not.toBeNull();
-    expect(div?.getAttribute("data-count")).toBe("0");
-    expect(container.textContent).toBe("zero");
-    root.unmount();
-    expect(container.textContent).toBe("");
-  });
-
-  it("getState 为 signal 时，状态变更后应 patch 更新 DOM", async () => {
-    const container = document.createElement("div");
-    const [getCount, setCount] = createSignal(0);
-    const root = createReactiveRoot(
-      container,
-      getCount,
-      (count) => ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: String(count) },
-          children: [],
-        }],
-      }),
-    );
-    expect(container.textContent).toBe("0");
-    setCount(1);
-    await Promise.resolve();
-    expect(container.textContent).toBe("1");
-    setCount(42);
-    await Promise.resolve();
-    expect(container.textContent).toBe("42");
-    root.unmount();
-  });
-
-  it("unmount 后容器应清空且无泄漏", () => {
-    const container = document.createElement("div");
-    const getState = () => "mounted";
-    const root = createReactiveRoot(
-      container,
-      getState,
-      (text) => ({
-        type: "p",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: text },
-          children: [],
-        }],
-      }),
-    );
-    expect(container.querySelector("p")).not.toBeNull();
-    root.unmount();
-    expect(container.textContent).toBe("");
-    expect(container.querySelector("p")).toBeNull();
-  });
-
-  it("状态为对象时，signal 变更后应 patch 更新 DOM", async () => {
-    const container = document.createElement("div");
-    const [getState, setState] = createSignal({ count: 0 });
-    const root = createReactiveRoot(
-      container,
-      getState,
-      (state) => ({
-        type: "div",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: String(state.count) },
-          children: [],
-        }],
-      }),
-    );
-    expect(container.textContent).toBe("0");
-    setState({ count: 1 });
-    await Promise.resolve();
-    expect(container.textContent).toBe("1");
-    root.unmount();
-  });
-
-  it("边界：unmount 后再次 set state 不抛错、不更新 DOM", async () => {
-    const container = document.createElement("div");
-    const [getState, setState] = createSignal(0);
-    const root = createReactiveRoot(
-      container,
-      getState,
-      (n) => ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: String(n) },
-          children: [],
-        }],
-      }),
-    );
-    root.unmount();
-    expect(container.textContent).toBe("");
-    expect(() => setState(1)).not.toThrow();
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });
@@ -729,10 +129,10 @@ describe("createReactiveRoot", () => {
 describe("mount", () => {
   it("mount(container, fn) 传入 Element 时与 render 一致", () => {
     const container = document.createElement("div");
-    const root = mount(
-      container,
-      () => ({ type: "span", props: {}, children: [] }),
-    );
+    const root = mount(container, (el) => {
+      const span = document.createElement("span");
+      el.appendChild(span);
+    });
     expect(root.container).toBe(container);
     expect(container.querySelector("span")).not.toBeNull();
     root.unmount();
@@ -744,10 +144,10 @@ describe("mount", () => {
     container.id = id;
     document.body.appendChild(container);
     try {
-      const root = mount(
-        "#" + id,
-        () => ({ type: "p", props: {}, children: [] }),
-      );
+      const root = mount("#" + id, (el) => {
+        const p = document.createElement("p");
+        el.appendChild(p);
+      });
       expect(container.querySelector("p")).not.toBeNull();
       root.unmount();
     } finally {
@@ -758,7 +158,7 @@ describe("mount", () => {
   it("mount(selector, fn, { noopIfNotFound: true }) 查不到时返回空 Root 不抛错", () => {
     const root = mount(
       "#non-existent-mount-id-xyz",
-      () => ({ type: "div", props: {}, children: [] }),
+      (el) => insert(el, "x"),
       { noopIfNotFound: true },
     );
     expect(root.container).toBeNull();
@@ -766,106 +166,107 @@ describe("mount", () => {
   });
 
   it("mount(selector, fn) 查不到且未设 noopIfNotFound 时抛错", () => {
-    expect(() =>
-      mount(
-        "#non-existent-mount-id-abc",
-        () => ({ type: "div", props: {}, children: [] }),
-      )
-    ).toThrow(/container not found/);
+    expect(() => mount("#non-existent-mount-id-abc", (el) => insert(el, "x")))
+      .toThrow(/container not found/);
   });
 
-  it("有子节点时走 hydrate 路径（移除 cloak）", () => {
+  it("mount 始终走 render 路径，fn(container) 只执行一次", () => {
     const container = document.createElement("div");
-    container.setAttribute("data-view-cloak", "");
-    container.innerHTML = "<span>hydrated</span>";
-    const root = mount(
-      container,
-      () => ({
-        type: "span",
-        props: {},
-        children: [{
-          type: "#text",
-          props: { nodeValue: "hydrated" },
-          children: [],
-        }],
-      }),
-    );
-    expect(container.hasAttribute("data-view-cloak")).toBe(false);
-    root.unmount();
-  });
-
-  it("无子节点时走 render 路径", () => {
-    const container = document.createElement("div");
-    const root = mount(
-      container,
-      () => ({ type: "span", props: {}, children: [] }),
-    );
+    const root = mount(container, (el) => {
+      const span = document.createElement("span");
+      el.appendChild(span);
+    });
     expect(container.querySelector("span")).not.toBeNull();
     root.unmount();
   });
-}, { sanitizeOps: false, sanitizeResources: false });
 
-describe("hydrate", () => {
-  it("container 已有子节点时应复用并激活（移除 cloak）", () => {
-    const container = document.createElement("div");
-    container.setAttribute("data-view-cloak", "");
-    container.innerHTML = "<span>hi</span>";
-    const root = hydrate(
-      () => ({
-        type: "span",
-        props: {},
-        children: [{ type: "#text", props: { nodeValue: "hi" }, children: [] }],
-      }),
-      container,
-    );
-    expect(container.hasAttribute("data-view-cloak")).toBe(false);
-    root.unmount();
+  /**
+   * insertReactive 收到非空 DocumentFragment 时应用 appendChild 移动子树，并把真实子节点记入 currentNodes
+   * （避免把已消费的 fragment 当作唯一节点，导致后续 effect 用空 fragment replaceChildren 清空父级）。
+   */
+  /**
+   * 条件 JSX 编译为 `insertReactive(父, () => cond && mountFn)`；cond 为假时 getter 得 false/null 等，
+   * 若用 replaceChildren 会清空父下全部子节点，误删先挂载的兄弟（如 Form），与 form 示例白屏同源。
+   */
+  it("insertReactive 在 getter 返回 null 时不得 replaceChildren 清空父级兄弟节点", () => {
+    const holder = document.createElement("div");
+    document.body.appendChild(holder);
+    const form = document.createElement("form");
+    form.setAttribute("data-testid", "keep-form");
+    holder.appendChild(form);
+    createRoot((el) => {
+      insertReactive(el, () => null);
+    }, holder);
+    expect(holder.querySelector("form[data-testid=keep-form]")).not.toBeNull();
+    document.body.removeChild(holder);
   });
 
-  it("首次 hydrate 后，状态变化时应走 patchRoot 细粒度更新（未变节点保持同一 DOM 引用）", async () => {
-    const [getCount, setCount] = createSignal(0);
+  /**
+   * 编译器为自定义组件 children 生成单参挂载函数；Form 内 `insertReactive(form, () => props.children)`
+   * 须在首次 effect 中识别并调用该函数，否则 form 内无子节点（用户看到「空表单」）。
+   */
+  it("insertReactive(槽位) 在 getter 返回 (parent)=>void 时应把子树挂到槽位父节点", () => {
     const container = document.createElement("div");
-    container.innerHTML =
-      '<div><input data-testid="input"><span data-testid="count">0</span></div>';
-    const root = hydrate(
-      () =>
-        ({
-          type: "div",
+    document.body.appendChild(container);
+    createRoot((el) => {
+      const childMount = (p: Node) => {
+        const span = document.createElement("span");
+        span.className = "fm-child";
+        span.textContent = "in-form";
+        p.appendChild(span);
+      };
+      const props = { children: childMount };
+      const formMount = (parent: Element) => {
+        const f = document.createElement("form");
+        parent.appendChild(f);
+        insertReactive(f, () => props.children);
+      };
+      formMount(el);
+    }, container);
+    expect(container.querySelector("form .fm-child")?.textContent).toBe(
+      "in-form",
+    );
+    document.body.removeChild(container);
+  });
+
+  it("insertReactive(getter→DocumentFragment) 应把 fragment 内子节点挂到父级", () => {
+    const holder = document.createElement("div");
+    document.body.appendChild(holder);
+    const frag = document.createDocumentFragment();
+    const s = document.createElement("span");
+    s.textContent = "frag-child";
+    frag.appendChild(s);
+    createRoot((el) => {
+      insertReactive(el, () => frag);
+    }, holder);
+    expect(holder.querySelector("span")?.textContent).toBe("frag-child");
+    document.body.removeChild(holder);
+  });
+
+  /**
+   * 组件返回 `() => VNode`（零参 getter，如示例 Form/FormItem）时，mountVNodeTree 不得当成 MountFn
+   * 也不得落成空文本节点，应展开为真实 DOM（与 Fragment 子为函数同理）。
+   */
+  it("insert(getter→VNode) 内函数组件返回 () => VNode 时应渲染子元素", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    /** 模拟返回 `() => VNode` 的组件；与 Form 示例一致，公类型未单独建模 */
+    const GetterSpan = (_props: Record<string, unknown>) => () => ({
+      type: "span",
+      props: { children: "getter-inner" },
+    });
+    createRoot((el) => {
+      insert(
+        el,
+        (() => ({
+          type: GetterSpan as unknown as import("@dreamer/view").VNode["type"],
           props: {},
-          children: [
-            {
-              type: "input",
-              props: { type: "text", "data-testid": "input" },
-              children: [],
-            },
-            {
-              type: "span",
-              props: { "data-testid": "count" },
-              children: [{
-                type: "#text",
-                props: { nodeValue: String(getCount()) },
-                children: [],
-              }],
-            },
-          ],
-        }) as VNode,
-      container,
-    );
-    await Promise.resolve();
-    await Promise.resolve();
-    const inputRef = container.querySelector('[data-testid="input"]');
-    const countSpan = container.querySelector('[data-testid="count"]');
-    expect(inputRef).not.toBeNull();
-    expect(countSpan?.textContent).toBe("0");
-
-    setCount(1);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(countSpan?.textContent).toBe("1");
-    expect(container.contains(inputRef)).toBe(true);
-    const inputStillSame = container.querySelector('[data-testid="input"]');
-    expect(inputStillSame).toBe(inputRef);
-
-    root.unmount();
+        })) as never,
+      );
+    }, container);
+    const span = container.querySelector("span");
+    expect(span).not.toBeNull();
+    expect(span?.textContent).toBe("getter-inner");
+    document.body.removeChild(container);
   });
-});
+}, { sanitizeOps: false, sanitizeResources: false });

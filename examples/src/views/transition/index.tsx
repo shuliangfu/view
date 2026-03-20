@@ -62,7 +62,14 @@ export function TransitionDemo(match?: RoutePageMatch): VNode {
           className={btn}
           onClick={() => setVisible((v) => !v)}
         >
-          {visible() ? "隐藏" : "显示"}
+          {
+            /*
+             * 须用函数子节点：根 insert 的 effect 只追踪 getter()（到 App 为止），
+             * TransitionDemo 在 createElement 阶段才执行；若写 visible() 则首屏即固定字符串，
+             * 无 insert 订阅，按钮文案不随 signal 更新。
+             */
+          }
+          {() => (visible() ? "隐藏" : "显示")}
         </button>
         <div className="mt-4">
           <Transition

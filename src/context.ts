@@ -6,7 +6,7 @@
  *
  * **导出函数：** createContext、pushContext、popContext、getContext、getProviderContextId、getContextBinding
  *
- * **导出类型/常量：** ProviderBinding、ContextValue、CONTEXT_SCOPE_TYPE
+ * **导出类型/常量：** ProviderBinding、ProviderChildren、ContextValue、CONTEXT_SCOPE_TYPE
  *
  * createContext 返回 { Provider, useContext, registerProviderAlias }。registerProviderAlias 可注册别名组件（如 RouterProvider）直接注入同一 context。
  *
@@ -186,9 +186,17 @@ export type ContextValue<T> = T;
  * <ThemeContext.Provider value={theme}><App /></ThemeContext.Provider>
  * // 子组件：const themeValue = ThemeContext.useContext();
  */
+/** 编译器传入的子树挂载函数，与 ErrorBoundary 一致；手写也可传 VNode */
+export type ProviderChildren =
+  | VNode
+  | VNode[]
+  | null
+  | undefined
+  | ((parent: globalThis.Node) => void);
+
 export function createContext<T>(defaultValue: T, key?: string): {
   Provider: (
-    props: { value: T | (() => T); children?: VNode | VNode[] | null },
+    props: { value: T | (() => T); children?: ProviderChildren },
   ) => VNode | VNode[] | null;
   useContext: () => T;
   /** 注册“别名”提供者：用 getValue(props) 注入同一 context，便于包装组件（如 RouterProvider(router)）直接注入，无需内层 Provider */
@@ -208,7 +216,7 @@ export function createContext<T>(defaultValue: T, key?: string): {
    * 若直接返回 ContextScope，在 RoutePage + createResource 的 patch 路径下可能不在 root effect 内读 theme，导致 subscribers: 0。
    */
   const Provider = (
-    props: { value: T | (() => T); children?: VNode | VNode[] | null },
+    props: { value: T | (() => T); children?: ProviderChildren },
   ): VNode | VNode[] | null => {
     const children = props.children ?? null;
     const scopeGetter = (): VNode => ({

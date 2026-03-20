@@ -1,7 +1,8 @@
 /**
- * @module @dreamer/view/compiler
- * @description
- * 编译优化：对 JSX/TS 源码做静态提升（static hoisting）与常量折叠（constant folding），减少运行时创建静态节点的开销。依赖 TypeScript 编译器 API（npm:typescript），仅在使用本模块时加载。
+ * **构建期源码优化**：对 TS/TSX 做**常量折叠**与**静态提升**，减少运行时重复创建静态 AST/节点相关开销。依赖 TypeScript 编译器 API（`npm:typescript`），仅在导入本模块时加载。
+ *
+ * @module @dreamer/view/optimize
+ * @packageDocumentation
  *
  * **本模块导出：**
  * - `optimize(code, fileName?)`：对源码执行优化，返回优化后的代码字符串
@@ -11,7 +12,7 @@
  * **使用场景：** 构建时对 View 组件源码做优化，或通过 esbuild 插件在打包时自动优化。
  *
  * @example
- * import { optimize, createOptimizePlugin } from "jsr:@dreamer/view/compiler";
+ * import { optimize, createOptimizePlugin } from "jsr:@dreamer/view/optimize";
  * const out = optimize(sourceCode, "App.tsx");
  * // 或 esbuild: plugins: [createOptimizePlugin(/\.tsx$/)]
  */
@@ -257,7 +258,7 @@ type EsbuildPluginBuild = {
  *
  * @param filter - 正则，匹配需要优化的文件路径，默认 /\.(tsx?|jsx?)$/
  * @param readFile - 可选，自定义读文件函数 (path) => Promise<string>
- * @returns esbuild 插件对象 { name, setup }，在 build.onLoad 中对匹配文件执行 optimize 后返回 contents
+ * @returns esbuild 插件对象 `{ name, setup }`：`onLoad` 中对匹配文件执行 `optimize` 后返回 `{ contents, loader }`（`loader` 依扩展名选 `tsx`/`ts`）
  */
 export function createOptimizePlugin(
   filter: RegExp = /\.(tsx?|jsx?)$/,

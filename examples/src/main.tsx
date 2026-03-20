@@ -1,21 +1,32 @@
 /**
  * @dreamer/view 多页面示例 — 入口
  *
- * 从 router/router 创建带拦截与守卫的应用路由，
- * mount("#root", ...) 挂载根组件（有子节点则 hydrate，否则 render）。
+ * 根走 JSX 编译器：构建时对本文件（main.tsx）执行 compileSource，将下方的 return <App /> 编译为
+ * return (parent) => { insert(parent, ...) }`，此处用 `mountWithRouter("#root", router, getRoot)` 绑定路由与根。
  * 自定义指令（如 v-focus）须在此处注册，与 mount 同包，避免懒加载页用到的 registry 与 applyDirectives 不一致。
  */
 
-import { mount } from "@dreamer/view";
 import { registerDirective } from "@dreamer/view/directive";
+import { mountWithRouter, type Router } from "@dreamer/view/router";
+import "./assets/global.css";
 import { createAppRouter } from "./router/router.ts";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 import { App } from "./views/_app.tsx";
-import "./assets/global.css";
 
 registerDirective("v-focus", {
   mounted(el: Element) {
-    (el as HTMLInputElement).focus();
+    const input = el as HTMLInputElement;
+    // 若当前焦点已在其他输入类控件上，不抢焦点，避免整树替换重挂载时把正在输入的光标抢走
+    const active = globalThis.document?.activeElement;
+    if (
+      active &&
+      active !== el &&
+      active instanceof HTMLElement &&
+      ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)
+    ) {
+      return;
+    }
+    input.focus();
   },
 });
 
@@ -53,13 +64,15 @@ registerDirective("v-copy", {
   },
 });
 
-// 原 createRoot 写法（保留作参考）；createRoot/render 首次挂载后 view 会自动移除 data-view-cloak
-// const container = document.getElementById("root");
-// if (container) {
-//   const router = createAppRouter({ routes, notFound: notFoundRoute });
-//   createRoot(() => <App router={router} />, container);
-// }
+/**
+ * 编译后：getRoot(router) 返回 (parent: Element) => void，内部为 insert(parent, getter)。
+ * 构建时 compileSource 仅替换本函数内的 return <App ... /> 为 return (parent) => { insert(parent, ...) }。
+ */
+function getRoot(router: Router) {
+  return <App router={router} />;
+}
 
-// 使用 mount：选择器 + 有子节点则 hydrate 否则 render；查不到 #root 时静默返回
 const router = createAppRouter({ routes, notFound: notFoundRoute });
-mount("#root", () => <App router={router} />, { noopIfNotFound: true });
+
+/** 根挂载由框架 `mountWithRouter` 处理：路由订阅、同键去重、指令卸载与整树重挂 */
+mountWithRouter("#root", router, (r) => getRoot(r), { noopIfNotFound: true });

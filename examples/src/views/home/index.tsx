@@ -216,7 +216,7 @@ const ModuleIcons: Record<string, () => VNode> = {
       />
     </svg>
   ),
-  /** Form + FormItem + 密码框焦点验证 */
+  /** 原生 form + 密码框，焦点保留验证 */
   form: () => (
     <svg
       className="h-8 w-8 shrink-0"
@@ -342,7 +342,7 @@ const HOME_MODULES: Array<{
   },
   {
     title: "Form",
-    desc: "Form + FormItem + 密码框，验证 getter 重跑时焦点保留",
+    desc: "原生 form + PasswordInput，验证 getter 重跑时焦点保留",
     href: "/form",
     iconKey: "form",
     accent: "border-l-violet-500 bg-violet-500/5 dark:bg-violet-500/10",

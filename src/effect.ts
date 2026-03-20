@@ -4,9 +4,11 @@
  * @module @dreamer/view/effect
  * @packageDocumentation
  *
- * **导出函数：** createEffect、createMemo、untrack、onCleanup、setCurrentScope、createScopeWithDisposers、createRunDisposersCollector
+ * **导出函数：** `createEffect`、`createMemo`、`untrack`、`onCleanup`、`setCurrentScope`、`getCurrentScope`、`createScopeWithDisposers`、`createRunDisposersCollector`
  *
- * **导出类型：** EffectScope、CreateEffectOptions
+ * **导出类型：** `EffectScope`、`CreateEffectOptions`
+ *
+ * `setCurrentScope` / `getCurrentScope` 与 `createRunDisposersCollector` 主要由运行时与路由页使用；一般业务只需 `createEffect` / `createMemo` / `onCleanup` / `untrack`。
  */
 
 import { unschedule } from "./scheduler.ts";
@@ -18,10 +20,15 @@ import {
 } from "./signal.ts";
 import type { EffectDispose } from "./types.ts";
 
+/** 清理链表节点（4.2 effect 清理链表：避免数组扩容与多次小数组分配） */
+type CleanupNode = { readonly fn: () => void; next: CleanupNode | null };
+
 type EffectRunWithSubs = (() => void) & {
   _subscriptionSets?: Set<() => void>[];
-  /** 本 effect 登记的清理函数，下次运行前或 dispose 时统一执行 */
-  _cleanups?: (() => void)[];
+  /** 本 effect 登记的清理函数链表头，下次运行前或 dispose 时统一执行 */
+  _cleanupHead?: CleanupNode | null;
+  /** 链表尾，便于 O(1) 追加 */
+  _cleanupTail?: CleanupNode | null;
 };
 
 /**
@@ -38,6 +45,16 @@ let currentScope: EffectScope | null = null;
  */
 export function setCurrentScope(scope: EffectScope | null): void {
   currentScope = scope;
+}
+
+/**
+ * 返回当前由 `setCurrentScope` 设置的 effect 作用域（无则 `null`）。
+ * 供运行时、路由页等在嵌套挂载时临时切换/恢复 scope。
+ *
+ * @returns 当前作用域，或 `null`
+ */
+export function getCurrentScope(): EffectScope | null {
+  return currentScope;
 }
 
 /**
@@ -123,14 +140,23 @@ export function untrack<T>(fn: () => T): T {
  */
 export function onCleanup(cb: () => void): void {
   const run = getCurrentEffect() as EffectRunWithSubs | null;
-  if (run?._cleanups) run._cleanups.push(cb);
+  if (run == null) return;
+  const node: CleanupNode = { fn: cb, next: null };
+  if (run._cleanupHead == null) {
+    run._cleanupHead = run._cleanupTail = node;
+  } else {
+    run._cleanupTail!.next = node;
+    run._cleanupTail = node;
+  }
 }
 
+/** 顺序执行清理链表并清空（4.2 链表实现） */
 function runCleanups(run: EffectRunWithSubs): void {
-  const list = run._cleanups;
-  if (list) {
-    for (const cb of list) cb();
-    list.length = 0;
+  let n = run._cleanupHead;
+  run._cleanupHead = run._cleanupTail = null;
+  while (n) {
+    n.fn();
+    n = n.next;
   }
 }
 
@@ -177,14 +203,23 @@ export function createEffect(
       for (const s of subs) s.delete(run);
       subs.length = 0;
     }
-    (run as EffectRunWithSubs)._cleanups = [];
+    (run as EffectRunWithSubs)._cleanupHead =
+      (run as EffectRunWithSubs)
+        ._cleanupTail =
+        null;
     const prev = getCurrentEffect();
     (run as EffectRunWithSubs)._subscriptionSets = [];
     setCurrentEffect(run);
     try {
       const nextDispose = fn();
       if (typeof nextDispose === "function") {
-        (run as EffectRunWithSubs)._cleanups!.push(nextDispose);
+        const r = run as EffectRunWithSubs;
+        const node: CleanupNode = { fn: nextDispose, next: null };
+        if (r._cleanupHead == null) r._cleanupHead = r._cleanupTail = node;
+        else {
+          r._cleanupTail!.next = node;
+          r._cleanupTail = node;
+        }
       }
     } finally {
       setCurrentEffect(prev);
@@ -192,7 +227,10 @@ export function createEffect(
   };
 
   (run as EffectRunWithSubs)._subscriptionSets = [];
-  (run as EffectRunWithSubs)._cleanups = [];
+  (run as EffectRunWithSubs)._cleanupHead =
+    (run as EffectRunWithSubs)
+      ._cleanupTail =
+      null;
   run();
 
   const disposer = (): void => {

@@ -5,9 +5,9 @@
 | Item            | Description                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Package         | @dreamer/view                                                                                                                      |
-| Version         | 1.1.10                                                                                                                             |
+| Version         | 1.2.0                                                                                                                              |
 | Test framework  | @dreamer/test ^1.0.15                                                                                                              |
-| Test date       | 2026-03-16                                                                                                                         |
+| Test date       | 2026-03-20                                                                                                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                 |
 | Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test tests/` (use `--preload ./tests/dom-setup.ts` when no DOM to inject happy-dom) |
 
@@ -15,19 +15,19 @@
 
 ### Deno
 
-- **Total tests**: 454
-- **Passed**: 454
+- **Total tests**: 442
+- **Passed**: 442
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 30s
+- **Duration**: ~1m 54s
 
 ### Bun
 
-- **Total tests**: 427
-- **Passed**: 427
+- **Total tests**: 409
+- **Passed**: 409
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~85s (28 test files, including E2E browser and CLI)
+- **Duration**: ~82s (34 test files, including E2E browser and CLI)
 - **Note**: Use `--preload ./tests/dom-setup.ts` when no DOM is present so
   unit/integration tests that need `document` do not fail (SSR guard or missing
   document).
@@ -37,40 +37,46 @@
 
 ### Test File Summary
 
-| Test file                          | Tests | Status        |
-| ---------------------------------- | ----- | ------------- |
-| e2e/cli.test.ts                    | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts   | 63    | ✅ All passed |
-| integration/integration.test.ts    | 14    | ✅ All passed |
-| unit/boundary.test.ts              | 13    | ✅ All passed |
-| unit/build-hmr.test.ts             | 5     | ✅ All passed |
-| unit/compiler.test.ts              | 13    | ✅ All passed |
-| unit/context.test.ts               | 8     | ✅ All passed |
-| unit/directive.test.ts             | 25    | ✅ All passed |
-| unit/effect.test.ts                | 15    | ✅ All passed |
-| unit/globals.test.ts               | 5     | ✅ All passed |
-| unit/hmr.test.ts                   | 3     | ✅ All passed |
-| unit/jsx-runtime.test.ts           | 6     | ✅ All passed |
-| unit/meta.test.ts                  | 21    | ✅ All passed |
-| unit/portal.test.ts                | 5     | ✅ All passed |
-| unit/props.test.ts                 | 55    | ✅ All passed |
-| unit/proxy.test.ts                 | 5     | ✅ All passed |
-| unit/reactive.test.ts              | 7     | ✅ All passed |
-| unit/resource.test.ts              | 8     | ✅ All passed |
-| unit/router.test.ts                | 40    | ✅ All passed |
-| unit/runtime.test.ts               | 50    | ✅ All passed |
-| unit/scheduler.test.ts             | 5     | ✅ All passed |
-| unit/signal.test.ts                | 14    | ✅ All passed |
-| unit/ssr-directives.test.ts        | 6     | ✅ All passed |
-| unit/reconcile-focus-reuse.test.ts | 10    | ✅ All passed |
-| unit/ssr-document-shim.test.ts     | 9     | ✅ All passed |
-| unit/store.test.ts                 | 29    | ✅ All passed |
-| unit/stream.test.ts                | 7     | ✅ All passed |
-| unit/transition.test.ts            | 7     | ✅ All passed |
+| Test file                        | Tests | Status        |
+| -------------------------------- | ----- | ------------- |
+| e2e/cli.test.ts                  | 6     | ✅ All passed |
+| e2e/view-example-browser.test.ts | 65    | ✅ All passed |
+| integration/integration.test.ts  | 5     | ✅ All passed |
+| unit/boundary.test.ts            | 16    | ✅ All passed |
+| unit/build-hmr.test.ts           | 5     | ✅ All passed |
+| unit/compiled-runtime.test.ts    | 23    | ✅ All passed |
+| unit/compiler.test.ts            | 13    | ✅ All passed |
+| unit/context.test.ts             | 7     | ✅ All passed |
+| unit/directive.test.ts           | 25    | ✅ All passed |
+| unit/effect.test.ts              | 15    | ✅ All passed |
+| unit/form-page-compile.test.ts   | 3     | ✅ All passed |
+| unit/globals.test.ts             | 5     | ✅ All passed |
+| unit/hmr.test.ts                 | 3     | ✅ All passed |
+| unit/jsx-compiler.test.ts        | 32    | ✅ All passed |
+| unit/jsx-runtime.test.ts         | 6     | ✅ All passed |
+| unit/meta.test.ts                | 21    | ✅ All passed |
+| unit/portal.test.ts              | 6     | ✅ All passed |
+| unit/proxy.test.ts               | 5     | ✅ All passed |
+| unit/reactive.test.ts            | 7     | ✅ All passed |
+| unit/ref-dom.test.ts             | 4     | ✅ All passed |
+| unit/ref.test.ts                 | 3     | ✅ All passed |
+| unit/resource.test.ts            | 8     | ✅ All passed |
+| unit/router-mount.test.ts        | 2     | ✅ All passed |
+| unit/router.test.ts              | 40    | ✅ All passed |
+| unit/runtime-props.test.ts       | 15    | ✅ All passed |
+| unit/runtime.test.ts             | 20    | ✅ All passed |
+| unit/scheduler.test.ts           | 5     | ✅ All passed |
+| unit/signal.test.ts              | 16    | ✅ All passed |
+| unit/ssr-compiled.test.ts        | 11    | ✅ All passed |
+| unit/ssr-document-shim.test.ts   | 3     | ✅ All passed |
+| unit/store.test.ts               | 29    | ✅ All passed |
+| unit/stream.test.ts              | 4     | ✅ All passed |
+| unit/transition.test.ts          | 8     | ✅ All passed |
+| unit/unmount.test.ts             | 6     | ✅ All passed |
 
 ## Feature Test Details
 
-### 1. Boundary (unit/boundary.test.ts) - 13 tests
+### 1. Boundary (unit/boundary.test.ts) - 16 tests
 
 - ✅ isErrorBoundary returns true for ErrorBoundary and false for other
   functions
@@ -87,7 +93,7 @@
 - ✅ view start after build: serves and browser opens home with multi-page
   example
 
-### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 63 tests
+### 3. E2E Browser Examples (e2e/view-example-browser.test.ts) - 65 tests
 
 - ✅ Home mount and multi-page entry; navigation to
   Signal/Store/Boundary/Directive/Reactive/Resource/Context/Runtime/Router
@@ -105,7 +111,7 @@
   _loading copy
 - ✅ Top nav and route changes, Layout theme, 404 and back to home
 
-### 4. Context (unit/context.test.ts) - 8 tests
+### 4. Context (unit/context.test.ts) - 7 tests
 
 - ✅ createContext returns Provider and useContext; useContext returns
   defaultValue when no Provider
@@ -131,7 +137,7 @@
 - ✅ createMemo: non-function throws, getter and cache, recompute on dependency
   change, read in effect, undefined/null return edge
 
-### 7. Integration (integration/integration.test.ts) - 14 tests
+### 7. Integration (integration/integration.test.ts) - 5 tests
 
 - ✅ createRoot + event + signal: button onClick updates signal, DOM updates
   with signal
@@ -196,7 +202,7 @@
   target=_blank/download/data-native skip, hash anchor, modifier/right-click
   skip, interceptLinks: false
 
-### 14. Runtime (unit/runtime.test.ts) - 50 tests
+### 14. Runtime (unit/runtime.test.ts) - 20 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children; **SSR branch
   coverage**: null/undefined children, signal getter as child, plain function as
@@ -224,7 +230,7 @@
 - ✅ schedule: tasks run in microtask; multiple schedules in same tick batch
 - ✅ unschedule: before flush cancels task; only specified task removed
 
-### 16. Signal (unit/signal.test.ts) - 14 tests
+### 16. Signal (unit/signal.test.ts) - 16 tests
 
 - ✅ createSignal: [getter, setter], initial value, setter and updater, same
   value (Object.is) no update
@@ -235,7 +241,7 @@
 
 - ✅ SSR vIf / vElseIf / vElse, vFor, vShow
 
-### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 9 tests
+### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 3 tests
 
 - ✅ Component accessing `document.body.style.overflow` does not throw and
   outputs HTML
@@ -264,7 +270,7 @@
 - ✅ Same key returns existing instance (state shared); setState updater;
   getters/actions non-function entries skipped; Proxy ownKeys / spread
 
-### 20. Stream (unit/stream.test.ts) - 7 tests
+### 20. Stream (unit/stream.test.ts) - 4 tests
 
 - ✅ renderToStream: returns generator; simple div yields HTML; text children
   escaped; **plain function as child** renders return value (no source code);
@@ -326,7 +332,7 @@
 
 ## Conclusion
 
-All tests for @dreamer/view pass under **Deno** (454 tests) and **Bun** (427
+All tests for @dreamer/view pass under **Deno** (442 tests) and **Bun** (409
 tests; count differs by runner). 100% pass rate. Coverage includes signals,
 reactivity, scheduler, router, resource, context, directives, runtime and SSR
 (createRoot, render, **mount**, **createReactiveRoot**, hydrate, renderToString

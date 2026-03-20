@@ -7,6 +7,46 @@
 
 ---
 
+## [1.3.0] - 2026-03-20
+
+### 变更
+
+- **对外 API 与模块 JSDoc 完善** 所有对外导出的入口与 API 均补充完整 JSDoc。各
+  导出路径均包含 `@module` 与 `@packageDocumentation`，并列出导出清单；导出函数
+  与类型均补充 `@param`、`@returns`，必要时增加 `@example`。面向用户的模块说明中
+  已移除仅内部使用的表述（如「路线 C」）。
+- **compiler/mod.ts** 模块标签由 `@dreamer/view/runtime` 更正为
+  `@dreamer/view/compiler`，并完整列出导出（insert、createRoot、hydrate、SSR、
+  props、signal/effect 再导出及类型）。
+- **主入口与子路径** `mod.ts`、`mod-ssr.ts`、`mod-csr.ts`、`mod-hybrid.ts` 现
+  均写明全部导出及使用说明（如 hybrid/csr 不导出 `insert`，需时从主入口或
+  compiler 引入）。`dom.ts`、`globals.ts`、`ref.ts`、`compiled.ts`、
+  `jsx-compiler/mod.ts`、`compiler/insert-replacing.ts`、`optimize.ts` 及
+  `compiler/active-document.ts` 的模块说明已统一风格。
+- **运行时与编译器** `runtime.ts` 文件头及
+  `insertReactive`、`InsertValueWithMount` 的 JSDoc 已扩充；`compiler/insert.ts`
+  与 `jsx-compiler/transform.ts` 的模块 描述已更新并与对外用法一致。JSX
+  编译器中的 `compileSource` 与 `jsxToRuntimeFunction`
+  已补充完整参数与返回值说明。
+- **Examples** `examples/package.json` 的 imports 与 dependencies 已与
+  `examples/deno.json` 同步：新增 `@dreamer/view/ssr`、`@dreamer/view/compiler`
+  及 `@dreamer/esbuild`；所有 JSR/npm
+  依赖（image、plugins、esbuild、tailwindcss） 版本与 deno.json 一致。
+
+### 文档
+
+- **TEST_REPORT（中/英）** 已按当前测试结果更新：442 用例（Deno）、409（Bun）、
+  34 个测试文件、日期 2026-03-20、耗时约 1m54s（Deno）/ 82s（Bun）。测试文件表
+  已更新：新增 compiled-runtime、form-page-compile、jsx-compiler、ref-dom、ref、
+  router-mount、runtime-props、ssr-compiled、unmount；移除
+  props、ssr-directives、 reconcile-focus-reuse；并修正
+  boundary、context、integration、portal、runtime、
+  signal、ssr-document-shim、stream、transition 及 E2E 浏览器等用例数。
+- **README（中/英）** 测试总结与徽章已更新：442 通过（Deno）/ 409（Bun）、测试
+  日期 2026-03-20、双运行时的耗时与文件数。TEST_REPORT 链接未改。
+
+---
+
 ## [1.2.0] - 2026-03-19
 
 ### 修复

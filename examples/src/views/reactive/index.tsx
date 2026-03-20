@@ -5,7 +5,7 @@
  * 与 createEffect 联动：effect 内读取会登记依赖，属性赋值会触发订阅更新。
  */
 
-import { createEffect, createSignal } from "@dreamer/view";
+import { createEffect, createMemo, createSignal } from "@dreamer/view";
 import { createReactive } from "@dreamer/view/reactive";
 import type { VNode } from "@dreamer/view";
 
@@ -117,6 +117,13 @@ export function ReactiveDemo(): VNode {
     setLogCount((c) => c + 1);
   });
 
+  /** 表单 model 摘要：用 createMemo 派生，随 formModel 更新，模板里写 {formSummary()} 即可 */
+  const formSummary = createMemo(() =>
+    `→ name=${formModel.name || "(空)"}，age=${formModel.age || "(空)"}，sex=${
+      formModel.sex || "(空)"
+    }，fruit=${formModel.fruit || "(未选)"}，choice=${formModel.choice}`
+  );
+
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
       <p className="mb-2 text-sm font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -225,9 +232,7 @@ export function ReactiveDemo(): VNode {
             </label>
           </div>
           <p className="text-slate-600 dark:text-slate-300">
-            → name={formModel.name || "(空)"}，age={formModel.age || "(空)"}
-            ，sex={formModel.sex || "(空)"}，fruit={formModel.fruit || "(未选)"}
-            ，choice={formModel.choice}
+            {formSummary()}
           </p>
         </div>
       </div>

@@ -51,10 +51,22 @@ export const KEY_HMR_CHUNK_FOR_PATH = "__VIEW_HMR_CHUNK_FOR_PATH__";
 /** 当前处于服务端渲染（renderToString/renderToStream），用于 getDocument() 等抛出明确错误 */
 export const KEY_VIEW_SSR = "__VIEW_SSR__";
 
+/**
+ * 浏览器等环境下无法给 `window.document` 赋值时，renderToString 将伪 document 挂在此键；
+ * 编译产物与 insert 通过 getActiveDocument() 读取，避免替换全局失败。
+ */
+export const KEY_VIEW_SSR_DOCUMENT = "__VIEW_SSR_DOCUMENT__";
+
+/** 细粒度水合上下文（runtime/hydrate.ts），insert 与 document 在 hydrate 时委托给该上下文 */
+export const KEY_VIEW_HYDRATE = "__VIEW_HYDRATE__";
+
 /** 开发模式：启用 hydration 不匹配告警、忘记 getter 提示等（可由构建或运行时设置） */
 export const KEY_VIEW_DEV = "__VIEW_DEV__";
 
-/** 根组件 _app 挂载的 Router 实例，供根 _layout 的 default 读取 currentPath 渲染 Navbar（见 router 文档） */
+/**
+ * `globalThis` 键：根 `_app` 挂载的 Router 实例，供约定式布局等读取当前路径（见 `@dreamer/view/router` 文档）。
+ * 主包导出同名常量，避免业务硬编码字符串。
+ */
 export const KEY_VIEW_ROUTER = "__VIEW_ROUTER__";
 
 /** DOM 占位符 / 标记用 data 属性（dom/element.ts）：keyed 列表包裹节点 */

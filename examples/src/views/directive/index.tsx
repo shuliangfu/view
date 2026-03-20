@@ -153,21 +153,20 @@ export function DirectiveDemo(): VNode {
               type="text"
               className={inputCls}
               placeholder="输入即同步"
-              value={vModelText()}
+              value={vModelText}
               onInput={(e: Event) =>
                 setVModelText((e.target as HTMLInputElement).value)}
             />
             <span>→ 当前值：{() => vModelText() || "(空)"}</span>
           </p>
-          {/* 清空 input 示例：发送后 setClearInputText("")，有焦点时 View 会应用「新值≠当前值」从而正确清空 DOM */}
+          {/* 清空 input 示例：传 getter value={clearInputText}，applyProps 内 createEffect 订阅，set("") 后 effect 写回 DOM；根仅地址变化重跑时不再整树 patch，须靠 getter 绑定才能清空 */}
           <p className="mb-2 flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-300">
-            {/* value={clearInputText()} 让根 effect 订阅，set("") 后根重跑、patch 时 applyProps(value:"") 写回 DOM；懒加载页内 value getter 的 effect 可能被 dispose 导致不触发 */}
             <input
               type="text"
               className={inputCls}
               placeholder="输入后点「发送并清空」"
               data-testid="clear-demo-input"
-              value={clearInputText()}
+              value={clearInputText}
               onInput={(e: Event) =>
                 setClearInputText((e.target as HTMLInputElement).value)}
             />
@@ -187,7 +186,7 @@ export function DirectiveDemo(): VNode {
             <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
-                checked={vModelChecked()}
+                checked={vModelChecked}
                 onChange={(e: Event) =>
                   setVModelChecked((e.target as HTMLInputElement).checked)}
               />
@@ -214,12 +213,16 @@ export function DirectiveDemo(): VNode {
             <button
               type="button"
               className={btn}
-              onClick={() => focusInputEl?.focus()}
+              onMouseDown={(e: MouseEvent) => {
+                e.preventDefault();
+                if (focusInputEl?.isConnected) focusInputEl.focus();
+              }}
             >
               再次聚焦
             </button>
           </p>
         </div>
+
         <div className={block}>
           <h3 className={subTitle}>自定义指令 v-copy</h3>
           <p className="mb-2 text-slate-600 dark:text-slate-300">

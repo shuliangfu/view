@@ -8,11 +8,8 @@
  * - renderToStream(fn)（view/stream）：流式 SSR，服务端逐块输出
  */
 
-import {
-  createSignal,
-  generateHydrationScript,
-  renderToString,
-} from "@dreamer/view";
+import { createSignal, generateHydrationScript, insert } from "@dreamer/view";
+import { renderToString } from "@dreamer/view/ssr";
 import type { VNode } from "@dreamer/view";
 
 export const metadata = {
@@ -24,9 +21,11 @@ export const metadata = {
 
 const [ssrSample, setSsrSample] = createSignal("Hello SSR");
 
-/** 用于 renderToString 的简单组件 */
-function SsrSample(): VNode {
-  return <div>renderToString 输出：{ssrSample()}</div>;
+/** renderToString 使用编译路径 (el) => void，内部用 insert(el, getter) */
+function getSsrHtml(): string {
+  return renderToString((el) => {
+    insert(el, () => "renderToString 输出：" + ssrSample());
+  });
 }
 
 /** 当前 renderToString 结果（用 signal 存，点击更新时重新生成） */
@@ -38,7 +37,7 @@ const btn =
 /** 统一输入框样式 */
 const inputCls =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
-const codeRootStr = "createRoot(() => <App />, container)";
+const codeRootStr = 'mount("#root", (el) => insert(el, () => <App />))';
 const codeRenderStr = "render(fn, container)";
 const block =
   "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
@@ -79,7 +78,7 @@ export function RuntimeDemo(): VNode {
             <button
               type="button"
               className={btn}
-              onClick={() => setHtml(renderToString(() => <SsrSample />))}
+              onClick={() => setHtml(getSsrHtml())}
             >
               生成 HTML
             </button>
@@ -114,7 +113,7 @@ export function RuntimeDemo(): VNode {
           </p>
           <pre className="rounded-lg bg-slate-100 dark:bg-slate-700 p-3 text-xs text-slate-700 dark:text-slate-300 overflow-x-auto">
             {`import { renderToStream } from "@dreamer/view/stream";
-// for (const chunk of renderToStream(() => <App />)) {
+// for await (const chunk of renderToStream((el) => { insert(el, "A"); insert(el, "B"); })) {
 //   res.write(chunk);
 // }`}
           </pre>

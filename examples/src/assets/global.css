@@ -1,12 +1,6 @@
-html,
-body {
-  background-color: #000;
-  color: #fff;
-  a {
-    color: #fff;
-    transition: border-color 0.2s;
-    &:hover {
-      border-color: #000;
-    }
-  }
-}
+/**
+ * 示例站主视觉由 index.html 的 body 类名 + tailwind.css 提供。
+ * 此前在此写死 `html, body { background: #000; color: #fff }` 与 `a { color: #fff }` 会与
+ * Tailwind 工具类层叠争抢，导致导航里 SVG（fill="currentColor"）在部分顺序下「有 DOM 但看不见」。
+ * 需要黑底演示的页面请使用 `index.css` 中的 `#index-test` 作用域样式。
+ */

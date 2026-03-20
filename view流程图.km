@@ -1,0 +1,486 @@
+{
+    "root": {
+        "data": {
+            "text": "View 前端框架流程",
+            "id": "view-root"
+        },
+        "children": [
+            {
+                "data": {
+                    "text": "1 入口与挂载",
+                    "id": "entry"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "render(fn, container) → createRoot(fn, container)"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "mount(container, fn) → 有子节点则 hydrate，否则 render"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "createRoot 非 DOM 环境直接返回空 Root"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "createRenderTriggerSignal() → getTrigger / setTrigger（驱动根 effect 重跑）"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "createRunDisposersCollector() → runDisposers + getScopeForRun()"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "2 响应式（Signal / Effect / Scheduler）",
+                    "id": "reactivity"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "createSignal(initial)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "value + subscribers: Set<run>"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "getter 被读时：若有 getCurrentEffect() 则把 run 加入 subscribers，并记入 run._subscriptionSets"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "setter：Object.is 相同则 return；否则 value 更新后对 subscribers 里每个 run 执行 schedule(run)"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "createEffect(fn)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "run()：先 runCleanups → 从 _subscriptionSets 移除本 run → setCurrentEffect(run) → fn() → 返回值若为函数则加入 _cleanups"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "首次立即 run()；disposer 登记到 currentScope（getScopeForRun 返回的 scope）"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "Scheduler（scheduler.ts）"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "schedule(run)：加入 queue，未 scheduled 则 queueMicrotask(flushQueue)"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "flushQueue：queue 拷到 queueCopy 并清空，按序执行 queueCopy"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "unschedule(run)：effect dispose 时从 queue 移除"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "3 根 Effect 循环（createRootEffectLoop）",
+                    "id": "root-effect"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "每次 run 顺序"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "readDeps()：执行 getTrigger()，建立 effect 对「重渲染触发」的依赖"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "setCurrentScope(getScopeForRun())：先执行上一轮 runDisposers，再返回本轮 scope"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "vnode = fn()：执行用户根函数，得到 VNode 树"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "shouldSkip：首屏 150ms 内且 vnode 未变则跳过；或 vnode 未变且 mounted 仍在 container 内则跳过"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "runBody：newExpanded = expandVNode(vnode)；再 Mount 或 Patch"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "4 展开（expandVNode）",
+                    "id": "expand"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "Fragment：normalizeChildren → getter/function 直接 push，否则递归 expandVNode"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "函数组件：setCurrentScope(EXPAND_NOOP_SCOPE) → type(props)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "返回 function → 直接返回 [getter]，不执行 getter（保持与 DOM 槽位一致）"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "返回 VNode/数组 → 递归 expand；ErrorBoundary 则 try/catch + fallback"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "原生元素：保留 type/props/key，对 children normalize + 递归 expand"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "#text：直接返回 vnode"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "5 创建 DOM（createElement）",
+                    "id": "create-element"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "函数组件：type(props)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "结果为 function → createDynamicContainer()（data-view-dynamic 的 div）+ registerPlaceholderEffect(getDynamicChildEffectBody)，返回该容器"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "结果为 VNode/数组 → 递归 createElement"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "Fragment → DocumentFragment + appendChildren"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "appendChildren 中：子项为 getter → createDynamicContainer + appendDynamicChild（注册 getDynamicChildEffectBody）"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "原生标签 → createElement + applyProps + appendChildren"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "6 挂载 vs Patch（runBody 内）",
+                    "id": "mount-patch"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "shouldMount 条件：mounted == null 或 mounted 已脱离 container 或 空 fragment"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "挂载：s.mounted = createNodeFromExpanded(newExpanded)；container.appendChild(mounted)；lastExpanded = newExpanded"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "Patch：patchRoot(container, mounted, lastExpanded, newExpanded)；lastExpanded = newExpanded；s.mounted = container.firstChild ?? container（patch 可能 replaceChild）"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "7 动态子节点（getDynamicChildEffectBody）",
+                    "id": "dynamic"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "何时执行：占位容器上注册的 effect；getter 变化被 schedule 后 flush 时执行"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "value = getter() → items = normalizeChildren(value)"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "单节点优化（singleMountedNode / lastSingleVNode）"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "条件：items.length === 1 且该项为静态 VNode（非 getter/非 function/非 Fragment）"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "组件单节点：expandVNode 得 [getter] 则再调用 getter 并 expand 得到可 patch 的树"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "有 lastSingleVNode 且 singleMountedNode 存在 → patchRoot(parent, singleMountedNode, lastSingleVNode, newExpanded)"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "否则 → container.replaceChildren(el)；记录 singleMountedNode、lastSingleVNode"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "有 key → reconcileKeyedChildren；无 key 多子 → reconcileChildren；0 子 → replaceChildren()"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "8 协调与 Patch 细节",
+                    "id": "reconcile"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "patchRoot(lastExpanded, newExpanded)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "两数组 → reconcileChildren(parent, lastExpanded, newExpanded)"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "两单 VNode → patchNode(mounted, lastExpanded, newExpanded)"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "一数组一单节点 → replaceChild 新节点"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "patchNode(dom, oldV, newV)"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "text": "两 Fragment → reconcileChildren 比较 children"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "type 或 key 不同 → createElement(newV) + replaceChild"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "函数组件：现有 dom 为 data-view-dynamic 且同 type → getComponentGetter + updateDynamicChild（复用）；否则 replace"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "text": "原生元素 → applyProps(el, newV.props) + reconcileChildren"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "text": "reconcileChildren：按 DOM 槽位对齐；getter 同引用则跳过；同槽 getter 不同引用 → updateDynamicChild；否则 patchNode"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "reconcileKeyedChildren：按 key 匹配；有 key 的 VNode 可 patchNode 复用；未匹配 key 的节点 unmount"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "9 清理与卸载",
+                    "id": "cleanup"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "root.unmount()：disposers.forEach(d => d())；runDisposers.forEach(d => d())；runDirectiveUnmount(mounted)；container.removeChild(mounted)"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "effect dispose：从 signal 的 subscribers 移除 run；runCleanups；unschedule(run)"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "getScopeForRun()：每轮 run 前执行上一轮 runDisposers，子 effect 的 disposer 在本轮登记到 runDisposers"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "text": "10 流程串联（一句话）",
+                    "id": "summary"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "text": "Entry: render → createRoot → createRootEffectLoop(createEffect)"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "Run: readDeps → setScope → vnode=fn() → shouldSkip? → expandVNode(vnode) → shouldMount? appendChild : patchRoot"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "Expand: 组件/元素/Fragment 展开；组件返回 getter 则 [getter] 不求值"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "DOM: createElement 遇 getter 则 data-view-dynamic 容器 + getDynamicChildEffectBody；appendChildren 同理"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "text": "Signal 变化 → schedule(root run) → 微任务 flush → 重跑 run → 新 expand → patch"
+                        },
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    },
+    "template": "default",
+    "theme": "fresh-blue",
+    "version": "1.4.43"
+}

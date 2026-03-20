@@ -830,16 +830,13 @@ body {
 /** ${$tr("init.template.globalCssImportComment")} */
 // import "./assets/global.css";
 
-import { createRoot } from "@dreamer/view";
+import { mount, insert } from "@dreamer/view";
 import { createAppRouter } from "./router/router.ts";
 import { App } from "./views/_app.tsx";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 
-const container = document.getElementById("root");
-if (container) {
-  const router = createAppRouter({ routes, notFound: notFoundRoute });
-  createRoot(() => <App router={router} />, container);
-}
+const router = createAppRouter({ routes, notFound: notFoundRoute });
+mount("#root", (el) => insert(el, () => <App router={router} />), { noopIfNotFound: true });
 `;
   await writeTextFile(join(targetDir, "src", "main.tsx"), mainTsx);
   addFile("src/main.tsx");
@@ -1251,7 +1248,10 @@ export default function About(): VNode {
   const routerTs = `/**
  * ${$tr("init.template.routerComment")}
  */
-import { createContext } from "@dreamer/view/context";
+import {
+  createContext,
+  type ProviderChildren,
+} from "@dreamer/view/context";
 import {
   createRouter as createViewRouter,
   type RouteConfig,
@@ -1263,7 +1263,7 @@ export const RouterContext = createContext<Router | null>(null, "Router");
 
 export function RouterProvider(props: {
   router: Router;
-  children: VNode | VNode[];
+  children: ProviderChildren;
 }): VNode | VNode[] | null {
   return RouterContext.Provider({
     value: props.router,

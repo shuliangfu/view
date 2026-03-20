@@ -3,6 +3,14 @@
  *
  * - getDocument()：在浏览器中安全获取 document，SSR 环境下会抛错提示勿在服务端使用
  * - getGlobal/setGlobal：在 globalThis 上按 key 存取全局状态，便于跨模块共享
+ *
+ * 文本插值可写 `{globalCount()}` 或 `{globalCount}`：编译器对裸标识符/props 访问会生成
+ * `unwrapSignalGetterValue(...)`，运行时 insertReactive 也会解包 signal getter，双重保障。
+ *
+ * 调试点击：编译产物为 `button.addEventListener("click", handler)`。若控制台无任何输出：
+ * - 确认 DevTools 的上下文是当前页面（非 extension），且未过滤掉 log；
+ * - 看 Console 是否有未捕获错误导致后续脚本未执行；
+ * - 在 Elements 里选中按钮，Chrome 可执行 getEventListeners($0) 查看是否挂了 click。
  */
 
 import type { VNode } from "@dreamer/view";
@@ -48,7 +56,7 @@ export function GlobalsDemo(): VNode {
       return (e as Error).message;
     }
   };
-  const [docTitle, setDocTitle] = createSignal(readDocTitle());
+  const [docTitle, setDocTitle] = createSignal("-");
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
@@ -77,7 +85,12 @@ export function GlobalsDemo(): VNode {
             。点击下方按钮自增并写回 globalThis，刷新页面后仍会保留（同 tab
             内）。
           </p>
-          <button type="button" className={btn} onClick={incrementGlobal}>
+          <button
+            type="button"
+            className={btn}
+            data-testid="globals-increment-global"
+            onClick={incrementGlobal}
+          >
             自增并 setGlobal
           </button>
         </div>

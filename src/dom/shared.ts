@@ -1,10 +1,10 @@
 /**
  * @module @dreamer/view/dom/shared
  * @description
- * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element / stringify / hydrate 复用。
+ * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element 等复用。
  *
  * **本模块导出：**
- * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`、`createDynamicContainer(doc)`
+ * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`
  */
 
 import type { VNode } from "../types.ts";
@@ -12,7 +12,7 @@ import type { VNode } from "../types.ts";
 /**
  * 判断子节点是否为空（不参与渲染）。
  * 对 null、undefined、false、"" 返回 true，其余返回 false。
- * 用于 normalizeChildren / normalizeChildrenForSSR 中统一过滤，避免渲染出 "false" 或空字符串占位。
+ * 用于 normalizeChildren 中统一过滤，避免渲染出 "false" 或空字符串占位。
  *
  * @param value - 子节点值
  * @returns 若为空则 true，否则 false
@@ -72,16 +72,4 @@ export function createTextVNode(value: unknown): VNode {
     props: { nodeValue: String(value) },
     children: [],
   };
-}
-
-/**
- * 创建带 data-view-dynamic 的无样式 div 占位元素，用于动态子节点（如 signal getter）的挂载容器。
- *
- * @param doc - Document 实例
- * @returns 新创建的 div 元素（无 class、无 style）
- */
-export function createDynamicContainer(doc: Document): Element {
-  const el = doc.createElement("div");
-  el.setAttribute("data-view-dynamic", "");
-  return el;
 }
