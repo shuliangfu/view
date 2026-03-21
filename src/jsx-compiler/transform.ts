@@ -722,6 +722,11 @@ function buildAttributeStatements(
               ),
             );
           } else if (BOOLEAN_ATTRS.has(name)) {
+            /**
+             * 布尔 DOM 属性：历史实现为 `el.x = !!expr`。
+             * 若 `expr` 为无参箭头/函数（如 `disabled={() => loading.value}`），`!!函数` 恒为 true，
+             * 会导致按钮、input 等永久禁用。与 value/checked 一致：无参函数用 createEffect 内 `!!expr()` 同步。
+             */
             const domProp = name === "readonly"
               ? "readOnly"
               : name === "contenteditable"
@@ -729,24 +734,78 @@ function buildAttributeStatements(
               : name === "spellcheck"
               ? "spellCheck"
               : name;
-            stmts.push(
-              factory.createExpressionStatement(
-                factory.createBinaryExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(elVar),
-                    factory.createIdentifier(domProp),
+            const isZeroArgFn = (ts.isArrowFunction(exprNode) ||
+              ts.isFunctionExpression(exprNode)) &&
+              exprNode.parameters.length === 0;
+            if (isZeroArgFn) {
+              const callExpr = factory.createCallExpression(
+                exprNode,
+                undefined,
+                [],
+              );
+              const boolRhs = factory.createPrefixUnaryExpression(
+                ts.SyntaxKind.ExclamationToken,
+                factory.createPrefixUnaryExpression(
+                  ts.SyntaxKind.ExclamationToken,
+                  callExpr,
+                ),
+              );
+              const assignExpr = factory.createBinaryExpression(
+                factory.createPropertyAccessExpression(
+                  factory.createIdentifier(elVar),
+                  factory.createIdentifier(domProp),
+                ),
+                factory.createToken(ts.SyntaxKind.EqualsToken),
+                boolRhs,
+              );
+              const effectBody = ctx.inOnceSubtree
+                ? factory.createCallExpression(ctx.untrackId, undefined, [
+                  factory.createArrowFunction(
+                    undefined,
+                    undefined,
+                    [],
+                    undefined,
+                    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                    assignExpr,
                   ),
-                  factory.createToken(ts.SyntaxKind.EqualsToken),
-                  factory.createPrefixUnaryExpression(
-                    ts.SyntaxKind.ExclamationToken,
+                ])
+                : assignExpr;
+              stmts.push(
+                factory.createExpressionStatement(
+                  factory.createCallExpression(createEffectId, undefined, [
+                    factory.createArrowFunction(
+                      undefined,
+                      undefined,
+                      [],
+                      undefined,
+                      factory.createToken(
+                        ts.SyntaxKind.EqualsGreaterThanToken,
+                      ),
+                      effectBody,
+                    ),
+                  ]),
+                ),
+              );
+            } else {
+              stmts.push(
+                factory.createExpressionStatement(
+                  factory.createBinaryExpression(
+                    factory.createPropertyAccessExpression(
+                      factory.createIdentifier(elVar),
+                      factory.createIdentifier(domProp),
+                    ),
+                    factory.createToken(ts.SyntaxKind.EqualsToken),
                     factory.createPrefixUnaryExpression(
                       ts.SyntaxKind.ExclamationToken,
-                      exprNode,
+                      factory.createPrefixUnaryExpression(
+                        ts.SyntaxKind.ExclamationToken,
+                        exprNode,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
+              );
+            }
           } else if (name === "className" || name === "class") {
             const attrName = factory.createStringLiteral("class");
             stmts.push(

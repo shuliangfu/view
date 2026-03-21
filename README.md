@@ -1242,19 +1242,12 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.3** (2026-03-21): **Breaking** — **`createSignal` → `SignalRef`**
-(`.value` read/write); router **`getState`** / **`createResource`** source /
-**`Transition.show`** / Context **`Provider`** support **`SignalRef`**;
-**removed** compiler **`v-for` / `v-show`** and directive helpers; **added**
-**`isSignalRef`**, handwritten VNode **vIf chain / vOnce / vCloak /
-applyDirectives** in **`vnode-mount`**, analysis docs; **fixed**
-**`insertReactive`** + controlled input unwrap, directive **`updated`** for
-refs, SSR style proxy symbols, HMR getter, stray router line; **changed**
-**`compileSource`** read-failure warning via **i18n**
-(**`cli.build.compileSourceReadFailed`**), **English-only** library
-**`throw`/`console`** outside CLI/server. **v1.3.2**: `vIf` codegen +
-**`getDocument()`** null + esbuild **^1.1.5** + CI Node 24. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.3.4** (2026-03-22): **Fixed** — JSX compiler: boolean DOM props with a
+**zero-arg getter** (e.g. **`disabled={() => loading.value}`**) now use
+**`createEffect`** and **`!!getter()`** so controls are not stuck disabled;
+**Added** **`jsx-compiler`** unit test for this codegen. **v1.3.3**
+(2026-03-21): **Breaking** — **`SignalRef`** / removed **`v-for`/`v-show`**
+compile; see [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 
 ---
 

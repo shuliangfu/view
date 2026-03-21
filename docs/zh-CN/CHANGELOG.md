@@ -7,6 +7,22 @@
 
 ---
 
+## [1.3.4] - 2026-03-22
+
+### 新增
+
+- **测试**：**`jsx-compiler.test.ts`** 增加 **`disabled={() => …}`**（无参
+  getter） 用例，校验 **`createEffect`** 与 **`!!getter()`** 产物。
+
+### 修复
+
+- **JSX 编译器**：**`disabled`**、**`checked`** 等布尔属性若为**无参箭头/函数**
+  （如 **`disabled={() => loading.value}`**），改为在 **`createEffect`** 内写
+  **`el.x = !!getter()`**，不再生成 **`el.x = !!getter`**（函数恒为真，会导致
+  控件永久禁用）。
+
+---
+
 ## [1.3.3] - 2026-03-21
 
 ### 破坏性变更

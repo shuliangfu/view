@@ -64,6 +64,24 @@ function Page() {
     );
   });
 
+  it("disabled 等布尔属性为无参箭头时应用 createEffect 调用 getter，避免 !!函数 恒 true 导致永久禁用", () => {
+    const source = `
+import { createSignal, insert } from "@dreamer/view";
+function Page() {
+  const loading = createSignal(false);
+  return <button type="button" disabled={() => loading.value}>x</button>;
+}
+`;
+    const out = compileSource(source, "dis.tsx", {
+      insertImportPath: "@dreamer/view",
+    });
+    expect(out).toContain("createEffect(");
+    expect(out).toMatch(/\.disabled\s*=\s*\!\!/);
+    expect(out).toContain("loading.value");
+    // 须 `!!(() => …)()` 调用 getter；旧实现为 `!!(() => …)` 无尾 `()`，导致恒为 true
+    expect(out).toMatch(/\(\(\)\s*=>\s*loading\.value\)\s*\(\)/);
+  });
+
   it("编译产物为合法 TS 且含 appendChild、箭头函数", () => {
     const source =
       `function App() { return <div><span>{count()}</span></div>; }`;
