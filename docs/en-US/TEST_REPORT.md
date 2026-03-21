@@ -5,7 +5,7 @@
 | Item            | Description                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Package         | @dreamer/view                                                                                                                      |
-| Version         | 1.3.0                                                                                                                              |
+| Version         | 1.3.2                                                                                                                              |
 | Test framework  | @dreamer/test ^1.0.15                                                                                                              |
 | Test date       | 2026-03-21                                                                                                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                 |
@@ -15,19 +15,19 @@
 
 ### Deno
 
-- **Total tests**: 500
-- **Passed**: 500
+- **Total tests**: 509
+- **Passed**: 509
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 38s
+- **Duration**: ~1m 55s
 
 ### Bun
 
-- **Total tests**: 457
-- **Passed**: 457
+- **Total tests**: 465
+- **Passed**: 465
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~85s (44 test files, including E2E browser and CLI; use
+- **Duration**: ~85s (45 test files, including E2E browser and CLI; use
   `--preload ./tests/dom-setup.ts`)
 - **Note**: Use `--preload ./tests/dom-setup.ts` when no DOM is present so
   unit/integration tests that need `document` do not fail (SSR guard or missing
@@ -38,52 +38,53 @@
 
 ### Test File Summary
 
-| Test file                        | Tests | Status        |
-| -------------------------------- | ----- | ------------- |
-| e2e/cli.test.ts                  | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts | 72    | ✅ All passed |
-| integration/integration.test.ts  | 5     | ✅ All passed |
-| unit/active-document.test.ts     | 3     | ✅ All passed |
-| unit/boundary.test.ts            | 17    | ✅ All passed |
-| unit/build-hmr.test.ts           | 5     | ✅ All passed |
-| unit/compiled-contract.test.ts   | 3     | ✅ All passed |
-| unit/compiled-runtime.test.ts    | 23    | ✅ All passed |
-| unit/compiler.test.ts            | 13    | ✅ All passed |
-| unit/context.test.ts             | 7     | ✅ All passed |
-| unit/directive.test.ts           | 25    | ✅ All passed |
-| unit/effect.test.ts              | 15    | ✅ All passed |
-| unit/entry-mod-smoke.test.ts     | 3     | ✅ All passed |
-| unit/escape.test.ts              | 6     | ✅ All passed |
-| unit/form-page-compile.test.ts   | 3     | ✅ All passed |
-| unit/globals.test.ts             | 5     | ✅ All passed |
-| unit/hmr.test.ts                 | 3     | ✅ All passed |
-| unit/insert-replacing.test.ts    | 4     | ✅ All passed |
-| unit/jsx-compiler.test.ts        | 32    | ✅ All passed |
-| unit/jsx-runtime.test.ts         | 6     | ✅ All passed |
-| unit/logger-server.test.ts       | 4     | ✅ All passed |
-| unit/meta.test.ts                | 21    | ✅ All passed |
-| unit/portal.test.ts              | 6     | ✅ All passed |
-| unit/proxy.test.ts               | 5     | ✅ All passed |
-| unit/reactive.test.ts            | 7     | ✅ All passed |
-| unit/ref-dom.test.ts             | 4     | ✅ All passed |
-| unit/ref.test.ts                 | 4     | ✅ All passed |
-| unit/resource.test.ts            | 8     | ✅ All passed |
-| unit/route-page.test.ts          | 4     | ✅ All passed |
-| unit/router-mount.test.ts        | 3     | ✅ All passed |
-| unit/router.test.ts              | 40    | ✅ All passed |
-| unit/runtime-props.test.ts       | 15    | ✅ All passed |
-| unit/runtime.test.ts             | 20    | ✅ All passed |
-| unit/scheduler.test.ts           | 5     | ✅ All passed |
-| unit/signal.test.ts              | 16    | ✅ All passed |
-| unit/spread-intrinsic.test.ts    | 10    | ✅ All passed |
-| unit/ssr-compiled.test.ts        | 11    | ✅ All passed |
-| unit/ssr-document-shim.test.ts   | 3     | ✅ All passed |
-| unit/store.test.ts               | 29    | ✅ All passed |
-| unit/stream.test.ts              | 4     | ✅ All passed |
-| unit/transition.test.ts          | 8     | ✅ All passed |
-| unit/unmount.test.ts             | 6     | ✅ All passed |
-| unit/version-utils.test.ts       | 9     | ✅ All passed |
-| unit/vnode-insert-bridge.test.ts | 2     | ✅ All passed |
+| Test file                           | Tests | Status        |
+| ----------------------------------- | ----- | ------------- |
+| e2e/cli.test.ts                     | 6     | ✅ All passed |
+| e2e/view-example-browser.test.ts    | 72    | ✅ All passed |
+| integration/integration.test.ts     | 5     | ✅ All passed |
+| unit/active-document.test.ts        | 3     | ✅ All passed |
+| unit/boundary.test.ts               | 17    | ✅ All passed |
+| unit/build-hmr.test.ts              | 5     | ✅ All passed |
+| unit/compiled-contract.test.ts      | 3     | ✅ All passed |
+| unit/compiled-runtime.test.ts       | 23    | ✅ All passed |
+| unit/compiler.test.ts               | 13    | ✅ All passed |
+| unit/context.test.ts                | 7     | ✅ All passed |
+| unit/directive.test.ts              | 19    | ✅ All passed |
+| unit/effect.test.ts                 | 15    | ✅ All passed |
+| unit/entry-mod-smoke.test.ts        | 3     | ✅ All passed |
+| unit/escape.test.ts                 | 6     | ✅ All passed |
+| unit/form-page-compile.test.ts      | 3     | ✅ All passed |
+| unit/globals.test.ts                | 6     | ✅ All passed |
+| unit/hmr.test.ts                    | 3     | ✅ All passed |
+| unit/insert-replacing.test.ts       | 4     | ✅ All passed |
+| unit/jsx-compiler.test.ts           | 35    | ✅ All passed |
+| unit/jsx-runtime.test.ts            | 6     | ✅ All passed |
+| unit/logger-server.test.ts          | 4     | ✅ All passed |
+| unit/meta.test.ts                   | 21    | ✅ All passed |
+| unit/portal.test.ts                 | 6     | ✅ All passed |
+| unit/proxy.test.ts                  | 5     | ✅ All passed |
+| unit/reactive.test.ts               | 7     | ✅ All passed |
+| unit/ref-dom.test.ts                | 4     | ✅ All passed |
+| unit/ref.test.ts                    | 4     | ✅ All passed |
+| unit/resource.test.ts               | 8     | ✅ All passed |
+| unit/route-page.test.ts             | 4     | ✅ All passed |
+| unit/router-mount.test.ts           | 3     | ✅ All passed |
+| unit/router.test.ts                 | 40    | ✅ All passed |
+| unit/runtime-props.test.ts          | 15    | ✅ All passed |
+| unit/runtime.test.ts                | 20    | ✅ All passed |
+| unit/scheduler.test.ts              | 5     | ✅ All passed |
+| unit/signal.test.ts                 | 19    | ✅ All passed |
+| unit/spread-intrinsic.test.ts       | 10    | ✅ All passed |
+| unit/ssr-compiled.test.ts           | 16    | ✅ All passed |
+| unit/ssr-document-shim.test.ts      | 3     | ✅ All passed |
+| unit/store.test.ts                  | 29    | ✅ All passed |
+| unit/stream.test.ts                 | 4     | ✅ All passed |
+| unit/transition.test.ts             | 8     | ✅ All passed |
+| unit/unmount.test.ts                | 6     | ✅ All passed |
+| unit/version-utils.test.ts          | 9     | ✅ All passed |
+| unit/vnode-insert-bridge.test.ts    | 2     | ✅ All passed |
+| unit/vnode-mount-directives.test.ts | 3     | ✅ All passed |
 
 ## Feature Test Details
 
@@ -114,8 +115,8 @@
 - ✅ Store page: count, greeting and name input; **persist**: clear storage key,
   increment, localStorage write, reload still restores count
 - ✅ Boundary page: error display, Suspense async content
-- ✅ Directive page: vIf/vShow/v-for, v-text/v-html, v-model input and checkbox;
-  **main text includes v-once / vCloak sections**
+- ✅ Directive page: vIf/vElse chain, form `value`/`checked` (`SignalRef`) with
+  onInput/onChange, v-focus; **main text includes v-once / vCloak sections**
 - ✅ Reactive page: createReactive form, multi-field summary, select and options
 - ✅ Resource page: refetch, id switch, Suspense and Promise blocks
 - ✅ Context page: light/dark theme toggle
@@ -141,12 +142,10 @@
 - ✅ With Provider, pushContext then useContext returns value; Provider value
   null edge case
 
-### 5. Directive (unit/directive.test.ts) - 25 tests
+### 5. Directive (unit/directive.test.ts) - 19 tests
 
 - ✅ directiveNameToCamel / directiveNameToKebab (v-if, vElseIf, etc.)
-- ✅ getDirectiveValue, getVIfValue, getVElseShow, getVElseIfValue,
-  getVShowValue
-- ✅ getVForListAndFactory (array, empty array, non-array edge)
+- ✅ getDirectiveValue, getVIfValue, getVElseShow, getVElseIfValue
 - ✅ hasDirective / hasStructuralDirective / isDirectiveProp
 - ✅ registerDirective / getDirective, createBinding
 
@@ -160,16 +159,13 @@
 
 ### 7. Integration (integration/integration.test.ts) - 5 tests
 
-- ✅ createRoot + event + signal: button onClick updates signal, DOM updates
-  with signal
-- ✅ Multiple event types: onClick, onChange binding
-- ✅ createEffect and createRoot: root reads signal, external set updates view
-- ✅ v-model: input text initial/input/set sync, checkbox checked two-way sync
-- ✅ createReactive form: vModel binding, input updates model, multi-field and
-  model sync
-- ✅ Fine-grained update: patch without full tree replace, DOM node identity
-  preserved, input not re-mounted; **getter returning Fragment**: input inside
-  Fragment remains same DOM node after signal update (no focus loss)
+- ✅ createRoot(fn(container)) + signal: button onClick updates signal; insert
+  getter updates DOM with signal; unmount clears container
+- ✅ Multiple event types: onClick and change handlers bind correctly
+- ✅ insert(getter) reads signal; external `.value` assignment updates view
+- ✅ After unmount, setting signal does not throw and DOM is not updated
+- ✅ Microtask ordering: after `Promise.resolve()`, insert-bound DOM reflects
+  signal updates (multiple cases in this file)
 
 ### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
 
@@ -184,16 +180,7 @@
 - ✅ applyMetaToHead: document.title and meta, fallbackTitle, titleSuffix, og
   property; edge: undefined meta, empty/whitespace name values
 
-### 10. Props (unit/props.test.ts) - 55 tests
-
-- ✅ applyProps: form value (clear, new value diff, blur); ref (null, callback,
-  { current }, signal getter, no current); vShow/vCloak;
-  dangerouslySetInnerHTML; value/checked reactive (getter, function); events
-  (onClick, replace, null, onChange); class/className, style, innerHTML; boolean
-  and generic attributes, select/textarea; children/key/directive skip; custom
-  directives (mounted, unmounted, updated).
-
-### 11. Reactive (unit/reactive.test.ts) - 7 tests
+### 10. Reactive (unit/reactive.test.ts) - 7 tests
 
 - ✅ createReactive: proxy initial props, does not mutate initial, get after set
   returns new value
@@ -201,13 +188,13 @@
   microtask)
 - ✅ Nested proxy, multi-field set triggers effects that read those fields
 
-### 12. Resource (unit/resource.test.ts) - 8 tests
+### 11. Resource (unit/resource.test.ts) - 8 tests
 
 - ✅ createResource (no source): loading/data/error, refetch, fetcher throw and
   non-Promise edge
 - ✅ createResource (with source): re-request when source changes
 
-### 13. Router (unit/router.test.ts) - 40 tests
+### 12. Router (unit/router.test.ts) - 40 tests
 
 - ✅ createRouter: getCurrentRoute, navigate, replace, subscribe, start, stop,
   back/forward/go
@@ -223,7 +210,7 @@
   target=_blank/download/data-native skip, hash anchor, modifier/right-click
   skip, interceptLinks: false
 
-### 14. Runtime (unit/runtime.test.ts) - 20 tests
+### 13. Runtime (unit/runtime.test.ts) - 20 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children; **SSR branch
   coverage**: null/undefined children, signal getter as child, plain function as
@@ -246,23 +233,19 @@
 - ✅ hydrate: reuse children and activate, remove cloak; state change after
   hydrate uses patch (same DOM reference for input)
 
-### 15. Scheduler (unit/scheduler.test.ts) - 5 tests
+### 14. Scheduler (unit/scheduler.test.ts) - 5 tests
 
 - ✅ schedule: tasks run in microtask; multiple schedules in same tick batch
 - ✅ unschedule: before flush cancels task; only specified task removed
 
-### 16. Signal (unit/signal.test.ts) - 16 tests
+### 15. Signal (unit/signal.test.ts) - 19 tests
 
-- ✅ createSignal: [getter, setter], initial value, setter and updater, same
+- ✅ createSignal: returns `SignalRef` (`.value` read/write), updater fn, same
   value (Object.is) no update
 - ✅ Edge: initial undefined/null
-- ✅ isSignalGetter, markSignalGetter
+- ✅ isSignalGetter, isSignalRef, `unwrapSignalGetterValue`, markSignalGetter
 
-### 17. SSR Directives (unit/ssr-directives.test.ts) - 6 tests
-
-- ✅ SSR vIf / vElseIf / vElse, vFor, vShow
-
-### 18. SSR document shim (unit/ssr-document-shim.test.ts) - 3 tests
+### 16. SSR document shim (unit/ssr-document-shim.test.ts) - 3 tests
 
 - ✅ Component accessing `document.body.style.overflow` does not throw and
   outputs HTML
@@ -275,7 +258,7 @@
   finishes
 - ✅ Streaming SSR: component accessing document does not throw
 
-### 19. Store (unit/store.test.ts) - 29 tests
+### 17. Store (unit/store.test.ts) - 29 tests
 
 - ✅ createStore: [get, set] for state only, empty state, get() reactive, set
   updater, nested props
@@ -291,19 +274,19 @@
 - ✅ Same key returns existing instance (state shared); setState updater;
   getters/actions non-function entries skipped; Proxy ownKeys / spread
 
-### 20. Stream (unit/stream.test.ts) - 4 tests
+### 18. Stream (unit/stream.test.ts) - 4 tests
 
 - ✅ renderToStream: returns generator; simple div yields HTML; text children
   escaped; **plain function as child** renders return value (no source code);
   keyed children output data-view-keyed; void elements no closing tag
 
-### 21. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
+### 19. Build & HMR (unit/build-hmr.test.ts, unit/hmr.test.ts) - 8 tests
 
 - ✅ getRoutePathForChangedPath: /views/home → "/", /views/{segment} →
   "/{segment}", Windows path
 - ✅ getHmrVersionGetter / **VIEW_HMR_BUMP**: version getter and bump
 
-### 22. Compiler (unit/compiler.test.ts) - 13 tests
+### 20. Compiler (unit/compiler.test.ts) - 13 tests
 
 - ✅ optimize: constant folding (numeric, comparison, string concat),
   empty/invalid code; edge: divide/modulo by zero (no fold), unary plus fold,
@@ -311,37 +294,25 @@
 - ✅ createOptimizePlugin: name and setup, custom filter and readFile; onLoad
   readFile failure catch returns empty string
 
-### 23. Proxy (unit/proxy.test.ts) - 5 tests
+### 21. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy: get/set consistent with target, nested proxy, proxyCache
   reuse
 
-### 24. Reconcile focus / container reuse (unit/reconcile-focus-reuse.test.ts) - 10 tests
+### 22. Custom directives mount (unit/vnode-mount-directives.test.ts) - 3 tests
 
-- ✅ **Reconcile**: when the same slot has two getters with different references
-  (e.g. parent re-render), the `data-view-dynamic` container is reused instead
-  of replaced; container identity preserved, inner content from getter remains
-- ✅ **Reconcile**: multiple dynamic children; only the slot whose getter
-  reference changed is updated, others unchanged
-- ✅ **patchNode**: when the same component (returning a getter) is patched and
-  the existing DOM is a dynamic container, the container is reused via
-  getComponentGetter + updateDynamicChild (avoids input focus loss e.g.
-  Password)
-- ✅ **Edge**: getter → static child: replace, no dynamic container left
-- ✅ **Edge**: static → getter: new dynamic container created
-- ✅ **Edge**: same component but returns raw VNode (not getter): patch
-  replaces, no container reuse
-- ✅ **Edge**: same getter reference (unchanged): no error, DOM unchanged
-- ✅ **Edge**: getter returns null: container remains, children empty, no throw
+- ✅ Hand-written VNode + `applyDirectives`: `mounted` runs in microtask
+- ✅ Binding as signal getter: `updated` re-runs when dependencies change;
+  `SignalRef` bindings also re-run `updated`
 
 ## Test Coverage Analysis
 
-| Category          | Coverage                                                                                                                                                                                                                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| API methods       | createSignal, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, directives, Boundary, Runtime/SSR, **SSR document shim**, scheduler, meta, proxy, compiler, stream, **reconcile focus/container reuse** covered by tests |
-| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, getter/static switch, getter returns null, same component raw VNode, etc.                                                                                                                                                                   |
-| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                                                                                       |
-| Integration & E2E | createRoot + events + signal, v-model, createReactive form, fine-grained update, **reconcile getter reuse and same-component container reuse**, CLI init/build/start, browser multi-page and navigation, **Gallery / Layout2 / Runtime doc blocks / Store persist (browser)**                                                  |
+| Category          | Coverage                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API methods       | createSignal (`SignalRef`), `unwrapSignalGetterValue`, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, compiler, directives (incl. custom mount + `SignalRef` updated), Boundary, Runtime/SSR, **SSR document shim**, scheduler, meta, proxy, stream, **spread-intrinsic**, **insert-replacing** |
+| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, unmount + signal set, etc.                                                                                                                                                                                                                                                                                            |
+| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                                                                                                                                                                 |
+| Integration & E2E | createRoot + events + signal + insert, microtask DOM updates, CLI init/build/start, browser multi-page and navigation, **Gallery / Layout2 / Runtime doc blocks / Store persist / Form password focus (browser)**                                                                                                                                                                                        |
 
 ## Advantages
 
@@ -353,22 +324,17 @@
 
 ## Conclusion
 
-All tests for @dreamer/view pass under **Deno** (500 tests) and **Bun** (457
-tests; count differs by runner). 100% pass rate. Coverage includes signals,
-reactivity, scheduler, router, resource, context, directives, runtime and SSR
-(createRoot, render, **mount**, **createReactiveRoot**, hydrate, renderToString
-with full branch coverage, renderToStream, **SSR document shim**: component
-access to document does not throw and document is restored after render),
-**applyProps** (ref, vShow/vCloak, dangerouslySetInnerHTML, value/checked
-reactive, events, class, style, attributes, custom directives), store (persist,
-getters/actions, edge cases), reactive, boundary, meta (getMetaHeadFragment,
-applyMetaToHead, edge cases), proxy, compiler (constant folding edge cases,
-plugin onLoad catch), stream, build/HMR, **reconcile focus/container reuse**
-(same-slot getter reuse, same-component patch reuse, getter/static edges),
-**spread-intrinsic / insert-replacing / active-document / escape, compiled vs
-compiler contract, RoutePage, router-mount (including notFound), version-utils,
-logger-server, subpath entry smoke (csr/hybrid/ssr), vnode-insert-bridge**, CLI
-(init/build/start), **browser E2E** (Gallery, Layout2, top-nav dropdown to
-gallery, Runtime static doc blocks, Store localStorage restore, v-once/vCloak
-copy, etc.), and **integration**: getter-returning Fragment input focus
-preservation, suitable for release and documentation.
+All tests for @dreamer/view pass under **Deno** (509 tests) and **Bun** (465
+tests; count differs by runner). 100% pass rate. Coverage includes signals
+(`SignalRef`, `unwrapSignalGetterValue`), reactivity, scheduler, router,
+resource, context, directives (built-in helpers + **vnode-mount-directives**
+custom `applyDirectives`), runtime and SSR (createRoot, render, **mount**,
+**createReactiveRoot**, hydrate, renderToString, renderToStream, **SSR document
+shim**), **spread-intrinsic** / **insert-replacing** / **runtime-props**
+(mergeProps, splitProps), store (persist, getters/actions), reactive, boundary,
+meta, proxy, compiler, stream, build/HMR, **compiled vs compiler contract**,
+RoutePage, router-mount, version-utils, logger-server, subpath entry smoke
+(csr/hybrid/ssr), **vnode-insert-bridge**, CLI (init/build/start), **browser
+E2E** (Gallery, Layout2, Form password focus, Store localStorage restore,
+v-once/vCloak copy, etc.), and **integration** (createRoot + insert + events +
+unmount), suitable for release and documentation.
