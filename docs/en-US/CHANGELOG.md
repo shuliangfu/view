@@ -8,6 +8,34 @@ and this project adheres to
 
 ---
 
+## [1.3.2] - 2026-03-21
+
+### Fixed
+
+- **JSX compiler (`vIf`)**: Root elements with `vIf` now use the same
+  `insertReactive` path as fragment chains so the condition re-runs when signals
+  change (fixes “still visible when false”). Single-branch `vIf`/`vElseIf` emits
+  a noop MountFn when false so the previous subtree is always detached; fixes
+  adjacent sibling-only `vIf` blocks incorrectly showing every branch.
+- **VNode mount**: Compiler/component single-arg MountFns are wrapped with
+  `insertReactiveForVnodeSubtree` (aligned with `insertReactive`) so v-if/signal
+  updates clean up DOM correctly in deep trees (e.g. dweb layouts).
+
+### Changed
+
+- **`getDocument()`**: Returns `Document | null` instead of throwing during SSR
+  or without a DOM; prefers the SSR shadow document (`KEY_VIEW_SSR_DOCUMENT`)
+  for isomorphic/hybrid code.
+- **Dependencies**: bump `@dreamer/esbuild` to `^1.1.5` (`serverSideRouteBundle`
+  / server-side bundle fixes for tooling consumers).
+
+### Added
+
+- **CI**: workflow-level `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` for GitHub Actions
+  Node 24 validation.
+
+---
+
 ## [1.3.1] - 2026-03-21
 
 ### Changed

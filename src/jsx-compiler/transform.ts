@@ -1969,6 +1969,31 @@ function buildIfChainBranchMountArrow(
 }
 
 /**
+ * 单分支 v-if 在条件为 false 时返回的挂载函数：空函数体，不向 parent 插入任何节点。
+ * 与手写 `vElse` 空支语义一致，保证 `insertReactive` **始终**走 MountFn 分支，从而可靠 detach 上一帧子树；
+ * 若仅 `if (cond) return mount` 而 false 时隐式 `undefined`，在部分 CSR/嵌套挂载路径下曾出现 DOM 残留。
+ */
+function buildNoOpIfFalseMountArrow(): ts.ArrowFunction {
+  return factory.createArrowFunction(
+    undefined,
+    undefined,
+    [
+      factory.createParameterDeclaration(
+        undefined,
+        undefined,
+        JSX_MOUNT_FN_PARENT_PARAM,
+        undefined,
+        factory.createTypeReferenceNode("Element", undefined),
+        undefined,
+      ),
+    ],
+    undefined,
+    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+    factory.createBlock([], true),
+  );
+}
+
+/**
  * 用 insertReactive(parentVar, getter) 包住 v-if 链：getter 内按条件 return 各支的挂载函数，
  * 使 tab()/show() 等变化时 effect 重新执行，切换显示对应分支。
  */
@@ -1990,19 +2015,41 @@ function buildIfChainAsInsertReactive(
 ): ts.Statement[] {
   if (branches.length === 0) return [];
   const insertReactiveId = ctx.insertReactiveId;
-  let tail: ts.Statement = factory.createReturnStatement(
-    buildIfChainBranchMountArrow(branches[branches.length - 1]!, ctx),
-  );
-  for (let b = branches.length - 2; b >= 0; b--) {
-    const br = branches[b]!;
-    if (br.kind === "else") continue;
-    const rawCond = br.cond ?? factory.createTrue();
+  const lastBr = branches[branches.length - 1]!;
+  /**
+   * 多个兄弟各自写 `vIf`（而非 vElseIf 链）时，tryParseIfChain 在「下一个兄弟也是 vIf」处截断，
+   * 每条只含 **一个** 分支。此时若仍生成 `return mountLast`，会 **丢掉条件**、无条件挂载，导致
+   * 并列的多个 vIf 全部显示。单分支且为 if/elseIf 时，必须把条件包在 return 外。
+   */
+  let tail: ts.Statement;
+  if (
+    branches.length === 1 &&
+    (lastBr.kind === "if" || lastBr.kind === "elseIf")
+  ) {
+    const rawCond = lastBr.cond ?? factory.createTrue();
     const cond = conditionToBooleanExpression(rawCond);
     tail = factory.createIfStatement(
       cond,
-      factory.createReturnStatement(buildIfChainBranchMountArrow(br, ctx)),
-      tail,
+      factory.createReturnStatement(
+        buildIfChainBranchMountArrow(lastBr, ctx),
+      ),
+      factory.createReturnStatement(buildNoOpIfFalseMountArrow()),
     );
+  } else {
+    tail = factory.createReturnStatement(
+      buildIfChainBranchMountArrow(lastBr, ctx),
+    );
+    for (let b = branches.length - 2; b >= 0; b--) {
+      const br = branches[b]!;
+      if (br.kind === "else") continue;
+      const rawCond = br.cond ?? factory.createTrue();
+      const cond = conditionToBooleanExpression(rawCond);
+      tail = factory.createIfStatement(
+        cond,
+        factory.createReturnStatement(buildIfChainBranchMountArrow(br, ctx)),
+        tail,
+      );
+    }
   }
   const getter = factory.createArrowFunction(
     undefined,
@@ -2082,6 +2129,17 @@ function buildElementStatements(
   const elementChildren = ts.isJsxSelfClosingElement(node) ? [] : node.children;
   const attrs = open.attributes;
   const vIfCond = opts?.omitVIfWrap ? null : getVIfCondition(attrs);
+  /**
+   * 元素自身带 vIf 时**不可**在 mount 里写单次 `if (cond) { ... }`：整棵组件 mount 箭头只执行一次，
+   * cond 里 signal 后续变化不会重新求值，表现为「已是 false 仍看见 DOM」。Fragment 子节点走
+   * tryParseIfChain → insertReactive 故正常；根节点 `<div vIf>` 曾踩此坑。
+   * 与兄弟 v-if 链一致，统一走 {@link buildIfChainAsInsertReactive}（omitVIfWrap 的内层递归不再进入此分支）。
+   */
+  if (vIfCond !== null && !opts?.omitVIfWrap) {
+    return buildIfChainAsInsertReactive(parentVar, [
+      { kind: "if", cond: vIfCond, node },
+    ], ctx);
+  }
   const vForListExpr = getVForListExpression(attrs);
   const childOnce = ctx.inOnceSubtree || hasVOnceAttribute(attrs);
   const childCtx: EmitContext = { ...ctx, inOnceSubtree: childOnce };
@@ -2233,17 +2291,7 @@ function buildElementStatements(
     return stmts;
   }
 
-  if (!opts?.omitVIfWrap && vIfCond !== null) {
-    stmts.push(
-      factory.createIfStatement(
-        vIfCond,
-        factory.createBlock(innerStmts, true),
-        undefined,
-      ),
-    );
-  } else {
-    stmts.push(...innerStmts);
-  }
+  stmts.push(...innerStmts);
   return stmts;
 }
 

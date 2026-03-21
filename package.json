@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Lightweight reactive view engine with signals and effects; fine-grained DOM updates without virtual DOM. Supports CSR, SSR, streaming SSR, and hydration. JSX with v-if, v-for, v-show and store, router, context.",
@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@dreamer/console": "npm:@jsr/dreamer__console@^1.0.12",
-    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.1.2",
+    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.1.5",
     "@dreamer/i18n": "npm:@jsr/dreamer__i18n@^1.0.1",
     "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
     "@dreamer/logger": "npm:@jsr/dreamer__logger@^1.0.3",

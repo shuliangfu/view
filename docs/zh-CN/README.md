@@ -1182,9 +1182,10 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.1**（2026-03-21）：**变更** `@dreamer/esbuild` 提升至 **`^1.1.2`**（JSR
-子路径缓存匹配修复）；**重构** CLI 子命令实现迁至
-**`src/cmd/`**（对外命令不变）； **修复** 刷新 **`bun.lock`**。完整历史见
+**v1.3.2**（2026-03-21）：**修复** 根节点 `vIf`、并列 `vIf` 走
+`insertReactive`， **vnode-mount** 下单参 MountFn 与响应式清理对齐；**变更**
+`getDocument()` 改为 `Document | null`、**`@dreamer/esbuild`
+`^1.1.5`**；**新增** CI **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`**。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
