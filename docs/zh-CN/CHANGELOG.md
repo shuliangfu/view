@@ -7,6 +7,25 @@
 
 ---
 
+## [1.3.1] - 2026-03-21
+
+### 变更
+
+- **依赖**：将 `@dreamer/esbuild` 提升至 `^1.1.2`（JSR 子路径缓存匹配修复，避免
+  `jsr:@dreamer/view/router` 等误解析）。
+
+### 重构
+
+- **CLI 目录**：将 view-cli 子命令实现由 `src/server/cmd/` 迁至 **`src/cmd/`**；
+  `cli.ts` 动态导入 `./cmd/{init,dev,build,start,upgrade,update}.ts`。对外 CLI
+  行为不变。
+
+### 修复
+
+- **锁文件**：依赖对齐后刷新 `bun.lock`。
+
+---
+
 ## [1.3.0] - 2026-03-21
 
 ### 重构

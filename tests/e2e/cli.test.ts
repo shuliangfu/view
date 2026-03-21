@@ -86,7 +86,7 @@ describe("CLI：init", () => {
       try {
         await import("../../src/server/utils/i18n.ts");
         // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败；传 runtime 跳过交互菜单
-        const { main: initMain } = await import("../../src/server/cmd/init.ts");
+        const { main: initMain } = await import("../../src/cmd/init.ts");
         await initMain({ dir: INIT_OUT_DIR, runtime: "deno", style: "none" });
       } finally {
         if (prevLang !== undefined) setEnv("LANGUAGE", prevLang);

@@ -3,8 +3,8 @@
  */
 
 import { cwd, exit, setEnv } from "@dreamer/runtime-adapter";
-import { createApp } from "../core/app.ts";
-import { loadViewConfig } from "../core/config.ts";
+import { createApp } from "../server/core/app.ts";
+import { loadViewConfig } from "../server/core/config.ts";
 
 /**
  * 执行开发流程：loadViewConfig → createApp({ mode: 'dev' }) → app.start()
