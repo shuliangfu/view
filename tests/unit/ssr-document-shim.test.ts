@@ -6,6 +6,12 @@ import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import { insert, renderToStream, renderToString } from "@dreamer/view/compiler";
 
+/** 与 DOM / 全局 document 交互，关闭 Deno 测试默认的 op/resource 消毒 */
+const describeDomOptions = {
+  sanitizeOps: false,
+  sanitizeResources: false,
+};
+
 describe("renderToString document 恢复", () => {
   it("执行完毕后 globalThis.document 被恢复", () => {
     const before = (globalThis as unknown as { document?: Document }).document;
@@ -15,7 +21,7 @@ describe("renderToString document 恢复", () => {
     const after = (globalThis as unknown as { document?: Document }).document;
     expect(after).toBe(before);
   });
-});
+}, describeDomOptions);
 
 describe("renderToStream document 恢复", () => {
   it("流式 SSR 执行完毕后 globalThis.document 被恢复", async () => {
@@ -27,4 +33,4 @@ describe("renderToStream document 恢复", () => {
     const after = (globalThis as unknown as { document?: Document }).document;
     expect(after).toBe(before);
   });
-});
+}, describeDomOptions);

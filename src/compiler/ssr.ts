@@ -1,5 +1,5 @@
 /**
- * 路线 C SSR — 服务端执行编译后 fn(container) 并输出 HTML/流。
+ * 编译路径 SSR：服务端执行编译后的 fn(container) 并输出 HTML/流。
  * 与客户端插入点约定一致：同一套编译产物，服务端用伪 document 跑一次 fn，再序列化 container。
  *
  * @module @dreamer/view/runtime/ssr

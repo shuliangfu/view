@@ -1,5 +1,5 @@
 /**
- * @fileoverview 路线 C 运行时 Props 工具单元测试：mergeProps、splitProps
+ * @fileoverview 编译路径下 Props 工具单元测试：mergeProps、splitProps
  */
 
 import { describe, expect, it } from "@dreamer/test";

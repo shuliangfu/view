@@ -1,5 +1,5 @@
 /**
- * 路线 C 运行时 — 细粒度水合（复用服务端 DOM、只绑 effect）
+ * 细粒度水合运行时：复用服务端 DOM、只绑 effect
  *
  * 与 createRoot 同一 fn(container) 约定：服务端 renderToString 出 HTML 后，
  * 客户端对同一容器调用 hydrate(fn, container)，按插入点顺序复用已有子节点，仅绑定 effect，不整树替换。
@@ -7,12 +7,17 @@
  * @module @dreamer/view/runtime/hydrate
  */
 
-import { KEY_VIEW_HYDRATE } from "../constants.ts";
+import { KEY_VIEW_HYDRATE, KEY_VIEW_SSR_DOCUMENT } from "../constants.ts";
 import { createScopeWithDisposers, setCurrentScope } from "../effect.ts";
 import { createEffect } from "../effect.ts";
+import { getGlobal, setGlobal } from "../globals.ts";
 import { removeCloak } from "../runtime-shared.ts";
-import type { InsertValue } from "./insert.ts";
 import type { Root } from "../types.ts";
+import {
+  type ActiveDocumentLike,
+  setSSRShadowDocument,
+} from "./active-document.ts";
+import type { InsertValue } from "./insert.ts";
 
 /** DOM Node.nodeType 常量，避免依赖全局 Node（Deno 等环境中可能未定义） */
 const NODE_TYPE_ELEMENT = 1;
@@ -203,9 +208,12 @@ export function hydrate(
 
   const scope = createScopeWithDisposers();
   const prevHydrate = (globalThis as Record<string, unknown>)[KEY_VIEW_HYDRATE];
+  /** 恢复 globalThis.document 用；浏览器上 document 常为只读，仅走影子 document */
   const prevDocument =
     (globalThis as typeof globalThis & { document: Document })
       .document;
+  /** 与 renderToString 共用 KEY_VIEW_SSR_DOCUMENT：水合前保存，结束后还原，避免嵌套 SSR 丢失 */
+  const prevShadowDoc = getGlobal<ActiveDocumentLike>(KEY_VIEW_SSR_DOCUMENT);
 
   const documentProxy = new Proxy(realDocument, {
     get(target, prop: string) {
@@ -223,8 +231,16 @@ export function hydrate(
   }) as Document;
 
   (globalThis as Record<string, unknown>)[KEY_VIEW_HYDRATE] = context;
-  (globalThis as typeof globalThis & { document: Document }).document =
-    documentProxy;
+
+  /** 浏览器无法给 window.document 赋值时，经 getActiveDocument() 读影子代理（同 ssr.ts） */
+  let patchedGlobalDocument = false;
+  try {
+    (globalThis as typeof globalThis & { document: Document }).document =
+      documentProxy;
+    patchedGlobalDocument = true;
+  } catch {
+    setSSRShadowDocument(documentProxy as ActiveDocumentLike);
+  }
 
   setCurrentScope(scope);
   try {
@@ -233,13 +249,24 @@ export function hydrate(
   } finally {
     setCurrentScope(null);
     (globalThis as Record<string, unknown>)[KEY_VIEW_HYDRATE] = prevHydrate;
-    (globalThis as typeof globalThis & { document: Document }).document =
-      prevDocument;
+    if (patchedGlobalDocument) {
+      try {
+        (globalThis as typeof globalThis & { document: Document }).document =
+          prevDocument;
+      } catch {
+        // 与赋值阶段一致：极少数环境恢复失败时忽略，避免掩盖 fn 内真实错误
+      }
+    } else if (prevShadowDoc !== undefined) {
+      setGlobal(KEY_VIEW_SSR_DOCUMENT, prevShadowDoc);
+    } else {
+      setSSRShadowDocument(undefined);
+    }
   }
 
   return {
     unmount() {
       scope.runDisposers();
+      /** hydrate 的 unmount 仅回收 effect，不清空 DOM：服务端 HTML 应保留，仅停止响应式更新 */
     },
     container,
   };

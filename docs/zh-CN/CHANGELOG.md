@@ -7,43 +7,85 @@
 
 ---
 
-## [1.3.0] - 2026-03-20
+## [1.3.0] - 2026-03-21
+
+### 重构
+
+- **根挂载 API 统一为
+  `fn(container) + insert`**：`createRoot`、`render`、`hydrate` 均接收
+  **`(container: Element) => void`**；**`fn` 在整个根生命周期内只执行一次**， 在
+  `fn` 内通过 **`insert` / `insertReactive` / `createElement` + `appendChild`**
+  建立 DOM 与响应式插入点，后续更新全部由插入点上的 **effect** 驱动，不再在根层
+  反复执行整棵 `fn`。该形状与 **view-cli `compileSource`
+  产物**一致，手写与编译共用 同一心智模型。
+- **SSR / CSR 共用同一 `fn`**：服务端 **`renderToString(fn)`**（或流式
+  SSR）与客户端 **`hydrate(fn, container)`**（自 **`@dreamer/view/compiler`**
+  导出）使用**同一份** 编译后的 `fn`；水合时按插入点顺序**复用已有 DOM**，只绑定
+  effect，避免整容器 `innerHTML` 级替换。
+- **`mount` 职责收敛**：**`mount(selector | Element, fn, options?)`**
+  仅负责解析挂载 目标（选择器或元素），再调用
+  **`render(fn, el)`**；**不会**根据容器是否已有子节点
+  自动切换为水合。混合应用需在客户端**显式**调用 **`hydrate`**。
+- **移除 `createReactiveRoot`**：原先「外部状态 getter + 每次变更重建子树」的
+  API 已删除。请改用
+  **`createRoot((container) => { … insert(…, getter) … }, el)`** 配合
+  **`createSignal` / `createStore` / `createEffect`**，或使用
+  **`mountWithRouter`** 等路由集成方式；与细粒度 `insert`
+  模型一致，避免根级整树重跑。
 
 ### 变更
 
-- **对外 API 与模块 JSDoc 完善** 所有对外导出的入口与 API 均补充完整 JSDoc。各
-  导出路径均包含 `@module` 与 `@packageDocumentation`，并列出导出清单；导出函数
-  与类型均补充 `@param`、`@returns`，必要时增加 `@example`。面向用户的模块说明中
-  已移除仅内部使用的表述（如「路线 C」）。
+- **对外 API 与模块 JSDoc 完善** 所有对外导出的入口与 API 均补充完整
+  JSDoc。各导出 路径均包含 `@module` 与
+  `@packageDocumentation`，并列出导出清单；导出函数与类型均 补充
+  `@param`、`@returns`，必要时增加 `@example`。面向用户的模块说明中已去掉团队
+  内部架构代号，改为可直接理解的表述（例如：JSX 经 compileSource 编译、由
+  insert/createRoot 等 API 驱动）。
 - **compiler/mod.ts** 模块标签由 `@dreamer/view/runtime` 更正为
   `@dreamer/view/compiler`，并完整列出导出（insert、createRoot、hydrate、SSR、
   props、signal/effect 再导出及类型）。
-- **主入口与子路径** `mod.ts`、`mod-ssr.ts`、`mod-csr.ts`、`mod-hybrid.ts` 现
-  均写明全部导出及使用说明（如 hybrid/csr 不导出 `insert`，需时从主入口或
-  compiler 引入）。`dom.ts`、`globals.ts`、`ref.ts`、`compiled.ts`、
-  `jsx-compiler/mod.ts`、`compiler/insert-replacing.ts`、`optimize.ts` 及
-  `compiler/active-document.ts` 的模块说明已统一风格。
+- **主入口与子路径** `mod.ts`、`mod-ssr.ts`、`mod-csr.ts`、`mod-hybrid.ts`
+  现均写明 全部导出及使用说明（如 hybrid/csr 不导出 `insert`，需时从主入口或
+  compiler 引入）。
+  `dom.ts`、`globals.ts`、`ref.ts`、`compiled.ts`、`jsx-compiler/mod.ts`、
+  `compiler/insert-replacing.ts`、`optimize.ts` 及 `compiler/active-document.ts`
+  的模块 说明已统一风格。
 - **运行时与编译器** `runtime.ts` 文件头及
   `insertReactive`、`InsertValueWithMount` 的 JSDoc 已扩充；`compiler/insert.ts`
-  与 `jsx-compiler/transform.ts` 的模块 描述已更新并与对外用法一致。JSX
-  编译器中的 `compileSource` 与 `jsxToRuntimeFunction`
-  已补充完整参数与返回值说明。
+  与 `jsx-compiler/transform.ts` 的模块描述已更新 并与对外用法一致。JSX
+  编译器中的 `compileSource` 与 `jsxToRuntimeFunction` 已补充
+  完整参数与返回值说明。
 - **Examples** `examples/package.json` 的 imports 与 dependencies 已与
   `examples/deno.json` 同步：新增 `@dreamer/view/ssr`、`@dreamer/view/compiler`
   及 `@dreamer/esbuild`；所有 JSR/npm
-  依赖（image、plugins、esbuild、tailwindcss） 版本与 deno.json 一致。
+  依赖（image、plugins、esbuild、tailwindcss）版本与 `deno.json` 一致。
+
+### 测试
+
+- 新增单元测试：`spread-intrinsic`、`insert-replacing`、`escape`、`active-document`、
+  `compiled-contract`、`route-page`、`version-utils`、`logger-server`、
+  `vnode-insert-bridge`；扩展 `boundary`（嵌套 ErrorBoundary）、`router-mount`
+  （notFound）。`entry-mod-smoke` 增加 `@dreamer/view/ssr` 的 `renderToString`
+  烟测。
+- 测试文件表与用例数已随本轮对齐：`compiled-runtime`、`form-page-compile`、
+  `jsx-compiler`、`ref-dom`、`ref`、`router-mount`、`runtime-props`、`ssr-compiled`、
+  `unmount` 等；`e2e/view-example-browser` 浏览器 E2E 共 72
+  条（Gallery、Layout2、persist、v-once/vCloak、路由与 404 等）。
+
+### 修复
+
+- **`package.json` exports** 补充 `./ssr` → `./src/mod-ssr.ts`，与 `deno.json`
+  对齐，Bun 可解析 `@dreamer/view/ssr`。
 
 ### 文档
 
-- **TEST_REPORT（中/英）** 已按当前测试结果更新：442 用例（Deno）、409（Bun）、
-  34 个测试文件、日期 2026-03-20、耗时约 1m54s（Deno）/ 82s（Bun）。测试文件表
-  已更新：新增 compiled-runtime、form-page-compile、jsx-compiler、ref-dom、ref、
-  router-mount、runtime-props、ssr-compiled、unmount；移除
-  props、ssr-directives、 reconcile-focus-reuse；并修正
-  boundary、context、integration、portal、runtime、
-  signal、ssr-document-shim、stream、transition 及 E2E 浏览器等用例数。
-- **README（中/英）** 测试总结与徽章已更新：442 通过（Deno）/ 409（Bun）、测试
-  日期 2026-03-20、双运行时的耗时与文件数。TEST_REPORT 链接未改。
+- **TEST_REPORT（中/英）**、**README（中/英）**：用例数
+  **500**（Deno）/**457**（Bun）、 **44** 个测试文件、日期
+  **2026-03-21**；耗时约 **1m38s**（Deno）/**~85s**（Bun）；
+  徽章与「测试报告简要」已同步；E2E 与文件表与上述一致。
+- **README（中/英）** 已补充 **`fn(container)`**、显式 **`hydrate`**、**`mount`
+  不自动 水合**、**`createReactiveRoot` 移除**等迁移说明，与 1.3.0 重构一致。
+- **`docs/测试覆盖缺口.md`** 已对照本轮补测更新状态说明。
 
 ---
 

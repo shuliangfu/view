@@ -1,5 +1,5 @@
 /**
- * @fileoverview 集成测试：路线 C createRoot(fn(container)) + insert + 事件与 signal
+ * @fileoverview 集成测试：createRoot(fn(container)) + insert + 事件与 signal
  * 仅使用新 API：fn(container) => void，内部 createElement、appendChild、insert、addEventListener。
  */
 

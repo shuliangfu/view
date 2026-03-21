@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-442%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-500%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -1182,9 +1182,12 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.2.0**（2026-03-19）：**修复** 动态 getter 单节点为组件时改为用展开后的
-VNode 做 patch，对同一棵 DOM 增量更新（如轮播滑动过渡生效），不再整块替换；仅该
-槽位状态变化时不再触发整页重渲染或其它状态重置。完整历史见
+**v1.3.0**（2026-03-21）：**重构** 根挂载统一为
+**`fn(container) + insert`**（`createRoot` / `render` / `hydrate` 同形；`mount`
+仅委托 `render`、不自动水合；移除 **`createReactiveRoot`**）； **变更** 对外
+JSDoc、compiler/子路径文档、`examples` 依赖与 `deno.json` 对齐；**测试**
+新增/扩展多组单测与 **72** 条浏览器 E2E；**修复** `package.json` 补充
+**`./ssr`** 导出； **文档** TEST_REPORT/README 与迁移说明同步。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
@@ -1193,12 +1196,12 @@ VNode 做 patch，对同一棵 DOM 增量更新（如轮播滑动过渡生效）
 
 | 项目     | 值                                  |
 | -------- | ----------------------------------- |
-| 测试日期 | 2026-03-20                          |
-| 总用例数 | 442 (Deno) / 409 (Bun)              |
-| 通过     | 442 ✅ / 409 ✅                     |
+| 测试日期 | 2026-03-21                          |
+| 总用例数 | 500 (Deno) / 457 (Bun)              |
+| 通过     | 500 ✅ / 457 ✅                     |
 | 失败     | 0                                   |
 | 通过率   | 100%                                |
-| 耗时     | ~1m54s (Deno) / ~82s (Bun，34 文件) |
+| 耗时     | ~1m38s (Deno) / ~85s (Bun，44 文件) |
 
 含单元、集成、E2E（CLI/浏览器）及 **SSR document shim**（组件内访问 document
 不抛错）。详见 [TEST_REPORT.md](./TEST_REPORT.md)。

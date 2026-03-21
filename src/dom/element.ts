@@ -1,7 +1,7 @@
 /**
  * @module @dreamer/view/dom/element
  * @description
- * 路线 C 下仅保留 normalizeChildren（供类型与兼容用）；VNode→DOM 已全部走编译产物 + insert，不再导出 expandVNode/createElement 等。
+ * 当前仅保留 normalizeChildren（供类型与兼容用）；VNode→DOM 已全部走 compileSource 产物 + insert，不再导出 expandVNode/createElement 等。
  */
 
 import { isSignalGetter } from "../signal.ts";

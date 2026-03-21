@@ -72,4 +72,4 @@ describe("Provider", () => {
   });
 });
 
-// 旧版 createRoot(() => VNode) 已废弃，Context 在路线 C 下与编译产物 + insert 配合使用，不再单独测 createRoot+Provider DOM 更新。
+// 旧版 createRoot(() => VNode) 已废弃；Context 与 compileSource 产物 + insert 配合使用，不再单独测 createRoot+Provider DOM 更新。

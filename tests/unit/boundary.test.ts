@@ -97,6 +97,27 @@ describe("ErrorBoundary", () => {
     expect(() => mount(container)).not.toThrow();
     expect(container.textContent).toBe("");
   });
+
+  /**
+   * 内层 ErrorBoundary 在 try/catch 内消化同步抛错，外层不应落到外层 fallback。
+   */
+  it("嵌套 ErrorBoundary：内层抛错应显示内层 fallback", () => {
+    const container = document.createElement("div");
+    const mount = ErrorBoundary({
+      fallback: () => "outer",
+      children: (parent) => {
+        const inner = ErrorBoundary({
+          fallback: () => "inner",
+          children: () => {
+            throw new Error("nested");
+          },
+        });
+        inner(parent);
+      },
+    });
+    mount(container);
+    expect(container.textContent).toBe("inner");
+  });
 });
 
 describe("Suspense", () => {

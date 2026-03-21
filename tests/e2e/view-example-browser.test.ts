@@ -198,6 +198,31 @@ async function clickNavLinkByText(
   return ok as boolean;
 }
 
+/**
+ * 顶栏分组下拉（Tailwind `group-hover/list`）：对含指定文案的分组按钮所在 `li` 触发
+ * `mouseenter`，再点击下拉内链接文案匹配的 `a`（用于「示例 → 相册」等无首页卡片的入口）。
+ *
+ * @param groupButtonSubstring 分组按钮可见文案片段，如「示例」
+ * @param itemLabel 子菜单链接可见文案，与路由 `metadata.title` 一致，如「相册」
+ */
+async function clickNavDropdownLinkByLabels(
+  t: { browser?: { evaluate: (fn: () => boolean) => Promise<unknown> } },
+  groupButtonSubstring: string,
+  itemLabel: string,
+): Promise<boolean> {
+  if (!t?.browser) return false;
+  const g = JSON.stringify(groupButtonSubstring);
+  const lbl = JSON.stringify(itemLabel);
+  const ok = await t.browser.evaluate(
+    new Function(
+      "var g=" + g + ",lbl=" + lbl +
+        ";var nav=document.querySelector('header nav');if(!nav)return false;var buttons=nav.querySelectorAll('button[type=\"button\"]');for(var i=0;i<buttons.length;i++){var btn=buttons[i];if(!btn.textContent||btn.textContent.indexOf(g)===-1)continue;var li=btn.closest('li');if(!li)continue;li.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));li.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));var links=li.querySelectorAll('a[href]');for(var j=0;j<links.length;j++){var a=links[j];if(a.textContent&&a.textContent.trim().indexOf(lbl)!==-1){a.click();return true;}}return false;}return false;",
+    ) as () => boolean,
+  );
+  await new Promise((r) => setTimeout(r, 220));
+  return ok as boolean;
+}
+
 /** 获取 main 内可见文本 */
 async function getMainText(
   t: { browser?: { evaluate: (fn: () => string) => Promise<unknown> } },
@@ -232,8 +257,8 @@ async function getDocumentTitle(
   return (await t.browser.evaluate(() => document.title)) as string;
 }
 
-/** 读取已 piped 的 ReadableStream 内容（用于启动失败时输出子进程 stderr） */
-async function readStreamText(
+/** 读取已 piped 的 ReadableStream 内容（用于启动失败时输出子进程 stderr；当前 stdout/stderr 为 inherit 故未调用） */
+async function _readStreamText(
   stream: ReadableStream<Uint8Array> | null,
 ): Promise<string> {
   if (!stream) return "";
@@ -290,7 +315,7 @@ describe("浏览器测试（examples 入口）", () => {
       }
       await new Promise((r) => setTimeout(r, 200));
     }
-    let errMsg =
+    const errMsg =
       "Examples dev server did not start within 15s. With stdout/stderr inherit, see CI log for server output.";
     throw new Error(errMsg);
   });
@@ -1406,6 +1431,178 @@ describe("浏览器测试（examples 入口）", () => {
     },
     exampleBrowserConfig,
   );
+
+  it(
+    "Gallery 页：/gallery 展示相册网格且静态图片可加载（/images/*）",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/gallery");
+      await new Promise((r) => setTimeout(r, 400));
+      const text = await getMainText(t);
+      expect(text).toContain("图片相册");
+      expect(text).toContain("assets/images");
+      const deadline = Date.now() + 5000;
+      let loaded = false;
+      while (Date.now() < deadline) {
+        loaded = (await t.browser!.evaluate(() => {
+          const img = document.querySelector(
+            "main img[src^='/images/']",
+          ) as HTMLImageElement | null;
+          return !!(img && img.complete && img.naturalWidth > 0);
+        })) as boolean;
+        if (loaded) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      expect(loaded).toBe(true);
+      const title = await getDocumentTitle(t);
+      /** 代码生成或 extractMeta 在部分运行时下 title 可能为英文 Gallery，与页面中文正文无关 */
+      expect(title).toMatch(/相册|Gallery/i);
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "Gallery 页：点击首张缩略图打开预览，放大后关闭",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/gallery");
+      await new Promise((r) => setTimeout(r, 500));
+      const opened = await t.browser!.evaluate(() => {
+        const btn = document.querySelector(
+          "main article button[type='button']",
+        ) as HTMLButtonElement | null;
+        if (!btn) return false;
+        btn.click();
+        return true;
+      });
+      expect(opened).toBe(true);
+      await new Promise((r) => setTimeout(r, 300));
+      /** fixed 定位的 dialog 在部分引擎下 offsetParent 为 null，仅断言节点存在 */
+      const dialogVisible = await t.browser!.evaluate(() => {
+        return document.querySelector('[role="dialog"]') !== null;
+      });
+      expect(dialogVisible).toBe(true);
+      await clickButtonByExactTextInDocument(t, "放大");
+      await new Promise((r) => setTimeout(r, 120));
+      const closed = await t.browser!.evaluate(() => {
+        const closeBtn = document.querySelector(
+          'button[aria-label="关闭"]',
+        ) as HTMLButtonElement | null;
+        if (!closeBtn) return false;
+        closeBtn.click();
+        return true;
+      });
+      expect(closed).toBe(true);
+      await new Promise((r) => setTimeout(r, 200));
+      const gone = await t.browser!.evaluate(() => {
+        return document.querySelector('[role="dialog"]') === null;
+      });
+      expect(gone).toBe(true);
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "顶栏「示例」下拉：进入相册页（覆盖无首页卡片的导航路径）",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/");
+      await new Promise((r) => setTimeout(r, 200));
+      /**
+       * 路由 nav 文案来自生成路由的 metadata.title：中文为「相册」，Bun/部分环境下
+       * 可能为「Gallery」；分组按钮在中文布局下为「示例」。
+       */
+      let ok = await clickNavDropdownLinkByLabels(t, "示例", "相册");
+      if (!ok) ok = await clickNavDropdownLinkByLabels(t, "示例", "Gallery");
+      if (!ok) {
+        ok = await clickNavDropdownLinkByLabels(t, "Examples", "Gallery");
+      }
+      expect(ok).toBe(true);
+      await new Promise((r) => setTimeout(r, 400));
+      const text = await getMainText(t);
+      expect(text).toContain("图片相册");
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "Layout 2 页：/layout/layout2 嵌套路由展示布局说明与标题",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/layout/layout2");
+      await new Promise((r) => setTimeout(r, 400));
+      const text = await getMainText(t);
+      expect(text).toContain("布局示例");
+      expect(text).toContain("inheritLayout");
+      expect(text).toContain("_layout");
+      const title = await getDocumentTitle(t);
+      /** 生成路由可能为「Layout 2」（metadata）或「Layout2」（路径推断），均视为通过 */
+      expect(title).toMatch(/Layout\s*2|layout2/i);
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "Runtime 页：展示 generateHydrationScript 与 renderToStream 文档块",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/runtime");
+      await new Promise((r) => setTimeout(r, 300));
+      const text = await getMainText(t);
+      expect(text).toContain("generateHydrationScript");
+      expect(text).toContain("__VIEW_DATA__");
+      expect(text).toContain("renderToStream");
+      expect(text).toContain("@dreamer/view/stream");
+    },
+    exampleBrowserConfig,
+  );
+
+  it(
+    "Store 页：persist 写入 localStorage，刷新后 count 仍恢复",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/store");
+      await new Promise((r) => setTimeout(r, 300));
+      await t.browser!.evaluate(() => {
+        try {
+          globalThis.localStorage?.removeItem("view-demo-store");
+        } catch {
+          // ignore
+        }
+      });
+      await navigate(t, "/store");
+      await new Promise((r) => setTimeout(r, 400));
+      for (let i = 0; i < 3; i++) {
+        await clickButtonByExactText(t, "count +1");
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      let text = await getMainText(t);
+      expect(text).toMatch(/count[\s\S]*3|3[\s\S]*double/);
+      const raw = (await t.browser!.evaluate(() => {
+        try {
+          return globalThis.localStorage?.getItem("view-demo-store") ?? "";
+        } catch {
+          return "";
+        }
+      })) as string;
+      expect(raw.length).toBeGreaterThan(0);
+      expect(raw).toContain("count");
+      await navigate(t, "/store");
+      await new Promise((r) => setTimeout(r, 500));
+      text = await getMainText(t);
+      expect(text).toMatch(/count[\s\S]*3|3[\s\S]*double/);
+    },
+    exampleBrowserConfig,
+  );
+
+  it("指令页：包含 v-once 与 vCloak 说明区块", async (t) => {
+    if (!t?.browser) return;
+    await navigate(t, "/directive");
+    await new Promise((r) => setTimeout(r, 300));
+    const text = await getMainText(t);
+    expect(text).toContain("v-once");
+    expect(text).toContain("vCloak");
+  }, exampleBrowserConfig);
 
   it("Layout 主题切换：点击切换按钮后 html 主题 class 变化", async (t) => {
     if (!t?.browser) return;

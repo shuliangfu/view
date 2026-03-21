@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-442%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-500%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -1227,10 +1227,13 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.2.0** (2026-03-19): **Fixed** Dynamic getter single-node component now uses
-expanded VNode for patch so the same DOM is updated (e.g. carousel slide
-transition works) instead of full replace; avoids page-wide re-render and state
-reset when only that slot’s state changes. Full history:
+**v1.3.0** (2026-03-21): **Refactored** Root mount unified on
+**`fn(container)` + `insert`** (`createRoot` / `render` / `hydrate` share the
+shape; **`mount`** only delegates to **`render`**, no auto-hydrate;
+**`createReactiveRoot`** removed). **Changed** Public JSDoc, compiler/subpath
+docs, **`examples`** deps aligned with `deno.json`. **Added** New/extended unit
+tests and **72** browser E2E cases. **Fixed** `package.json` **`./ssr`** export.
+**Docs** TEST_REPORT/README and migration notes updated. Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
@@ -1239,12 +1242,12 @@ reset when only that slot’s state changes. Full history:
 
 | Metric      | Value                                |
 | ----------- | ------------------------------------ |
-| Test date   | 2026-03-20                           |
-| Total tests | 442 (Deno) / 409 (Bun)               |
-| Passed      | 442 ✅ / 409 ✅                      |
+| Test date   | 2026-03-21                           |
+| Total tests | 500 (Deno) / 457 (Bun)               |
+| Passed      | 500 ✅ / 457 ✅                      |
 | Failed      | 0                                    |
 | Pass rate   | 100%                                 |
-| Duration    | ~1m54s (Deno) / ~82s (Bun, 34 files) |
+| Duration    | ~1m38s (Deno) / ~85s (Bun, 44 files) |
 
 Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 (component access to document does not throw). See

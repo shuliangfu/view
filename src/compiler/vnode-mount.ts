@@ -21,6 +21,7 @@ import {
   insertReactiveForVnodeSubtree,
   type ReactiveInsertNext,
 } from "./vnode-insert-bridge.ts";
+import { scheduleFunctionRef } from "./ref-dom.ts";
 
 const append = (p: InsertParent, child: Node): void => {
   (p as { appendChild(n: unknown): unknown }).appendChild(child);
@@ -96,6 +97,8 @@ function applyIntrinsicVNodeProps(
 ): void {
   for (const key of Object.keys(props)) {
     if (key === "children" || key === "key") continue;
+    /** ref 在 append 之后由 bindIntrinsicRef 处理（与 compileSource 产物一致，且需 scheduleFunctionRef 支持离屏子树） */
+    if (key === "ref") continue;
     const val = props[key];
     if (val == null) continue;
     if (typeof val === "function" && /^on[A-Z]/.test(key)) {
@@ -114,6 +117,30 @@ function applyIntrinsicVNodeProps(
     else if (key === "class") el.setAttribute("class", String(val));
     else if (key === "htmlFor") el.setAttribute("for", String(val));
     else el.setAttribute(key, String(val));
+  }
+}
+
+/**
+ * 为「本征 DOM」VNode 绑定 ref：`react-jsx` 运行时路径不经 compileSource，`ref` 不能仅靠 applyIntrinsicProps。
+ *
+ * - 函数 ref：交给 `scheduleFunctionRef`，与编译器路径一致。
+ * - 对象 ref（含 `createRef()` 的 `{ get/set current }`）：写回 `.current`，卸载时机由节点摘除与 scheduleFunctionRef 行为覆盖。
+ *
+ * @param el - 已创建且即将或已经挂到父节点下的元素
+ * @param props - VNode.props（读取 `ref`）
+ */
+function bindIntrinsicRef(el: Element, props: Record<string, unknown>): void {
+  const refVal = props.ref;
+  if (refVal == null) return;
+  if (typeof refVal === "function") {
+    scheduleFunctionRef(el, refVal as (node: Element | null) => void);
+    return;
+  }
+  if (typeof refVal === "object" && "current" in refVal) {
+    const holder = refVal as { current: Element | null };
+    scheduleFunctionRef(el, (n) => {
+      holder.current = n;
+    });
   }
 }
 
@@ -254,6 +281,7 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
       mountChildItemForVnode(el as Node, items[i]!);
     }
     append(parent, el as Node);
+    bindIntrinsicRef(el as Element, p);
     return;
   }
   if (typeof v.type === "function") {

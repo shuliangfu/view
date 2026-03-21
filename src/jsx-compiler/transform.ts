@@ -451,8 +451,12 @@ function buildRefStatementsAfterAppend(
         ),
       ),
     );
-    // 函数 ref：由 scheduleFunctionRef 先 ref(null) 再在微任务中重试直到 el.isConnected，覆盖 layout 插槽、根级清树与微任务顺序问题
+    // 函数 ref：由 scheduleFunctionRef 先 ref(null) 再在微任务中重试直到 el.isConnected。
+    // 对象 ref（createRef）：同样经 scheduleFunctionRef，用 (_n) => ref.current = _n 包装。
+    // 若仅在 append 时判断 el.isConnected，Hybrid / 嵌套 insertReactive 下节点常尚未接入 document，ref.current 会永久为 null（dweb 路由页典型）。
+    // 卸载时仍由下方 registerDirectiveUnmount 将 ref.current = null，避免悬空节点。
     const scheduleFunctionRefId = ctx.scheduleFunctionRefId;
+    const objectRefNodeParam = factory.createUniqueName("_viewRefNode");
     const refSetStmts: ts.Statement[] = [
       factory.createIfStatement(
         factory.createIdentifier(refIsFunctionVar),
@@ -469,28 +473,36 @@ function buildRefStatementsAfterAppend(
         ),
         factory.createBlock(
           [
-            // 对象 ref 仅在 el.isConnected 时赋值，避免关闭再打开后旧 effect 把 ref 指到已脱离的节点导致不能拖动
-            factory.createIfStatement(
-              factory.createPropertyAccessExpression(
+            factory.createExpressionStatement(
+              factory.createCallExpression(scheduleFunctionRefId, undefined, [
                 factory.createIdentifier(elVar),
-                factory.createIdentifier("isConnected"),
-              ),
-              factory.createBlock(
-                [
-                  factory.createExpressionStatement(
+                factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  [
+                    factory.createParameterDeclaration(
+                      undefined,
+                      undefined,
+                      objectRefNodeParam,
+                      undefined,
+                      undefined,
+                      undefined,
+                    ),
+                  ],
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  factory.createParenthesizedExpression(
                     factory.createBinaryExpression(
                       factory.createPropertyAccessExpression(
                         refExprWrapped,
                         factory.createIdentifier("current"),
                       ),
                       factory.createToken(ts.SyntaxKind.EqualsToken),
-                      factory.createIdentifier(elVar),
+                      objectRefNodeParam,
                     ),
                   ),
-                ],
-                true,
-              ),
-              undefined,
+                ),
+              ]),
             ),
           ],
           true,

@@ -266,6 +266,14 @@ export function insert(
     | HydrateContextLike
     | undefined;
   if (hydrate?.insert) {
+    /**
+     * 零参 getter（含返回 VNode、signal、文本）须走 insertReactive + mountVNodeTree，
+     * 与 getActiveDocument 代理按 DFS 消费迭代器。hydrate.insert 会先 next 单节点再 replaceSlot，
+     * 无法展开 VNode，会导致水合后容器为空或错位。
+     */
+    if (typeof value === "function" && value.length === 0) {
+      return insertReactive(parent, value as () => ReactiveInsertNext);
+    }
     hydrate.insert(parent as Node, value);
     return undefined;
   }

@@ -1,5 +1,5 @@
 /**
- * 路线 C JSX 编译器单元测试：compileSource 将 JSX 转为 insert/createElement 调用。
+ * JSX 编译器（compileSource）单元测试：将 JSX 转为 insert/createElement 调用。
  * 不依赖 DOM，无需 dom-setup，避免 happy-dom 内部定时器触发 Leaks detected。
  */
 
@@ -387,7 +387,7 @@ function App() {
     expect(out).toMatch(/import\s*\{[^}]*scheduleFunctionRef[^}]*\}\s*from/);
   });
 
-  it("内置元素 ref={对象} 应仅在 el.isConnected 时赋 ref.current，避免关闭再打开后旧 effect 覆盖 ref", () => {
+  it("内置元素 ref={createRef()} 应经 scheduleFunctionRef 写 ref.current，离屏挂载时也能赋值", () => {
     const source = `
 function App() {
   const wrapRef = createRef();
@@ -395,10 +395,8 @@ function App() {
 }
 `;
     const out = compileSource(source, "App.tsx");
-    expect(out).toContain("isConnected");
+    expect(out).toContain("scheduleFunctionRef(");
     expect(out).toContain(".current");
-    // 对象 ref 的赋值应在 isConnected 条件内
-    expect(out).toMatch(/isConnected\s*\)\s*\{[\s\S]*?\.current\s*=/);
   });
 
   it("input value={getter} 应编译为 createEffect 写 el.value，不落 setAttribute(value, getter) 避免显示函数源码", () => {

@@ -8,7 +8,32 @@ and this project adheres to
 
 ---
 
-## [1.3.0] - 2026-03-20
+## [1.3.0] - 2026-03-21
+
+### Refactored
+
+- **Root APIs unified on `fn(container)` + `insert`**: `createRoot`, `render`,
+  and `hydrate` all take **`(container: Element) => void`**. **`fn` runs only
+  once** for that root; inside `fn`, DOM and reactive sites are built with
+  **`insert` / `insertReactive` / `createElement` + `appendChild`**, and all
+  later updates are driven by **effects on insert points**, not by re-running
+  the whole root `fn`. This matches **view-cli `compileSource` output** so
+  hand-written and compiled code share the same model.
+- **Same `fn` for SSR and client**: Server **`renderToString(fn)`** (or
+  streaming SSR) and client **`hydrate(fn, container)`** (exported from
+  **`@dreamer/view/compiler`**) use the **same** compiled `fn`. Hydration
+  **reuses existing DOM** in insert order and **binds effects only**, avoiding
+  full-container `innerHTML`-style replacement.
+- **`mount` narrowed**: **`mount(selector | Element, fn, options?)`** only
+  resolves the target and calls **`render(fn, el)`**; it **does not**
+  auto-hydrate when the container already has children. Hybrid apps must call
+  **`hydrate`** explicitly on the client.
+- **Removed `createReactiveRoot`**: The API that re-ran a tree from an external
+  state getter on each change is **gone**. Use
+  **`createRoot((container) => { … insert(…, getter) … }, el)`** with
+  **`createSignal` / `createStore` / `createEffect`**, or **`mountWithRouter`**
+  and similar integrations, aligned with fine-grained `insert` instead of a
+  root-level full-tree rerun.
 
 ### Changed
 
@@ -16,8 +41,9 @@ and this project adheres to
   public APIs now have full JSDoc. Every export path has `@module` and
   `@packageDocumentation` with a clear description and export list; exported
   functions and types have `@param`, `@returns`, and where useful `@example`.
-  Internal-only wording (e.g. "路线 C") has been removed from user-facing module
-  descriptions.
+  Internal architecture codenames have been removed from user-facing module
+  descriptions in favor of plain language (e.g. JSX via compileSource, insert /
+  createRoot).
 - **compiler/mod.ts** The module tag was corrected from `@dreamer/view/runtime`
   to `@dreamer/view/compiler`, and the full export list (insert, createRoot,
   hydrate, SSR, props, signal/effect re-exports, types) is documented.
@@ -37,18 +63,34 @@ and this project adheres to
   `@dreamer/esbuild`; all JSR/npm deps (image, plugins, esbuild, tailwindcss)
   are listed with matching versions.
 
+### Added
+
+- Unit tests: `spread-intrinsic`, `insert-replacing`, `escape`,
+  `active-document`, `compiled-contract`, `route-page`, `version-utils`,
+  `logger-server`, `vnode-insert-bridge`; extended `boundary` (nested
+  ErrorBoundary) and `router-mount` (notFound). `entry-mod-smoke` adds
+  `@dreamer/view/ssr` `renderToString` smoke test.
+- Test file table and counts aligned with this release: `compiled-runtime`,
+  `form-page-compile`, `jsx-compiler`, `ref-dom`, `ref`, `router-mount`,
+  `runtime-props`, `ssr-compiled`, `unmount`, etc.; `e2e/view-example-browser`
+  has **72** browser E2E cases (Gallery, Layout2, persist, v-once/vCloak,
+  routing, 404, and more).
+
+### Fixed
+
+- **`package.json` exports**: added `./ssr` → `./src/mod-ssr.ts` to match
+  `deno.json` so Bun resolves `@dreamer/view/ssr`.
+
 ### Docs
 
-- **TEST_REPORT (en/zh)** Updated to reflect current runs: 442 tests (Deno), 409
-  (Bun), 34 test files, date 2026-03-20, duration ~1m54s (Deno) / ~82s (Bun).
-  Test file table updated: added compiled-runtime, form-page-compile,
-  jsx-compiler, ref-dom, ref, router-mount, runtime-props, ssr-compiled,
-  unmount; removed props, ssr-directives, reconcile-focus-reuse; adjusted counts
-  for boundary, context, integration, portal, runtime, signal,
-  ssr-document-shim, stream, transition, and E2E browser.
-- **README (en/zh)** Test summary section and badge updated: 442 passed (Deno) /
-  409 (Bun), test date 2026-03-20, duration and file count for both runtimes.
-  Links to TEST_REPORT unchanged.
+- **TEST_REPORT (en/zh)** and **README (en/zh)**: **500** tests (Deno) / **457**
+  (Bun), **44** test files, date **2026-03-21**, duration ~**1m38s** (Deno) /
+  **~85s** (Bun); badges and test summary sections updated; E2E and file table
+  match the above.
+- **README (en/zh)** migration notes for **`fn(container)`**, explicit
+  **`hydrate`**, **`mount` does not auto-hydrate**, and **`createReactiveRoot`**
+  removal, aligned with the 1.3.0 refactor.
+- **`docs/测试覆盖缺口.md`** updated to reflect filled gaps and remaining work.
 
 ---
 

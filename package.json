@@ -10,6 +10,7 @@
   },
   "exports": {
     ".": "./src/mod.ts",
+    "./ssr": "./src/mod-ssr.ts",
     "./cli": "./src/cli.ts",
     "./setup": "./src/setup.ts",
     "./csr": "./src/mod-csr.ts",

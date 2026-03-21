@@ -158,7 +158,7 @@ export function getDirectiveValue(value: unknown): unknown {
 }
 
 /**
- * 从 value/arg/modifiers 构造 DirectiveBinding，供自定义指令使用（路线 C 下无 applyProps，仅保留 API 供扩展）。
+ * 从 value/arg/modifiers 构造 DirectiveBinding，供自定义指令使用（编译产物路径下无 applyProps，仅保留 API 供扩展）。
  *
  * @param value - 绑定值（可为 getter，会在此处求值）
  * @param arg - 可选参数
@@ -310,7 +310,8 @@ export function applyDirectives(
 ): void {
   for (const [key, value] of Object.entries(props)) {
     if (key === "children" || key === "key") continue;
-    if (BUILTIN_DIRECTIVE_PROPS.has(key)) continue; // 内置指令原在 createElement / applyProps 中处理（路线 C 已移除）
+    // 内置指令由编译产物在 createElement 等路径处理，此处跳过
+    if (BUILTIN_DIRECTIVE_PROPS.has(key)) continue;
     // v-insert：传 getter（不求值），在元素下做 insert(el, getter)，仅此处随依赖更新
     if (
       V_INSERT_KEYS.has(key) && typeof value === "function" && registerUnmount
