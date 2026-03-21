@@ -1,10 +1,10 @@
 /**
- * @module @dreamer/view/server/utils/i18n
+ * @module @dreamer/view/i18n
  *
  * @fileoverview view 包 i18n 桥接（仅服务端/CLI）：使用 $tr + 模块实例，不挂全局；供 CLI 输出与服务端抛错使用。
  *
  * 未传 lang 时按环境变量（LANGUAGE / LC_ALL / LANG）检测语言。默认 en-US。
- * 文案来自 src/server/locales/*.json（支持 10 种语言，含 zh-TW）。本模块位于 server/utils/i18n.ts。
+ * 文案来自 `src/server/locales/*.json`（支持 10 种语言，含 zh-TW）。本模块位于 `src/i18n.ts`。
  */
 
 import {
@@ -14,16 +14,16 @@ import {
   type TranslationParams,
 } from "@dreamer/i18n";
 import { getEnv } from "@dreamer/runtime-adapter";
-import deDE from "../locales/de-DE.json" with { type: "json" };
-import enUS from "../locales/en-US.json" with { type: "json" };
-import esES from "../locales/es-ES.json" with { type: "json" };
-import frFR from "../locales/fr-FR.json" with { type: "json" };
-import idID from "../locales/id-ID.json" with { type: "json" };
-import jaJP from "../locales/ja-JP.json" with { type: "json" };
-import koKR from "../locales/ko-KR.json" with { type: "json" };
-import ptBR from "../locales/pt-BR.json" with { type: "json" };
-import zhCN from "../locales/zh-CN.json" with { type: "json" };
-import zhTW from "../locales/zh-TW.json" with { type: "json" };
+import deDE from "./server/locales/de-DE.json" with { type: "json" };
+import enUS from "./server/locales/en-US.json" with { type: "json" };
+import esES from "./server/locales/es-ES.json" with { type: "json" };
+import frFR from "./server/locales/fr-FR.json" with { type: "json" };
+import idID from "./server/locales/id-ID.json" with { type: "json" };
+import jaJP from "./server/locales/ja-JP.json" with { type: "json" };
+import koKR from "./server/locales/ko-KR.json" with { type: "json" };
+import ptBR from "./server/locales/pt-BR.json" with { type: "json" };
+import zhCN from "./server/locales/zh-CN.json" with { type: "json" };
+import zhTW from "./server/locales/zh-TW.json" with { type: "json" };
 
 /** 支持的 locale（含 zh-TW 共 10 种）；英语使用 en-US */
 export type Locale =

@@ -25,7 +25,7 @@ import {
   remove,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr } from "./server/utils/i18n.ts";
+import { $tr } from "./i18n.ts";
 import { loadViewDenoJson, writeVersionCache } from "./server/utils/version.ts";
 
 /** CLI 全局命令名称（与 src/cli.ts 中一致） */

@@ -5,7 +5,7 @@
  * @module @dreamer/view/server/core/serve
  */
 
-import { $tr } from "../utils/i18n.ts";
+import { $tr } from "../../i18n.ts";
 import { logger } from "../utils/logger.ts";
 import {
   type PathHandler,

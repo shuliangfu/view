@@ -17,7 +17,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr } from "../utils/i18n.ts";
+import { $tr } from "../../i18n.ts";
 import {
   computeLayoutChain,
   readInheritLayoutFromPageFile,

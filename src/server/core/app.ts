@@ -20,7 +20,7 @@ import {
   $tr,
   normalizeLanguageToLocale,
   setViewLocale,
-} from "../utils/i18n.ts";
+} from "../../i18n.ts";
 import { logger, setLoggerConfig } from "../utils/logger.ts";
 
 /** 创建 App 时的选项（可传入已加载的 viewConfig，否则从 root 加载） */

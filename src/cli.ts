@@ -18,7 +18,7 @@
 
 import { Command } from "@dreamer/console";
 import { args } from "@dreamer/runtime-adapter";
-import { $tr } from "./server/utils/i18n.ts";
+import { $tr } from "./i18n.ts";
 import { getViewVersion } from "./server/utils/version.ts";
 
 /**

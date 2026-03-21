@@ -17,7 +17,7 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr, detectLocale } from "../server/utils/i18n.ts";
+import { $tr, detectLocale } from "../i18n.ts";
 import { logger } from "../server/utils/logger.ts";
 import { getPluginsVersion, getViewVersion } from "../server/utils/version.ts";
 

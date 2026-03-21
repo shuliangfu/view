@@ -31,7 +31,7 @@ import {
   expect,
   it,
 } from "@dreamer/test";
-import { setViewLocale } from "../../src/server/utils/i18n.ts";
+import { setViewLocale } from "../../src/i18n.ts";
 
 setViewLocale("zh-CN");
 
@@ -84,7 +84,7 @@ describe("CLI：init", () => {
       const prevLang = getEnv("LANGUAGE");
       setEnv("LANGUAGE", "zh-CN");
       try {
-        await import("../../src/server/utils/i18n.ts");
+        await import("../../src/i18n.ts");
         // 直接调用 init main，与 CLI 同逻辑，避免子进程 cwd/路径差异导致断言失败；传 runtime 跳过交互菜单
         const { main: initMain } = await import("../../src/cmd/init.ts");
         await initMain({ dir: INIT_OUT_DIR, runtime: "deno", style: "none" });

@@ -34,7 +34,7 @@ import {
   KEY_VIEW_ROOT,
 } from "../../constants.ts";
 import { compileSource } from "../../jsx-compiler/transform.ts";
-import { $tr } from "../utils/i18n.ts";
+import { $tr } from "../../i18n.ts";
 import { logger } from "../utils/logger.ts";
 import type { AppConfig } from "./config.ts";
 import { getBuildConfigForMode } from "./config.ts";
