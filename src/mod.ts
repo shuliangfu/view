@@ -7,7 +7,7 @@
  *
  * **常量：** `KEY_VIEW_ROUTER`（根路由实例在 globalThis 上的键，供约定式布局等读取）
  *
- * **响应式：** `createSignal`、`createRef`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`unwrapSignalGetterValue`（编译产物解包文本插值中的 signal getter）
+ * **响应式：** `createSignal`（返回 `.value` 容器）、`createRef`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`（编译产物解包文本插值）
  *
  * **渲染与挂载：** `createRoot`、`render`、`mount`、`insert`、`insertMount`、`insertReactive`、`insertStatic`、`scheduleFunctionRef`（编译态函数 ref 调度）、`generateHydrationScript`（向 HTML 注入 `window` 数据与客户端脚本；完整 SSR API 见子路径 `@dreamer/view/ssr`）
  *
@@ -22,8 +22,8 @@
  * @example
  * ```ts
  * import { createSignal, createEffect, render, insert } from "jsr:@dreamer/view";
- * const [count, setCount] = createSignal(0);
- * render((el) => { insert(el, () => count()); }, document.getElementById("root")!);
+ * const count = createSignal(0);
+ * render((el) => { insert(el, () => count.value); }, document.getElementById("root")!);
  * ```
  */
 
@@ -54,9 +54,11 @@ export {
   createSignal,
   getCurrentEffect,
   isSignalGetter,
+  isSignalRef,
   setCurrentEffect,
   unwrapSignalGetterValue,
 } from "./signal.ts";
+export type { SignalRef } from "./signal.ts";
 export { isDOMEnvironment } from "./types.ts";
 export type {
   EffectDispose,

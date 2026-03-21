@@ -7,15 +7,15 @@
  * @module @dreamer/view/csr
  * @packageDocumentation
  *
- * **导出：** `createSignal`、`createEffect`、`createMemo`、`onCleanup`、`createRoot`、`render`、`mount`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`unwrapSignalGetterValue`、`isDOMEnvironment`
+ * **导出：** `createSignal`、`createEffect`、`createMemo`、`onCleanup`、`createRoot`、`render`、`mount`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`、`isDOMEnvironment`
  *
- * **类型：** `MountOptions`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`EffectDispose`
+ * **类型：** `MountOptions`、`Root`、`SignalRef`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`EffectDispose`
  *
  * @example
  * ```ts
  * import { createSignal, mount } from "jsr:@dreamer/view/csr";
- * const [count] = createSignal(0);
- * mount("#root", (el) => { el.textContent = String(count()); });
+ * const count = createSignal(0);
+ * mount("#root", (el) => { el.textContent = String(count.value); });
  * ```
  */
 
@@ -23,9 +23,11 @@ export {
   createSignal,
   getCurrentEffect,
   isSignalGetter,
+  isSignalRef,
   setCurrentEffect,
   unwrapSignalGetterValue,
 } from "./signal.ts";
+export type { SignalRef } from "./signal.ts";
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
 export { createRoot, mount, render } from "./runtime-csr.ts";
 export type {

@@ -180,9 +180,9 @@ export type CreateEffectOptions = {
  * @returns dispose 函数，调用后取消该 effect 的所有订阅并不再执行
  *
  * @example
- * const [count, setCount] = createSignal(0);
+ * const count = createSignal(0);
  * const stop = createEffect(() => {
- *   console.log(count());
+ *   console.log(count.value);
  *   return () => console.log("cleanup");
  * });
  * stop(); // 停止 effect 并执行 cleanup
@@ -257,12 +257,14 @@ export function createEffect(
  * @returns 无参 getter，返回当前缓存的计算结果
  *
  * @example
- * const [a, setA] = createSignal(1);
- * const double = createMemo(() => a() * 2);
- * createEffect(() => console.log(double())); // 2 → setA(2) 后输出 4
+ * const a = createSignal(1);
+ * const double = createMemo(() => a.value * 2);
+ * createEffect(() => console.log(double())); // 2 → a.value = 2 后输出 4
  */
 export function createMemo<T>(fn: () => T): () => T {
-  const [get, set] = createSignal<T>(undefined as unknown as T);
-  createEffect(() => set(fn()));
-  return markSignalGetter(get) as () => T;
+  const state = createSignal<T>(undefined as unknown as T);
+  createEffect(() => {
+    state.value = fn();
+  });
+  return markSignalGetter(() => state.value) as () => T;
 }

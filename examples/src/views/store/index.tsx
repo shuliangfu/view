@@ -80,11 +80,11 @@ export function StoreDemo(): VNode {
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-              {() => get().count ?? 0}
+              {get().count ?? 0}
             </span>
             {" · "}
             double：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-              {() => getters.double()}
+              {getters.double()}
             </span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -112,7 +112,7 @@ export function StoreDemo(): VNode {
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             <span className="font-medium text-indigo-600 dark:text-indigo-400">
-              {() => getters.greeting()}
+              {getters.greeting()}
             </span>
           </p>
           <input

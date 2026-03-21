@@ -30,7 +30,7 @@
  */
 
 import { applyMetaToHead } from "./meta.ts";
-import { createSignal } from "./signal.ts";
+import { createSignal, markSignalGetter, type SignalRef } from "./signal.ts";
 
 /**
  * 前置守卫（beforeRoute）的返回值。
@@ -144,17 +144,14 @@ export interface RouteConfig {
 
 /**
  * 由 RoutePage 注入的、按 path+key 稳定的状态 getter。
- * 页面组件通过 match.getState(key, initial) 取得同 path 下稳定的 [getter, setter]。
+ * 页面组件通过 match.getState(key, initial) 取得同 path 下稳定的 `SignalRef`（`.value` 读/写）。
  *
  * @typeParam T - 状态值的类型
  * @param key - 状态键，同一 path 下相同 key 复用同一状态
  * @param initial - 初始值
- * @returns 二元组 [getter, setter]；setter 可传值或 (prev) => newValue
+ * @returns `createSignal` 同形态的 `SignalRef<T>`
  */
-export type GetState = <T>(
-  key: string,
-  initial: T,
-) => [() => T, (v: T | ((p: T) => T)) => void];
+export type GetState = <T>(key: string, initial: T) => SignalRef<T>;
 
 /**
  * 路由页组件首参类型。
@@ -585,9 +582,7 @@ export function createRouter(options: CreateRouterOptions): Router {
     return matchPath(path, search);
   }
 
-  const [currentRoute, setCurrentRoute] = createSignal<RouteMatch | null>(
-    getCurrentRoute(),
-  );
+  const currentRoute = createSignal<RouteMatch | null>(getCurrentRoute());
 
   /** 根据传入的 pathname/search 解析 match（与 getCurrentRoute 逻辑一致，但用传入值而非读 location） */
   function getMatchForLocation(
@@ -605,7 +600,7 @@ export function createRouter(options: CreateRouterOptions): Router {
   }
 
   function notify(): void {
-    setCurrentRoute(getCurrentRoute());
+    currentRoute.value = getCurrentRoute();
     subscribers.forEach((cb) => cb());
   }
 
@@ -857,7 +852,7 @@ export function createRouter(options: CreateRouterOptions): Router {
 
   return {
     getCurrentRoute,
-    getCurrentRouteSignal: () => currentRoute,
+    getCurrentRouteSignal: () => markSignalGetter(() => currentRoute.value),
     getMatchForLocation,
     href,
     navigate,

@@ -8,6 +8,96 @@ and this project adheres to
 
 ---
 
+## [1.3.3] - 2026-03-21
+
+### Breaking Changes
+
+- **`createSignal` return type**: No longer returns `[getter, setter]`. It now
+  returns a **`SignalRef<T>`** object: read with **`.value`**, write with
+  **`ref.value = next`** or **`ref.value = (prev) => next`**. The same updater
+  rule applies (a function value is always treated as an updater, not a stored
+  function—see Suspense/MountFn notes in docs).
+- **`createMemo`**: Still returns a **marked no-arg getter** `() => T` for
+  reactive call sites; internally it uses `SignalRef` storage.
+- **Router / `RoutePage`**: **`match.getState(key, initial)`** now returns
+  **`SignalRef<T>`** instead of a tuple. **`getCurrentRouteSignal()`** returns a
+  **marked getter** `() => RouteMatch | null` that reads the internal ref
+  (`markSignalGetter(() => currentRoute.value)`), so existing “call the signal”
+  patterns keep working.
+- **`createResource` (with source)**: The **source** argument is now
+  **`(() => S) | SignalRef<S>`** (previously only a getter function).
+- **`Transition`**: **`show`** accepts **`() => boolean` or
+  `SignalRef<boolean>`** (e.g. pass a boolean ref directly).
+- **Context `Provider` `value`**: May be **`T | (() => T) | SignalRef<T>`**;
+  **`getContext`** reads **`.value`** when the stack holds a `SignalRef`.
+- **JSX compiler**: **`v-for` and `v-show` codegen removed**. Use normal JS
+  (`.map` / `insertReactive`) for lists; use **`vIf`** (or conditional
+  rendering) for show/hide. **Directive module** no longer exports
+  **`resolveVForFactory`**, **`getVForListAndFactory`**, or **`getVShowValue`**;
+  **`hasStructuralDirective`** only reports **`vIf`** (not `vFor`).
+  **`V_FOR_ATTR`** constant removed.
+
+### Added
+
+- **`SignalRef<T>`** type, **`SIGNAL_REF_MARKER`**, **`isSignalRef()`**;
+  exported from **`@dreamer/view`**, **`@dreamer/view/compiled`**,
+  **`@dreamer/view/csr`**, **`@dreamer/view/hybrid`**,
+  **`@dreamer/view/types`**, and **`@dreamer/view/compiler`** (alongside
+  **`isSignalGetter`** / **`unwrapSignalGetterValue`** on the compiler entry).
+- **`unwrapSignalGetterValue`**: Also unwraps **`SignalRef`** by reading
+  **`.value`** (used by **`insertReactive`** and compiler-generated text /
+  controlled **`value`/`checked`** paths).
+- **Hand-written `jsx()` VNode mount (`vnode-mount.ts`)**: Aligns with
+  compileSource for **intrinsic** nodes—**`vIf` / `vElseIf` / `vElse`** sibling
+  chains on **Fragment** children, **`vOnce`** (`untrack` around child mount),
+  **`vCloak`** (`data-view-cloak`), and **custom directives** via
+  **`applyDirectives`** after **`ref`** binding. Directive-like props are
+  skipped for real DOM attributes using **`isDirectiveProp`**.
+- **Tests**: **`tests/unit/vnode-mount-directives.test.ts`** (custom directive
+  mount + `SignalRef` **`updated`**).
+- **Docs**: **`docs/en-US/ANALYSIS-full-compile-vs-handwritten-jsx.md`** and
+  **`docs/zh-CN/ANALYSIS-full-compile-vs-handwritten-jsx.md`** (compile vs
+  handwritten JSX analysis).
+
+### Fixed
+
+- **`insertReactive`**: Unwraps **`SignalRef`** at the insert boundary so text
+  and dynamic content track **`.value`** (matches compiler
+  `unwrapSignalGetterValue` behavior).
+- **Custom directives (`applyDirectives`)**: **`updated`** runs in an effect
+  when the binding is a **`SignalRef`**, not only a marked getter.
+- **JSX compiler**: Controlled **`value` / `checked`** on intrinsic inputs use
+  **`unwrapSignalGetterValue(...)`** for non-lambda expressions so
+  **`SignalRef`** does not stringify to **`[object Object]`**.
+- **SSR shadow `CSSStyleDeclaration` proxy**: **`get` / `set` / `has` /
+  `getOwnPropertyDescriptor`** ignore **symbol** keys (avoids proxy traps
+  tripping on internal symbol access).
+- **HMR**: **`getHmrVersionGetter`** returns a **marked getter** over internal
+  **`SignalRef`** state so subscribers using getter semantics still work.
+- **Router export**: Removed an accidental stray **`"./globals.ts";`** line at
+  EOF.
+
+### Changed
+
+- **Internal consumers** updated to **`SignalRef`**: **`Suspense`** resolved
+  state, **`createRef`**, **`RoutePage`** per-path state map, router
+  **`currentRoute`**, **`Transition`** phase, **`createMemo`** cache cell.
+- **Examples, `view init` template, integration tests, and unit tests** migrated
+  from tuple **`createSignal`** to **`.value`** / **`SignalRef`** APIs.
+- **Package description** (`deno.json` / `package.json`): mentions **v-once /
+  v-cloak** instead of removed **v-for / v-show** in the one-line blurb.
+- **Documentation**: English and Chinese **README**, **compile-path guide**,
+  **test badge** / README test table (**509** Deno / **465** Bun), and
+  **`createSignal` → `SignalRef`** migration notes.
+
+### Removed
+
+- **Compiler**: All **`v-for`** and **`v-show`** transform helpers and emitted
+  code paths.
+- **Directive**: **`vFor` / `v-for` / `vShow` / `v-show`** from built-in
+  directive prop sets and **v-for** structural handling; related helper exports
+  (see Breaking Changes).
+
 ## [1.3.2] - 2026-03-21
 
 ### Fixed

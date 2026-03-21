@@ -39,7 +39,10 @@ function createSSRStyleDeclaration(): CSSStyleDeclaration {
   const styles: Record<string, string> = {};
 
   return new Proxy({} as CSSStyleDeclaration, {
-    get(_target, prop: string) {
+    get(_target, prop: string | symbol) {
+      if (typeof prop !== "string") {
+        return undefined;
+      }
       if (prop === "getPropertyValue") {
         return (name: string) => styles[name] ?? "";
       }
@@ -64,7 +67,10 @@ function createSSRStyleDeclaration(): CSSStyleDeclaration {
       const kebabKey = camelToKebab(prop);
       return styles[kebabKey] ?? "";
     },
-    set(_target, prop: string, value: string) {
+    set(_target, prop: string | symbol, value: string) {
+      if (typeof prop !== "string") {
+        return false;
+      }
       // 属性设置（如 el.style.color = 'red'）
       const kebabKey = camelToKebab(prop);
       if (value) {
@@ -74,7 +80,10 @@ function createSSRStyleDeclaration(): CSSStyleDeclaration {
       }
       return true;
     },
-    has(_target, prop: string) {
+    has(_target, prop: string | symbol) {
+      if (typeof prop !== "string") {
+        return false;
+      }
       return prop in
           {
             getPropertyValue: true,
@@ -87,7 +96,10 @@ function createSSRStyleDeclaration(): CSSStyleDeclaration {
     ownKeys() {
       return Object.keys(styles);
     },
-    getOwnPropertyDescriptor(_target, prop: string) {
+    getOwnPropertyDescriptor(_target, prop: string | symbol) {
+      if (typeof prop !== "string") {
+        return undefined;
+      }
       const kebabKey = camelToKebab(prop);
       if (kebabKey in styles) {
         return {

@@ -63,12 +63,12 @@ describe("createRoot / render (DOM，新标准 fn(container)=>void)", () => {
 
   it("fn 内用 insert(getter) 时，signal 变更后应更新 DOM", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal(0);
+    const s = createSignal(0);
     const root = createRoot((el) => {
-      insert(el, () => String(get()));
+      insert(el, () => String(s.value));
     }, container);
     expect(container.textContent).toBe("0");
-    set(1);
+    s.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("1");
     root.unmount();
@@ -78,14 +78,14 @@ describe("createRoot / render (DOM，新标准 fn(container)=>void)", () => {
    * JSX `{ count }` 会编成 getter 返回 `count` 引用而非 `count()`；insertReactive 须在 effect 内对 signal getter 解包，
    * 否则文本为空且 set 后不刷新（Globals 示例曾表现为「按钮点了没反应」）。
    */
-  it("insert(getter) 在 getter 直接返回 signal getter 时应显示当前值并随 set 更新", async () => {
+  it("insert(getter) 在 getter 直接返回 SignalRef 时应显示当前值并随 .value 更新", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal(99);
+    const s = createSignal(99);
     const root = createRoot((el) => {
-      insert(el, () => get as unknown as string);
+      insert(el, () => s as unknown as string);
     }, container);
     expect(container.textContent).toBe("99");
-    set(100);
+    s.value = 100;
     await Promise.resolve();
     expect(container.textContent).toBe("100");
     root.unmount();
@@ -115,12 +115,12 @@ describe("createRoot / render (DOM，新标准 fn(container)=>void)", () => {
 
   it("边界：unmount 后再次 set signal 不抛错、不更新 DOM", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal(0);
+    const s = createSignal(0);
     const root = createRoot((el) => {
-      insert(el, () => String(get()));
+      insert(el, () => String(s.value));
     }, container);
     root.unmount();
-    expect(() => set(1)).not.toThrow();
+    expect(() => s.value = 1).not.toThrow();
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });

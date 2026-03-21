@@ -1,5 +1,5 @@
 /**
- * @fileoverview 指令单元测试：vIf/vElse/vElseIf/vFor/vShow/vOnce/vCloak、getDirectiveValue、registerDirective
+ * @fileoverview 指令单元测试：vIf/vElse/vElseIf、getDirectiveValue、registerDirective、hasStructuralDirective 等
  */
 
 import { describe, expect, it } from "@dreamer/test";
@@ -12,9 +12,7 @@ import {
   getDirectiveValue,
   getVElseIfValue,
   getVElseShow,
-  getVForListAndFactory,
   getVIfValue,
-  getVShowValue,
   hasDirective,
   hasStructuralDirective,
   isDirectiveProp,
@@ -38,9 +36,9 @@ describe("getDirectiveValue", () => {
     expect(getDirectiveValue(1)).toBe(1);
     expect(getDirectiveValue("a")).toBe("a");
   });
-  it("对 signal getter 应求值后返回", () => {
-    const [get] = createSignal(42);
-    expect(getDirectiveValue(get)).toBe(42);
+  it("对 SignalRef 应读 .value 后返回", () => {
+    const s = createSignal(42);
+    expect(getDirectiveValue(s)).toBe(42);
   });
 });
 
@@ -52,9 +50,9 @@ describe("getVIfValue", () => {
     expect(getVIfValue({ vIf: true })).toBe(true);
     expect(getVIfValue({ vIf: false })).toBe(false);
   });
-  it("vIf 为 getter 时求值", () => {
-    const [get] = createSignal(true);
-    expect(getVIfValue({ vIf: get })).toBe(true);
+  it("vIf 为 SignalRef 时求值", () => {
+    const s = createSignal(true);
+    expect(getVIfValue({ vIf: s })).toBe(true);
   });
 });
 
@@ -71,49 +69,9 @@ describe("getVElseIfValue", () => {
   it("无 vElseIf 时返回 false", () => {
     expect(getVElseIfValue({})).toBe(false);
   });
-  it("vElseIf 为 getter 时求值", () => {
-    const [get] = createSignal(true);
-    expect(getVElseIfValue({ vElseIf: get })).toBe(true);
-  });
-});
-
-describe("getVShowValue", () => {
-  it("无 vShow 时视为 true", () => {
-    expect(getVShowValue({})).toBe(true);
-  });
-  it("vShow 为 false 时返回 false", () => {
-    expect(getVShowValue({ vShow: false })).toBe(false);
-  });
-});
-
-describe("getVForListAndFactory", () => {
-  it("无 vFor 时返回 null", () => {
-    expect(getVForListAndFactory({}, undefined)).toBeNull();
-  });
-  it("vFor 为数组时返回 list 与默认 factory", () => {
-    const list = [1, 2];
-    const child = { type: "span", props: {} };
-    const result = getVForListAndFactory({ vFor: list }, child);
-    expect(result).not.toBeNull();
-    expect(result!.list).toEqual([1, 2]);
-    expect(typeof result!.factory).toBe("function");
-  });
-  it("边界：vFor 空数组时返回 list 为空数组，不渲染列表项", () => {
-    const result = getVForListAndFactory(
-      { vFor: [] },
-      { type: "span", props: {} },
-    );
-    expect(result).not.toBeNull();
-    expect(result!.list).toEqual([]);
-    expect(result!.list.length).toBe(0);
-  });
-  it("边界：vFor 非数组（如 object）时 list 被归一为空数组", () => {
-    const resultObj = getVForListAndFactory(
-      { vFor: { a: 1 } },
-      { type: "span", props: {} },
-    );
-    expect(resultObj).not.toBeNull();
-    expect(resultObj!.list).toEqual([]);
+  it("vElseIf 为 SignalRef 时求值", () => {
+    const s = createSignal(true);
+    expect(getVElseIfValue({ vElseIf: s })).toBe(true);
   });
 });
 
@@ -123,19 +81,19 @@ describe("hasDirective / hasStructuralDirective / isDirectiveProp", () => {
     expect(hasDirective({ "v-if": true }, "vIf")).toBe(true);
     expect(hasDirective({}, "vIf")).toBe(false);
   });
-  it("hasStructuralDirective 返回 vIf 或 vFor 或 null", () => {
+  it("hasStructuralDirective 仅识别 vIf", () => {
     expect(hasStructuralDirective({ vIf: true })).toBe("vIf");
-    expect(hasStructuralDirective({ vFor: [] })).toBe("vFor");
+    expect(hasStructuralDirective({ vOnce: true })).toBeNull();
     expect(hasStructuralDirective({})).toBeNull();
   });
-  it("isDirectiveProp 对 v 开头或 v- 开头返回 true", () => {
+  it("isDirectiveProp 对内置与 v- 前缀返回 true", () => {
     expect(isDirectiveProp("vIf")).toBe(true);
-    expect(isDirectiveProp("v-show")).toBe(true);
+    expect(isDirectiveProp("v-once")).toBe(true);
     expect(isDirectiveProp("className")).toBe(false);
   });
-  it("hasDirective 可检测指定指令", () => {
-    expect(hasDirective({ vShow: true }, "vShow")).toBe(true);
-    expect(hasDirective({ "v-show": false }, "vShow")).toBe(true);
+  it("hasDirective 可检测 vElse 等键", () => {
+    expect(hasDirective({ vElse: true }, "vElse")).toBe(true);
+    expect(hasDirective({ "v-else": false }, "vElse")).toBe(true);
   });
 });
 

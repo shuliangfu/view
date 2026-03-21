@@ -77,16 +77,16 @@ describe("Transition", () => {
   it(
     "show 从 true 改为 false 后进入 leaving 阶段（返回带 leave class 的 VNode）",
     async () => {
-      const [visible, setVisible] = createSignal(true);
+      const visible = createSignal(true);
       const getter = Transition({
-        show: () => visible(),
+        show: visible,
         enter: "enter",
         leave: "leave",
         duration: 10,
         children: textVNode("d"),
       });
       expect(getter()).not.toBeNull();
-      setVisible(false);
+      visible.value = false;
       await Promise.resolve();
       await Promise.resolve();
       const leaving = getter() as VNode | null;
@@ -103,15 +103,15 @@ describe("Transition", () => {
   it(
     "show 为 false 且超过 duration 后应卸载为 left（getter 返回 null）",
     async () => {
-      const [visible, setVisible] = createSignal(true);
+      const visible = createSignal(true);
       const getter = Transition({
-        show: () => visible(),
+        show: visible,
         enter: "e",
         leave: "l",
         duration: 15,
         children: textVNode("x"),
       });
-      setVisible(false);
+      visible.value = false;
       await Promise.resolve();
       await Promise.resolve();
       await new Promise((r) => setTimeout(r, 50));

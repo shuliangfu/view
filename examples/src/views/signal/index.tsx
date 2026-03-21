@@ -1,19 +1,19 @@
 /**
  * 核心 API：createSignal、createEffect、createMemo、onCleanup
  *
- * - createSignal：响应式单元，getter 在 effect 中读会登记依赖
+ * - createSignal：返回 `SignalRef`，用 `.value` 读/写，在 effect 中读会登记依赖
  * - createEffect：副作用，依赖的 signal 变化时重新执行，返回 dispose
  * - createMemo：派生值缓存，依赖变化时重新计算
  * - onCleanup：在 effect 内注册，effect 下次运行或 dispose 时执行
  */
 
+import type { VNode } from "@dreamer/view";
 import {
   createEffect,
   createMemo,
   createSignal,
   onCleanup,
 } from "@dreamer/view";
-import type { VNode } from "@dreamer/view";
 
 export const metadata = {
   title: "Signal",
@@ -22,15 +22,15 @@ export const metadata = {
   keywords: "createSignal, createEffect, createMemo, onCleanup",
 };
 
-const [count, setCount] = createSignal(0);
-const [name, setName] = createSignal("");
+const count = createSignal(0);
+const name = createSignal("");
 
 /** createMemo：派生值，依赖 count 时自动更新 */
-const double = createMemo(() => count() * 2);
+const double = createMemo(() => count.value * 2);
 
 /** createEffect + onCleanup：控制台打印与清理 */
 createEffect(() => {
-  const n = name();
+  const n = name.value;
   if (n) {
     const t = setTimeout(() => {}, 0);
     onCleanup(() => clearTimeout(t));
@@ -68,18 +68,28 @@ function SignalDemo(): VNode {
             <button
               type="button"
               className={btn}
-              onClick={() => setCount((c) => c + 1)}
+              onClick={() => {
+                count.value = (c) => c + 1;
+              }}
             >
               +1
             </button>
             <button
               type="button"
               className={btn}
-              onClick={() => setCount((c) => c - 1)}
+              onClick={() => {
+                count.value = (c) => c - 1;
+              }}
             >
               -1
             </button>
-            <button type="button" className={btn} onClick={() => setCount(0)}>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => {
+                count.value = 0;
+              }}
+            >
               归零
             </button>
           </div>
@@ -89,13 +99,14 @@ function SignalDemo(): VNode {
             name：<input
               type="text"
               className={`ml-2 ${inputCls}`}
-              value={() => name()}
-              onInput={(e: Event) =>
-                setName((e.target as HTMLInputElement).value)}
+              value={() => name.value}
+              onInput={(e: Event) => {
+                name.value = (e.target as HTMLInputElement).value;
+              }}
             />
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            {() => (name() ? `你好，${name()}！` : "请输入名字")}
+            {name.value ? `你好，${name.value}！` : "请输入名字"}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             createEffect 与 onCleanup 已在模块内使用；createMemo 用于 double。
@@ -112,44 +123,55 @@ function SignalDemo(): VNode {
             count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
               {count}
             </span>
-            {" · "}用上方按钮改变 count 观察下面三行是否按条件更新。
+            {" · "}
+            用上方按钮改变 count 观察下面三行是否按条件更新。子节点写在{" "}
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              {"{ ... }"}
+            </code>
+            里时，编译器会生成{" "}
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              insertReactive(parent, () =&gt; expr)
+            </code>
+            ，因此可直接写条件与 JSX，一般<strong>不必</strong>再套一层{" "}
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              {"() =>"}
+            </code>
+            。
           </p>
           <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
             <li>
               <strong>三元</strong>{" "}
               <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ () => count() > 1 ? '大于1' : '不大于1' }"}
+                {"{ count.value > 1 ? '大于1' : '不大于1' }"}
               </code>
               {" → "}
               <span className="font-mono text-amber-700 dark:text-amber-300">
-                {() => (count() > 1 ? "大于1" : "不大于1")}
+                {count.value > 1 ? "大于1" : "不大于1"}
               </span>
             </li>
             <li>
               <strong>并且</strong>{" "}
               <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ () => count() > 0 && <span>... </span> }"}
+                {"{ count.value > 0 && <span>... </span> }"}
               </code>
               {" → "}
-              {() =>
-                count() > 0 && (
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
-                    count 大于 0 时显示
-                  </span>
-                )}
+              {count.value > 0 && (
+                <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                  count 大于 0 时显示
+                </span>
+              )}
             </li>
             <li>
               <strong>或者</strong>{" "}
               <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ () => (count() === 0 || count() > 5) && <span>... </span> }"}
+                {"{ (count.value === 0 || count.value > 5) && <span>... </span> }"}
               </code>
               {" → "}
-              {() =>
-                (count() === 0 || count() > 5) && (
-                  <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
-                    count 为 0 或大于 5 时显示
-                  </span>
-                )}
+              {(count.value === 0 || count.value > 5) && (
+                <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+                  count 为 0 或大于 5 时显示
+                </span>
+              )}
             </li>
           </ul>
         </div>

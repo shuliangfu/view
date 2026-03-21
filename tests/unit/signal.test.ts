@@ -1,86 +1,88 @@
 /**
- * @fileoverview Signal 单元测试：createSignal、getter/setter、isSignalGetter、markSignalGetter
+ * @fileoverview Signal 单元测试：createSignal（SignalRef）、isSignalGetter、isSignalRef、markSignalGetter、unwrapSignalGetterValue
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal, isSignalGetter } from "@dreamer/view";
+import { createSignal, isSignalGetter, isSignalRef } from "@dreamer/view";
 import { markSignalGetter, unwrapSignalGetterValue } from "../../src/signal.ts";
 
 describe("createSignal", () => {
-  it("应返回 [getter, setter] 元组", () => {
-    const [get, set] = createSignal(0);
-    expect(typeof get).toBe("function");
-    expect(typeof set).toBe("function");
+  it("应返回带 .value 读写的 SignalRef", () => {
+    const s = createSignal(0);
+    expect(isSignalRef(s)).toBe(true);
+    expect(s.value).toBe(0);
+    s.value = 1;
+    expect(s.value).toBe(1);
   });
 
-  it("getter 应返回初始值", () => {
-    const [get] = createSignal(42);
-    expect(get()).toBe(42);
+  it("初始值应可通过 .value 读取", () => {
+    const s = createSignal(42);
+    expect(s.value).toBe(42);
   });
 
-  it("setter 设置值后 getter 应返回新值", () => {
-    const [get, set] = createSignal(0);
-    set(10);
-    expect(get()).toBe(10);
-    set(20);
-    expect(get()).toBe(20);
+  it("赋值 .value 后应得到新值", () => {
+    const s = createSignal(0);
+    s.value = 10;
+    expect(s.value).toBe(10);
+    s.value = 20;
+    expect(s.value).toBe(20);
   });
 
-  it("setter 接受 updater 函数时应基于前值更新", () => {
-    const [get, set] = createSignal(1);
-    set((prev) => prev + 1);
-    expect(get()).toBe(2);
-    set((prev) => prev * 2);
-    expect(get()).toBe(4);
+  it(".value 接受 updater 函数时应基于前值更新", () => {
+    const s = createSignal(1);
+    s.value = (prev) => prev + 1;
+    expect(s.value).toBe(2);
+    s.value = (prev) => prev * 2;
+    expect(s.value).toBe(4);
   });
 
-  it("setter 传入相同值（Object.is）时不应改变引用", () => {
+  it("赋相同值（Object.is）时不应触发无效更新语义", () => {
     const obj = { x: 1 };
-    const [get, set] = createSignal(obj);
-    set(obj);
-    expect(get()).toBe(obj);
+    const s = createSignal(obj);
+    s.value = obj;
+    expect(s.value).toBe(obj);
   });
 
   it("应支持任意类型初始值", () => {
-    const [getStr, setStr] = createSignal("hello");
-    expect(getStr()).toBe("hello");
-    setStr("world");
-    expect(getStr()).toBe("world");
+    const str = createSignal("hello");
+    expect(str.value).toBe("hello");
+    str.value = "world";
+    expect(str.value).toBe("world");
 
-    const [getArr, setArr] = createSignal([1, 2]);
-    expect(getArr()).toEqual([1, 2]);
-    setArr([3, 4]);
-    expect(getArr()).toEqual([3, 4]);
+    const arr = createSignal([1, 2]);
+    expect(arr.value).toEqual([1, 2]);
+    arr.value = [3, 4];
+    expect(arr.value).toEqual([3, 4]);
 
-    const [getObj, setObj] = createSignal({ a: 1 });
-    expect(getObj()).toEqual({ a: 1 });
-    setObj({ a: 2 });
-    expect(getObj()).toEqual({ a: 2 });
+    const o = createSignal({ a: 1 });
+    expect(o.value).toEqual({ a: 1 });
+    o.value = { a: 2 };
+    expect(o.value).toEqual({ a: 2 });
   });
 
-  it("边界：初始值为 undefined 时 get 返回 undefined，set 后更新", () => {
-    const [get, set] = createSignal<number | undefined>(undefined);
-    expect(get()).toBeUndefined();
-    set(1);
-    expect(get()).toBe(1);
-    set(undefined);
-    expect(get()).toBeUndefined();
+  it("边界：初始值为 undefined", () => {
+    const s = createSignal<number | undefined>(undefined);
+    expect(s.value).toBeUndefined();
+    s.value = 1;
+    expect(s.value).toBe(1);
+    s.value = undefined;
+    expect(s.value).toBeUndefined();
   });
 
-  it("边界：初始值为 null 时 get 返回 null，set 后更新", () => {
-    const [get, set] = createSignal<number | null>(null);
-    expect(get()).toBeNull();
-    set(1);
-    expect(get()).toBe(1);
-    set(null);
-    expect(get()).toBeNull();
+  it("边界：初始值为 null", () => {
+    const s = createSignal<number | null>(null);
+    expect(s.value).toBeNull();
+    s.value = 1;
+    expect(s.value).toBe(1);
+    s.value = null;
+    expect(s.value).toBeNull();
   });
 });
 
 describe("isSignalGetter", () => {
-  it("对 createSignal 返回的 getter 应返回 true", () => {
-    const [get] = createSignal(0);
-    expect(isSignalGetter(get)).toBe(true);
+  it("createSignal 返回值不是 signal getter（是 SignalRef 对象）", () => {
+    const s = createSignal(0);
+    expect(isSignalGetter(s)).toBe(false);
   });
 
   it("对普通函数应返回 false", () => {
@@ -105,6 +107,17 @@ describe("isSignalGetter", () => {
   });
 });
 
+describe("isSignalRef", () => {
+  it("对 createSignal 返回值应返回 true", () => {
+    expect(isSignalRef(createSignal(0))).toBe(true);
+  });
+
+  it("对普通对象应返回 false", () => {
+    expect(isSignalRef({ value: 1 })).toBe(false);
+    expect(isSignalRef(null)).toBe(false);
+  });
+});
+
 describe("markSignalGetter", () => {
   it("应返回与原函数行为一致的函数", () => {
     const fn = () => 42;
@@ -114,9 +127,14 @@ describe("markSignalGetter", () => {
 });
 
 describe("unwrapSignalGetterValue", () => {
-  it("对 signal getter 应调用并返回值", () => {
-    const [get] = createSignal(7);
-    expect(unwrapSignalGetterValue(get)).toBe(7);
+  it("对 createMemo 式 getter 应调用并返回值", () => {
+    const marked = markSignalGetter(() => 7);
+    expect(unwrapSignalGetterValue(marked)).toBe(7);
+  });
+
+  it("对 SignalRef 应读 .value", () => {
+    const s = createSignal(7);
+    expect(unwrapSignalGetterValue(s)).toBe(7);
   });
 
   it("对非标记函数应原样返回", () => {

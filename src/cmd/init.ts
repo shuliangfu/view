@@ -1113,7 +1113,7 @@ export const metadata = {
 };
 
 export default function Home(): VNode {
-  const [count, setCount] = createSignal(0);
+  const count = createSignal(0);
 
   return (
     <div className="space-y-10">
@@ -1146,7 +1146,7 @@ export default function Home(): VNode {
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
-            onClick={() => setCount(count() - 1)}
+            onClick={() => (count.value = count.value - 1)}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             −
@@ -1156,7 +1156,7 @@ export default function Home(): VNode {
           </span>
           <button
             type="button"
-            onClick={() => setCount(count() + 1)}
+            onClick={() => (count.value = count.value + 1)}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
           >
             +
@@ -1171,7 +1171,7 @@ export default function Home(): VNode {
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
           ${$tr("init.template.vIfIntro")}
         </p>
-        <div vIf={() => count() <= 2} className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
+        <div vIf={() => count.value <= 2} className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
           <span className="rounded-full bg-emerald-200/80 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-700/50 dark:text-emerald-200">
             ${$tr("init.template.countLabelLow")}
           </span>
@@ -1179,7 +1179,7 @@ export default function Home(): VNode {
     $tr("init.template.labelAAA")
   }</span>
         </div>
-        <div vElseIf={() => count() >= 3 && count() <= 5} className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-900/20">
+        <div vElseIf={() => count.value >= 3 && count.value <= 5} className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-900/20">
           <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-700/50 dark:text-amber-200">
             ${$tr("init.template.countLabelMid")}
           </span>

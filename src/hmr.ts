@@ -10,15 +10,17 @@
 
 import { KEY_HMR_BUMP } from "./constants.ts";
 import { setGlobal } from "./globals.ts";
-import { createSignal } from "./signal.ts";
+import { createSignal, markSignalGetter } from "./signal.ts";
 
-const [getHmrVersion, setHmrVersion] = createSignal(0);
+const hmrVersion = createSignal(0);
 
 /** 供 RoutePage 订阅，version 变化时触发重新取 resource */
 export function getHmrVersionGetter(): () => number {
-  return getHmrVersion;
+  return markSignalGetter(() => hmrVersion.value);
 }
 
 if (typeof globalThis !== "undefined") {
-  setGlobal(KEY_HMR_BUMP, () => setHmrVersion((v) => v + 1));
+  setGlobal(KEY_HMR_BUMP, () => {
+    hmrVersion.value = (v) => v + 1;
+  });
 }

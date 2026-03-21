@@ -11,14 +11,19 @@
  * 与 Suspense 配合：resource().loading 时可用 Suspense 的 fallback 显示加载态；有 data 时显示内容。
  *
  * @example
- * const [id, setId] = createSignal(1);
+ * const id = createSignal(1);
  * const user = createResource(id, (id) => fetch(`/api/user/${id}`).then((r) => r.json()));
  * createEffect(() => { const { data, loading } = user(); if (data) console.log(data); });
  */
 
 import type { EffectScope } from "./effect.ts";
 import { createEffect } from "./effect.ts";
-import { createSignal, markSignalGetter } from "./signal.ts";
+import {
+  createSignal,
+  isSignalRef,
+  markSignalGetter,
+  type SignalRef,
+} from "./signal.ts";
 
 /** createResource 可选配置：scope 使内部 effect 不登记到根 run scope，避免根重跑时被 dispose 导致 Promise 回调跳过 setState */
 export type CreateResourceOptions = { scope?: EffectScope };
@@ -57,17 +62,17 @@ export function createResource<T>(
 /**
  * 创建带 source 的异步数据源（source 变化时自动重新请求）
  *
- * @param source 响应式 source getter；在 effect 中读取，source() 变化时触发重新请求
+ * @param source 响应式 source：`() => S` 或 `SignalRef<S>`；在 effect 中读取，变化时触发重新请求
  * @param fetcher 接收当前 source 值，返回 Promise；仅在 source 变化或 refetch 时调用
  * @param options 可选；scope 指定内部 effect 登记的作用域，不随根 run scope 清理（如 RoutePage 按 path 的 scope）
  * @returns 返回 getter：在 effect/组件中调用 getter() 得到 { data, loading, error, refetch }
  *
  * @example
- * const [id, setId] = createSignal(1);
+ * const id = createSignal(1);
  * const user = createResource(id, (id) => fetch(`/api/user/${id}`).then(r => r.json()));
  */
 export function createResource<S, T>(
-  source: () => S,
+  source: (() => S) | SignalRef<S>,
   fetcher: (source: S) => Promise<T>,
   options?: CreateResourceOptions,
 ): () => ResourceResult<T>;
@@ -76,7 +81,10 @@ export function createResource<S, T>(
  * 实现签名：单泛型 T + unknown 表示 source，使无 source / 有 source 两种 overload 均与此实现兼容
  */
 export function createResource<T>(
-  sourceOrFetcher: (() => unknown) | (() => Promise<T>),
+  sourceOrFetcher:
+    | (() => unknown)
+    | (() => Promise<T>)
+    | SignalRef<unknown>,
   maybeFetcherOrOptions?:
     | ((source: unknown) => Promise<T>)
     | CreateResourceOptions,
@@ -86,14 +94,22 @@ export function createResource<T>(
   const options: CreateResourceOptions | undefined = hasSource
     ? maybeOptions
     : (maybeFetcherOrOptions as CreateResourceOptions | undefined);
-  const source = hasSource
-    ? (sourceOrFetcher as () => unknown)
-    : ((): undefined => undefined);
+  /** 无 source 时为占位；有 source 时为 `() => S` 或 `SignalRef<S>` */
+  const sourceInput = hasSource
+    ? (sourceOrFetcher as (() => unknown) | SignalRef<unknown>)
+    : null;
   const fetcher = hasSource
     ? (maybeFetcherOrOptions as (source: unknown) => Promise<T>)
     : (sourceOrFetcher as () => Promise<T>);
 
-  const [getState, setState] = createSignal<ResourceState<T>>({
+  /** 在 effect 内读取当前 source 值（支持 `SignalRef` 与 getter 函数） */
+  const readSource = (): unknown => {
+    if (!hasSource || sourceInput == null) return undefined;
+    if (isSignalRef(sourceInput)) return sourceInput.value;
+    return (sourceInput as () => unknown)();
+  };
+
+  const state = createSignal<ResourceState<T>>({
     data: undefined,
     loading: false,
     error: undefined,
@@ -107,17 +123,17 @@ export function createResource<T>(
   createEffect(
     () => {
       const gen = ++generation;
-      const s = source();
+      const s = readSource();
       runRef.current = () => {
-        setState((prev) => ({ ...prev, loading: true, error: undefined }));
+        state.value = (prev) => ({ ...prev, loading: true, error: undefined });
         Promise.resolve(fetcher(s))
           .then((value) => {
             if (gen !== generation) return;
-            setState({ data: value, loading: false, error: undefined });
+            state.value = { data: value, loading: false, error: undefined };
           })
           .catch((e) => {
             if (gen !== generation) return;
-            setState((prev) => ({ ...prev, loading: false, error: e }));
+            state.value = (prev) => ({ ...prev, loading: false, error: e });
           });
       };
       runRef.current();
@@ -129,8 +145,8 @@ export function createResource<T>(
   );
 
   const getter = (): ResourceResult<T> => {
-    const s = getState();
-    return { ...s, refetch: () => runRef.current() };
+    const snap = state.value;
+    return { ...snap, refetch: () => runRef.current() };
   };
   return markSignalGetter(getter) as () => ResourceResult<T>;
 }

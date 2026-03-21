@@ -62,7 +62,7 @@ function ModalContent(props: { onClose: () => void }): VNode {
 
 /** Portal 示例页 */
 export function PortalDemo(): VNode {
-  const [open, setOpen] = createSignal(false);
+  const open = createSignal(false);
 
   const openModal = () => {
     if (modalRoot) return;
@@ -73,11 +73,11 @@ export function PortalDemo(): VNode {
             modalRoot.unmount();
             modalRoot = null;
           }
-          setOpen(false);
+          open.value = false;
         }}
       />
     ));
-    setOpen(true);
+    open.value = true;
   };
 
   const closeModal = () => {
@@ -85,7 +85,7 @@ export function PortalDemo(): VNode {
       modalRoot.unmount();
       modalRoot = null;
     }
-    setOpen(false);
+    open.value = false;
   };
 
   return (
@@ -107,7 +107,9 @@ export function PortalDemo(): VNode {
       <div className={block}>
         <h3 className={subTitle}>打开弹窗</h3>
         <p className="mb-3 text-slate-600 dark:text-slate-300">
-          弹窗通过 Portal 挂载到 body，当前状态：{open() ? "已打开" : "已关闭"}
+          弹窗通过 Portal 挂载到 body，当前状态：{open.value
+            ? "已打开"
+            : "已关闭"}
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btn} onClick={openModal}>

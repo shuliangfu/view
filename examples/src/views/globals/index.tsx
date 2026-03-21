@@ -4,7 +4,7 @@
  * - getDocument()：浏览器或 SSR 影子 document；不可用时返回 null，不抛错
  * - getGlobal/setGlobal：在 globalThis 上按 key 存取全局状态，便于跨模块共享
  *
- * 文本插值可写 `{globalCount()}` 或 `{globalCount}`：编译器对裸标识符/props 访问会生成
+ * 文本插值可写 `{globalCount.value}` 或 `{globalCount}`：编译器对裸标识符/props 访问会生成
  * `unwrapSignalGetterValue(...)`，运行时 insertReactive 也会解包 signal getter，双重保障。
  *
  * 调试点击：编译产物为 `button.addEventListener("click", handler)`。若控制台无任何输出：
@@ -36,7 +36,7 @@ const subTitle =
 /** Globals 示例页 */
 export function GlobalsDemo(): VNode {
   /** 从 globalThis 读取并显示的计数器，用 signal 驱动视图更新 */
-  const [globalCount, setGlobalCount] = createSignal(
+  const globalCount = createSignal(
     (getGlobal<number>(DEMO_COUNTER_KEY) ?? 0) as number,
   );
 
@@ -44,7 +44,7 @@ export function GlobalsDemo(): VNode {
   const incrementGlobal = () => {
     const next = (getGlobal<number>(DEMO_COUNTER_KEY) ?? 0) + 1;
     setGlobal(DEMO_COUNTER_KEY, next);
-    setGlobalCount(next);
+    globalCount.value = next;
   };
 
   /** 使用 getDocument() 安全获取 document，并读取当前 title 展示 */
@@ -57,7 +57,8 @@ export function GlobalsDemo(): VNode {
       return (e as Error).message;
     }
   };
-  const [docTitle, setDocTitle] = createSignal<string | null>(null);
+  /** 最近一次读取的 document.title，用于展示 */
+  const docTitle = createSignal<string | null>(null);
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
@@ -81,7 +82,7 @@ export function GlobalsDemo(): VNode {
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             当前 globalThis[{DEMO_COUNTER_KEY}] ={" "}
             <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-              {globalCount()}
+              {globalCount.value}
             </span>
             。点击下方按钮自增并写回 globalThis，刷新页面后仍会保留（同 tab
             内）。
@@ -100,13 +101,13 @@ export function GlobalsDemo(): VNode {
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             当前 document.title：{" "}
             <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400">
-              {docTitle()}
+              {docTitle.value}
             </span>
           </p>
           <button
             type="button"
             className={btn}
-            onClick={() => setDocTitle(readDocTitle() ?? null)}
+            onClick={() => (docTitle.value = readDocTitle() ?? null)}
           >
             重新读取 document.title
           </button>

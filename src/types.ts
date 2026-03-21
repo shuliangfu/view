@@ -6,7 +6,7 @@
  *
  * 定义 Signal、Effect、VNode、Root、MountOptions 等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
  *
- * **导出类型：** SignalGetter、SignalSetter、SignalTuple、EffectDispose、VNode、MountOptions、Root、ElementWithViewData
+ * **导出类型：** SignalRef、SignalGetter、SignalSetter、SignalTuple、EffectDispose、VNode、MountOptions、Root、ElementWithViewData
  *
  * **导出函数：** isDOMEnvironment
  */
@@ -21,8 +21,11 @@ export type SignalGetter<T> = () => T;
  */
 export type SignalSetter<T> = (value: T | ((prev: T) => T)) => void;
 
+/** `createSignal` 返回的 `.value` 容器类型（定义在 signal 模块，此处再导出便于从 `@dreamer/view/types` 引用） */
+export type { SignalRef } from "./signal.ts";
+
 /**
- * createSignal 返回的元组：[getter, setter]。
+ * `createStore` 在 `asObject: false` 时返回的 [getter, setter] 元组形态（非 `createSignal`）。
  */
 export type SignalTuple<T> = [getter: SignalGetter<T>, setter: SignalSetter<T>];
 

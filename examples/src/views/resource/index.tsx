@@ -37,8 +37,29 @@ function fakeApi(id: number): Promise<{ id: number; name: string }> {
 const user = createResource(() => fakeApi(1));
 
 /** 有 source：id 变化时自动重新请求 */
-const [userId, setUserId] = createSignal(1);
+const userId = createSignal(1);
 const userById = createResource(userId, (id) => fakeApi(id));
+
+/**
+ * 将无 source 的 createResource 结果格式化为单行展示文案。
+ * 模板中写 `{formatUserResourceLine()}`，由编译器 insertReactive 在依赖变化时重算。
+ */
+function formatUserResourceLine(): string {
+  const r = user();
+  if (r.loading) return "加载中…";
+  if (r.error) return `错误：${String(r.error)}`;
+  return r.data ? `data: ${r.data.name}` : "无数据";
+}
+
+/**
+ * 将有 source 的 createResource 结果格式化为单行展示文案。
+ */
+function formatUserByIdResourceLine(): string {
+  const r = userById();
+  if (r.loading) return "加载中…";
+  if (r.error) return `错误：${String(r.error)}`;
+  return r.data ? `data: ${r.data.name}` : "无数据";
+}
 
 /** 统一按钮样式 */
 const btn =
@@ -70,12 +91,7 @@ export function ResourceDemo(): VNode {
             </button>
           </p>
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
-            {() => {
-              const r = user();
-              if (r.loading) return "加载中…";
-              if (r.error) return `错误：${String(r.error)}`;
-              return r.data ? `data: ${r.data.name}` : "无数据";
-            }}
+            {formatUserResourceLine()}
           </p>
         </div>
         <div className={block}>
@@ -83,39 +99,34 @@ export function ResourceDemo(): VNode {
           <p className="mb-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className={userId() === 1
+              className={userId.value === 1
                 ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
                 : btn}
-              onClick={() => setUserId(1)}
+              onClick={() => (userId.value = 1)}
             >
               id=1
             </button>
             <button
               type="button"
-              className={userId() === 2
+              className={userId.value === 2
                 ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
                 : btn}
-              onClick={() => setUserId(2)}
+              onClick={() => (userId.value = 2)}
             >
               id=2
             </button>
             <button
               type="button"
-              className={userId() === 3
+              className={userId.value === 3
                 ? `${btn} ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/30`
                 : btn}
-              onClick={() => setUserId(3)}
+              onClick={() => (userId.value = 3)}
             >
               id=3
             </button>
           </p>
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
-            {() => {
-              const r = userById();
-              if (r.loading) return "加载中…";
-              if (r.error) return `错误：${String(r.error)}`;
-              return r.data ? `data: ${r.data.name}` : "无数据";
-            }}
+            {formatUserByIdResourceLine()}
           </p>
         </div>
         <div className={block}>

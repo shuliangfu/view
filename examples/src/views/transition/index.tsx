@@ -24,7 +24,8 @@ const subTitle =
 
 /** Transition 示例页：用 match.getState 时可在组件体内写 state，点击仍生效；无 match 时回退 createSignal */
 export function TransitionDemo(match?: RoutePageMatch): VNode {
-  const [visible, setVisible] = match?.getState?.("visible", true) ??
+  /** 显隐状态：路由持久化时为 SignalRef，否则为本地 createSignal */
+  const visible = match?.getState?.("visible", true) ??
     createSignal(true);
 
   return (
@@ -60,7 +61,7 @@ export function TransitionDemo(match?: RoutePageMatch): VNode {
         <button
           type="button"
           className={btn}
-          onClick={() => setVisible((v) => !v)}
+          onClick={() => (visible.value = (v) => !v)}
         >
           {
             /*
@@ -69,7 +70,7 @@ export function TransitionDemo(match?: RoutePageMatch): VNode {
              * 无 insert 订阅，按钮文案不随 signal 更新。
              */
           }
-          {() => (visible() ? "隐藏" : "显示")}
+          {visible.value ? "隐藏" : "显示"}
         </button>
         <div className="mt-4">
           <Transition

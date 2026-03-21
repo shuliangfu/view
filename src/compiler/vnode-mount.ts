@@ -3,12 +3,24 @@
  * `dom/element` 的 normalizeChildren（3.1 迁出主文件职责）。嵌套响应式子项经 vnode-insert-bridge
  * 回调主 `insertReactive`。
  *
+ * **手写 jsx() VNode（不经 compileSource）** 在本模块对齐的内置指令：
+ * vIf、vElseIf、vElse（Fragment 兄弟链）、vCloak（data-view-cloak）、vOnce（子树 untrack）。
+ * **自定义指令**（`registerDirective`、如 vFocus）在元素 `append` 且 `ref` 绑定之后调用
+ * `directive.applyDirectives`，与 compileSource 产物顺序一致（与 `insert` 存在模块环，运行时由
+ * Deno/打包器按已存 `isDirectiveProp` 方式解析）。
+ *
  * @module @dreamer/view/runtime/vnode-mount
  */
 
 import { CONTEXT_SCOPE_TYPE, popContext, pushContext } from "../context.ts";
+import {
+  applyDirectives,
+  isDirectiveProp,
+  registerDirectiveUnmount,
+} from "../directive.ts";
 import { type ChildItem, normalizeChildren } from "../dom/element.ts";
 import { isEmptyChild, isFragment, isVNodeLike } from "../dom/shared.ts";
+import { createEffect, untrack } from "../effect.ts";
 import { isSignalGetter } from "../signal.ts";
 import type { VNode } from "../types.ts";
 import {
@@ -46,6 +58,116 @@ function resolveVIfForIntrinsicMount(props: Record<string, unknown>): boolean {
   }
   return Boolean(raw);
 }
+
+/**
+ * v-else-if 条件（与 directive.getVElseIfValue 一致，避免依赖 directive→insert 环）。
+ *
+ * @param props - VNode.props
+ */
+function resolveVElseIfForIntrinsicMount(
+  props: Record<string, unknown>,
+): boolean {
+  const raw = props["vElseIf"] ?? props["v-else-if"];
+  if (raw == null) return false;
+  if (typeof raw === "function") {
+    return Boolean((raw as () => unknown)());
+  }
+  if (isSignalGetter(raw)) {
+    return Boolean((raw as () => unknown)());
+  }
+  return Boolean(raw);
+}
+
+/**
+ * 是否带 v-once（无值亦视为启用，与编译器一致；显式 false 则关闭）。
+ *
+ * @param props - VNode.props
+ */
+function hasVOnceInProps(props: Record<string, unknown>): boolean {
+  if ("vOnce" in props && props["vOnce"] === false) return false;
+  if ("v-once" in props && props["v-once"] === false) return false;
+  return "vOnce" in props || "v-once" in props;
+}
+
+/**
+ * v-cloak：与 compileSource 一致写 data-view-cloak，供首屏 CSS 隐藏与 createRoot 后 removeCloak。
+ *
+ * @param el - 目标元素
+ * @param props - VNode.props
+ */
+function applyIntrinsicVCloak(
+  el: Element,
+  props: Record<string, unknown>,
+): void {
+  if (!("vCloak" in props) && !("v-cloak" in props)) return;
+  const raw = props["vCloak"] ?? props["v-cloak"];
+  if (raw === false) return;
+  el.setAttribute("data-view-cloak", "");
+}
+
+/**
+ * Fragment 规范化子项列表：处理 vIf / vElseIf / vElse 兄弟链（与 compileSource 单槽语义对齐）。
+ *
+ * @param parent - 父节点
+ * @param items - normalizeChildren 结果
+ */
+function mountNormalizedChildrenWithIfChain(
+  parent: Node,
+  items: ChildItem[],
+): void {
+  let chain: { matched: boolean } | null = null;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!;
+    if (!isVNodeLike(item)) {
+      chain = null;
+      mountChildItemForVnode(parent, item);
+      continue;
+    }
+    const vn = item as VNode;
+    const p = (vn.props ?? {}) as Record<string, unknown>;
+    const hasIf = "vIf" in p || "v-if" in p;
+    const hasElseIf = "vElseIf" in p || "v-else-if" in p;
+    const hasElse = "vElse" in p || "v-else" in p;
+
+    if (!hasIf && !hasElseIf && !hasElse) {
+      chain = null;
+      mountVNodeTree(parent, vn);
+      continue;
+    }
+
+    if (hasIf) {
+      chain = { matched: false };
+      if (resolveVIfForIntrinsicMount(p)) {
+        mountVNodeTree(parent, vn);
+        chain.matched = true;
+      }
+      continue;
+    }
+
+    if (hasElseIf) {
+      if (chain == null) continue;
+      if (chain.matched) continue;
+      if (resolveVElseIfForIntrinsicMount(p)) {
+        mountVNodeTree(parent, vn, { allowStructuralElseBranch: true });
+        chain.matched = true;
+      }
+      continue;
+    }
+
+    if (hasElse) {
+      if (chain == null) continue;
+      if (chain.matched) continue;
+      mountVNodeTree(parent, vn, { allowStructuralElseBranch: true });
+      chain.matched = true;
+      continue;
+    }
+  }
+}
+
+/** mountVNodeTree 可选配置：供 vElse/vElseIf 在兄弟链内挂载（孤节点仍跳过） */
+export type MountVNodeTreeOptions = {
+  allowStructuralElseBranch?: boolean;
+};
 
 /** SVG 命名空间 URI；用于 createElementNS 创建可正确渲染的 SVG 元素 */
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -117,15 +239,8 @@ function applyIntrinsicVNodeProps(
 ): void {
   for (const key of Object.keys(props)) {
     if (key === "children" || key === "key") continue;
-    /** v-if 链与 v-for 为结构性指令，不应落到真实 DOM 属性（手写 jsx + 运行时挂载路径） */
-    if (
-      key === "vIf" || key === "v-if" ||
-      key === "vElseIf" || key === "v-else-if" ||
-      key === "vElse" || key === "v-else" ||
-      key === "vFor" || key === "v-for"
-    ) {
-      continue;
-    }
+    /** 指令类 prop 不写真实 DOM 属性（与 directive.isDirectiveProp 对齐） */
+    if (isDirectiveProp(key)) continue;
     /** ref 在 append 之后由 bindIntrinsicRef 处理（与 compileSource 产物一致，且需 scheduleFunctionRef 支持离屏子树） */
     if (key === "ref") continue;
     const val = props[key];
@@ -226,8 +341,13 @@ function mountChildItemForVnode(parent: Node, item: ChildItem): void {
  *
  * @param parent - 父 DOM 节点
  * @param vnode - 虚拟节点或可被 toDomLeafNode 接受的值
+ * @param options - 可选；vElse/vElseIf 仅在 Fragment 兄弟链内需 `allowStructuralElseBranch`
  */
-export function mountVNodeTree(parent: Node, vnode: unknown): void {
+export function mountVNodeTree(
+  parent: Node,
+  vnode: unknown,
+  options?: MountVNodeTreeOptions,
+): void {
   if (isEmptyChild(vnode)) return;
   if (!isVNodeLike(vnode)) {
     append(parent, toDomLeafNode(vnode as InsertValue));
@@ -267,9 +387,7 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
         parent.appendChild(ch as DocumentFragment);
       } else {
         const items = normalizeChildren(ch);
-        for (let i = 0; i < items.length; i++) {
-          mountChildItemForVnode(parent, items[i]!);
-        }
+        mountNormalizedChildrenWithIfChain(parent, items);
       }
     } finally {
       popContext(p.id);
@@ -298,13 +416,23 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
       return;
     }
     const items = normalizeChildren(raw);
-    for (let i = 0; i < items.length; i++) {
-      mountChildItemForVnode(parent, items[i]!);
-    }
+    mountNormalizedChildrenWithIfChain(parent, items);
     return;
   }
   if (typeof v.type === "string") {
     const p = (v.props ?? {}) as Record<string, unknown>;
+    const hasIfKey = "vIf" in p || "v-if" in p;
+    const hasElseIfOnly = ("vElseIf" in p || "v-else-if" in p) && !hasIfKey;
+    const hasElseOnly = ("vElse" in p || "v-else" in p) && !hasIfKey;
+    /**
+     * vElse / vElseIf 无对应 vIf 时属兄弟链节点：须由 Fragment 的 mountNormalizedChildrenWithIfChain 传入
+     * allowStructuralElseBranch；孤节点跳过避免误渲染。
+     */
+    if (
+      (hasElseIfOnly || hasElseOnly) && !options?.allowStructuralElseBranch
+    ) {
+      return;
+    }
     /** 与 compileSource 一致：vIf 为假时不挂载本节点及子树（Hybrid SSR 避免闪屏） */
     if (!resolveVIfForIntrinsicMount(p)) {
       return;
@@ -312,12 +440,25 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
     /** 真实 DOM 为 Element；SVG 系须用 createElementNS 才能正确渲染，SSR 伪 document 无 createElementNS 时回退 createElement */
     const el = createElementForIntrinsic(doc, v.type);
     applyIntrinsicVNodeProps(el, p);
-    const items = normalizeChildren(p.children);
-    for (let i = 0; i < items.length; i++) {
-      mountChildItemForVnode(el as Node, items[i]!);
+    applyIntrinsicVCloak(el, p);
+    const mountChildren = (): void => {
+      const items = normalizeChildren(p.children);
+      mountNormalizedChildrenWithIfChain(el as Node, items);
+    };
+    if (hasVOnceInProps(p)) {
+      untrack(mountChildren);
+    } else {
+      mountChildren();
     }
     append(parent, el as Node);
     bindIntrinsicRef(el as Element, p);
+    /** 与 compileSource 一致：自定义指令在 ref 之后、由 applyDirectives + createEffect 驱动 */
+    applyDirectives(
+      el as Element,
+      p,
+      createEffect,
+      registerDirectiveUnmount,
+    );
     return;
   }
   if (typeof v.type === "function") {

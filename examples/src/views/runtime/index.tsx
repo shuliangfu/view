@@ -19,17 +19,17 @@ export const metadata = {
   keywords: "createRoot, render, renderToString, SSR, 流式",
 };
 
-const [ssrSample, setSsrSample] = createSignal("Hello SSR");
+const ssrSample = createSignal("Hello SSR");
 
 /** renderToString 使用编译路径 (el) => void，内部用 insert(el, getter) */
 function getSsrHtml(): string {
   return renderToString((el) => {
-    insert(el, () => "renderToString 输出：" + ssrSample());
+    insert(el, () => "renderToString 输出：" + ssrSample.value);
   });
 }
 
 /** 当前 renderToString 结果（用 signal 存，点击更新时重新生成） */
-const [html, setHtml] = createSignal("");
+const html = createSignal("");
 
 /** 统一按钮样式 */
 const btn =
@@ -71,20 +71,21 @@ export function RuntimeDemo(): VNode {
             <input
               type="text"
               className={inputCls}
-              value={() => ssrSample()}
-              onInput={(e: Event) =>
-                setSsrSample((e.target as HTMLInputElement).value)}
+              value={() => ssrSample.value}
+              onInput={(
+                e: Event,
+              ) => (ssrSample.value = (e.target as HTMLInputElement).value)}
             />
             <button
               type="button"
               className={btn}
-              onClick={() => setHtml(getSsrHtml())}
+              onClick={() => (html.value = getSsrHtml())}
             >
               生成 HTML
             </button>
           </p>
           <pre className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800 overflow-auto dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            {() => html() || "点击「生成 HTML」查看 renderToString 结果"}
+            {html.value || "点击「生成 HTML」查看 renderToString 结果"}
           </pre>
         </div>
         <div className={block}>
