@@ -16,11 +16,7 @@ import type { AppConfig } from "./config.ts";
 import { ViewServer } from "./serve.ts";
 import type { ViewServerMiddleware, ViewServerOptions } from "./serve.ts";
 import { prepareDevBuild, runBuildWithConfig } from "./build.ts";
-import {
-  $tr,
-  normalizeLanguageToLocale,
-  setViewLocale,
-} from "../../i18n.ts";
+import { $tr, normalizeLanguageToLocale, setViewLocale } from "../../i18n.ts";
 import { logger, setLoggerConfig } from "../utils/logger.ts";
 
 /** 创建 App 时的选项（可传入已加载的 viewConfig，否则从 root 加载） */

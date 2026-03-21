@@ -1249,9 +1249,12 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 **`isSignalRef`**, handwritten VNode **vIf chain / vOnce / vCloak /
 applyDirectives** in **`vnode-mount`**, analysis docs; **fixed**
 **`insertReactive`** + controlled input unwrap, directive **`updated`** for
-refs, SSR style proxy symbols, HMR getter, stray router line. **v1.3.2**: `vIf`
-codegen + **`getDocument()`** null + esbuild **^1.1.5** + CI Node 24. Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+refs, SSR style proxy symbols, HMR getter, stray router line; **changed**
+**`compileSource`** read-failure warning via **i18n**
+(**`cli.build.compileSourceReadFailed`**), **English-only** library
+**`throw`/`console`** outside CLI/server. **v1.3.2**: `vIf` codegen +
+**`getDocument()`** null + esbuild **^1.1.5** + CI Node 24. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

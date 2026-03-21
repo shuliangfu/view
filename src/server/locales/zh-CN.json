@@ -60,7 +60,8 @@
     },
     "build": {
       "building": "[view] 构建中...",
-      "complete": "[view] 构建完成，耗时 {duration}ms → {outDir}"
+      "complete": "[view] 构建完成，耗时 {duration}ms → {outDir}",
+      "compileSourceReadFailed": "[view] compileSource 读取源码失败，该 .tsx 将使用默认 JSX 并可能产生 VNode：{path}"
     },
     "config": {
       "loadFailedTs": "[view] 加载 view.config.ts 失败：{message}",

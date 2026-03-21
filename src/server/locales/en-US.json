@@ -60,7 +60,8 @@
     },
     "build": {
       "building": "[view] Building...",
-      "complete": "[view] Build complete in {duration}ms → {outDir}"
+      "complete": "[view] Build complete in {duration}ms → {outDir}",
+      "compileSourceReadFailed": "[view] compileSource failed to read source; this .tsx will use default JSX and may produce VNode: {path}"
     },
     "config": {
       "loadFailedTs": "[view] Failed to load view.config.ts: {message}",

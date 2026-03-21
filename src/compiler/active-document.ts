@@ -32,7 +32,7 @@ export function getActiveDocument(): ActiveDocumentLike {
   const d = (globalThis as { document?: ActiveDocumentLike }).document;
   if (d == null) {
     throw new Error(
-      "[view] document 不可用：请在有 DOM 的环境运行，或在 renderToString 周期内使用 createSSRDocument。",
+      "[view] document is not available: run in a DOM environment, or use createSSRDocument during renderToString.",
     );
   }
   return d;

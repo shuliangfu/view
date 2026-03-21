@@ -58,7 +58,8 @@
     },
     "build": {
       "building": "[view] Compilando...",
-      "complete": "[view] Compilação concluída em {duration}ms → {outDir}"
+      "complete": "[view] Compilação concluída em {duration}ms → {outDir}",
+      "compileSourceReadFailed": "[view] compileSource falhou ao ler o código-fonte; este .tsx usará JSX padrão e pode produzir VNode: {path}"
     },
     "config": {
       "loadFailedTs": "[view] Falha ao carregar view.config.ts: {message}",

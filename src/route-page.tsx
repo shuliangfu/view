@@ -403,7 +403,7 @@ export function RoutePage(props: {
           : null;
         if (typeof pageMountFn !== "function") {
           throw new Error(
-            `[RoutePage] 页面模块 default 导出调用后未返回挂载函数（应为 (parent)=>void），路径: ${path}。请确认该 .tsx 已经 compileSource 编译。`,
+            `[RoutePage] page module default export did not return a mount function after call (expected (parent)=>void), path: ${path}. Ensure this .tsx was compiled with compileSource.`,
           );
         }
         if (!match.layouts?.length) {
@@ -488,7 +488,7 @@ export function RoutePage(props: {
       const contentMount = defaultMount(matchWithRouter);
       if (typeof contentMount !== "function") {
         const msg =
-          "[RoutePage] 页面 default(match) 未返回挂载函数，可能未走 compileSource。";
+          "[RoutePage] page default(match) did not return a mount function; it may not have been compiled with compileSource.";
         mountErrorSection(container, {
           errorTitle,
           message: msg,
