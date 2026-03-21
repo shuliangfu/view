@@ -2,10 +2,10 @@
  * Form 示例：Form + FormItem + 密码框，验证「value 传 signal getter 时 patch 写回 .value、输入时光标不丢」。
  * 编译器对自定义组件的子节点统一生成 `(parent)=>void` 挂载函数（不再用会「移空」的 DocumentFragment），
  * Form 内 `{props.children}` 在 effect 重跑时会再次执行该函数复挂子树；焦点保留由 PasswordInput 受控 value 路径保证。
- * 注意：同父级若并列 `{signal() && <p/>}`，运行时 insertReactive 不得 replaceChildren 父节点（已由主包 runtime 修复）。
+ * 注意：同父级若并列 `{signal.value && <p/>}` 或 `{signal && <p/>}`，运行时 insertReactive 不得 replaceChildren 父节点（已由主包 runtime 修复）。
  */
 
-import type { VNode } from "@dreamer/view";
+import type { SignalRef, VNode } from "@dreamer/view";
 import { createSignal } from "@dreamer/view";
 import "../../assets/index.css";
 
@@ -55,9 +55,9 @@ function FormItem(props: {
   );
 }
 
-/** 密码输入：value 传 getter，不在组件体内读 value()，仅 applyProps 的 effect 更新 .value，输入时光标不丢 */
+/** 密码输入：value 传 getter 或 SignalRef，由 applyProps 的 effect 写回 DOM，输入时光标不丢 */
 function PasswordInput(props: {
-  value: string | (() => string);
+  value: string | (() => string) | SignalRef<string>;
   onInput?: (e: Event) => void;
   placeholder?: string;
   id?: string;
@@ -78,8 +78,8 @@ function PasswordInput(props: {
 }
 
 export function FormDemo(): VNode {
-  const [password, setPassword] = createSignal("");
-  const [submitted, setSubmitted] = createSignal(false);
+  const password = createSignal("");
+  const submitted = createSignal(false);
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
@@ -98,13 +98,15 @@ export function FormDemo(): VNode {
       <div className={block}>
         <Form
           onSubmit={() => {
-            setSubmitted(true);
+            submitted.value = true;
           }}
         >
           <FormItem label="密码" id="form-password">
             <PasswordInput
               value={password}
-              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
+              onInput={(
+                e,
+              ) => (password.value = (e.target as HTMLInputElement).value)}
               placeholder="请输入密码"
               id="form-password"
               data-testid="form-password-input"
@@ -117,12 +119,12 @@ export function FormDemo(): VNode {
             提交
           </button>
         </Form>
-        {submitted() && (
+        {submitted.value && (
           <p
             className="mt-3 text-sm text-emerald-600 dark:text-emerald-400"
             data-testid="form-submitted"
           >
-            已提交（密码长度：{password().length}）
+            已提交（密码长度：{password.value.length}）
           </p>
         )}
       </div>

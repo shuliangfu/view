@@ -2,7 +2,7 @@
  * Boundary：ErrorBoundary、Suspense
  *
  * - ErrorBoundary：捕获子树错误，显示 fallback(error)
- * - Suspense：children 为无参 getter（如 () => asyncPromise()），getter 返回 Promise 时先显示 fallback，
+ * - Suspense：children 为无参 getter（如 () => asyncPromise.value），getter 返回 Promise 时先显示 fallback，
  *   Promise resolve 后显示内容；getter 返回 null/undefined 时也显示 fallback。示例中 asyncPromise 由 effect 在首帧设置，
  *   故先见「加载中…」，约 1s 后变为「异步内容已加载」。
  */
@@ -49,16 +49,14 @@ function createAsyncContentPromise(): Promise<VNode> {
 }
 
 /** 模块级：保证重渲染时复用同一 Promise，不因组件重跑而新建 signal */
-const [asyncPromise, setAsyncPromise] = createSignal<Promise<VNode> | null>(
-  null,
-);
+const asyncPromise = createSignal<Promise<VNode> | null>(null);
 
-const [shouldThrow, setShouldThrow] = createSignal(false);
+const shouldThrow = createSignal(false);
 
 export function BoundaryDemo(): VNode {
-  // 只在尚未有 Promise 时请求一次，effect 重跑时因 asyncPromise() 已有值不会重复执行
+  // 只在尚未有 Promise 时请求一次，effect 重跑时因 asyncPromise.value 已有值不会重复执行
   createEffect(() => {
-    if (!asyncPromise()) setAsyncPromise(createAsyncContentPromise());
+    if (!asyncPromise.value) asyncPromise.value = createAsyncContentPromise();
   });
 
   return (
@@ -78,7 +76,7 @@ export function BoundaryDemo(): VNode {
             <button
               type="button"
               className={btn}
-              onClick={() => setShouldThrow((x) => !x)}
+              onClick={() => (shouldThrow.value = (x) => !x)}
             >
               切换「抛错」状态
             </button>
@@ -90,20 +88,20 @@ export function BoundaryDemo(): VNode {
               </p>
             )}
           >
-            <Thrower shouldThrow={shouldThrow()} />
+            <Thrower shouldThrow={shouldThrow.value} />
           </ErrorBoundary>
         </div>
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Suspense
           </h3>
-          {/* 说明：children 传 getter 返回的 Promise（初始为 null 时显示 fallback）；Promise resolve 后显示「异步内容已加载」。仅传 asyncPromise() 便于 effect 正确追踪，避免一直停在 fallback。null 转 undefined 以满足 children 类型。 */}
+          {/* 说明：children 传 getter 返回的 Promise（初始为 null 时显示 fallback）；Promise resolve 后显示「异步内容已加载」。仅传 asyncPromise.value 便于 effect 正确追踪，避免一直停在 fallback。null 转 undefined 以满足 children 类型。 */}
           <Suspense
             fallback={
               <p className="text-slate-500 dark:text-slate-400">加载中…</p>
             }
           >
-            {asyncPromise() ?? undefined}
+            {asyncPromise.value ?? undefined}
           </Suspense>
         </div>
       </div>

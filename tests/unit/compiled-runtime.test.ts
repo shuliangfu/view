@@ -54,26 +54,26 @@ describe("runtime", () => {
 
   it("insert getter 返回 null/undefined 时应显示空文本", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal<string | null>("a");
+    const s = createSignal<string | null>("a");
     createRoot((el: Element) => {
-      insert(el, () => get());
+      insert(el, () => s.value);
     }, container);
     expect(container.textContent).toBe("a");
-    set(null);
+    s.value = null;
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });
 
   it("insert getter 返回 Node 时应替换为该节点", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal<"a" | "b">("a");
+    const s = createSignal<"a" | "b">("a");
     const nodeA = document.createTextNode("A");
     const nodeB = document.createTextNode("B");
     createRoot((el: Element) => {
-      insert(el, () => (get() === "a" ? nodeA : nodeB));
+      insert(el, () => (s.value === "a" ? nodeA : nodeB));
     }, container);
     expect(container.textContent).toBe("A");
-    set("b");
+    s.value = "b";
     await Promise.resolve();
     expect(container.textContent).toBe("B");
     expect(container.firstChild).toBe(nodeB);
@@ -82,12 +82,12 @@ describe("runtime", () => {
   /** insert 的 toNode 对非 string/number/Node/null/undefined 会落为空文本 */
   it("insert getter 返回非标准值（如普通对象）时应显示空文本", async () => {
     const container = document.createElement("div");
-    const [get, set] = createSignal<unknown>("ok");
+    const s = createSignal<unknown>("ok");
     createRoot((el: Element) => {
       insert(
         el,
         () =>
-          (typeof get() === "string" ? get() : {}) as
+          (typeof s.value === "string" ? s.value : {}) as
             | string
             | number
             | Node
@@ -96,7 +96,7 @@ describe("runtime", () => {
       );
     }, container);
     expect(container.textContent).toBe("ok");
-    set({ not: "a node" });
+    s.value = { not: "a node" };
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });
@@ -113,26 +113,26 @@ describe("runtime", () => {
 
   it("insert getter 应细粒度更新（仅该插入点随 signal 变）", async () => {
     const container = document.createElement("div");
-    const [count, setCount] = createSignal(0);
+    const count = createSignal(0);
     let runCount = 0;
     createRoot((el: Element) => {
       const wrap = document.createElement("span");
       el.appendChild(wrap);
       insert(wrap, () => {
         runCount++;
-        return count();
+        return count.value;
       });
     }, container);
 
     expect(container.textContent).toBe("0");
     expect(runCount).toBe(1);
 
-    setCount(1);
+    count.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("1");
     expect(runCount).toBe(2);
 
-    setCount(2);
+    count.value = 2;
     await Promise.resolve();
     expect(container.textContent).toBe("2");
     expect(runCount).toBe(3);
@@ -140,16 +140,16 @@ describe("runtime", () => {
 
   it("unmount 后应回收 effect，不再响应 signal", async () => {
     const container = document.createElement("div");
-    const [count, setCount] = createSignal(0);
+    const count = createSignal(0);
     const root = createRoot((el: Element) => {
-      insert(el, () => String(count()));
+      insert(el, () => String(count.value));
     }, container);
 
     expect(container.textContent).toBe("0");
     root.unmount();
     // unmount 会清空容器，故此处为 ""；且 set 后 effect 已回收，不会把内容写回
     expect(container.textContent).toBe("");
-    setCount(1);
+    count.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("");
   });
@@ -159,12 +159,12 @@ describe("runtime", () => {
    */
   it("简单列表：items 为 signal，仅各 insert 随依赖更新", async () => {
     const container = document.createElement("div");
-    const [items, setItems] = createSignal([1, 2, 3]);
+    const items = createSignal([1, 2, 3]);
     const runCounts: number[] = [];
     createRoot((el: Element) => {
       const ul = document.createElement("ul");
       el.appendChild(ul);
-      const list = () => items();
+      const list = () => items.value;
       for (let i = 0; i < 3; i++) {
         const li = document.createElement("li");
         ul.appendChild(li);
@@ -182,24 +182,24 @@ describe("runtime", () => {
     expect(container.textContent).toContain("3");
     expect(runCounts).toEqual([1, 1, 1]);
 
-    setItems([10, 2, 3]);
+    items.value = [10, 2, 3];
     await Promise.resolve();
     expect(container.textContent).toContain("10");
-    expect(runCounts).toEqual([2, 2, 2]); // 同一 signal items()，三处 insert 都会重跑
+    expect(runCounts).toEqual([2, 2, 2]); // 同一 signal items.value，三处 insert 都会重跑
 
-    setItems([10, 20, 3]);
+    items.value = [10, 20, 3];
     await Promise.resolve();
     expect(container.textContent).toContain("20");
     expect(runCounts).toEqual([3, 3, 3]);
   });
 
   /**
-   * 手写「编译后」轮播：current 为 signal，只显示 slides[current()]，无子组件 replace。
+   * 手写「编译后」轮播：current 为 signal，只显示 slides[current.value]，无子组件 replace。
    */
   it("轮播形态：current 变化仅更新单插入点，无整块 replace", async () => {
     const container = document.createElement("div");
     const slides = ["slide0", "slide1", "slide2"];
-    const [current, setCurrent] = createSignal(0);
+    const current = createSignal(0);
     let getterRuns = 0;
     createRoot((el: Element) => {
       const wrap = document.createElement("div");
@@ -207,19 +207,19 @@ describe("runtime", () => {
       el.appendChild(wrap);
       insert(wrap, () => {
         getterRuns++;
-        return slides[current()];
+        return slides[current.value];
       });
     }, container);
 
     expect(container.querySelector(".carousel")?.textContent).toBe("slide0");
     expect(getterRuns).toBe(1);
 
-    setCurrent(1);
+    current.value = 1;
     await Promise.resolve();
     expect(container.querySelector(".carousel")?.textContent).toBe("slide1");
     expect(getterRuns).toBe(2);
 
-    setCurrent(2);
+    current.value = 2;
     await Promise.resolve();
     expect(container.querySelector(".carousel")?.textContent).toBe("slide2");
     expect(getterRuns).toBe(3);
@@ -263,11 +263,11 @@ describe("hydrate", () => {
    * 同一 fn：服务端 renderToString 出 HTML，客户端 hydrate 复用已有 DOM 并只绑 effect。
    */
   it("复用服务端 DOM、仅绑 effect，signal 更新后仅插入点变化", async () => {
-    const [count, setCount] = createSignal(0);
+    const count = createSignal(0);
     const fn = (el: Element) => {
       const span = document.createElement("span");
       el.appendChild(span);
-      insert(span, () => String(count()));
+      insert(span, () => String(count.value));
     };
 
     const html = renderToString(
@@ -284,11 +284,11 @@ describe("hydrate", () => {
     expect(container.textContent).toBe("0");
     expect(container.querySelector("span")).not.toBeNull();
 
-    setCount(1);
+    count.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("1");
 
-    setCount(2);
+    count.value = 2;
     await Promise.resolve();
     expect(container.textContent).toBe("2");
 
@@ -296,9 +296,9 @@ describe("hydrate", () => {
   });
 
   it("hydrate 后 unmount 应回收 effect", async () => {
-    const [count, setCount] = createSignal(0);
+    const count = createSignal(0);
     const fn = (el: Element) => {
-      insert(el, () => String(count()));
+      insert(el, () => String(count.value));
     };
     const html = renderToString(
       fn as unknown as (
@@ -310,20 +310,20 @@ describe("hydrate", () => {
 
     const root = hydrate(fn, container);
     root.unmount();
-    setCount(1);
+    count.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("0");
   });
 
   it("多层级 DOM（div > span > 文本）应正确复用并绑 effect", async () => {
-    const [count, setCount] = createSignal(0);
+    const count = createSignal(0);
     const fn = (el: Element) => {
       const div = document.createElement("div");
       div.className = "wrap";
       el.appendChild(div);
       const span = document.createElement("span");
       div.appendChild(span);
-      insert(span, () => String(count()));
+      insert(span, () => String(count.value));
     };
     const html = renderToString(
       fn as unknown as (
@@ -334,7 +334,7 @@ describe("hydrate", () => {
     container.innerHTML = html;
     const root = hydrate(fn, container);
     expect(container.querySelector(".wrap span")?.textContent).toBe("0");
-    setCount(1);
+    count.value = 1;
     await Promise.resolve();
     expect(container.querySelector(".wrap span")?.textContent).toBe("1");
     root.unmount();

@@ -648,7 +648,7 @@ describe("浏览器测试（examples 入口）", () => {
   }, exampleBrowserConfig);
 
   it(
-    "指令页：vIf/vElse/vElseIf、vShow、vFor、vOnce、vCloak、表单 value+onInput、自定义 v-focus",
+    "指令页：vIf/vElse/vElseIf、vOnce、vCloak、表单 value+onInput、自定义 v-focus",
     async (t) => {
       if (!t?.browser) return;
       await navigate(t, "/directive");
@@ -683,12 +683,6 @@ describe("浏览器测试（examples 入口）", () => {
         if (text.includes("当前是 C")) break;
       }
       expect(text).toContain("当前是 C");
-      await clickButtonByText(t, "切换显示");
-      await new Promise((r) => setTimeout(r, 80));
-      await clickButtonByText(t, "追加一项");
-      await new Promise((r) => setTimeout(r, 80));
-      text = await getMainText(t);
-      expect(text).toContain("新项");
       expect(text).toContain("v-once");
       expect(text).toContain("v-cloak");
       expect(text).toContain("再次聚焦");

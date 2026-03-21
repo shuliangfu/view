@@ -7,6 +7,88 @@
 
 ---
 
+## [1.3.3] - 2026-03-21
+
+### 破坏性变更
+
+- **`createSignal` 返回值**：不再返回 `[getter, setter]`，改为返回
+  **`SignalRef<T>`**： 用 **`.value`** 读，用 **`ref.value = next`** 或
+  **`ref.value = (prev) => next`** 写。赋值规则不变：若赋值为
+  **function**，一律按 **updater**
+  处理，不能把「函数类型的状态值」直接当普通值写入（Suspense / MountFn
+  等见源码注释）。
+- **`createMemo`**：对外仍为带标记的 **无参 getter** `() => T`；内部用
+  `SignalRef` 存缓存。
+- **路由 / `RoutePage`**：**`match.getState(key, initial)`** 现返回
+  **`SignalRef<T>`**。 **`getCurrentRouteSignal()`** 返回
+  **`markSignalGetter(() => currentRoute.value)`**， 保持「调用 getter
+  读当前路由」的用法兼容。
+- **`createResource`（带 source）**：**source** 可为
+  **`(() => S) | SignalRef<S>`**。
+- **`Transition`**：**`show`** 可为 **`() => boolean` 或
+  `SignalRef<boolean>`**（可直接传布尔 ref）。
+- **Context `Provider` 的 `value`**：可为
+  **`T | (() => T) | SignalRef<T>`**；**`getContext`** 在栈顶为 `SignalRef` 时读
+  **`.value`**。
+- **JSX 编译器**：已 **移除 `v-for` / `v-show` 的编译产物**。列表请用 JS
+  **`.map` / `insertReactive`** 等；显隐请用 **`vIf`**
+  或条件渲染。**指令模块**不再导出 **`resolveVForFactory`**、
+  **`getVForListAndFactory`**、**`getVShowValue`**；**`hasStructuralDirective`**
+  仅识别 **`vIf`** （不再含 vFor）。常量 **`V_FOR_ATTR`** 已删除。
+
+### 新增
+
+- **`SignalRef<T>`**、**`SIGNAL_REF_MARKER`**、**`isSignalRef()`**；从主包、**`compiled`**、**`csr`**、
+  **`hybrid`**、**`types`**、**`compiler`** 入口导出（compiler 同时补充
+  **`isSignalGetter`** 与 **`unwrapSignalGetterValue`** 再导出）。
+- **`unwrapSignalGetterValue`**：遇到 **`SignalRef`** 时读 **`.value`**（供
+  **`insertReactive`**、 编译器文本插值与受控 **`value`/`checked`** 使用）。
+- **手写 `jsx()` 的 VNode 挂载（`vnode-mount.ts`）**：与本征 **compileSource**
+  行为对齐—— Fragment 子级 **`vIf` / `vElseIf` / `vElse`** 兄弟链、本征节点
+  **`vOnce`**（`untrack`）、**`vCloak`** （`data-view-cloak`）、**`ref` 之后**
+  调用 **`applyDirectives`** 跑自定义指令；写 DOM 属性时跳过
+  **`isDirectiveProp`** 键。
+- **测试**：**`tests/unit/vnode-mount-directives.test.ts`**（自定义指令挂载 +
+  **`SignalRef` 触发 `updated`**）。
+- **文档**：**`docs/en-US/ANALYSIS-full-compile-vs-handwritten-jsx.md`**、
+  **`docs/zh-CN/ANALYSIS-full-compile-vs-handwritten-jsx.md`**（全量编译与手写
+  JSX 对照分析）。
+
+### 修复
+
+- **`insertReactive`**：在插入边界对 **`SignalRef`** 解包，使文本/动态内容与
+  **`.value`** 同步。
+- **`applyDirectives`**：绑定值为 **`SignalRef`** 时同样用 effect 驱动
+  **`updated`**。
+- **JSX 编译器**：本征 **`value` / `checked`** 对非函数字面量包
+  **`unwrapSignalGetterValue`**，避免 **`SignalRef`** 被当成字符串变成
+  **`[object Object]`**。
+- **SSR 伪 `CSSStyleDeclaration` 代理**：**`get` / `set` / `has` /
+  `getOwnPropertyDescriptor`** 对 **symbol** 键安全返回，避免运行时探测 symbol
+  时异常。
+- **HMR**：**`getHmrVersionGetter`** 对外为 **markSignalGetter** 包装的内部
+  **`SignalRef`**，兼容原 getter 订阅方式。
+- **Router**：删除文件末尾误增的 **`"./globals.ts";`** 一行。
+
+### 变更
+
+- **内部实现** 全面改用 **`SignalRef`**：**Suspense**
+  解析态、**`createRef`**、**`RoutePage`** 按 path 状态表、 路由
+  **`currentRoute`**、**`Transition`** 阶段、**`createMemo`** 缓存单元等。
+- **示例、`view init` 模板、集成与单测** 从元组 **`createSignal`** 迁移为
+  **`.value` / `SignalRef`**。
+- **`deno.json` / `package.json` 描述**：一行简介改为 **v-once /
+  v-cloak**，不再写已移除的 **v-for / v-show**。
+- **用户文档**：中英文 **README**、**《编译路径与运行时指南》**、测试徽章与
+  README 测试表（**509** / **465**）、**`createSignal` → `SignalRef`**
+  的迁移说明。
+
+### 移除
+
+- **编译器**：**`v-for` / `v-show`** 相关转换与生成代码。
+- **指令模块**：内置集合中的 **`vFor`/`v-for`/`vShow`/`v-show`** 及 v-for
+  结构处理、对应工具导出（见上破坏性变更）。
+
 ## [1.3.2] - 2026-03-21
 
 ### 修复

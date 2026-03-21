@@ -1,7 +1,7 @@
 /**
- * 指令示例：内置 vIf/vElse/vElseIf、vFor、vShow、vOnce、vCloak，以及自定义指令（如 v-focus）。
+ * 指令示例：内置 vIf/vElse/vElseIf、vOnce、vCloak，以及自定义指令（如 v-focus）。
  *
- * JSX 中用 camelCase：vIf、vElse、vElseIf、vFor、vShow、vOnce、vCloak。
+ * JSX 中用 camelCase：vIf、vElse、vElseIf、vOnce、vCloak。
  * 表单双向绑定：使用 value + onInput/onChange 与 createSignal 或 createReactive。
  */
 
@@ -12,8 +12,8 @@ import { createSignal } from "@dreamer/view";
 
 export const metadata = {
   title: "Directive",
-  description: "内置 vIf/vFor/vShow 与自定义指令 v-focus 示例",
-  keywords: "vIf, vFor, vShow, v-focus, 指令",
+  description: "内置 vIf/vElse 链与自定义指令 v-focus 示例",
+  keywords: "vIf, vElse, v-focus, 指令",
 };
 
 /** 统一按钮样式 */
@@ -23,13 +23,12 @@ const btn =
 const inputCls =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
 
-const [tab, setTab] = createSignal<"a" | "b" | "c">("a");
-const [show, setShow] = createSignal(true);
-const [list, setList] = createSignal(["苹果", "香蕉", "橙子"]);
-const [vModelText, setVModelText] = createSignal("");
-const [vModelChecked, setVModelChecked] = createSignal(false);
+/** 当前 tab：用 SignalRef `.value` 读/写，避免 tuple 解构 */
+const tab = createSignal<"a" | "b" | "c">("a");
+const vModelText = createSignal("");
+const vModelChecked = createSignal(false);
 /** 清空 input 示例用独立 signal，便于单独演示「发送并清空」 */
-const [clearInputText, setClearInputText] = createSignal("");
+const clearInputText = createSignal("");
 /** v-focus 演示用输入框引用，用于「再次聚焦」按钮 */
 let focusInputEl: HTMLInputElement | null = null;
 
@@ -47,31 +46,43 @@ export function DirectiveDemo(): VNode {
         指令
       </p>
       <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        vIf / vElse / vElseIf / vFor / vShow / vOnce / vCloak / 自定义
+        vIf / vElse / vElseIf / vOnce / vCloak / 自定义
       </h2>
       <div className="space-y-6">
         <div className={block}>
           <h3 className={subTitle}>v-if / v-else / v-else-if</h3>
           <p className="mb-3 flex flex-wrap gap-2">
-            <button type="button" className={btn} onClick={() => setTab("a")}>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => (tab.value = "a")}
+            >
               A
             </button>
-            <button type="button" className={btn} onClick={() => setTab("b")}>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => (tab.value = "b")}
+            >
               B
             </button>
-            <button type="button" className={btn} onClick={() => setTab("c")}>
+            <button
+              type="button"
+              className={btn}
+              onClick={() => (tab.value = "c")}
+            >
               C
             </button>
           </p>
           <p className="text-slate-600 dark:text-slate-300">
             <span
-              vIf={() => tab() === "a"}
+              vIf={() => tab.value === "a"}
               className="font-medium text-indigo-600 dark:text-indigo-400"
             >
               当前是 A
             </span>
             <span
-              vElseIf={() => tab() === "b"}
+              vElseIf={() => tab.value === "b"}
               className="font-medium text-indigo-600 dark:text-indigo-400"
             >
               当前是 B
@@ -85,42 +96,6 @@ export function DirectiveDemo(): VNode {
           </p>
         </div>
         <div className={block}>
-          <h3 className={subTitle}>v-show</h3>
-          <p className="text-slate-600 dark:text-slate-300">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => setShow((x) => !x)}
-            >
-              切换显示
-            </button>
-            <span vShow={show} className="ml-2">
-              这段由 vShow 控制显隐（不销毁节点）
-            </span>
-          </p>
-        </div>
-        <div className={block}>
-          <h3 className={subTitle}>v-for</h3>
-          <ul
-            vFor={() => list()}
-            className="mb-3 list-inside list-disc space-y-1 text-slate-600 dark:text-slate-300"
-          >
-            {(item: unknown, i: number) => (
-              <li key={i}>
-                {Number.isFinite(i) ? i + 1 : 0}.{" "}
-                {item != null ? String(item) : ""}
-              </li>
-            )}
-          </ul>
-          <button
-            type="button"
-            className={btn}
-            onClick={() => setList((prev) => [...prev, "新项"])}
-          >
-            追加一项
-          </button>
-        </div>
-        <div className={block}>
           <h3 className={subTitle}>v-once</h3>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             v-once：只渲染一次，不随 signal 更新。当前 tab 快照：
@@ -128,7 +103,7 @@ export function DirectiveDemo(): VNode {
               vOnce
               className="font-medium text-indigo-600 dark:text-indigo-400"
             >
-              {tab()}
+              {tab.value}
             </span>
           </p>
         </div>
@@ -154,10 +129,11 @@ export function DirectiveDemo(): VNode {
               className={inputCls}
               placeholder="输入即同步"
               value={vModelText}
-              onInput={(e: Event) =>
-                setVModelText((e.target as HTMLInputElement).value)}
+              onInput={(
+                e: Event,
+              ) => (vModelText.value = (e.target as HTMLInputElement).value)}
             />
-            <span>→ 当前值：{() => vModelText() || "(空)"}</span>
+            <span>→ 当前值：{vModelText.value || "(空)"}</span>
           </p>
           {/* 清空 input 示例：传 getter value={clearInputText}，applyProps 内 createEffect 订阅，set("") 后 effect 写回 DOM；根仅地址变化重跑时不再整树 patch，须靠 getter 绑定才能清空 */}
           <p className="mb-2 flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-300">
@@ -167,14 +143,16 @@ export function DirectiveDemo(): VNode {
               placeholder="输入后点「发送并清空」"
               data-testid="clear-demo-input"
               value={clearInputText}
-              onInput={(e: Event) =>
-                setClearInputText((e.target as HTMLInputElement).value)}
+              onInput={(
+                e: Event,
+              ) => (clearInputText.value =
+                (e.target as HTMLInputElement).value)}
             />
             <button
               type="button"
               className={btn}
               data-testid="send-and-clear-btn"
-              onClick={() => setClearInputText("")}
+              onClick={() => (clearInputText.value = "")}
             >
               发送并清空
             </button>
@@ -187,12 +165,14 @@ export function DirectiveDemo(): VNode {
               <input
                 type="checkbox"
                 checked={vModelChecked}
-                onChange={(e: Event) =>
-                  setVModelChecked((e.target as HTMLInputElement).checked)}
+                onChange={(
+                  e: Event,
+                ) => (vModelChecked.value =
+                  (e.target as HTMLInputElement).checked)}
               />
               <span>勾选即同步</span>
             </label>
-            <span>→ checked：{() => String(vModelChecked())}</span>
+            <span>→ checked：{String(vModelChecked.value)}</span>
           </p>
         </div>
         <div className={block}>

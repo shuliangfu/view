@@ -28,8 +28,8 @@ describe("form 示例页 compileSource", () => {
   });
 
   /**
-   * PasswordInput 内为 value={props.value}（PropertyAccess），须走 createEffect + typeof fn ? fn() : x，
-   * 不得 setAttribute("value", props.value)，否则会把 getter 字符串化填满输入框，而提交时 password() 仍为 ""（长度 0）。
+   * PasswordInput 内为 value={props.value}（PropertyAccess），须走 createEffect；
+   * 非函数字段须 `unwrapSignalGetterValue(props.value)` 以支持 `SignalRef`，不得 setAttribute 把对象字符串化。
    */
   it("PasswordInput 的 input value 应对 props.value 生成 effect 而非 setAttribute 字符串化函数", async () => {
     const source = await readTextFile(fromFileUrl(FORM_PAGE_FILE_URL));
@@ -37,7 +37,7 @@ describe("form 示例页 compileSource", () => {
       insertImportPath: "@dreamer/view",
     });
     expect(out).toMatch(
-      /typeof\s+props\.value\s*===\s*["']function["']\s*\?\s*props\.value\(\)\s*:\s*props\.value/,
+      /typeof\s+props\.value\s*===\s*["']function["']\s*\?\s*props\.value\(\)\s*:\s*unwrapSignalGetterValue\s*\(\s*props\.value\s*\)/,
     );
     expect(out).not.toMatch(/setAttribute\([^)]*value[^)]*props\.value/);
   });

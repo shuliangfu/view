@@ -7,7 +7,7 @@
  * - `{ expr }` → `insert(parent, () => expr)`
  * - 文本 → `insert(parent, text)`
  *
- * **内置指令：** v-if / v-else-if / v-else（兄弟链）、v-for、v-show、v-once（`untrack`）、v-cloak（`data-view-cloak`）等。
+ * **内置指令：** v-if / v-else-if / v-else（兄弟链）、v-once（`untrack`）、v-cloak（`data-view-cloak`）等；显隐请用 `vIf`。
  * 自定义 `registerDirective` 与运行时指令仍见 `@dreamer/view/directive`。
  *
  * @module @dreamer/view/jsx-compiler/transform
@@ -134,73 +134,6 @@ const BOOLEAN_ATTRS = new Set([
   "draggable",
   "spellCheck",
 ]);
-
-/** 3.3 从 attributes 中取出 v-for 列表表达式；`() => arr` 编译为 `(() => arr)()`，其余表达式按原样参与 `.map`。 */
-function getVForListExpression(attrs: ts.JsxAttributes): ts.Expression | null {
-  for (const prop of attrs.properties) {
-    if (!ts.isJsxAttribute(prop)) continue;
-    const name = (prop.name as ts.Identifier).text;
-    if (name !== "vFor" && name !== "v-for") continue;
-    if (!prop.initializer || !ts.isJsxExpression(prop.initializer)) return null;
-    const ex = prop.initializer.expression;
-    // 不用 safeNodeText 判空：属性里的 `() => list()` 等节点可能无可靠 pos，误判会导致 v-for 整段不编译
-    if (!ex) return null;
-    if (ts.isArrowFunction(ex) && ex.parameters.length === 0) {
-      return factory.createCallExpression(ex, undefined, []);
-    }
-    return ex as ts.Expression;
-  }
-  return null;
-}
-
-/**
- * v-for 槽位子节点：箭头工厂 `(item,i)=>...` 不能用 safeNodeText 判空，否则常误判为无内容。
- */
-function isMeaningfulVForSlotChild(child: ts.JsxChild): boolean {
-  if (isWhitespaceOnlyJsxText(child)) return false;
-  if (ts.isJsxExpression(child)) {
-    const ex = child.expression;
-    if (!ex) return false;
-    if (ts.isArrowFunction(ex) || ts.isFunctionExpression(ex)) return true;
-    if (safeNodeText(ex as ts.Node).trim() === "") return false;
-  }
-  return true;
-}
-
-/**
- * 从元素子节点取出 v-for 的项工厂：须为**唯一**有意义子节点且为 `(item, i) => <li/>` 形态（体可为括号包 JSX）。
- *
- * @returns 用户书写的箭头函数，或 null
- */
-function getVForUserArrowFromChildren(
-  children: readonly ts.JsxChild[],
-): ts.ArrowFunction | null {
-  const meaningful = children.filter(isMeaningfulVForSlotChild);
-  if (meaningful.length !== 1) return null;
-  const c = meaningful[0]!;
-  if (!ts.isJsxExpression(c) || !c.expression) return null;
-  const ex = c.expression;
-  if (!ts.isArrowFunction(ex)) return null;
-  return ex;
-}
-
-/**
- * 克隆参数列表，避免嵌套 v-for 编译复用同一 ParameterDeclaration 节点。
- */
-function cloneParameterDeclarations(
-  params: readonly ts.ParameterDeclaration[],
-): ts.ParameterDeclaration[] {
-  return params.map((p) =>
-    factory.createParameterDeclaration(
-      p.modifiers,
-      p.dotDotDotToken,
-      p.name,
-      p.questionToken,
-      p.type,
-      p.initializer,
-    )
-  );
-}
 
 /** 3.3 从 attributes 中取出 v-if 条件表达式，无则返回 null */
 function getVIfCondition(attrs: ts.JsxAttributes): ts.Expression | null {
@@ -588,10 +521,9 @@ function domAttrNameForSetAttribute(jsxAttrName: string): string {
 }
 
 /**
- * 将 JSX 属性转为对 element 的赋值、setAttribute、addEventListener、ref 或 v-show 调用。
+ * 将 JSX 属性转为对 element 的赋值、setAttribute、addEventListener、ref 等。
  * 1.1 事件：on* → addEventListener；1.2 ref 在 appendChild 后由 buildRefStatementsAfterAppend 处理；
- * 3.3 v-show → style.display（字面 false 静态设，表达式用 createEffect）
- * 3.5 v-else / v-else-if / v-once / v-cloak 不写 DOM（cloak 由元素级 setAttribute data-view-cloak 处理）
+ * 3.5 v-else / v-else-if / v-once / v-cloak 等指令名不写 DOM（cloak 由元素级 setAttribute data-view-cloak 处理）
  */
 function buildAttributeStatements(
   elVar: string,
@@ -619,7 +551,6 @@ function buildAttributeStatements(
     if (!ts.isJsxAttribute(prop)) continue;
     const name = (prop.name as ts.Identifier).text;
     if (name === "vIf" || name === "v-if") continue;
-    if (name === "vFor" || name === "v-for") continue;
     if (name === "vElse" || name === "v-else") continue;
     if (name === "vElseIf" || name === "v-else-if") continue;
     if (name === "vOnce" || name === "v-once") continue;
@@ -630,96 +561,6 @@ function buildAttributeStatements(
     if (isCustomDirectivePropName(name)) continue;
     // ref 在 appendChild 之后执行（见 buildRefStatementsAfterAppend），保证 isConnected 与指令 mounted 顺序正确
     if (name === "ref") continue;
-    if (name === "vShow" || name === "v-show") {
-      if (!prop.initializer) continue;
-      if (ts.isStringLiteral(prop.initializer)) {
-        if (prop.initializer.text === "false") {
-          stmts.push(
-            factory.createExpressionStatement(
-              factory.createBinaryExpression(
-                factory.createPropertyAccessExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(elVar),
-                    "style",
-                  ),
-                  "display",
-                ),
-                factory.createToken(ts.SyntaxKind.EqualsToken),
-                factory.createStringLiteral("none"),
-              ),
-            ),
-          );
-        }
-        continue;
-      }
-      if (ts.isJsxExpression(prop.initializer)) {
-        const expr = prop.initializer.expression;
-        if (!expr || safeNodeText(expr as ts.Node).trim() === "") continue;
-        const exprNode = expr as ts.Expression;
-        // vShow 可能为 getter（如 signal）：须求值后判断，effect 才能订阅；箭头函数直接调用，标识符用 typeof 兼容
-        const valueExpr =
-          ts.isArrowFunction(exprNode) || ts.isFunctionExpression(exprNode)
-            ? factory.createCallExpression(exprNode, undefined, [])
-            : ts.isIdentifier(exprNode)
-            ? factory.createConditionalExpression(
-              factory.createBinaryExpression(
-                factory.createTypeOfExpression(exprNode),
-                factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
-                factory.createStringLiteral("function"),
-              ),
-              undefined,
-              factory.createCallExpression(exprNode, undefined, []),
-              undefined,
-              exprNode,
-            )
-            : exprNode;
-        const assignExpr = factory.createBinaryExpression(
-          factory.createPropertyAccessExpression(
-            factory.createPropertyAccessExpression(
-              factory.createIdentifier(elVar),
-              "style",
-            ),
-            "display",
-          ),
-          factory.createToken(ts.SyntaxKind.EqualsToken),
-          factory.createConditionalExpression(
-            valueExpr,
-            undefined,
-            factory.createStringLiteral(""),
-            undefined,
-            factory.createStringLiteral("none"),
-          ),
-        );
-        const effectInnerBody = ctx.inOnceSubtree
-          ? factory.createCallExpression(ctx.untrackId, undefined, [
-            factory.createArrowFunction(
-              undefined,
-              undefined,
-              [],
-              undefined,
-              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-              assignExpr,
-            ),
-          ])
-          : assignExpr;
-        stmts.push(
-          factory.createExpressionStatement(
-            factory.createCallExpression(createEffectId, undefined, [
-              factory.createArrowFunction(
-                undefined,
-                undefined,
-                [],
-                undefined,
-                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                effectInnerBody,
-              ),
-            ]),
-          ),
-        );
-        continue;
-      }
-      continue;
-    }
     const isEvent = name.startsWith("on") && name.length > 2;
     if (prop.initializer) {
       if (ts.isStringLiteral(prop.initializer)) {
@@ -808,6 +649,11 @@ function buildAttributeStatements(
               ts.isElementAccessExpression(exprNode))
           ) {
             // value/checked 常为 getter（如 createSignal）：直接 setAttribute 会变成字符串化函数源码；用 createEffect 订阅并写 DOM 属性。
+            /**
+             * value/checked 的表达式可能是：无参 getter（createMemo）、`SignalRef`（createSignal）、或静态引用。
+             * `SignalRef` 为对象，`typeof !== "function"`，若直接当右值会 `String(ref)` → "[object Object]"；
+             * 非箭头/函数字面量分支须经 `unwrapSignalGetterValue` 解包 ref / 标记 getter。
+             */
             const valueExpr =
               ts.isArrowFunction(exprNode) || ts.isFunctionExpression(exprNode)
                 ? factory.createCallExpression(exprNode, undefined, [])
@@ -822,7 +668,11 @@ function buildAttributeStatements(
                   undefined,
                   factory.createCallExpression(exprNode, undefined, []),
                   undefined,
-                  exprNode,
+                  factory.createCallExpression(
+                    factory.createIdentifier("unwrapSignalGetterValue"),
+                    undefined,
+                    [exprNode],
+                  ),
                 );
             const propName = name === "value" ? "value" : "checked";
             const assignExpr = factory.createBinaryExpression(
@@ -1007,7 +857,7 @@ function buildChildStatements(
     // 合成节点（如嵌套 return 被替换后的 .map 表达式）可能无 sourceFile，避免 getText() 抛错
     const node = expr as ts.Node;
     const srcFile = node.getSourceFile?.();
-    // 箭头/函数字面量体可能无可靠 pos，safeNodeText 为空但仍须参与 insertReactive（如 v-for 子工厂）
+    // 箭头/函数字面量体可能无可靠 pos，safeNodeText 为空但仍须参与 insertReactive
     const isFnExpr = ts.isArrowFunction(expr) || ts.isFunctionExpression(expr);
     if (srcFile && !isFnExpr && safeNodeText(node).trim() === "") return [];
     // 将表达式内嵌的 JSX（如 isDark ? <SunIcon /> : <MoonIcon />）转为组件调用，避免输出未编译 JSX
@@ -1219,17 +1069,15 @@ function mergePropsChain(segments: ts.Expression[]): ts.Expression {
  * 组件 props 合并时须跳过的编译器指令属性（勿传给用户组件函数）。
  *
  * @param name - JSX 属性名（camelCase 或 kebab-case）
- * @returns 是否为 v-if / v-for 等指令
+ * @returns 是否为 v-if 等编译器保留指令名
  */
 function isCompilerDirectivePropName(name: string): boolean {
   return (
     name === "vIf" || name === "v-if" ||
-    name === "vFor" || name === "v-for" ||
     name === "vElse" || name === "v-else" ||
     name === "vElseIf" || name === "v-else-if" ||
     name === "vOnce" || name === "v-once" ||
     name === "vCloak" || name === "v-cloak" ||
-    name === "vShow" || name === "v-show" ||
     name === "key"
   );
 }
@@ -1580,7 +1428,7 @@ function isMeaningfulSuspenseSlotChild(child: ts.JsxChild): boolean {
   if (ts.isJsxExpression(child)) {
     const ex = child.expression;
     if (!ex) return false;
-    // v-for 子节点常为 `(item, i) => (...)`，节点可能无可靠 pos，safeNodeText 为空但仍须保留
+    // 列表 map 子节点常为 `(item, i) => (...)`，节点可能无可靠 pos，safeNodeText 为空但仍须保留
     if (ts.isArrowFunction(ex) || ts.isFunctionExpression(ex)) return true;
     const text = safeNodeText(ex as ts.Node).trim();
     if (text !== "") return true;
@@ -1860,74 +1708,6 @@ function buildComponentStatements(
   return allStmts;
 }
 
-/**
- * 判断是否为 compileSource 全局 visitor 已生成的「项挂载」箭头：`(__viewMountParent: Element) => { ... }`（或历史 `parent`）。
- * 该 visitor 会先于 v-for 编译把 `(item,i) => (<li/>)` 打成此形态，故 v-for 分支须识别并直接用作 map 回调体。
- *
- * @param arrow - 待检测的箭头函数 AST
- * @returns 是否为单参挂载父节点名（`__viewMountParent` 或历史 `parent`）+ 语句块体
- */
-function isVForItemInnerMountArrow(arrow: ts.ArrowFunction): boolean {
-  if (arrow.parameters.length !== 1) return false;
-  const p0 = arrow.parameters[0]!;
-  if (!ts.isIdentifier(p0.name)) return false;
-  const n = p0.name.text;
-  if (n !== JSX_MOUNT_FN_PARENT_PARAM && n !== "parent") return false;
-  return ts.isBlock(arrow.body);
-}
-
-/**
- * 由 v-for 子项箭头函数体（单棵 JSX）生成 `(parent)=>{...}`，供 `.map((item,i)=>...)` 使用。
- * 嵌套调用 jsxToRuntimeFunction 时 `resetVarCounter: false`，避免与外层临时变量重名。
- * 若 compileSource 已把子项打成 `(item,i)=>(parent)=>{...}`，则克隆外层参数后直接复用该体。
- *
- * @param userArrow - `(item, i) => ( <li/> )` 或已被 visitor 处理后的 `(item,i)=>(parent)=>{...}`
- * @returns `(item, i) => (parent) => { ... }`，无法识别时返回 null
- */
-function buildVForItemMountArrow(
-  userArrow: ts.ArrowFunction,
-  inOnceSubtree: boolean,
-): ts.ArrowFunction | null {
-  if (ts.isBlock(userArrow.body)) return null;
-  let bodyExpr: ts.Expression = userArrow.body as ts.Expression;
-  if (ts.isParenthesizedExpression(bodyExpr)) {
-    bodyExpr = bodyExpr.expression;
-  }
-  if (ts.isArrowFunction(bodyExpr) && isVForItemInnerMountArrow(bodyExpr)) {
-    return factory.createArrowFunction(
-      userArrow.modifiers,
-      undefined,
-      cloneParameterDeclarations(userArrow.parameters),
-      undefined,
-      userArrow.equalsGreaterThanToken ??
-        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-      bodyExpr,
-    );
-  }
-  if (ts.isParenthesizedExpression(bodyExpr)) {
-    bodyExpr = bodyExpr.expression;
-  }
-  if (
-    !ts.isJsxElement(bodyExpr) && !ts.isJsxSelfClosingElement(bodyExpr) &&
-    !ts.isJsxFragment(bodyExpr)
-  ) {
-    return null;
-  }
-  const innerMount = jsxToRuntimeFunction(
-    bodyExpr as ts.JsxElement | ts.JsxFragment | ts.JsxSelfClosingElement,
-    { resetVarCounter: false, inOnceSubtree },
-  );
-  return factory.createArrowFunction(
-    userArrow.modifiers,
-    undefined,
-    cloneParameterDeclarations(userArrow.parameters),
-    undefined,
-    userArrow.equalsGreaterThanToken ??
-      factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-    innerMount,
-  );
-}
-
 /** buildElementStatements 可选：兄弟链内单支已外包 if，避免重复包 vIf */
 type ElementBuildOpts = {
   omitVIfWrap?: boolean;
@@ -2098,7 +1878,7 @@ function buildChildrenStatementsSequential(
 
 /**
  * 为一个 JSX 元素、Fragment 或自闭合标签生成：创建节点/组件、属性、子节点；
- * 3.3 v-if、v-show、v-for；3.5 v-else 链、v-once、v-cloak。
+ * 3.3 v-if；3.5 v-else 链、v-once、v-cloak。
  */
 function buildElementStatements(
   parentVar: string,
@@ -2107,7 +1887,6 @@ function buildElementStatements(
   opts?: ElementBuildOpts,
 ): ts.Statement[] {
   const stmts: ts.Statement[] = [];
-  const insertReactiveId = ctx.insertReactiveId;
   if (ts.isJsxFragment(node)) {
     stmts.push(
       ...buildChildrenStatementsSequential(parentVar, node.children, ctx),
@@ -2140,16 +1919,8 @@ function buildElementStatements(
       { kind: "if", cond: vIfCond, node },
     ], ctx);
   }
-  const vForListExpr = getVForListExpression(attrs);
   const childOnce = ctx.inOnceSubtree || hasVOnceAttribute(attrs);
   const childCtx: EmitContext = { ...ctx, inOnceSubtree: childOnce };
-  const vForUserArrow = vForListExpr
-    ? getVForUserArrowFromChildren(elementChildren)
-    : null;
-  const vForMapCallback = vForListExpr && vForUserArrow
-    ? buildVForItemMountArrow(vForUserArrow, childOnce)
-    : null;
-  const useCompiledVFor = Boolean(vForListExpr && vForMapCallback);
 
   /** SVG 系标签须用 createElementNS 才能在浏览器中正确渲染；SSR 伪 document 无 createElementNS 时回退 createElement */
   const createElExpr = isSvgTag(tagName)
@@ -2242,41 +2013,14 @@ function buildElementStatements(
       ),
     );
   }
-  if (useCompiledVFor && vForMapCallback) {
-    const mapCall = factory.createCallExpression(
-      factory.createPropertyAccessExpression(
-        vForListExpr!,
-        factory.createIdentifier("map"),
-      ),
-      undefined,
-      [vForMapCallback],
-    );
-    const getterExpr = wrapExprInUntrackIfOnce(mapCall, childCtx);
-    innerStmts.push(
-      factory.createExpressionStatement(
-        factory.createCallExpression(insertReactiveId, undefined, [
-          factory.createIdentifier(elVar),
-          factory.createArrowFunction(
-            undefined,
-            undefined,
-            [],
-            undefined,
-            factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-            getterExpr,
-          ),
-        ]),
-      ),
-    );
-  } else {
-    // 子节点必须挂到当前元素 elVar 上；parentVar 仅为外层容器（appendChild 之后子内容进 el）
-    innerStmts.push(
-      ...buildChildrenStatementsSequential(
-        elVar,
-        elementChildren,
-        childCtx,
-      ),
-    );
-  }
+  // 子节点必须挂到当前元素 elVar 上；parentVar 仅为外层容器（appendChild 之后子内容进 el）
+  innerStmts.push(
+    ...buildChildrenStatementsSequential(
+      elVar,
+      elementChildren,
+      childCtx,
+    ),
+  );
 
   const orphanElseIf = !opts?.omitVIfWrap && vIfCond === null &&
     hasVElseIfAttribute(attrs) && !hasVIfAttribute(attrs);
@@ -2295,11 +2039,11 @@ function buildElementStatements(
   return stmts;
 }
 
-/** jsxToRuntimeFunction 选项：嵌套 v-for 项编译时应保持 var 计数连续，避免与外层 `_0` 临时变量冲突 */
+/** jsxToRuntimeFunction 选项：嵌套 JSX 编译时应保持 var 计数连续，避免与外层 `_0` 临时变量冲突 */
 export type JsxToRuntimeFunctionOptions = {
   /** 为 false 时不调用 resetVarCounter（默认 true） */
   resetVarCounter?: boolean;
-  /** 为 true 时子树内 insertReactive / v-show 等用 untrack，实现 v-once 语义 */
+  /** 为 true 时子树内 insertReactive 等用 untrack，实现 v-once 语义 */
   inOnceSubtree?: boolean;
 };
 

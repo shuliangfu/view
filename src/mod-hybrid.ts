@@ -6,16 +6,16 @@
  * @module @dreamer/view/hybrid
  * @packageDocumentation
  *
- * **导出：** `createSignal`、`createEffect`、`createMemo`、`onCleanup`、`createRoot`、`render`、`mount`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`unwrapSignalGetterValue`、`isDOMEnvironment`
+ * **导出：** `createSignal`、`createEffect`、`createMemo`、`onCleanup`、`createRoot`、`render`、`mount`、`getCurrentEffect`、`setCurrentEffect`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`、`isDOMEnvironment`
  *
- * **类型：** `MountOptions`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`EffectDispose`（与 csr 一致）
+ * **类型：** `MountOptions`、`Root`、`SignalRef`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`、`EffectDispose`（与 csr 一致）
  *
  * @example
  * ```ts
  * import { mount, createSignal } from "jsr:@dreamer/view/hybrid";
- * const [n, setN] = createSignal(0);
+ * const n = createSignal(0);
  * mount("#root", (el) => {
- *   el.textContent = String(n());
+ *   el.textContent = String(n.value);
  * });
  * ```
  */
@@ -24,9 +24,11 @@ export {
   createSignal,
   getCurrentEffect,
   isSignalGetter,
+  isSignalRef,
   setCurrentEffect,
   unwrapSignalGetterValue,
 } from "./signal.ts";
+export type { SignalRef } from "./signal.ts";
 export { createEffect, createMemo, onCleanup } from "./effect.ts";
 export { createRoot, mount, render } from "./runtime-hybrid.ts";
 export type {

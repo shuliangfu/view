@@ -35,7 +35,7 @@ export type InsertValueWithMount = InsertValue | ((parent: Node) => void);
  */
 import { createEffect, onCleanup } from "./effect.ts";
 import { escapeForAttr } from "./escape.ts";
-import { isSignalGetter } from "./signal.ts";
+import { isSignalGetter, unwrapSignalGetterValue } from "./signal.ts";
 import { NOOP_ROOT, resolveMountContainer } from "./runtime-shared.ts";
 import { createRoot, render } from "./compiler/mod.ts";
 import type { MountOptions, Root } from "./types.ts";
@@ -158,9 +158,12 @@ export function insertReactive(
     // 热路径：MountFn 最常见，已置于首分支（见 ANALYSIS_OPTIMIZATION.md 1.2）
     // getter 返回 getter 引用时需解包以订阅 signal，见 unwrapSignalGetterValue
     const raw = getter();
-    const next = (typeof raw === "function" && isSignalGetter(raw)
-      ? (raw as () => unknown)()
-      : raw) as ReactiveInsertNext;
+    /** 与 compiler/insert 一致：getter 可返回 `SignalRef` 或标记 getter，须解包后再走 MountFn/VNode/文本分支 */
+    const next = unwrapSignalGetterValue(
+      typeof raw === "function" && isSignalGetter(raw)
+        ? (raw as () => unknown)()
+        : raw,
+    ) as ReactiveInsertNext;
     if (isMountFn(next)) {
       for (const n of currentNodes) {
         detachInsertReactiveTrackedChild(n);

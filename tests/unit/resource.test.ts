@@ -87,8 +87,8 @@ describe("createResource (no source)", () => {
 
 describe("createResource (with source)", () => {
   it("source 变化时应重新请求", async () => {
-    const [getId, setId] = createSignal(1);
-    const getter = createResource(getId, (id) => Promise.resolve(id * 10));
+    const id = createSignal(1);
+    const getter = createResource(id, (id) => Promise.resolve(id * 10));
     createEffect(() => {
       getter();
       return undefined;
@@ -96,7 +96,7 @@ describe("createResource (with source)", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(getter().data).toBe(10);
-    setId(2);
+    id.value = 2;
     await Promise.resolve();
     await Promise.resolve();
     expect(getter().data).toBe(20);

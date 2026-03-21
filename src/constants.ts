@@ -75,7 +75,5 @@ export const KEYED_WRAPPER_ATTR = "data-view-keyed";
 export const V_IF_GROUP_ATTR = "data-view-v-if-group";
 /** 单 v-if 占位符 */
 export const V_IF_ATTR = "data-view-v-if";
-/** v-for 占位符 */
-export const V_FOR_ATTR = "data-view-v-for";
 /** v-once 已更新一次后打的标记，打上后 patch 不再更新该节点 */
 export const V_ONCE_FROZEN_ATTR = "data-view-v-once-frozen";

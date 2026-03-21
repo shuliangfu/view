@@ -11,7 +11,7 @@ import {
   renderToStream,
   renderToString,
 } from "@dreamer/view/compiler";
-import { jsx } from "@dreamer/view/jsx-runtime";
+import { Fragment, jsx } from "@dreamer/view/jsx-runtime";
 
 describe("createSSRDocument", () => {
   it("返回的 document 具备 createElement、createTextNode 且可生成可序列化节点", () => {
@@ -120,6 +120,48 @@ describe("renderToString", () => {
       insert(el, () => vnode as unknown as InsertValue);
     });
     expect(html).toContain("ok");
+  });
+
+  it("VNode vCloak 应输出 data-view-cloak", () => {
+    const vnode = jsx("div", {
+      vCloak: true,
+      children: "c",
+    });
+    const html = renderToString((el) => {
+      insert(el, () => vnode as unknown as InsertValue);
+    });
+    expect(html).toContain("data-view-cloak");
+    expect(html).toContain("c");
+  });
+
+  it("Fragment 上 vIf / vElse 兄弟链应只渲染一支", () => {
+    const vnode = jsx(Fragment, {
+      children: [
+        jsx("span", { vIf: false, children: "no" }),
+        jsx("span", { vElse: true, children: "yes" }),
+      ],
+    });
+    const html = renderToString((el) => {
+      insert(el, () => vnode as unknown as InsertValue);
+    });
+    expect(html).not.toContain("no");
+    expect(html).toContain("yes");
+  });
+
+  it("Fragment 上 vIf / vElseIf / vElse 链应命中首条真分支", () => {
+    const vnode = jsx(Fragment, {
+      children: [
+        jsx("i", { vIf: false, children: "1" }),
+        jsx("i", { vElseIf: true, children: "2" }),
+        jsx("i", { vElse: true, children: "3" }),
+      ],
+    });
+    const html = renderToString((el) => {
+      insert(el, () => vnode as unknown as InsertValue);
+    });
+    expect(html).not.toContain(">1<");
+    expect(html).toContain(">2<");
+    expect(html).not.toContain(">3<");
   });
 });
 

@@ -270,7 +270,7 @@ const HOME_MODULES: Array<{
   },
   {
     title: "指令",
-    desc: "vIf、vElse、vElseIf、vFor、vShow、vOnce、vCloak、自定义（v-focus）",
+    desc: "vIf、vElse、vElseIf、vOnce、vCloak、自定义（v-focus）",
     href: "/directive",
     iconKey: "directive",
     accent: "border-l-violet-500 bg-violet-500/5 dark:bg-violet-500/10",

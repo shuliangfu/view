@@ -38,7 +38,8 @@ function ThemedBox(): VNode {
   );
 }
 
-const [theme, setTheme] = createSignal<Theme>("light");
+/** Provider 的响应式值：传 SignalRef，消费者内 useContext 读当前主题字符串 */
+const theme = createSignal<Theme>("light");
 
 export function ContextDemo(): VNode {
   return (
@@ -58,19 +59,19 @@ export function ContextDemo(): VNode {
             <button
               type="button"
               className={btn}
-              onClick={() => setTheme("light")}
+              onClick={() => (theme.value = "light")}
             >
               light
             </button>
             <button
               type="button"
               className={btn}
-              onClick={() => setTheme("dark")}
+              onClick={() => (theme.value = "dark")}
             >
               dark
             </button>
           </p>
-          {/* 传 getter 而非 theme()，使 useContext() 在消费者内读值，细粒度渲染下能正确建立订阅，点击切换后 ThemedBox 会更新 */}
+          {/* 传 SignalRef 而非 theme.value，使 useContext() 在消费者内读值，细粒度渲染下能正确建立订阅，点击切换后 ThemedBox 会更新 */}
           <ThemeContext.Provider value={theme}>
             <ThemedBox />
           </ThemeContext.Provider>

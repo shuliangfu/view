@@ -3,7 +3,13 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal, mergeProps, splitProps } from "@dreamer/view/compiler";
+import {
+  createSignal,
+  isSignalRef,
+  mergeProps,
+  splitProps,
+} from "@dreamer/view/compiler";
+import type { SignalRef } from "@dreamer/view/types";
 
 describe("mergeProps", () => {
   it("无参数时应返回空对象", () => {
@@ -43,11 +49,12 @@ describe("mergeProps", () => {
     expect("c" in out).toBe(false);
   });
 
-  it("合并后保留 getter（响应式）", () => {
-    const [get] = createSignal(0);
-    const out = mergeProps({ value: get } as Record<string, unknown>);
-    expect(typeof (out as { value: () => number }).value).toBe("function");
-    expect((out as { value: () => number }).value()).toBe(0);
+  it("合并后保留 SignalRef（响应式）", () => {
+    const count = createSignal(0);
+    const out = mergeProps({ value: count } as Record<string, unknown>);
+    const v = (out as { value: unknown }).value;
+    expect(isSignalRef(v)).toBe(true);
+    expect((v as SignalRef<number>).value).toBe(0);
   });
 
   it("返回的代理 ownKeys 应为各来源 key 的并集", () => {

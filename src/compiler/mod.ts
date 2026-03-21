@@ -49,6 +49,8 @@ export type { SSRElement, SSRNode, SSRTextNode } from "./ssr-document.ts";
 export {
   createSignal,
   getCurrentEffect,
+  isSignalGetter,
+  isSignalRef,
   setCurrentEffect,
   unwrapSignalGetterValue,
 } from "../signal.ts";

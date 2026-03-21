@@ -12,8 +12,9 @@
  *
  * @example
  * const ThemeContext = createContext<"light" | "dark">("light");
- * <ThemeContext.Provider value={theme()}><App /></ThemeContext.Provider>
- * // 子组件：const theme = ThemeContext.useContext();
+ * const theme = createSignal<"light" | "dark">("light");
+ * <ThemeContext.Provider value={theme}><App /></ThemeContext.Provider>
+ * // 子组件：const themeValue = ThemeContext.useContext();
  */
 
 import {
@@ -22,7 +23,7 @@ import {
   KEY_PROVIDER_BINDINGS,
 } from "./constants.ts";
 import { getGlobalOrDefault } from "./globals.ts";
-import { markSignalGetter } from "./signal.ts";
+import { isSignalRef, markSignalGetter, type SignalRef } from "./signal.ts";
 import type { VNode } from "./types.ts";
 
 /** context 栈：id -> value[]，跨 bundle 共享 */
@@ -109,6 +110,7 @@ export function popContext(id: symbol): void {
 /**
  * 获取当前 context 值（栈顶）；无 Provider 时返回 createContext 时的 defaultValue。
  * 若栈顶为无参函数则视为 getter，调用后返回结果，便于细粒度渲染下在消费者执行时建立订阅。
+ * 若栈顶为 `SignalRef`（createSignal 返回值），则读其 `.value`。
  *
  * @param id - context 的 id
  * @returns 当前值或默认值（若为 getter 则为其返回值）
@@ -121,7 +123,10 @@ export function getContext(id: symbol): unknown {
   const top = stack?.length ? stack[stack.length - 1] : undefined;
   const raw = top !== undefined ? top : defaultValues.get(id);
   let result: unknown;
-  if (typeof raw === "function" && raw.length === 0) {
+  /** Provider 可注入 SignalRef：在消费者执行路径读 .value 以建立 effect 订阅 */
+  if (isSignalRef(raw)) {
+    result = (raw as SignalRef<unknown>).value;
+  } else if (typeof raw === "function" && raw.length === 0) {
     result = (raw as () => unknown)();
   } else {
     result = raw;
@@ -181,8 +186,8 @@ export type ContextValue<T> = T;
  *
  * @example
  * const ThemeContext = createContext<'light'|'dark'>('light', 'Theme');
- * const [theme, setTheme] = createSignal<'light'|'dark'>('light');
- * // 推荐传 getter，子组件 useContext() 时再读，保证点击等更新能触发消费者重渲染
+ * const theme = createSignal<'light'|'dark'>('light');
+ * // 可传 SignalRef、裸值 T 或无参 getter () => T；传 SignalRef 时 getContext 内读 .value
  * <ThemeContext.Provider value={theme}><App /></ThemeContext.Provider>
  * // 子组件：const themeValue = ThemeContext.useContext();
  */
@@ -196,7 +201,10 @@ export type ProviderChildren =
 
 export function createContext<T>(defaultValue: T, key?: string): {
   Provider: (
-    props: { value: T | (() => T); children?: ProviderChildren },
+    props: {
+      value: T | (() => T) | SignalRef<T>;
+      children?: ProviderChildren;
+    },
   ) => VNode | VNode[] | null;
   useContext: () => T;
   /** 注册“别名”提供者：用 getValue(props) 注入同一 context，便于包装组件（如 RouterProvider(router)）直接注入，无需内层 Provider */
@@ -216,7 +224,10 @@ export function createContext<T>(defaultValue: T, key?: string): {
    * 若直接返回 ContextScope，在 RoutePage + createResource 的 patch 路径下可能不在 root effect 内读 theme，导致 subscribers: 0。
    */
   const Provider = (
-    props: { value: T | (() => T); children?: ProviderChildren },
+    props: {
+      value: T | (() => T) | SignalRef<T>;
+      children?: ProviderChildren;
+    },
   ): VNode | VNode[] | null => {
     const children = props.children ?? null;
     const scopeGetter = (): VNode => ({
@@ -232,7 +243,10 @@ export function createContext<T>(defaultValue: T, key?: string): {
   };
   getGlobalProviderBindings().set(
     Provider as (props: Record<string, unknown>) => unknown,
-    { id, getValue: (p) => (p as { value: T | (() => T) }).value },
+    {
+      id,
+      getValue: (p) => (p as { value: T | (() => T) | SignalRef<T> }).value,
+    },
   );
 
   const useContext = (): T => {

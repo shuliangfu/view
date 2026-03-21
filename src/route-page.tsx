@@ -24,6 +24,7 @@ import type {
 } from "./router.ts";
 import { runDirectiveUnmountOnChildren } from "./dom/unmount.ts";
 import { createSignal } from "./signal.ts";
+import type { SignalRef } from "./signal.ts";
 
 /** 懒加载模块：default 返回挂载函数，供 RoutePage 挂载到容器 */
 type LoadingModule = {
@@ -44,7 +45,7 @@ const loadingComponentCache = new Map<string, ResourceGetter>();
 
 const pathStateStore = new Map<
   string,
-  Map<string, ReturnType<typeof createSignal>>
+  Map<string, import("./signal.ts").SignalRef<unknown>>
 >();
 let prevPathForState = "";
 
@@ -55,23 +56,18 @@ function getPageState<T>(
   path: string,
   key: string,
   initialValue: T,
-): [() => T, (value: T | ((prev: T) => T)) => void] {
+): SignalRef<T> {
   let keyMap = pathStateStore.get(path);
   if (!keyMap) {
     keyMap = new Map();
     pathStateStore.set(path, keyMap);
   }
-  let tuple = keyMap.get(key) as
-    | [() => T, (value: T | ((prev: T) => T)) => void]
-    | undefined;
-  if (!tuple) {
-    tuple = createSignal(initialValue) as [
-      () => T,
-      (value: T | ((prev: T) => T)) => void,
-    ];
-    keyMap.set(key, tuple as [() => unknown, (value: unknown) => void]);
+  let box = keyMap.get(key) as SignalRef<T> | undefined;
+  if (!box) {
+    box = createSignal(initialValue);
+    keyMap.set(key, box as SignalRef<unknown>);
   }
-  return tuple;
+  return box;
 }
 
 const pathScopes = new Map<

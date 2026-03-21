@@ -11,18 +11,18 @@ import { renderToString } from "@dreamer/view/ssr";
 
 describe("入口 mod 烟测", () => {
   it("主包与 csr/hybrid 的 createSignal 均应可用", () => {
-    const [a, setA] = mainSig(1);
-    const [b, setB] = csrSig(2);
-    const [c, setC] = hybridSig(3);
-    expect(a()).toBe(1);
-    expect(b()).toBe(2);
-    expect(c()).toBe(3);
-    setA(10);
-    setB(20);
-    setC(30);
-    expect(a()).toBe(10);
-    expect(b()).toBe(20);
-    expect(c()).toBe(30);
+    const a = mainSig(1);
+    const b = csrSig(2);
+    const c = hybridSig(3);
+    expect(a.value).toBe(1);
+    expect(b.value).toBe(2);
+    expect(c.value).toBe(3);
+    a.value = 10;
+    b.value = 20;
+    c.value = 30;
+    expect(a.value).toBe(10);
+    expect(b.value).toBe(20);
+    expect(c.value).toBe(30);
   });
 
   /**

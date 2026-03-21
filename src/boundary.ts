@@ -1,5 +1,5 @@
 /**
- * 边界组件：Suspense（异步边界）与 ErrorBoundary（错误边界）。条件/列表渲染请使用指令 v-if、v-else、v-for。
+ * 边界组件：Suspense（异步边界）与 ErrorBoundary（错误边界）。条件渲染请使用 v-if / v-else。
  *
  * @module @dreamer/view/boundary
  * @packageDocumentation
@@ -17,6 +17,7 @@
  */
 
 import { createEffect } from "./effect.ts";
+import type { SignalRef } from "./signal.ts";
 import { createSignal } from "./signal.ts";
 import { Fragment, jsx } from "./jsx-runtime.ts";
 import type { VNode } from "./types.ts";
@@ -164,25 +165,21 @@ function normalizeSuspenseResolvedValue(v: unknown): SuspenseResolvedContent {
 }
 
 /**
- * 将 Suspense 的「已解析内容」写入 `createSignal` 的 setter。
+ * 将 Suspense 的「已解析内容」写入 `createSignal` 返回的 `SignalRef`。
  *
- * `createSignal` 的 setter 约定：若传入值为 `function`，则视为 `(prev) => next` 的更新函数，并以当前 state 调用一次。
- * 已解析内容本身可为单参 MountFn `(parent)=>void`；若直接 `setResolved(mountFn)` 会把 MountFn 误判为 updater，
- * 执行 `mountFn(null)` 抛错，随后 Promise 链 `.catch` 会 `setResolved(null)`，界面永远停在 fallback（与控制台 appendChild on null 一致）。
+ * `SignalRef.value` 赋值约定：若传入值为 `function`，则视为 `(prev) => next` 的更新函数，并以当前 state 调用一次。
+ * 已解析内容本身可为单参 MountFn `(parent)=>void`；若直接 `resolved.value = mountFn` 会把 MountFn 误判为 updater，
+ * 执行 `mountFn(null)` 抛错，随后 Promise 链 `.catch` 会 `resolved.value = null`，界面永远停在 fallback（与控制台 appendChild on null 一致）。
  * 因此必须通过 updater 形态写入：`(prev) => value`，由 setter 调用后得到真正的下一状态。
  *
- * @param set - `createSignal` 返回的 setter
+ * @param ref - `createSignal<SuspenseResolvedContent>(null)` 的返回值
  * @param value - 规范后的 VNode、MountFn 或 null
  */
 function setSuspenseResolvedState(
-  set: (
-    next:
-      | SuspenseResolvedContent
-      | ((prev: SuspenseResolvedContent) => SuspenseResolvedContent),
-  ) => void,
+  ref: SignalRef<SuspenseResolvedContent>,
   value: SuspenseResolvedContent,
 ): void {
-  set((_prev: SuspenseResolvedContent) => value);
+  ref.value = (_prev: SuspenseResolvedContent) => value;
 }
 
 /**
@@ -205,9 +202,9 @@ export function Suspense(props: {
     | null
     | undefined;
 }): (parent: Node) => void {
-  const [resolved, setResolved] = createSignal<SuspenseResolvedContent>(null);
+  const resolved = createSignal<SuspenseResolvedContent>(null);
   /**
-   * 单调 epoch：cleanup 时递增，使旧 Promise 回调与当前 effect 代数不一致时放弃 setResolved。
+   * 单调 epoch：cleanup 时递增，使旧 Promise 回调与当前 effect 代数不一致时放弃写入 resolved。
    * 旧实现用 `generation = -1` 再 `++generation`，导致多轮后 gen 恒为 0、竞态与「一直 fallback」更难排查。
    */
   let epoch = 0;
@@ -219,17 +216,17 @@ export function Suspense(props: {
         .then((v) => {
           if (myEpoch !== epoch) return;
           setSuspenseResolvedState(
-            setResolved,
+            resolved,
             normalizeSuspenseResolvedValue(v),
           );
         })
         .catch(() => {
           if (myEpoch !== epoch) return;
-          setSuspenseResolvedState(setResolved, null);
+          setSuspenseResolvedState(resolved, null);
         });
     } else {
       setSuspenseResolvedState(
-        setResolved,
+        resolved,
         normalizeSuspenseResolvedValue(c),
       );
     }
@@ -238,6 +235,6 @@ export function Suspense(props: {
     };
   });
   return (parent: Node) => {
-    insert(parent, () => resolved() ?? valueOf(props.fallback));
+    insert(parent, () => resolved.value ?? valueOf(props.fallback));
   };
 }

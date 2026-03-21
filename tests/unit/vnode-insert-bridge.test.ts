@@ -10,9 +10,9 @@ import { mountVNodeTree } from "../../src/compiler/vnode-mount.ts";
 
 describe("vnode-insert-bridge（经主包注册）", () => {
   it("Fragment 子为无参 getter 返回 VNode 时应随 signal 更新", async () => {
-    const [label, setLabel] = createSignal("a");
+    const label = createSignal("a");
     const vnode = jsx(Fragment, {
-      children: () => jsx("span", { children: label() }),
+      children: () => jsx("span", { children: label.value }),
     });
     const container = document.createElement("div");
     createRoot((el) => {
@@ -21,7 +21,7 @@ describe("vnode-insert-bridge（经主包注册）", () => {
       });
     }, container);
     expect(container.textContent).toBe("a");
-    setLabel("b");
+    label.value = "b";
     await Promise.resolve();
     await Promise.resolve();
     expect(container.textContent).toBe("b");

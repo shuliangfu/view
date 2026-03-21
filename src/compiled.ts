@@ -33,9 +33,11 @@ export {
   createSignal,
   getCurrentEffect,
   isSignalGetter,
+  isSignalRef,
   setCurrentEffect,
   unwrapSignalGetterValue,
 } from "./signal.ts";
+export type { SignalRef } from "./signal.ts";
 export { isDOMEnvironment } from "./types.ts";
 export type {
   EffectDispose,

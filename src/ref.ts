@@ -42,13 +42,13 @@ export type ElementRef<E extends Element = HTMLElement> = {
 export function createRef<E extends Element = HTMLElement>(
   initial: E | null = null,
 ): ElementRef<E> {
-  const [get, set] = createSignal<E | null>(initial);
+  const box = createSignal<E | null>(initial);
   return {
     get current(): E | null {
-      return get();
+      return box.value;
     },
     set current(value: E | null) {
-      set(value);
+      box.value = value;
     },
   };
 }

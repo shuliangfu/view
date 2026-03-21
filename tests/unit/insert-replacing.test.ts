@@ -22,10 +22,10 @@ describe("insertReplacing", () => {
     const parent = document.createElement("div");
     const ph = document.createComment("p");
     parent.appendChild(ph);
-    const [text, setText] = createSignal("a");
-    const dispose = insertReplacing(parent, ph, () => text());
+    const text = createSignal("a");
+    const dispose = insertReplacing(parent, ph, () => text.value);
     expect(parent.textContent).toBe("a");
-    setText("b");
+    text.value = "b";
     await Promise.resolve();
     await Promise.resolve();
     expect(parent.textContent).toBe("b");

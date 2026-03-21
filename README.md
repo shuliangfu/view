@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-500%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-509%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -16,8 +16,8 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 A reactive view engine with fine-grained updates: no virtual DOM, dependency
 tracking via signals and effects, and optional store, router, context, resource,
-and boundaries. Use JSX with built-in directives (v-if, v-for, v-show, etc.) for
-CSR, SSR, streaming SSR, and hydration.
+and boundaries. Use JSX with built-in directives (v-if, v-once, v-cloak, etc.)
+for CSR, SSR, streaming SSR, and hydration.
 
 ---
 
@@ -92,7 +92,7 @@ deno add jsr:@dreamer/view/portal
 deno add jsr:@dreamer/view/transition
 # Boundary: Suspense, ErrorBoundary
 deno add jsr:@dreamer/view/boundary
-# Directive: built-in vIf/vFor/vShow and registerDirective for custom
+# Directive: built-in vIf/vElse chain, vOnce, vCloak and registerDirective for custom
 deno add jsr:@dreamer/view/directive
 # Stream: renderToStream for streaming SSR (also available from /ssr)
 deno add jsr:@dreamer/view/stream
@@ -341,7 +341,7 @@ The generated `src/router/routers.tsx` is re-generated on each dev build from
   - `Suspense` — fallback until Promise or getter-resolved children.
   - `ErrorBoundary` — catch subtree errors and render fallback(error).
 - **Directives** (`@dreamer/view/directive`)
-  - Built-in: vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak; custom via
+  - Built-in: vIf, vElse, vElseIf, vOnce, vCloak; custom via
     `registerDirective`.
 - **Stream SSR** (`@dreamer/view/stream`)
   - `renderToStream` — generator of HTML chunks for streaming responses.
@@ -376,11 +376,18 @@ import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
 import type { VNode } from "jsr:@dreamer/view";
 
 function App(): VNode {
-  const [count, setCount] = createSignal(0);
+  const count = createSignal(0);
   return (
     <div>
       <p>Count: {count}</p>
-      <button type="button" onClick={() => setCount(count() + 1)}>+1</button>
+      <button
+        type="button"
+        onClick={() => {
+          count.value = count.value + 1;
+        }}
+      >
+        +1
+      </button>
     </div>
   );
 }
@@ -391,13 +398,15 @@ createRoot((el) => {
 }, container);
 ```
 
-Use **getters** in JSX for reactive content (`{count}`). Forms: **value** +
-**onInput** / **onChange** with createSignal or createReactive. Events:
-`onClick`, `onInput`, `onChange` (camelCase). Ref: `ref={(el) => { ... }}` or
-`ref={refObj}`. For reactive DOM refs (e.g. `createEffect` must re-run when the
-node mounts), use `createRef()` and `ref={myRef}` so the compiler’s
-`ref.current = el` updates an internal signal; plain `{ current: null }` does
-not trigger effects. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
+Use **`SignalRef`** in JSX for reactive text (`{count}` unwraps automatically).
+In **effects** and **handlers**, read/write with **`count.value`**. Forms:
+**value** + **onInput** / **onChange** with createSignal or createReactive.
+Events: `onClick`, `onInput`, `onChange` (camelCase). Ref:
+`ref={(el) => { ... }}` or `ref={refObj}`. For reactive DOM refs (e.g.
+`createEffect` must re-run when the node mounts), use `createRef()` and
+`ref={myRef}` so the compiler’s `ref.current = el` updates an internal signal;
+plain `{ current: null }` does not trigger effects. Fragment: `<>...</>` or
+`<Fragment>...</Fragment>`.
 
 ---
 
@@ -408,10 +417,10 @@ not trigger effects. Fragment: `<>...</>` or `<Fragment>...</Fragment>`.
 ```ts
 import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view";
 
-const [count, setCount] = createSignal(0);
-const double = createMemo(() => count() * 2);
-createEffect(() => console.log("count:", count()));
-setCount(1);
+const count = createSignal(0);
+const double = createMemo(() => count.value * 2);
+createEffect(() => console.log("count:", count.value));
+count.value = 1;
 ```
 
 ### Store
@@ -485,42 +494,45 @@ const user = createResource(() => fetch("/api/user").then((r) => r.json()));
 
 ### Directive usage (built-in + custom)
 
-Use **camelCase** in JSX; use **getters** for reactive directives (vIf, vFor,
-vShow). Register custom directives with `registerDirective`, then use them in
-JSX.
+Use **camelCase** in JSX; use **functions that read `.value`** (or
+markSignalGetter) for reactive directives (e.g. `vIf={() => show.value}`).
+Register custom directives with `registerDirective`, then use them in JSX.
 
-**All built-in: vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak**
+**All built-in: vIf, vElse, vElseIf, vOnce, vCloak**
 
 ```tsx
 import { createSignal } from "jsr:@dreamer/view";
 import type { VNode } from "jsr:@dreamer/view";
 
 function Demo(): VNode {
-  const [show, setShow] = createSignal(true);
-  const [list, setList] = createSignal([{ id: 1, name: "a" }, {
+  const show = createSignal(true);
+  const list = createSignal([{ id: 1, name: "a" }, {
     id: 2,
     name: "b",
   }]);
-  const [visible, setVisible] = createSignal(true);
-  const [staticText] = createSignal("Rendered once, no effect");
+  const visible = createSignal(true);
+  const staticText = createSignal("Rendered once, no effect");
   return (
     <div>
       {/* Conditional: vIf / vElse / vElseIf */}
-      <div vIf={() => show()}>Shown when show is true</div>
+      <div vIf={() => show.value}>Shown when show is true</div>
       <div vElseIf={() => false}>Optional: another condition</div>
       <div vElse>Otherwise this</div>
 
-      {/* List: vFor value is () => array; child is factory (item, index) => VNode; put key on child */}
+      {/* List */}
       <ul>
-        <li vFor={() => list()}>
-          {(item, index) => <span key={item.id}>{index + 1}. {item.name}</span>}
-        </li>
+        {() =>
+          list.value.map((item, index) => (
+            <li key={item.id}>
+              {index + 1}. {item.name}
+            </li>
+          ))}
       </ul>
 
-      {/* Toggle display (CSS only, node kept): vShow */}
-      <p vShow={() => visible()}>Shown when visible is true</p>
+      {/* Toggle mount with vIf (false unmounts the node) */}
+      <p vIf={() => visible.value}>Shown when visible is true</p>
 
-      {/* Render once: vOnce. Getters evaluated once and frozen, no effect; good for static content */}
+      {/* Render once: vOnce. Values evaluated once and frozen, no effect; good for static content */}
       <div vOnce>{staticText}</div>
 
       {/* Hide until hydrated: vCloak. Element gets data-view-cloak; use CSS [data-view-cloak]{ display:none }, removed after hydrate */}
@@ -578,10 +590,10 @@ import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
 const container = document.getElementById("root")!;
 
 // Switch page inside root with a signal (recommended)
-const [route, setRoute] = createSignal<"home" | "user">("home");
+const route = createSignal<"home" | "user">("home");
 createRoot(
   (el) => {
-    insert(el, () => (route() === "home" ? <Home /> : <User />));
+    insert(el, () => (route.value === "home" ? <Home /> : <User />));
   },
   container,
 );
@@ -600,8 +612,10 @@ import { insert } from "jsr:@dreamer/view";
 import { createSignal, mount } from "jsr:@dreamer/view/csr";
 
 function App(): VNode {
-  const [count, setCount] = createSignal(0);
-  return <div onClick={() => setCount(count() + 1)}>Count: {count}</div>;
+  const count = createSignal(0);
+  return (
+    <div onClick={() => (count.value = count.value + 1)}>Count: {count}</div>
+  );
 }
 // mount: resolve container then render; fn must be (el) => void + insert
 mount("#root", (el) => {
@@ -622,9 +636,9 @@ mount(
 ```ts
 import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view";
 
-const [id, setId] = createSignal(1);
+const id = createSignal(1);
 createEffect(() => {
-  const currentId = id();
+  const currentId = id.value;
   const timer = setInterval(() => console.log(currentId), 1000);
   onCleanup(() => clearInterval(timer));
 });
@@ -677,9 +691,9 @@ mount("#root", (el) => {
 
 In code that may run on the server, avoid using `document` directly. Use
 `getDocument()` from the main entry instead: it returns `document` in the
-browser and throws a clear error during SSR (e.g. inside `renderToString` /
-`renderToStream`), so you get a helpful message instead of
-`document is undefined`.
+browser, **`null`** when there is no DOM or during SSR without a shadow
+document, and prefers the SSR shadow document when `KEY_VIEW_SSR_DOCUMENT` is
+set.
 
 **Developer experience (development only)**
 
@@ -689,9 +703,9 @@ disabled in production):
 - **Hydration mismatch**: If the structure or keys of server-rendered HTML and
   the first client render differ, a `console.warn` is emitted with context (e.g.
   node path or selector) to help fix layout shifts or white flashes.
-- **Forgot getter**: If you pass a signal getter as a static value in JSX (e.g.
-  `{count}` instead of `{count()}`), a one-time warning reminds you to call the
-  getter so the UI updates reactively.
+- **Reactive text**: If you stringify a `SignalRef` by mistake (e.g. outside
+  supported JSX interpolation), a one-time warning may remind you to use
+  `{signal}` or `signal.value` so the UI stays reactive.
 
 **createContext (Provider / useContext)**
 
@@ -709,7 +723,7 @@ const ThemeContext = createContext<"light" | "dark">("light");
 import { createEffect, createSignal } from "jsr:@dreamer/view";
 import { createResource } from "jsr:@dreamer/view/resource";
 
-const [id, setId] = createSignal(1);
+const id = createSignal(1);
 const user = createResource(
   id,
   (id) => fetch(`/api/user/${id}`).then((r) => r.json()),
@@ -733,8 +747,8 @@ const router = createRouter({
   ],
   notFound: () => <div>Not found</div>,
 });
-const [match, setMatch] = createSignal(router.getCurrentRoute());
-router.subscribe(() => setMatch(router.getCurrentRoute()));
+const match = createSignal(router.getCurrentRoute());
+router.subscribe(() => (match.value = router.getCurrentRoute()));
 router.start();
 // router.navigate("/user/1"); router.back(); router.forward();
 ```
@@ -763,11 +777,11 @@ provide the animation via CSS. Import from `jsr:@dreamer/view/transition`.
 import { createSignal } from "jsr:@dreamer/view";
 import { Transition } from "jsr:@dreamer/view/transition";
 
-const [visible, setVisible] = createSignal(false);
+const visible = createSignal(false);
 // CSS: .enter { opacity: 0; } .enter-active { transition: opacity 0.2s; opacity: 1; }
 //      .leave { opacity: 1; } .leave-active { transition: opacity 0.2s; opacity: 0; }
 <Transition
-  show={() => visible()}
+  show={() => visible.value}
   enter="enter enter-active"
   leave="leave leave-active"
   duration={200}
@@ -970,13 +984,15 @@ friendly).
 
 | Export                                                                               | Description                                                                                                                                                        |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **createSignal**                                                                     | Returns `[getter, setter]`; getter in effect registers dependency                                                                                                  |
+| **createSignal**                                                                     | Returns **`SignalRef<T>`**; use **`.value`** to read/write; reading in effect registers dependency                                                                 |
 | **createEffect**                                                                     | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                              |
 | **createMemo**                                                                       | Cached derived getter                                                                                                                                              |
 | **onCleanup**                                                                        | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                          |
 | **untrack**                                                                          | Read signals in callback without registering deps (advanced)                                                                                                       |
 | **getCurrentEffect** / **setCurrentEffect**                                          | Current effect (internal)                                                                                                                                          |
 | **isSignalGetter**                                                                   | Detect signal getter                                                                                                                                               |
+| **isSignalRef**                                                                      | Detect `SignalRef` from `createSignal`                                                                                                                             |
+| **unwrapSignalGetterValue**                                                          | Unwrap getter or `SignalRef` (used by compiler for text / controlled inputs)                                                                                       |
 | **createRef**                                                                        | Create ref object; use with `ref={refObj}` so effect re-runs when node mounts/unmounts                                                                             |
 | **createRoot**                                                                       | Create root: runs **`fn(container)`** once, use **insert** inside to build UI; returns **Root** (`unmount`, `container`)                                           |
 | **render**                                                                           | Same as **`createRoot(fn, container)`**; **`fn`** is **`(container) => void`** (matches compiled output)                                                           |
@@ -985,8 +1001,8 @@ friendly).
 | **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | Compile-time props and function ref (re-exported from compiler)                                                                                                    |
 | **generateHydrationScript**                                                          | Generate hydration script tag (hybrid apps)                                                                                                                        |
 | **hydrate** (explicit API)                                                           | From **`jsr:@dreamer/view/compiler`**; use **`hydrate(fn, container)`** for client hydration (same `fn` as SSR); **mount** does not auto-hydrate                   |
-| **getDocument**                                                                      | Safe document access: returns `document` on client; throws in SSR (use in client-only branches)                                                                    |
-| **Types**                                                                            | VNode, Root, MountOptions, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions, ElementRef, InsertParent, InsertValue                   |
+| **getDocument**                                                                      | Safe document access: returns `document` on client, **`null`** without DOM / SSR (unless shadow document is set)                                                   |
+| **Types**                                                                            | VNode, Root, MountOptions, SignalRef, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions, ElementRef, InsertParent, InsertValue        |
 | **setGlobal**                                                                        | Set global document etc. (internal/advanced)                                                                                                                       |
 | **isDOMEnvironment**                                                                 | Whether in DOM environment                                                                                                                                         |
 
@@ -1056,9 +1072,8 @@ Single reactive object for forms and two-way binding.
 
 ### Directive `jsr:@dreamer/view/directive`
 
-Built-in vIf, vElse, vElseIf, vFor, vShow, vOnce, vCloak; custom via
-**registerDirective**. **Usage examples:** see **Usage examples → Directive
-usage** above.
+Built-in vIf, vElse, vElseIf, vOnce, vCloak; custom via **registerDirective**.
+**Usage examples:** see **Usage examples → Directive usage** above.
 
 | Export                                                                                                      | Description                                                   |
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -1227,11 +1242,16 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.2** (2026-03-21): **Fixed** root `vIf` and sibling `vIf` codegen
-(`insertReactive`), MountFn cleanup in **vnode-mount**; **Changed**
-`getDocument()` → `Document | null`, **`@dreamer/esbuild` `^1.1.5`**; **Added**
-CI **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`**. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.3.3** (2026-03-21): **Breaking** — **`createSignal` → `SignalRef`**
+(`.value` read/write); router **`getState`** / **`createResource`** source /
+**`Transition.show`** / Context **`Provider`** support **`SignalRef`**;
+**removed** compiler **`v-for` / `v-show`** and directive helpers; **added**
+**`isSignalRef`**, handwritten VNode **vIf chain / vOnce / vCloak /
+applyDirectives** in **`vnode-mount`**, analysis docs; **fixed**
+**`insertReactive`** + controlled input unwrap, directive **`updated`** for
+refs, SSR style proxy symbols, HMR getter, stray router line. **v1.3.2**: `vIf`
+codegen + **`getDocument()`** null + esbuild **^1.1.5** + CI Node 24. Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -1240,11 +1260,11 @@ CI **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`**. Full history:
 | Metric      | Value                                |
 | ----------- | ------------------------------------ |
 | Test date   | 2026-03-21                           |
-| Total tests | 500 (Deno) / 457 (Bun)               |
-| Passed      | 500 ✅ / 457 ✅                      |
+| Total tests | 509 (Deno) / 465 (Bun)               |
+| Passed      | 509 ✅ / 465 ✅                      |
 | Failed      | 0                                    |
 | Pass rate   | 100%                                 |
-| Duration    | ~1m38s (Deno) / ~85s (Bun, 44 files) |
+| Duration    | ~1m55s (Deno) / ~85s (Bun, 45 files) |
 
 Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 (component access to document does not throw). See
@@ -1258,17 +1278,17 @@ When the root builds the tree (e.g.
 **`createRoot((el) => { insert(el, () => <App />); }, container)`**), **every
 signal read during that single run is tracked by the root effect**. So if a
 child component returns JSX that contains a reactive directive like
-`vIf={() => isOpen()}`, the **root** subscribes to `isOpen`. When that signal
-later changes (e.g. the modal opens), the root effect re-runs, the whole tree is
-re-built, and **parent components’ `createEffect` callbacks run again** — which
-can cause duplicate side effects (e.g. layout logic running twice).
+`vIf={() => isOpen.value}`, the **root** subscribes to `isOpen`. When that
+signal later changes (e.g. the modal opens), the root effect re-runs, the whole
+tree is re-built, and **parent components’ `createEffect` callbacks run again**
+— which can cause duplicate side effects (e.g. layout logic running twice).
 
 **Solution: render thunk.** When a component **returns a function** that returns
-the VNode (e.g. `return () => ( <div vIf={() => isOpen()}>...</div> )`), that
-slot is rendered in its **own effect** (see CHANGELOG [1.0.4]). The signal is
-then read only inside that inner effect, so **only that effect** subscribes; the
-root does not. When the modal opens, only the modal’s subtree re-runs, and the
-root (and e.g. layout effects) do not.
+the VNode (e.g. `return () => ( <div vIf={() => isOpen.value}>...</div> )`),
+that slot is rendered in its **own effect** (see CHANGELOG [1.0.4]). The signal
+is then read only inside that inner effect, so **only that effect** subscribes;
+the root does not. When the modal opens, only the modal’s subtree re-runs, and
+the root (and e.g. layout effects) do not.
 
 **When to use:**
 
@@ -1278,10 +1298,11 @@ root (and e.g. layout effects) do not.
   by a local signal and that sits under a shared root (e.g. layout) benefits
   from returning a thunk to avoid the root subscribing.
 
-**Reminder:** Use **getters** for directives (e.g. `vIf={() => isOpen()}`
-instead of `vIf={isOpen()}`). With a getter, the subscription is attached to the
-effect that evaluates the directive; with a plain value the root can subscribe
-and re-run the whole tree on update (see CHANGELOG [1.0.4]).
+**Reminder:** Use **functions that read reactive state** for directives (e.g.
+`vIf={() => isOpen.value}` instead of `vIf={isOpen.value}` as a static prop).
+With a function, the subscription is attached to the effect that evaluates the
+directive; with a plain value the root can subscribe and re-run the whole tree
+on update (see CHANGELOG [1.0.4]).
 
 ---
 
@@ -1289,12 +1310,13 @@ and re-run the whole tree on update (see CHANGELOG [1.0.4]).
 
 - **No virtual DOM**: Updates are driven by signal/store/reactive subscriptions;
   root re-runs with fine-grained patch.
-- **Getters in JSX**: Use getters (e.g. `{count}`, `value={() => name()}`,
-  `vShow={() => visible()}`) so the engine can track and update.
+- **Reactive JSX**: Use `SignalRef` in text (`{count}`), `.value` in handlers
+  and effects, and functions for directives (e.g. `vIf={() => visible.value}`)
+  so the engine can track and update.
 - **JSX config**: `compilerOptions.jsx: "react-jsx"` and
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
 - **Effect scope**: For modals/toasts/conditionals that use a local signal (e.g.
-  `vIf={() => isOpen()}`), have the component **return a thunk**
+  `vIf={() => isOpen.value}`), have the component **return a thunk**
   (`return () => ( ... )`) so the root does not subscribe and parent effects do
   not re-run; see
   [Effect scope and render thunk](#effect-scope-and-render-thunk).

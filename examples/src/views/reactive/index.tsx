@@ -110,11 +110,11 @@ function RadioGroup(
 
 export function ReactiveDemo(): VNode {
   /** 用于演示 createEffect 依赖 reactive 的计数 */
-  const [logCount, setLogCount] = createSignal(0);
+  const logCount = createSignal(0);
   const reactiveState = createReactive({ count: 0 });
   createEffect(() => {
     void reactiveState.count;
-    setLogCount((c) => c + 1);
+    logCount.value = (c) => c + 1;
   });
 
   /** 表单 model 摘要：用 createMemo 派生，随 formModel 更新，模板里写 {formSummary()} 即可 */
@@ -159,7 +159,7 @@ export function ReactiveDemo(): VNode {
             >
               reactiveState.count++
             </button>
-            <span>→ effect 已执行次数：{() => logCount()}</span>
+            <span>→ effect 已执行次数：{logCount.value}</span>
           </p>
         </div>
 

@@ -240,14 +240,15 @@ function Demo() {
     expect(out).not.toMatch(/children:\s*\w+[\s\S]*\(\)\s*=>\s*undefined/);
   });
 
-  it("内置元素 vFor + 单子项箭头应编译为 insertReactive(el, () => listExpr.map(...))", () => {
+  /** 子 getter 内返回多节点时编译器应生成 insertReactive（实现中常含数组迭代） */
+  it("子 getter 返回多子节点时应编译为 insertReactive", () => {
     const source = `
 function ListView() {
   return (
-    <ul vFor={() => items()}>
-      {(item: unknown, i: number) => (
+    <ul>
+      {() => items().map((item: unknown, i: number) => (
         <li key={i}>{String(item)}</li>
-      )}
+      ))}
     </ul>
   );
 }
@@ -255,7 +256,6 @@ function ListView() {
     const out = compileSource(source, "ListView.tsx");
     expect(out).toContain(".map(");
     expect(out).toContain("insertReactive");
-    expect(out).not.toContain("vFor");
   });
 
   it("内置元素 vIf + vElseIf + vElse 兄弟链应编译为嵌套 if / else", () => {
@@ -465,16 +465,17 @@ function App() {
     expect(out).toContain(".current");
   });
 
-  it("input value={getter} 应编译为 createEffect 写 el.value，不落 setAttribute(value, getter) 避免显示函数源码", () => {
+  it("input value={SignalRef} 应编译为 createEffect 写 el.value，并用 unwrapSignalGetterValue 解包避免 [object Object]", () => {
     const source = `
 function App() {
-  const [text, setText] = createSignal("");
+  const text = createSignal("");
   return <input value={text} />;
 }
 `;
     const out = compileSource(source, "App.tsx");
     expect(out).toContain("createEffect");
     expect(out).toContain(".value");
+    expect(out).toContain("unwrapSignalGetterValue(text)");
     // 不应出现 setAttribute("value", text)，否则 input 会显示函数字符串
     expect(out).not.toMatch(/setAttribute\s*\(\s*[^,]*,\s*text\s*\)/);
   });

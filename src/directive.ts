@@ -1,5 +1,5 @@
 /**
- * 指令系统：内置 v-if/v-else/v-else-if、v-for、v-show、v-once、v-cloak，以及用户通过 registerDirective 注册的自定义指令。
+ * 指令系统：内置 v-if/v-else/v-else-if、v-once、v-cloak，以及用户通过 registerDirective 注册的自定义指令。
  *
  * @module @dreamer/view/directive
  * @packageDocumentation
@@ -8,7 +8,7 @@
  *
  * **导出函数：** registerDirective、getDirective、directiveNameToCamel、directiveNameToKebab、isDirectiveProp、
  * hasDirective、getDirectiveValue、createBinding、hasStructuralDirective、getVIfValue、getVElseShow、
- * getVElseIfValue、resolveVForFactory、getVForListAndFactory、getVShowValue、applyDirectives
+ * getVElseIfValue、applyDirectives
  *
  * 表单双向绑定：使用 createReactive 或 createSignal，在 input 上写 value={...} + onInput 即可，无需 v-model。
  *
@@ -26,9 +26,7 @@ import {
 } from "./directive-name.ts";
 import { getGlobalOrDefault } from "./globals.ts";
 import { insert } from "./compiler/insert.ts";
-import { isSignalGetter } from "./signal.ts";
-import type { VNode } from "./types.ts";
-
+import { isSignalGetter, isSignalRef } from "./signal.ts";
 /**
  * 指令绑定：传给指令钩子的参数。
  */
@@ -108,10 +106,6 @@ const BUILTIN_DIRECTIVE_PROPS = new Set([
   "v-else",
   "vElseIf",
   "v-else-if",
-  "vFor",
-  "v-for",
-  "vShow",
-  "v-show",
   "vOnce",
   "v-once",
   "vCloak",
@@ -119,13 +113,13 @@ const BUILTIN_DIRECTIVE_PROPS = new Set([
 ]);
 
 /**
- * 判断给定 prop 键名是否为指令类（内置或 v- 开头、或 vXxx 驼峰如 vIf/vShow）。
- * 必须排除原生 prop「value」「viewBox」等：仅当第二字符为大写或为 '-' 时才视为指令（vIf、v-show），否则 value 会被误判并跳过，导致 input value 无法写回。
+ * 判断给定 prop 键名是否为指令类（内置或 v- 开头、或 vXxx 驼峰如 vIf）。
+ * 必须排除原生 prop「value」「viewBox」等：仅当第二字符为大写或为 '-' 时才视为指令（如 vIf、v-once），否则 value 会被误判并跳过，导致 input value 无法写回。
  */
 export function isDirectiveProp(propKey: string): boolean {
   if (BUILTIN_DIRECTIVE_PROPS.has(propKey)) return true;
   if (propKey.startsWith("v-")) return true;
-  // vXxx 驼峰指令：第二字符为大写（vIf/vShow/vFor），排除 value、viewBox 等
+  // vXxx 驼峰指令：第二字符为大写（vIf），排除 value、viewBox 等
   return propKey.startsWith("v") && propKey.length > 1 &&
     propKey[1] === propKey[1].toUpperCase();
 }
@@ -134,7 +128,7 @@ export function isDirectiveProp(propKey: string): boolean {
  * 判断 props 是否包含指定指令（同时支持 camelCase 与 kebab-case）。
  *
  * @param props - 节点 props
- * @param camelName - 指令驼峰名，如 'vShow'、'vIf'
+ * @param camelName - 指令驼峰名，如 'vIf'
  * @returns 若包含该指令则为 true
  */
 export function hasDirective(
@@ -154,7 +148,9 @@ export function hasDirective(
  * @returns 求值后的值
  */
 export function getDirectiveValue(value: unknown): unknown {
-  return isSignalGetter(value) ? (value as () => unknown)() : value;
+  if (isSignalGetter(value)) return (value as () => unknown)();
+  if (isSignalRef(value)) return value.value;
+  return value;
 }
 
 /**
@@ -178,17 +174,16 @@ export function createBinding(
 }
 
 /**
- * 检查 props 是否包含结构性指令 vIf 或 vFor（需在 createElement 中优先处理）。
+ * 检查 props 是否包含结构性指令 vIf（需在 createElement 中优先处理）。
  *
  * @param props - 节点 props（hydrate 时组件返回函数会被当作子节点传入，props 可能为 undefined，需防御）
- * @returns "vIf" | "vFor" | null
+ * @returns "vIf" | null
  */
 export function hasStructuralDirective(
   props: Record<string, unknown> | null | undefined,
-): "vIf" | "vFor" | null {
+): "vIf" | null {
   if (props == null || typeof props !== "object") return null;
   if ("vIf" in props || "v-if" in props) return "vIf";
-  if ("vFor" in props || "v-for" in props) return "vFor";
   return null;
 }
 
@@ -234,64 +229,7 @@ export function getVElseIfValue(props: Record<string, unknown>): boolean {
 }
 
 /**
- * 从 v-for 的 children 解析出列表项工厂函数。
- * 支持单个函数 (item, index) => VNode，或 expand 后的单元素数组 [factory]。
- *
- * @param children - v-for 对应的 children
- * @returns (item, index) => VNode | VNode[]
- */
-export function resolveVForFactory(
-  children: unknown,
-): (item: unknown, index: number) => VNode | VNode[] {
-  if (typeof children === "function") {
-    return children as (item: unknown, index: number) => VNode | VNode[];
-  }
-  if (
-    Array.isArray(children) && children.length === 1 &&
-    typeof children[0] === "function"
-  ) {
-    return children[0] as (item: unknown, index: number) => VNode | VNode[];
-  }
-  return () => (children as VNode);
-}
-
-/**
- * 从 props 与 children 取 v-for 的列表与工厂函数。
- *
- * @param props - 节点 props（含 vFor/v-for）
- * @param children - 子节点（工厂函数或 [factory]）
- * @returns { list, factory } 或 null（未传 vFor 时）
- */
-export function getVForListAndFactory(
-  props: Record<string, unknown>,
-  children: unknown,
-): {
-  list: unknown[];
-  factory: (item: unknown, index: number) => VNode | VNode[];
-} | null {
-  const rawList = props["vFor"] ?? props["v-for"];
-  if (rawList == null) return null;
-  const resolved = getDirectiveValue(rawList);
-  const list = Array.isArray(resolved) ? resolved : [];
-  // 支持 children 为工厂函数，或 expand 后的单元素数组 [factory]
-  const factory = resolveVForFactory(children);
-  return { list, factory };
-}
-
-/**
- * 取 v-show 的当前值（支持 getter 求值），供 dom 层应用 display 样式。
- *
- * @param props - 节点 props
- * @returns 为 true 时显示，false 时隐藏（display: none）
- */
-export function getVShowValue(props: Record<string, unknown>): boolean {
-  const raw = props["vShow"] ?? props["v-show"];
-  if (raw == null) return true;
-  return Boolean(getDirectiveValue(raw));
-}
-
-/**
- * 应用自定义指令到元素：对每个指令 prop 调用 mounted，若值为 getter 则用 effect 订阅并调用 updated；
+ * 应用自定义指令到元素：对每个指令 prop 调用 mounted，若值为标记 getter 或 `SignalRef` 则用 effect 订阅并调用 updated；
  * 若指令提供 unmounted，通过 registerUnmount 登记，节点从 DOM 移除前会调用。
  *
  * @param el - 目标 DOM 元素
@@ -339,8 +277,9 @@ export function applyDirectives(
         globalThis.setTimeout(() => directive.mounted!(el, binding), 0);
       }
     }
-    if (directive.updated && isSignalGetter(value)) {
+    if (directive.updated && (isSignalGetter(value) || isSignalRef(value))) {
       effectFn(() => {
+        /** effect 内 createBinding → getDirectiveValue 读 getter / ref.value，建立订阅 */
         const current = createBinding(value);
         directive.updated!(el, current);
       });
