@@ -8,6 +8,23 @@ and this project adheres to
 
 ---
 
+## [1.3.4] - 2026-03-22
+
+### Added
+
+- **Tests**: **`jsx-compiler.test.ts`** case for **`disabled={() => …}`**
+  (zero-arg getter) expecting **`createEffect`** and **`!!getter()`** codegen.
+
+### Fixed
+
+- **JSX compiler**: Boolean DOM props (**`disabled`**, **`checked`**, etc.) with
+  a **zero-arg arrow/function** (e.g. **`disabled={() => loading.value}`**) now
+  compile to **`createEffect(() => el.prop = !!getter())`** instead of
+  **`el.prop = !!getter`**, which was always **truthy** and left controls
+  permanently disabled.
+
+---
+
 ## [1.3.3] - 2026-03-21
 
 ### Breaking Changes
