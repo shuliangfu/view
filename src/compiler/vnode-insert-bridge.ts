@@ -44,7 +44,7 @@ export function insertReactiveForVnodeSubtree(
 ): EffectDispose {
   if (!insertReactiveImpl) {
     throw new Error(
-      "[view] VNode 子树 insertReactive 未绑定：请通过 @dreamer/view 主入口或 @dreamer/view/compiler 加载（二者均会注册 mount 桥接）。",
+      "[view] VNode subtree insertReactive is not bound: load via @dreamer/view main entry or @dreamer/view/compiler (both register the mount bridge).",
     );
   }
   return insertReactiveImpl(parent, getter);

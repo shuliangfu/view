@@ -1202,8 +1202,10 @@ source**、**`Transition.show`**、 Context **`Provider`** 支持
 **`isSignalRef`**、手写 VNode 的 **vIf 链 / vOnce / vCloak / applyDirectives**
 （**`vnode-mount`**）、分析文档；**修复** **`insertReactive`**
 与受控输入解包、指令 **`updated`** 订阅 ref、SSR 样式代理 symbol、HMR
-getter、router 误增行。**v1.3.2**： `vIf` 生成路径、**`getDocument()`**
-可空、esbuild **^1.1.5**、CI Node 24。完整历史见
+getter、router 误增行；**变更** **`compileSource`** 读源失败告警走 **i18n**
+（**`cli.build.compileSourceReadFailed`**），**`cmd`/`server`** 外库内
+**`throw`/`console`** 统一 **英文**。**v1.3.2**： `vIf`
+生成路径、**`getDocument()`** 可空、esbuild **^1.1.5**、CI Node 24。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---

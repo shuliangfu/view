@@ -85,6 +85,11 @@
 - **i18n 模块路径**：CLI/服务端文案桥接由 **`src/server/utils/i18n.ts`** 迁至
   **`src/i18n.ts`** （locale 仍从 **`src/server/locales/*.json`**
   加载）；**`@module`** 为 **`@dreamer/view/i18n`**。
+- **CLI / 开发构建**：esbuild 插件无法读取 `.tsx` 源码以执行 **`compileSource`**
+  时，告警走 **`cli.build.compileSourceReadFailed`**（全部
+  **`src/server/locales/*.json`**），由 **`logger.warn` / `$tr`** 输出。
+- **库内诊断**：**`cmd/`**、**`server/`** 以外的运行时/编译器路径中 **`throw`**
+  与 **`console`** 文案统一为 **英文**，便于工具链输出一致。
 
 ### 移除
 

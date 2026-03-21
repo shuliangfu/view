@@ -93,6 +93,12 @@ and this project adheres to
   **`src/server/utils/i18n.ts`** to **`src/i18n.ts`** (locale JSON still loaded
   from **`src/server/locales/*.json`**); **`@module`** tag is
   **`@dreamer/view/i18n`**.
+- **CLI / dev build**: When the esbuild plugin cannot read a `.tsx` source for
+  **`compileSource`**, the warning uses **`cli.build.compileSourceReadFailed`**
+  (all **`src/server/locales/*.json`**) via **`logger.warn` / `$tr`**.
+- **Library diagnostics**: **`throw`** and **`console`** messages in
+  runtime/compiler paths (outside **`cmd/`** / **`server/`**) are
+  **English-only** for stable tooling output.
 
 ### Removed
 

@@ -58,7 +58,8 @@
     },
     "build": {
       "building": "[view] Membangun...",
-      "complete": "[view] Build selesai dalam {duration}ms → {outDir}"
+      "complete": "[view] Build selesai dalam {duration}ms → {outDir}",
+      "compileSourceReadFailed": "[view] compileSource gagal membaca sumber; .tsx ini akan memakai JSX bawaan dan dapat menghasilkan VNode: {path}"
     },
     "config": {
       "loadFailedTs": "[view] Gagal memuat view.config.ts: {message}",

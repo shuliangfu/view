@@ -65,9 +65,9 @@ export function mount(
   if (!el) {
     if (noopIfNotFound) {
       console.warn(
-        "[view] mount 已跳过：未找到挂载容器 " +
+        "[view] mount skipped: mount container not found " +
           (typeof container === "string" ? container : "(Element)") +
-          '，页面将为空。请确认 HTML 中存在该节点（如 <div id="root"></div>）且脚本在 DOM 就绪后执行。',
+          '; the page will stay empty. Ensure the node exists in HTML (e.g. <div id="root"></div>) and the script runs after the DOM is ready.',
       );
     }
     return NOOP_ROOT;
@@ -95,10 +95,10 @@ function toNodeForInsert(value: InsertValue): Node {
       ? (v.type as { name?: string }).name || "Function"
       : String(v.type);
     console.error(
-      "[view] 组件可能未走编译：返回了 VNode 而非 (parent)=>void，导致 #root 为空。",
-      "未编译的节点 type:",
+      "[view] component may not have been compiled: returned VNode instead of (parent)=>void; #root may stay empty.",
+      "Uncompiled node type:",
       typeInfo,
-      "（请确认包含该组件的 .tsx 已由 view-cli dev/build 的 compileSource 处理）",
+      "(ensure the .tsx containing this component is processed by view-cli dev/build compileSource)",
       value,
     );
   }

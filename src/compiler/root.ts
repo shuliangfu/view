@@ -41,7 +41,7 @@ export function createRoot(
     fn(container);
     removeCloak(container);
   } catch (err) {
-    console.error("[view] createRoot 执行 fn(container) 时抛错:", err);
+    console.error("[view] createRoot: error while running fn(container):", err);
     throw err;
   } finally {
     setCurrentScope(null);

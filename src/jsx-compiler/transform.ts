@@ -2596,7 +2596,7 @@ export function compileSource(
     if (/Node must have a real position|Debug Failure/i.test(msg)) {
       const stack = err instanceof Error ? err.stack : "";
       console.warn(
-        "[view/compileSource] 编译时触发位置断言（transform 或打印），已退回原始源码，路径:",
+        "[view/compileSource] position assertion during compile (transform or print); falling back to original source, file:",
         fileName,
         msg,
         stack ? "\n" + stack : "",

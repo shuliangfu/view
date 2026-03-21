@@ -58,7 +58,8 @@
     },
     "build": {
       "building": "[view] ビルド中...",
-      "complete": "[view] ビルド完了 {duration}ms → {outDir}"
+      "complete": "[view] ビルド完了 {duration}ms → {outDir}",
+      "compileSourceReadFailed": "[view] compileSource がソースを読み取れませんでした。この .tsx はデフォルトの JSX となり、VNode が生成される可能性があります: {path}"
     },
     "config": {
       "loadFailedTs": "[view] view.config.ts の読み込みに失敗しました: {message}",

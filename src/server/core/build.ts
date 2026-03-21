@@ -285,9 +285,9 @@ function createRootCompilePlugin(): NonNullable<ClientConfig["plugins"]>[0] {
       source = await readTextFile(args.path).catch(() => "");
     }
     if (!source) {
-      console.warn(
-        "[view] compileSource 读取失败，该 .tsx 将走默认 JSX 可能产生 VNode: " +
-          args.path,
+      /** 构建期告警：走 i18n，与 CLI/server 语言一致 */
+      logger.warn(
+        $tr("cli.build.compileSourceReadFailed", { path: args.path }),
       );
       return undefined;
     }
