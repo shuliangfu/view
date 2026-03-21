@@ -82,6 +82,9 @@
 - **用户文档**：中英文 **README**、**《编译路径与运行时指南》**、测试徽章与
   README 测试表（**509** / **465**）、**`createSignal` → `SignalRef`**
   的迁移说明。
+- **i18n 模块路径**：CLI/服务端文案桥接由 **`src/server/utils/i18n.ts`** 迁至
+  **`src/i18n.ts`** （locale 仍从 **`src/server/locales/*.json`**
+  加载）；**`@module`** 为 **`@dreamer/view/i18n`**。
 
 ### 移除
 
@@ -488,7 +491,8 @@
 
 - **CLI i18n（9 种语言）**：与 dweb 一致，支持 de-DE、en-US、es-ES、fr-FR、
   id-ID、ja-JP、ko-KR、pt-BR、zh-CN；新增各语言 locale JSON，并更新
-  `src/server/utils/i18n.ts` 中的 `Locale` 类型与列表。
+  `src/server/utils/i18n.ts`（v1.3.3 起迁至 `src/i18n.ts`）中的 `Locale`
+  类型与列表。
 - **init 模板 i18n**：UnoCSS 的 `view.config.ts` 中 content 注释与 `uno.css`
   的头部/ reset/ body/ 自定义层注释均使用 i18n（
   `unocssContentComment`、`unoCssHeaderComment`、`unoCssResetComment`、

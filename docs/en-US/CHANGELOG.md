@@ -89,6 +89,10 @@ and this project adheres to
 - **Documentation**: English and Chinese **README**, **compile-path guide**,
   **test badge** / README test table (**509** Deno / **465** Bun), and
   **`createSignal` → `SignalRef`** migration notes.
+- **i18n module location**: CLI/server i18n bridge moved from
+  **`src/server/utils/i18n.ts`** to **`src/i18n.ts`** (locale JSON still loaded
+  from **`src/server/locales/*.json`**); **`@module`** tag is
+  **`@dreamer/view/i18n`**.
 
 ### Removed
 
@@ -541,7 +545,7 @@ and this project adheres to
 
 - **CLI i18n (9 locales)**: Same locale set as dweb: de-DE, en-US, es-ES, fr-FR,
   id-ID, ja-JP, ko-KR, pt-BR, zh-CN. New locale JSON files and `Locale` type
-  updates in `src/server/utils/i18n.ts`.
+  updates in `src/server/utils/i18n.ts` (relocated to `src/i18n.ts` in v1.3.3).
 - **init template i18n**: UnoCSS `view.config.ts` content comment and `uno.css`
   header/reset/body/custom comments use i18n keys (`unocssContentComment`,
   `unoCssHeaderComment`, `unoCssResetComment`, `unoCssBodyComment`,
