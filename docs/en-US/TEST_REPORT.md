@@ -5,7 +5,7 @@
 | Item            | Description                                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Package         | @dreamer/view                                                                                                                      |
-| Version         | 1.2.0                                                                                                                              |
+| Version         | 1.3.0                                                                                                                              |
 | Test framework  | @dreamer/test ^1.0.15                                                                                                              |
 | Test date       | 2026-03-21                                                                                                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                 |
