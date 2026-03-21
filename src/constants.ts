@@ -48,7 +48,7 @@ export const KEY_HMR_CLEAR_ROUTE_CACHE = "__VIEW_HMR_CLEAR_ROUTE_CACHE__";
 /** HMR 路由 path -> chunk URL 覆盖（build 注入写入，route-page 读取） */
 export const KEY_HMR_CHUNK_FOR_PATH = "__VIEW_HMR_CHUNK_FOR_PATH__";
 
-/** 当前处于服务端渲染（renderToString/renderToStream），用于 getDocument() 等抛出明确错误 */
+/** 当前处于服务端渲染（renderToString/renderToStream）；与 KEY_VIEW_SSR_DOCUMENT 配合，`getDocument()` 可返回影子 document 或 null */
 export const KEY_VIEW_SSR = "__VIEW_SSR__";
 
 /**

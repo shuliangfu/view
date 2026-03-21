@@ -1,7 +1,7 @@
 /**
  * 基于 `globalThis` 的键值存取，与内部 `KEY_*` 常量配合；扩展或调试时可使用 `setGlobal` / `getGlobal`。
  *
- * `getDocument()` 在 SSR 标记开启时会抛错，供业务区分环境（详见函数说明）。
+ * `getDocument()` 在无可用 document 时返回 `null`（含 SSR 未挂影子、或非 DOM 环境），不再抛错，便于 Hybrid 同构。
  *
  * @module @dreamer/view/globals
  * @packageDocumentation
@@ -9,7 +9,7 @@
  * **导出：** `getGlobal`、`setGlobal`、`getGlobalOrDefault`、`getDocument`
  */
 
-import { KEY_VIEW_SSR } from "./constants.ts";
+import { KEY_VIEW_SSR, KEY_VIEW_SSR_DOCUMENT } from "./constants.ts";
 
 /**
  * 从 `globalThis` 读取指定键的值（不存在则 `undefined`）。
@@ -23,25 +23,24 @@ export function getGlobal<T = unknown>(key: string): T | undefined {
 }
 
 /**
- * 获取 document，仅在浏览器环境可用。
- * 在服务端渲染（renderToString/renderToStream）期间调用会抛出明确错误，便于排查误用。
+ * 获取当前可用的 `document`：与编译产物一致，**优先** `renderToString` / `renderToStream` 设置的 SSR 影子 document（`KEY_VIEW_SSR_DOCUMENT`），
+ * 否则回退到 `globalThis.document`。
  *
- * @returns 当前环境的 document 对象
- * @throws 当处于 SSR（KEY_VIEW_SSR 为 true）时抛出，提示不要在服务端使用 document
+ * - 服务端仅标记 `KEY_VIEW_SSR` 且**未**设置影子 document 时返回 `null`（不再抛错，便于页面组件直接调用）。
+ * - 非 DOM 环境且无影子时返回 `null`。
+ *
+ * @returns 影子或真实 `Document`；不可用时为 `null`
  */
-export function getDocument(): Document {
+export function getDocument(): Document | null {
+  const shadow = getGlobal<unknown>(KEY_VIEW_SSR_DOCUMENT);
+  if (shadow != null) {
+    return shadow as Document;
+  }
   if (getGlobal<boolean>(KEY_VIEW_SSR)) {
-    throw new Error(
-      "document is not available during server-side rendering. Do not use document or window in components rendered with renderToString() or renderToStream(). Use conditional checks (e.g. if (typeof document !== 'undefined')) or move the logic to client-only code (e.g. createEffect, onMount).",
-    );
+    return null;
   }
   const doc = (globalThis as { document?: Document }).document;
-  if (doc == null) {
-    throw new Error(
-      "document is not available in this environment. Are you running outside the browser?",
-    );
-  }
-  return doc;
+  return doc ?? null;
 }
 
 /**

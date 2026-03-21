@@ -277,6 +277,72 @@ function App() {
     expect(out).not.toContain("vIf");
   });
 
+  /**
+   * 并列多个 vIf（非 vElseIf）：解析为多条单分支链；每条 insertReactive 的 getter 内必须带条件，
+   * 不得无条件 `return mount`，否则三个分支会同时挂载。
+   */
+  it("内置元素并列多个 vIf 时每条 insertReactive getter 内应含条件 if", () => {
+    const source = `
+function App() {
+  const n = 2;
+  return (
+    <div>
+      <span vIf={() => n === 1}>1</span>
+      <span vIf={() => n === 2}>2</span>
+      <span vIf={() => n === 3}>3</span>
+    </div>
+  );
+}
+`;
+    const out = compileSource(source, "App.tsx");
+    expect(out).toContain("insertReactive");
+    /** 箭头条件会编成 `if ((() => n === k)())`；须含各分支比较且不得落未编译 vIf */
+    expect(out).toMatch(/n\s*===\s*1/);
+    expect(out).toMatch(/n\s*===\s*2/);
+    expect(out).toMatch(/n\s*===\s*3/);
+    expect(out).not.toContain("vIf");
+  });
+
+  /**
+   * 单分支 v-if：编译器须在 false 时显式 `else return` 空 `(parent) => {}`，与手写 vElse 空支一致，
+   * 使 insertReactive 始终走 MountFn 分支并 detach 上一帧（见 transform buildNoOpIfFalseMountArrow）。
+   */
+  it("内置元素仅 vIf 无 vElse 时 insertReactive getter 应含 else return 空挂载", () => {
+    const source = `
+function App() {
+  return (
+    <div>
+      <p vIf={() => show()}>hi</p>
+    </div>
+  );
+}
+`;
+    const out = compileSource(source, "App.tsx");
+    expect(out).toContain("insertReactive");
+    expect(out).toMatch(/else/);
+    expect(out).not.toContain("vIf");
+  });
+
+  /**
+   * 回归：根 return 直接 `<div vIf>` 曾编成 mount 内单次 `if (cond){...}`，signal 变 false 不卸 DOM；
+   * 用 `<>...</>` 包一层时子节点走兄弟链 insertReactive 故「只有包 Fragment 才正常」。修复后根节点与 Fragment 一致。
+   */
+  it("根节点单层内置元素 vIf 应编译为 insertReactive（勿用单次 mount 内 if）", () => {
+    const source = `
+function Modal() {
+  return (
+    <div vIf={() => show()}>
+      hi
+    </div>
+  );
+}
+`;
+    const out = compileSource(source, "Modal.tsx");
+    expect(out).toContain("insertReactive");
+    expect(out).toMatch(/else/);
+    expect(out).not.toContain("vIf");
+  });
+
   it("vOnce 动态子项应使用 createEffect 实现首次渲染+最多再更新一次，且不落 vOnce 属性", () => {
     const source = `
 function App() {

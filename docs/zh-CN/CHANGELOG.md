@@ -7,6 +7,33 @@
 
 ---
 
+## [1.3.2] - 2026-03-21
+
+### 修复
+
+- **JSX 编译器（vIf）**：根节点带 `vIf` 时走与 Fragment 链一致的
+  `insertReactive`， signal 变化会重新求值条件（修复「已为 false
+  仍显示」）。单分支 `vIf`/`vElseIf` 在 false 时生成空
+  MountFn，保证上一帧子树可被 detach；修复并列多个仅 `vIf`
+  兄弟块错误地全部显示的问题。
+- **VNode 挂载**：编译产物/自定义组件的单参 MountFn 经
+  `insertReactiveForVnodeSubtree` 包裹，与 `insertReactive` 对齐，避免深层布局中
+  v-if/signal 更新后 DOM 残留（如 dweb 根树下布局）。
+
+### 变更
+
+- **`getDocument()`**：返回 `Document | null`，SSR 或无 DOM 时不再抛错；优先使用
+  SSR 影子 document（`KEY_VIEW_SSR_DOCUMENT`），便于 Hybrid 同构。
+- **依赖**：`@dreamer/esbuild` 提升至 `^1.1.5`（含 `serverSideRouteBundle`
+  等服务端打包相关修复）。
+
+### 新增
+
+- **CI**：工作流级 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`，便于 GitHub Actions
+  提前验证 Node 24。
+
+---
+
 ## [1.3.1] - 2026-03-21
 
 ### 变更

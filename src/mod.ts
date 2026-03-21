@@ -13,7 +13,7 @@
  *
  * **编译态 Props：** `mergeProps`、`splitProps`、`spreadIntrinsicProps`（与编译器产物配合）
  *
- * **环境：** `getDocument`（浏览器 `document`，SSR 期间会抛错）、`setGlobal`（扩展全局键时使用）、`isDOMEnvironment`
+ * **环境：** `getDocument`（浏览器 `document` 或 SSR 影子 document；不可用时 `null`）、`setGlobal`（扩展全局键时使用）、`isDOMEnvironment`
  *
  * **类型：** `ElementRef`、`InsertParent`、`InsertValue`、`HydrationScriptOptions`、`EffectDispose`、`MountOptions`、`Root`、`SignalGetter`、`SignalSetter`、`SignalTuple`、`VNode`
  *
@@ -27,24 +27,6 @@
  * ```
  */
 
-export { KEY_VIEW_ROUTER } from "./constants.ts";
-export { createRef } from "./ref.ts";
-export type { ElementRef } from "./ref.ts";
-export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
-export { getDocument, setGlobal } from "./globals.ts";
-export {
-  createRoot,
-  generateHydrationScript,
-  mount,
-  render,
-} from "./runtime.ts";
-export type { HydrationScriptOptions } from "./runtime.ts";
-export {
-  insert,
-  insertMount,
-  insertReactive,
-  insertStatic,
-} from "./runtime.ts";
 export {
   mergeProps,
   scheduleFunctionRef,
@@ -52,6 +34,22 @@ export {
   spreadIntrinsicProps,
 } from "./compiler/mod.ts";
 export type { InsertParent, InsertValue } from "./compiler/mod.ts";
+export { KEY_VIEW_ROUTER } from "./constants.ts";
+export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
+export { getDocument, setGlobal } from "./globals.ts";
+export { createRef } from "./ref.ts";
+export type { ElementRef } from "./ref.ts";
+export {
+  createRoot,
+  generateHydrationScript,
+  insert,
+  insertMount,
+  insertReactive,
+  insertStatic,
+  mount,
+  render,
+} from "./runtime.ts";
+export type { HydrationScriptOptions } from "./runtime.ts";
 export {
   createSignal,
   getCurrentEffect,

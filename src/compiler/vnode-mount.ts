@@ -16,12 +16,12 @@ import {
   getActiveDocument,
 } from "./active-document.ts";
 import type { InsertParent, InsertValue } from "./insert.ts";
+import { scheduleFunctionRef } from "./ref-dom.ts";
 import { valueToNode } from "./to-node.ts";
 import {
   insertReactiveForVnodeSubtree,
   type ReactiveInsertNext,
 } from "./vnode-insert-bridge.ts";
-import { scheduleFunctionRef } from "./ref-dom.ts";
 
 const append = (p: InsertParent, child: Node): void => {
   (p as { appendChild(n: unknown): unknown }).appendChild(child);
@@ -152,7 +152,9 @@ function bindIntrinsicRef(el: Element, props: Record<string, unknown>): void {
  */
 function mountChildItemForVnode(parent: Node, item: ChildItem): void {
   /**
-   * 单参 `(parent)=>void` 为编译器传入的挂载函数（Form、Provider 子树等），须直接挂到 parent；
+   * 单参 `(parent)=>void` 为编译器传入的挂载函数（Form、Provider、自定义组件子树等）。
+   * 经 `insertReactiveForVnodeSubtree` 包一层，与 `runtime.insertReactive` 的 MountFn 分支一致：
+   * 依赖变更时先 onCleanup 再重跑挂载，避免 v-if/signal 在「仅同步直调」时与子树 DOM 脱节（如 dweb 根树下深层布局）。
    * 不可当作无参 getter 调用，否则子树丢失。
    */
   if (
@@ -160,7 +162,8 @@ function mountChildItemForVnode(parent: Node, item: ChildItem): void {
     (item as (p?: unknown) => unknown).length === 1 &&
     !isSignalGetter(item)
   ) {
-    (item as (p: Node) => void)(parent);
+    const mountFn = item as (p: Node) => void;
+    insertReactiveForVnodeSubtree(parent, () => mountFn);
     return;
   }
   if (typeof item === "function" || isSignalGetter(item)) {
@@ -287,9 +290,14 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
   if (typeof v.type === "function") {
     const p = (v.props ?? {}) as Record<string, unknown>;
     const out = (v.type as (props: Record<string, unknown>) => unknown)(p);
-    // 编译产物：组件经 compileSource 后返回 (parent) => void，须直接调用挂载，否则会被当非 VNode 落成空节点
+    /**
+     * 编译产物：组件经 compileSource 后返回单参 MountFn `(parent) => void`。
+     * 不再在此同步直调：改为走 `insertReactiveForVnodeSubtree`，使组件内 v-if / signal 与独立 effect 对齐，
+     * 避免在「根 insert + VNode 展开」场景下出现状态已 false 而 DOM 仍残留等问题。
+     */
     if (typeof out === "function" && (out as (p: Node) => void).length === 1) {
-      (out as (parent: Node) => void)(parent as Node);
+      const mountFn = out as (parent: Node) => void;
+      insertReactiveForVnodeSubtree(parent, () => mountFn);
       return;
     }
     /**

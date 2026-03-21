@@ -192,7 +192,6 @@ export function createEffect(
   opts?: CreateEffectOptions,
 ): EffectDispose {
   let disposed = false;
-
   const run = (): void => {
     if (disposed) return;
     // 若由调度器触发（非首次），先执行上次登记的 cleanups

@@ -4,12 +4,14 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
+import type { InsertValue } from "@dreamer/view/compiler";
 import {
   createSSRDocument,
   insert,
   renderToStream,
   renderToString,
 } from "@dreamer/view/compiler";
+import { jsx } from "@dreamer/view/jsx-runtime";
 
 describe("createSSRDocument", () => {
   it("返回的 document 具备 createElement、createTextNode 且可生成可序列化节点", () => {
@@ -89,6 +91,35 @@ describe("renderToString", () => {
       dataViewSsr: false,
     });
     expect(html).toBe("y");
+  });
+
+  /**
+   * @dreamer/render 的 View SSR 用 jsx 建 VNode + insert(container, () => vnode)；须与 compileSource 一样尊重 vIf，
+   * 否则 Hybrid 首屏会把「应隐藏的」子树也写进 HTML，客户端再卸掉 → 闪屏。
+   */
+  it("VNode 本征标签 vIf={false} 时 renderToString 不应输出该子树", () => {
+    const vnode = jsx("div", {
+      vIf: false,
+      class: "modal",
+      children: jsx("span", { children: "secret" }),
+    });
+    const html = renderToString((el) => {
+      insert(el, () => vnode as unknown as InsertValue);
+    });
+    expect(html).not.toContain("modal");
+    expect(html).not.toContain("secret");
+    expect(html).not.toContain("<span");
+  });
+
+  it("VNode 本征标签 vIf 为真时仍应输出子树", () => {
+    const vnode = jsx("div", {
+      vIf: true,
+      children: "ok",
+    });
+    const html = renderToString((el) => {
+      insert(el, () => vnode as unknown as InsertValue);
+    });
+    expect(html).toContain("ok");
   });
 });
 

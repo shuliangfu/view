@@ -1,7 +1,7 @@
 /**
  * Globals 示例：getDocument、getGlobal、setGlobal
  *
- * - getDocument()：在浏览器中安全获取 document，SSR 环境下会抛错提示勿在服务端使用
+ * - getDocument()：浏览器或 SSR 影子 document；不可用时返回 null，不抛错
  * - getGlobal/setGlobal：在 globalThis 上按 key 存取全局状态，便于跨模块共享
  *
  * 文本插值可写 `{globalCount()}` 或 `{globalCount}`：编译器对裸标识符/props 访问会生成
@@ -51,12 +51,13 @@ export function GlobalsDemo(): VNode {
   const readDocTitle = () => {
     try {
       const doc = getDocument();
+      if (!doc) return;
       return doc.title;
     } catch (e) {
       return (e as Error).message;
     }
   };
-  const [docTitle, setDocTitle] = createSignal("-");
+  const [docTitle, setDocTitle] = createSignal<string | null>(null);
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
@@ -71,8 +72,8 @@ export function GlobalsDemo(): VNode {
         <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
           @dreamer/view/globals
         </code>{" "}
-        在浏览器中安全访问 document（SSR 下会抛错），以及按 key 在 globalThis
-        上存取全局状态。
+        在浏览器或 SSR 影子周期内访问 document（否则为 null），以及按 key 在
+        globalThis 上存取全局状态。
       </p>
       <div className="space-y-6">
         <div className={block}>
@@ -105,7 +106,7 @@ export function GlobalsDemo(): VNode {
           <button
             type="button"
             className={btn}
-            onClick={() => setDocTitle(readDocTitle())}
+            onClick={() => setDocTitle(readDocTitle() ?? null)}
           >
             重新读取 document.title
           </button>
@@ -113,9 +114,9 @@ export function GlobalsDemo(): VNode {
         <div className="rounded-lg border-l-4 border-rose-500/50 bg-rose-500/5 px-4 py-3 dark:bg-rose-500/10">
           <h3 className={subTitle}>SSR 说明</h3>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            在服务端渲染（renderToString / renderToStream）时调用 getDocument()
-            会抛出明确错误，提示不要在服务端使用 document。可在 createEffect 或
-            onMount 等仅客户端逻辑中使用 getDocument。
+            在 renderToString / renderToStream 周期内会设置影子 document，此时
+            getDocument() 与编译产物一致可拿到伪 DOM；若仅标记 SSR
+            但未挂影子则返回 null。真实浏览器中始终用 globalThis.document。
           </p>
         </div>
       </div>

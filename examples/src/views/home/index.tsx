@@ -318,7 +318,7 @@ const HOME_MODULES: Array<{
   },
   {
     title: "Globals",
-    desc: "getDocument、getGlobal、setGlobal（SSR 安全）",
+    desc: "getDocument、getGlobal、setGlobal（SSR 下可为 null）",
     href: "/globals",
     iconKey: "globals",
     accent: "border-l-rose-500 bg-rose-500/5 dark:bg-rose-500/10",

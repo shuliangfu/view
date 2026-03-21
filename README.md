@@ -1227,9 +1227,10 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.1** (2026-03-21): **Changed** `@dreamer/esbuild` **`^1.1.2`** (JSR
-subpath cache fix). **Refactored** CLI handlers moved to **`src/cmd/`** (same
-commands). **Fixed** `bun.lock` refresh. Full history:
+**v1.3.2** (2026-03-21): **Fixed** root `vIf` and sibling `vIf` codegen
+(`insertReactive`), MountFn cleanup in **vnode-mount**; **Changed**
+`getDocument()` → `Document | null`, **`@dreamer/esbuild` `^1.1.5`**; **Added**
+CI **`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`**. Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
