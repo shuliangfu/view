@@ -27,6 +27,26 @@ const append = (p: InsertParent, child: Node): void => {
   (p as { appendChild(n: unknown): unknown }).appendChild(child);
 };
 
+/**
+ * 本征元素 VNode 上 vIf/v-if 是否应挂载子树（与 directive 模块中 getVIfValue 语义一致）。
+ * 不直接 import directive 模块，避免 directive → insert → vnode-mount → directive 的循环依赖。
+ *
+ * @param props - VNode.props
+ * @returns 为 false 时不应创建 DOM（与 compileSource 的 v-if 分支一致）
+ */
+function resolveVIfForIntrinsicMount(props: Record<string, unknown>): boolean {
+  if (!("vIf" in props) && !("v-if" in props)) return true;
+  const raw = props["vIf"] ?? props["v-if"];
+  if (raw == null) return true;
+  if (typeof raw === "function") {
+    return Boolean((raw as () => unknown)());
+  }
+  if (isSignalGetter(raw)) {
+    return Boolean((raw as () => unknown)());
+  }
+  return Boolean(raw);
+}
+
 /** SVG 命名空间 URI；用于 createElementNS 创建可正确渲染的 SVG 元素 */
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -97,6 +117,15 @@ function applyIntrinsicVNodeProps(
 ): void {
   for (const key of Object.keys(props)) {
     if (key === "children" || key === "key") continue;
+    /** v-if 链与 v-for 为结构性指令，不应落到真实 DOM 属性（手写 jsx + 运行时挂载路径） */
+    if (
+      key === "vIf" || key === "v-if" ||
+      key === "vElseIf" || key === "v-else-if" ||
+      key === "vElse" || key === "v-else" ||
+      key === "vFor" || key === "v-for"
+    ) {
+      continue;
+    }
     /** ref 在 append 之后由 bindIntrinsicRef 处理（与 compileSource 产物一致，且需 scheduleFunctionRef 支持离屏子树） */
     if (key === "ref") continue;
     const val = props[key];
@@ -275,9 +304,13 @@ export function mountVNodeTree(parent: Node, vnode: unknown): void {
     return;
   }
   if (typeof v.type === "string") {
+    const p = (v.props ?? {}) as Record<string, unknown>;
+    /** 与 compileSource 一致：vIf 为假时不挂载本节点及子树（Hybrid SSR 避免闪屏） */
+    if (!resolveVIfForIntrinsicMount(p)) {
+      return;
+    }
     /** 真实 DOM 为 Element；SVG 系须用 createElementNS 才能正确渲染，SSR 伪 document 无 createElementNS 时回退 createElement */
     const el = createElementForIntrinsic(doc, v.type);
-    const p = (v.props ?? {}) as Record<string, unknown>;
     applyIntrinsicVNodeProps(el, p);
     const items = normalizeChildren(p.children);
     for (let i = 0; i < items.length; i++) {

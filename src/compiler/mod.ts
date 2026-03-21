@@ -23,8 +23,17 @@
  * **类型：** `EffectDispose`、`Root`、`SignalGetter`、`SignalSetter`、`CreateEffectOptions`、`EffectScope`
  */
 
+import { insert, insertReactive, insertStatic } from "./insert.ts";
+import { setInsertReactiveForVnodeMount } from "./vnode-insert-bridge.ts";
+
+/**
+ * VNode 子树内嵌套 insertReactive 须与当前包的 insertReactive 为同一实现（与 runtime 入口在加载时注册一致）。
+ * 仅引 @dreamer/view/compiler 时若不注册，mountVNodeTree 内响应式子节点会抛「未绑定」。
+ */
+setInsertReactiveForVnodeMount(insertReactive);
+
 export { getActiveDocument } from "./active-document.ts";
-export { insert, insertReactive, insertStatic } from "./insert.ts";
+export { insert, insertReactive, insertStatic };
 export type { InsertParent, InsertValue } from "./insert.ts";
 export { scheduleFunctionRef } from "./ref-dom.ts";
 export { createRoot, render } from "./root.ts";

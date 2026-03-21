@@ -8,10 +8,12 @@
  */
 
 import { KEY_VIEW_HYDRATE } from "../constants.ts";
+import { isVNodeLike } from "../dom/shared.ts";
 import { createEffect, onCleanup } from "../effect.ts";
 import { unwrapSignalGetterValue } from "../signal.ts";
-import type { EffectDispose } from "../types.ts";
+import type { EffectDispose, VNode } from "../types.ts";
 import { getActiveDocument } from "./active-document.ts";
+import { mountVNodeTree } from "./vnode-mount.ts";
 import { valueToNode } from "./to-node.ts";
 import type { SSRElement } from "./ssr-document.ts";
 
@@ -39,6 +41,7 @@ export type InsertReactiveResult =
   | Node
   | null
   | undefined
+  | VNode
   | (() => InsertReactiveResult)
   | ((parent: Node) => void)
   | readonly unknown[];
@@ -120,6 +123,20 @@ export function insertReactive(
       for (const fn of next) {
         if (isMountFn(fn)) (fn as (p: Node) => void)(parentNode);
       }
+      currentNodes = Array.from(parentNode.childNodes).slice(beforeLen);
+      return;
+    }
+    /**
+     * getter 返回 VNode（如 @dreamer/render 用 jsx 手写 + insert(container, () => vnode)）：须走 mountVNodeTree，
+     * 与主包 runtime.insertReactive 一致；否则 valueToNode 会把 VNode 当成未知对象落成空文本节点，SSR 得到空串。
+     */
+    if (isVNodeLike(next)) {
+      for (const n of currentNodes) {
+        detachInsertReactiveTrackedChild(n);
+      }
+      currentNodes = [];
+      const beforeLen = parentNode.childNodes.length;
+      mountVNodeTree(parentNode, next as VNode);
       currentNodes = Array.from(parentNode.childNodes).slice(beforeLen);
       return;
     }
