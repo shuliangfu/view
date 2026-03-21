@@ -1,12 +1,12 @@
 /**
  * build 命令：仅调用框架 core（createApp + app.build()），不包含构建逻辑。
  *
- * @module @dreamer/view/server/cmd/build
+ * @module @dreamer/view/cmd/build
  */
 
 import { cwd, exit } from "@dreamer/runtime-adapter";
-import { createApp } from "../core/app.ts";
-import { loadViewConfig } from "../core/config.ts";
+import { createApp } from "../server/core/app.ts";
+import { loadViewConfig } from "../server/core/config.ts";
 
 /**
  * CLI 入口：通过 createApp → app.build() 执行构建

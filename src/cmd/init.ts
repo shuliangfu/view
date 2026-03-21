@@ -1,7 +1,7 @@
 /**
  * init 命令：按示例项目结构初始化新项目
  * 使用 @dreamer/runtime-adapter 做文件与路径操作，兼容 Deno / Bun。
- * 版本号通过 server/utils/version.ts 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
+ * 版本号通过 `server/utils/version.ts` 获取（支持缓存与 --beta：稳定版高于 beta 时仍用稳定版）。
  * 生成 views 下约定特殊文件 _app.tsx、_layout.tsx、_loading.tsx、_404.tsx、_error.tsx（路由扫描自动屏蔽）与路由页 home/about，风格参考 view/examples。
  */
 
@@ -17,9 +17,9 @@ import {
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
-import { $tr, detectLocale } from "../utils/i18n.ts";
-import { logger } from "../utils/logger.ts";
-import { getPluginsVersion, getViewVersion } from "../utils/version.ts";
+import { $tr, detectLocale } from "../server/utils/i18n.ts";
+import { logger } from "../server/utils/logger.ts";
+import { getPluginsVersion, getViewVersion } from "../server/utils/version.ts";
 
 /** 运行时：Deno 仅生成 deno.json；Bun 生成 package.json、.npmrc、tsconfig.json */
 type Runtime = "deno" | "bun";

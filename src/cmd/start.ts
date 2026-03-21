@@ -4,8 +4,8 @@
  */
 
 import { cwd, exit, setEnv } from "@dreamer/runtime-adapter";
-import { createApp } from "../core/app.ts";
-import { loadViewConfig } from "../core/config.ts";
+import { createApp } from "../server/core/app.ts";
+import { loadViewConfig } from "../server/core/config.ts";
 
 /**
  * 启动静态服务（prod 模式），阻塞直到进程退出

@@ -1227,13 +1227,9 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.0** (2026-03-21): **Refactored** Root mount unified on
-**`fn(container)` + `insert`** (`createRoot` / `render` / `hydrate` share the
-shape; **`mount`** only delegates to **`render`**, no auto-hydrate;
-**`createReactiveRoot`** removed). **Changed** Public JSDoc, compiler/subpath
-docs, **`examples`** deps aligned with `deno.json`. **Added** New/extended unit
-tests and **72** browser E2E cases. **Fixed** `package.json` **`./ssr`** export.
-**Docs** TEST_REPORT/README and migration notes updated. Full history:
+**v1.3.1** (2026-03-21): **Changed** `@dreamer/esbuild` **`^1.1.2`** (JSR
+subpath cache fix). **Refactored** CLI handlers moved to **`src/cmd/`** (same
+commands). **Fixed** `bun.lock` refresh. Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

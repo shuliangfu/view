@@ -8,6 +8,25 @@ and this project adheres to
 
 ---
 
+## [1.3.1] - 2026-03-21
+
+### Changed
+
+- **Dependencies**: bump `@dreamer/esbuild` to `^1.1.2` (JSR subpath cache
+  matching fix for imports like `jsr:@dreamer/view/router`).
+
+### Refactored
+
+- **CLI layout**: move view-cli subcommand implementations from
+  `src/server/cmd/` to **`src/cmd/`**; `cli.ts` dynamic-imports
+  `./cmd/{init,dev,build,start,upgrade,update}.ts`. No change to CLI surface.
+
+### Fixed
+
+- **Lockfile**: refresh `bun.lock` after dependency alignment.
+
+---
+
 ## [1.3.0] - 2026-03-21
 
 ### Refactored

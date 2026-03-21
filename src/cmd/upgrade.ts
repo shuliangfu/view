@@ -21,13 +21,13 @@ import {
   success,
 } from "@dreamer/console";
 import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
-import { $tr } from "../utils/i18n.ts";
+import { $tr } from "../server/utils/i18n.ts";
 import {
   compareVersions,
   fetchLatestViewVersionFromJsr,
   getViewVersion,
   writeVersionCache,
-} from "../utils/version.ts";
+} from "../server/utils/version.ts";
 
 /**
  * 获取当前运行时名称（deno 或 bun），供 createCommand 使用
@@ -98,12 +98,14 @@ export async function main(
   if (status.success) {
     succeedSpinner($tr("cli.upgrade.upgradedTo", { latest }));
     await writeVersionCache(latest);
+    console.log("");
     exit(0); // 主流程结束显式退出，避免子进程 ref 导致 CLI 不退出
   } else {
     failSpinner($tr("cli.upgrade.autoInstallFailed"));
     error($tr("cli.upgrade.installManually"));
     info($tr("cli.upgrade.installCommand", { spec: setupSpec }));
     info($tr("cli.upgrade.installExample"));
+    console.log("");
     exit(1);
   }
 }

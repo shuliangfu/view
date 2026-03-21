@@ -1182,12 +1182,9 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.0**（2026-03-21）：**重构** 根挂载统一为
-**`fn(container) + insert`**（`createRoot` / `render` / `hydrate` 同形；`mount`
-仅委托 `render`、不自动水合；移除 **`createReactiveRoot`**）； **变更** 对外
-JSDoc、compiler/子路径文档、`examples` 依赖与 `deno.json` 对齐；**测试**
-新增/扩展多组单测与 **72** 条浏览器 E2E；**修复** `package.json` 补充
-**`./ssr`** 导出； **文档** TEST_REPORT/README 与迁移说明同步。完整历史见
+**v1.3.1**（2026-03-21）：**变更** `@dreamer/esbuild` 提升至 **`^1.1.2`**（JSR
+子路径缓存匹配修复）；**重构** CLI 子命令实现迁至
+**`src/cmd/`**（对外命令不变）； **修复** 刷新 **`bun.lock`**。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
