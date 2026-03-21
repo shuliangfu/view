@@ -1,5 +1,5 @@
 /**
- * 路线 C 运行时 — Props 工具（mergeProps / splitProps）
+ * 编译路径运行时 — Props 工具（mergeProps / splitProps）
  *
  * 与 Solid 对齐：避免解构 props 导致丢响应式；在 JSX 或 memo 内用 props.xxx 建立订阅。
  *

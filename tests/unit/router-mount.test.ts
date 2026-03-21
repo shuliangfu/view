@@ -106,4 +106,58 @@ describe("mountWithRouter", () => {
       g.history = origHistory;
     }
   });
+
+  it("无匹配路由时应渲染 notFound 配置", async () => {
+    const g = globalThis as unknown as {
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
+      history?: { pushState: (a: unknown, b: string, c: string) => void };
+    };
+    const origLocation = g.location;
+    const origHistory = g.history;
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = {
+        pushState(_a: unknown, _b: string, url: string) {
+          try {
+            const u = new URL(url, "http://localhost");
+            if (g.location) {
+              g.location.pathname = u.pathname;
+              g.location.search = u.search ?? "";
+            }
+          } catch {
+            /* 忽略 */
+          }
+        },
+      };
+
+      const r: RouteConfig[] = [
+        { path: "/", component: () => mountText("Home") },
+      ];
+      const router = createRouter({
+        routes: r,
+        notFound: { path: "*", component: () => mountText("NotFound") },
+      });
+      await router.navigate("/");
+      root = globalThis.document.createElement("div");
+      globalThis.document.body.appendChild(root);
+      mountWithRouter(root, router, syncRootFromRouter, {});
+      expect(root.textContent).toBe("Home");
+
+      await router.navigate("/missing-page");
+      expect(root.textContent).toBe("NotFound");
+    } finally {
+      g.location = origLocation;
+      g.history = origHistory;
+    }
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

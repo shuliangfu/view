@@ -7,7 +7,7 @@
 | 测试包   | @dreamer/view                                                                                                                        |
 | 版本     | 1.2.0                                                                                                                                |
 | 测试框架 | @dreamer/test ^1.0.15                                                                                                                |
-| 测试时间 | 2026-03-20                                                                                                                           |
+| 测试时间 | 2026-03-21                                                                                                                           |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E）                                                                                         |
 | 运行命令 | **Deno**：`deno test -A tests/`；**Bun**：`bun test tests/`（Bun 下可加 `--preload ./tests/dom-setup.ts` 在无 DOM 时注入 happy-dom） |
 
@@ -15,19 +15,20 @@
 
 ### Deno
 
-- **总测试数**：442
-- **通过**：442
+- **总测试数**：500
+- **通过**：500
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 54 秒
+- **执行时间**：约 1 分 38 秒
 
 ### Bun
 
-- **总测试数**：409
-- **通过**：409
+- **总测试数**：457
+- **通过**：457
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 82 秒（34 个测试文件，含 E2E 浏览器与 CLI）
+- **执行时间**：约 85 秒（44 个测试文件，含 E2E 浏览器与 CLI；建议
+  `--preload ./tests/dom-setup.ts`）
 - **说明**：无 DOM 环境时建议使用 `--preload ./tests/dom-setup.ts`，否则依赖
   `document` 的单元/集成用例可能因 SSR guard 或缺少 document 而失败。
 
@@ -39,48 +40,59 @@
 | 测试文件                         | 测试数 | 状态        |
 | -------------------------------- | ------ | ----------- |
 | e2e/cli.test.ts                  | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts | 65     | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts | 72     | ✅ 全部通过 |
 | integration/integration.test.ts  | 5      | ✅ 全部通过 |
-| unit/boundary.test.ts            | 16     | ✅ 全部通过 |
+| unit/active-document.test.ts     | 3      | ✅ 全部通过 |
+| unit/boundary.test.ts            | 17     | ✅ 全部通过 |
 | unit/build-hmr.test.ts           | 5      | ✅ 全部通过 |
+| unit/compiled-contract.test.ts   | 3      | ✅ 全部通过 |
 | unit/compiled-runtime.test.ts    | 23     | ✅ 全部通过 |
 | unit/compiler.test.ts            | 13     | ✅ 全部通过 |
 | unit/context.test.ts             | 7      | ✅ 全部通过 |
 | unit/directive.test.ts           | 25     | ✅ 全部通过 |
 | unit/effect.test.ts              | 15     | ✅ 全部通过 |
+| unit/entry-mod-smoke.test.ts     | 3      | ✅ 全部通过 |
+| unit/escape.test.ts              | 6      | ✅ 全部通过 |
 | unit/form-page-compile.test.ts   | 3      | ✅ 全部通过 |
 | unit/globals.test.ts             | 5      | ✅ 全部通过 |
 | unit/hmr.test.ts                 | 3      | ✅ 全部通过 |
+| unit/insert-replacing.test.ts    | 4      | ✅ 全部通过 |
 | unit/jsx-compiler.test.ts        | 32     | ✅ 全部通过 |
 | unit/jsx-runtime.test.ts         | 6      | ✅ 全部通过 |
+| unit/logger-server.test.ts       | 4      | ✅ 全部通过 |
 | unit/meta.test.ts                | 21     | ✅ 全部通过 |
 | unit/portal.test.ts              | 6      | ✅ 全部通过 |
 | unit/proxy.test.ts               | 5      | ✅ 全部通过 |
 | unit/reactive.test.ts            | 7      | ✅ 全部通过 |
 | unit/ref-dom.test.ts             | 4      | ✅ 全部通过 |
-| unit/ref.test.ts                 | 3      | ✅ 全部通过 |
+| unit/ref.test.ts                 | 4      | ✅ 全部通过 |
 | unit/resource.test.ts            | 8      | ✅ 全部通过 |
-| unit/router-mount.test.ts        | 2      | ✅ 全部通过 |
+| unit/route-page.test.ts          | 4      | ✅ 全部通过 |
+| unit/router-mount.test.ts        | 3      | ✅ 全部通过 |
 | unit/router.test.ts              | 40     | ✅ 全部通过 |
 | unit/runtime-props.test.ts       | 15     | ✅ 全部通过 |
 | unit/runtime.test.ts             | 20     | ✅ 全部通过 |
 | unit/scheduler.test.ts           | 5      | ✅ 全部通过 |
 | unit/signal.test.ts              | 16     | ✅ 全部通过 |
+| unit/spread-intrinsic.test.ts    | 10     | ✅ 全部通过 |
 | unit/ssr-compiled.test.ts        | 11     | ✅ 全部通过 |
 | unit/ssr-document-shim.test.ts   | 3      | ✅ 全部通过 |
 | unit/store.test.ts               | 29     | ✅ 全部通过 |
 | unit/stream.test.ts              | 4      | ✅ 全部通过 |
 | unit/transition.test.ts          | 8      | ✅ 全部通过 |
 | unit/unmount.test.ts             | 6      | ✅ 全部通过 |
+| unit/version-utils.test.ts       | 9      | ✅ 全部通过 |
+| unit/vnode-insert-bridge.test.ts | 2      | ✅ 全部通过 |
 
 ## 功能测试详情
 
-### 1. Boundary (unit/boundary.test.ts) - 16 tests
+### 1. Boundary (unit/boundary.test.ts) - 17 tests
 
 - ✅ isErrorBoundary 对 ErrorBoundary 组件返回 true、对其它函数返回 false
 - ✅ getErrorBoundaryFallback：fallback 为函数/VNode/undefined/null 等边界
 - ✅ ErrorBoundary 直接返回 children；无 children 时返回 null
 - ✅ Suspense：同步 VNode、Promise 先 fallback 再解析、fallback 为 null 边界
+- ✅ **嵌套 ErrorBoundary**：内层抛错时仅内层 fallback 生效、错误不外冒
 
 ### 2. E2E CLI (e2e/cli.test.ts) - 6 tests
 
@@ -89,20 +101,28 @@
 - ✅ examples 目录下 view build：产出 dist/ 且含 main.js
 - ✅ build 后 view start：启动服务并用浏览器打开首页（多页面示例）
 
-### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 65 tests
+### 3. E2E 浏览器示例 (e2e/view-example-browser.test.ts) - 72 tests
 
 - ✅ 首页挂载与多页面入口、各卡片进入
   Signal/Store/Boundary/指令/Reactive/Resource/Context/Runtime/Router 页
 - ✅ Signal 页：count/double、name 输入与「你好，xxx」
-- ✅ Store 页：count、greeting 与名字输入
+- ✅ Store 页：count、greeting 与名字输入；**persist**：清空 key 后
+  +1、localStorage 写入、再次进入页面 count 仍恢复
 - ✅ Boundary 页：抛错展示、Suspense 异步内容
-- ✅ 指令页：vIf/vShow/v-for、v-text/v-html、v-model 输入与 checkbox
+- ✅ 指令页：vIf/vShow/v-for、v-text/v-html、v-model 输入与 checkbox；**main
+  文案含 v-once / vCloak 说明区块**
 - ✅ Reactive 页：createReactive 表单、多字段 summary、下拉与选项
 - ✅ Resource 页：重新请求、id 切换、Suspense 与 Promise 区块
 - ✅ Context 页：light/dark 主题切换
-- ✅ Runtime 页：输入后生成 HTML（renderToString）
+- ✅ Runtime 页：输入后生成 HTML（renderToString）；**页面展示
+  generateHydrationScript、renderToStream / `@dreamer/view/stream` 文档块**
 - ✅ **Layout 页**：/layout 显示布局示例与 _layout、inheritLayout 说明
+- ✅ **Layout 2 页**：/layout/layout2 嵌套路由与说明；**document.title 兼容
+  Layout2 / Layout 2**
 - ✅ **Loading 页**：/loading 懒加载完成后显示加载态示例与 _loading 说明
+- ✅ **Gallery**：/gallery 网格、/images
+  静态图加载完成；首张缩略图预览、放大、关闭； **顶栏「示例」下拉进入相册**（nav
+  标签中英兼容：相册 / Gallery）
 - ✅ 顶部导航与路由跳转、Layout 主题、404 与返回首页
 
 ### 4. Context (unit/context.test.ts) - 7 tests
@@ -293,7 +313,7 @@
 | 接口方法   | createSignal、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、指令、Boundary、Runtime/SSR、**SSR document shim**、scheduler、meta、proxy、compiler、stream、**协调器焦点/容器复用** 等均有用例 |
 | 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空、getter/静态切换、getter 返回 null、同组件返回裸 VNode 等                                                                                                                                                                        |
 | 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                                                                               |
-| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、**reconcile getter 复用与同组件容器复用**、CLI init/build/start、浏览器多页与导航                                                                                                                                                |
+| 集成与 E2E | createRoot + 事件 + signal、v-model、createReactive 表单、细粒度更新、**reconcile getter 复用与同组件容器复用**、CLI init/build/start、浏览器多页与导航、**Gallery / Layout2 / Runtime 文档块 / Store persist（浏览器）**                                                                              |
 
 ## 优点
 
@@ -305,7 +325,7 @@
 
 ## 结论
 
-当前 @dreamer/view 在 **Deno** 下 442 个用例、**Bun** 下 409
+当前 @dreamer/view 在 **Deno** 下 500 个用例、**Bun** 下 457
 个用例（统计方式不同），**全部通过**，通过率
 100%。覆盖信号、响应式、scheduler、路由、资源、上下文、指令、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString
@@ -313,6 +333,10 @@ SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、rende
 不抛错且执行后恢复）、**applyProps**（ref、vShow/vCloak、dangerouslySetInnerHTML、value/checked
 响应式、事件、class、style、attribute、自定义指令）、Store（persist、getters/actions、边界）、Reactive、Boundary、meta（getMetaHeadFragment、applyMetaToHead、边界）、proxy、compiler（常量折叠边界、插件
 onLoad catch）、stream、build/HMR、**协调器焦点/容器复用**（同槽 getter
-复用、同组件 patch 复用及
-getter/静态边界）、CLI（init/build/start）、浏览器示例流程，以及**集成**：getter
-返回 Fragment 时 input 焦点保持，满足发布与文档展示需求。
+复用、同组件 patch 复用及 getter/静态边界）、**spread-intrinsic /
+insert-replacing / active-document / escape、compiled 与 compiler
+契约、RoutePage、router-mount（含
+notFound）、version-utils、logger-server、子路径入口（csr/hybrid/ssr）、vnode-insert-bridge**、CLI（init/build/start）、**浏览器
+E2E**（含 Gallery、Layout2、顶栏下拉进相册、Runtime 静态文档块、Store
+localStorage 恢复、v-once/vCloak 文案等），以及**集成**：getter 返回 Fragment 时
+input 焦点保持，满足发布与文档展示需求。
