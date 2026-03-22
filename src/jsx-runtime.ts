@@ -4,7 +4,7 @@
  * @module @dreamer/view/jsx-runtime
  * @packageDocumentation
  *
- * **导出：** jsx、jsxs、Fragment
+ * **导出：** jsx、jsxs、jsxMerge、Fragment
  *
  * 在 deno.json / tsconfig 中配置 "jsx": "react-jsx" 与 "jsxImportSource": "@dreamer/view" 后，无需在业务代码中显式导入本模块。
  *
@@ -12,6 +12,7 @@
  * const vnode = <div class="foo">{count()}</div>;
  */
 
+import { mergeProps } from "./compiler/props.ts";
 import { FragmentType } from "./dom/shared.ts";
 import type { VNode } from "./types.ts";
 
@@ -76,6 +77,22 @@ export function jsxs(
   maybeKey?: string | number | null,
 ): VNode {
   return createVNode(type, props, maybeKey);
+}
+
+/**
+ * 多段 props 合并后再创建 VNode，等价于 `jsx(type, mergeProps(...sources))`。
+ * 手写路径无编译器的 `{...a}{...b}` 链时，用本函数或 **`mergeProps` + `jsx`** 即可对齐编译产物的 merge 语义（后者依赖 `mergeProps` 的 Proxy 完整 trap）。
+ *
+ * @param type - 标签名、组件函数或 Fragment
+ * @param sources - 多组 props，后者覆盖前者；`null`/`undefined` 会被忽略
+ * @returns 合并后的 VNode
+ */
+export function jsxMerge(
+  type: VNode["type"],
+  ...sources: (Record<string, unknown> | null | undefined)[]
+): VNode {
+  const merged = mergeProps(...sources) as Record<string, unknown>;
+  return createVNode(type, merged, undefined);
 }
 
 /**

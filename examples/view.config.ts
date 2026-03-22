@@ -7,6 +7,7 @@
  * - build：对齐 @dreamer/esbuild 客户端编译选项，由 BuilderBundle.build() 使用
  * - build.dev：仅 dev 模式生效，覆盖顶层 build（如不压缩、保留 sourcemap）
  * - build.prod：仅 prod 模式生效，覆盖顶层 build
+ * - build.jsx：`compiler`（默认，compileSource）| `runtime`（esbuild react-jsx + @dreamer/view）
  */
 
 import type { AppConfig } from "../src/server/types.ts";
@@ -39,6 +40,14 @@ const config: AppConfig = {
     minify: true,
     sourcemap: true,
     splitting: true,
+
+    /**
+     * TSX 链路：`compiler` = compileSource（与模板编译器一致，本示例必需）；
+     * `runtime` = 仅 esbuild automatic JSX（本仓库 views 不可用，仅用于独立对照项目）。
+     * E2E 会通过环境变量 `VIEW_FORCE_BUILD_JSX=compiler` 覆盖，防止误提交 runtime 导致 CI 空白页。
+     */
+    // jsx: "compiler",
+    jsx: "runtime",
 
     /** 资源处理：复制 src/assets（含 images）到 dist/assets，压缩并 hash 化图片 */
     assets: {

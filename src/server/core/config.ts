@@ -7,6 +7,7 @@
 
 import {
   existsSync,
+  getEnv,
   join,
   pathToFileUrl,
   resolve,
@@ -50,6 +51,8 @@ const DEFAULT_CONFIG: AppConfig = {
     outFile: "main.js",
     minify: true,
     sourcemap: true,
+    /** 默认走 compileSource，与既有 view 项目一致 */
+    jsx: "compiler",
     plugins: [],
     chunkNames: "[name]-[hash]",
   },
@@ -177,9 +180,18 @@ export function getBuildConfigForMode(
 ): AppBuildConfig {
   const base = config.build ?? {};
   const overrides = mode === "dev" ? config.build?.dev : config.build?.prod;
-  return {
+  const merged: AppBuildConfig = {
     ...base,
     ...overrides,
     plugins: overrides?.plugins ?? base?.plugins ?? [],
   };
+  /**
+   * 供 E2E / CI 覆盖：examples 视图依赖 compileSource，`jsx: "runtime"` 会导致页面空白。
+   * 子进程可设 `VIEW_FORCE_BUILD_JSX=compiler` 或 `runtime` 强制链路（见 tests/e2e）。
+   */
+  const forced = getEnv("VIEW_FORCE_BUILD_JSX");
+  if (forced === "compiler" || forced === "runtime") {
+    return { ...merged, jsx: forced };
+  }
+  return merged;
 }

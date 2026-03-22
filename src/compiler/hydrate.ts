@@ -103,7 +103,8 @@ function createHydrateDocument(
       const result = iterator.next();
       if (result.done) {
         throw new Error(
-          `[hydrate] createElement("${tag}"): no more server nodes (iterator exhausted).`,
+          `[hydrate] createElement("${tag}"): no more server nodes (iterator exhausted). ` +
+            "请确认容器内 HTML 与 `renderToString(fn)` / `renderToStream` 使用同一 `fn(container)` 产出；手写 VNode SSR 须与客户端插入顺序一致。",
         );
       }
       const node = result.value;
@@ -111,9 +112,10 @@ function createHydrateDocument(
       const gotTag = node.nodeName.toLowerCase();
       if (node.nodeType !== NODE_TYPE_ELEMENT || gotTag !== wantTag) {
         throw new Error(
-          `[hydrate] createElement("${tag}"): mismatch (got ${
+          `[hydrate] createElement("${tag}"): mismatch (expected <${wantTag}>, got ${
             node.nodeType === NODE_TYPE_ELEMENT ? gotTag : "non-element"
-          }).`,
+          }). ` +
+            "标签或结构与 SSR 不一致时无法水合；请对齐服务端与客户端同一套挂载函数。",
         );
       }
       return node as ReturnType<Document["createElement"]>;
@@ -122,7 +124,8 @@ function createHydrateDocument(
       const result = iterator.next();
       if (result.done) {
         throw new Error(
-          "[hydrate] createTextNode: no more server nodes (iterator exhausted).",
+          "[hydrate] createTextNode: no more server nodes (iterator exhausted). " +
+            "文本节点数量与 SSR 不一致；请检查条件渲染或手写 VNode 是否与 `renderToString` 一致。",
         );
       }
       const node = result.value;
@@ -151,7 +154,8 @@ function createHydrateInsert(
     const result = iterator.next();
     if (result.done) {
       throw new Error(
-        "[hydrate] insert: no more server nodes (iterator exhausted).",
+        "[hydrate] insert: no more server nodes (iterator exhausted). " +
+          "插入点数量与 SSR 不一致；同一容器须用同一 `fn` 生成 HTML 再 `hydrate(fn, container)`。",
       );
     }
     const slot = result.value;

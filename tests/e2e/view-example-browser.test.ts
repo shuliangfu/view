@@ -19,6 +19,7 @@ import {
   IS_DENO,
   join,
 } from "@dreamer/runtime-adapter";
+import { envForExamplesChildProcess } from "./e2e-env.ts";
 import {
   afterAll,
   beforeAll,
@@ -298,6 +299,7 @@ describe("浏览器测试（examples 入口）", () => {
       {
         args: IS_DENO ? ["task", "dev"] : ["run", "dev"],
         cwd: examplesDir,
+        env: envForExamplesChildProcess(),
         stdout: "inherit",
         stderr: "inherit",
       },

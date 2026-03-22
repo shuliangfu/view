@@ -16,7 +16,12 @@ import {
   isMountFn,
 } from "./compiler/insert.ts";
 import { valueToNode } from "./compiler/to-node.ts";
-import { mountVNodeTree } from "./compiler/vnode-mount.ts";
+import {
+  createReactiveInsertFragment,
+  mountVNodeTreeAtSiblingAnchor,
+  moveFragmentChildren,
+  resolveSiblingAnchor,
+} from "./compiler/insert-reactive-siblings.ts";
 import {
   type ReactiveInsertNext,
   setInsertReactiveForVnodeMount,
@@ -144,6 +149,11 @@ export function insertReactive(
 ): import("./types.ts").EffectDispose {
   const parentNode = parent as Node | null;
   let currentNodes: Node[] = [];
+  /**
+   * 下一轮须在 `insertBefore(anchor)` 插入：effect 重跑前 onCleanup 会清空 `currentNodes`，
+   * 锚点只能每轮挂载后记 `tracked[last].nextSibling`（见 ui-view 侧栏 + main 兄弟序）。
+   */
+  let siblingAnchorForNextRun: Node | null = null;
   return createEffect(() => {
     /** 父已卸载或非法入参时跳过，避免 MountFn 内 appendChild 抛错（Suspense 竞态等） */
     if (parentNode == null) {
@@ -155,6 +165,27 @@ export function insertReactive(
       }
       currentNodes = [];
     });
+    const anchor = resolveSiblingAnchor(parentNode, siblingAnchorForNextRun);
+    const commitTracked = (nodes: Node[]) => {
+      currentNodes = nodes;
+      const refreshAnchor = () => {
+        siblingAnchorForNextRun = currentNodes.length > 0
+          ? currentNodes[currentNodes.length - 1]!.nextSibling
+          : null;
+      };
+      refreshAnchor();
+      /**
+       * 同一同步挂载函数里若先 `insertReactive` 再 `appendChild` 兄弟，首帧结束时 `nextSibling` 仍为 null；
+       * 微任务阶段兄弟已挂上，再读一次锚点（见 runtime 单测与文档侧栏 + main）。
+       */
+      if (
+        siblingAnchorForNextRun === null &&
+        currentNodes.length > 0 &&
+        typeof globalThis.queueMicrotask === "function"
+      ) {
+        globalThis.queueMicrotask(refreshAnchor);
+      }
+    };
     // 热路径：MountFn 最常见，已置于首分支（见 ANALYSIS_OPTIMIZATION.md 1.2）
     // getter 返回 getter 引用时需解包以订阅 signal，见 unwrapSignalGetterValue
     const raw = getter();
@@ -165,42 +196,48 @@ export function insertReactive(
         : raw,
     ) as ReactiveInsertNext;
     if (isMountFn(next)) {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
+      let nodes: Node[];
+      if (anchor != null) {
+        const frag = createReactiveInsertFragment();
+        (next as (parent: Node) => void)(frag);
+        nodes = moveFragmentChildren(parentNode, frag, anchor);
+      } else {
+        const beforeLen = parentNode.childNodes.length;
+        (next as (parent: Node) => void)(parentNode);
+        nodes = captureNewChildren(parentNode, beforeLen);
       }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      (next as (parent: Node) => void)(parentNode);
-      currentNodes = captureNewChildren(parentNode, beforeLen);
+      commitTracked(nodes);
       return;
     }
     // getter 返回 MountFn 数组（如 .map(() => (parent)=>...)）时依次挂载并追踪子节点
     if (Array.isArray(next)) {
-      for (const n of currentNodes) {
-        if (n.parentNode === parentNode) {
-          parentNode.removeChild(n);
+      let nodes: Node[];
+      if (anchor != null) {
+        const frag = createReactiveInsertFragment();
+        for (const fn of next) {
+          if (isMountFn(fn)) {
+            (fn as (parent: Node) => void)(frag);
+          }
         }
-      }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      for (const fn of next) {
-        if (isMountFn(fn)) {
-          (fn as (parent: Node) => void)(parentNode);
+        nodes = moveFragmentChildren(parentNode, frag, anchor);
+      } else {
+        const beforeLen = parentNode.childNodes.length;
+        for (const fn of next) {
+          if (isMountFn(fn)) {
+            (fn as (parent: Node) => void)(parentNode);
+          }
         }
+        nodes = captureNewChildren(parentNode, beforeLen);
       }
-      currentNodes = captureNewChildren(parentNode, beforeLen);
+      commitTracked(nodes);
       return;
     }
 
     // getter 返回 VNode（如 Suspense 的 fallback/resolved）时在此展开
     if (isVNodeLike(next)) {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
-      }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      mountVNodeTree(parentNode, next as VNode);
-      currentNodes = captureNewChildren(parentNode, beforeLen);
+      commitTracked(
+        mountVNodeTreeAtSiblingAnchor(parentNode, next as VNode, anchor),
+      );
       return;
     }
 
@@ -220,13 +257,15 @@ export function insertReactive(
       if (frag.childNodes.length === 0) {
         return;
       }
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
+      let nodes: Node[];
+      if (anchor != null) {
+        nodes = moveFragmentChildren(parentNode, frag, anchor);
+      } else {
+        const beforeLen = parentNode.childNodes.length;
+        parentNode.appendChild(frag);
+        nodes = captureNewChildren(parentNode, beforeLen);
       }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      parentNode.appendChild(frag);
-      currentNodes = captureNewChildren(parentNode, beforeLen);
+      commitTracked(nodes);
       return;
     }
 
@@ -236,11 +275,12 @@ export function insertReactive(
      * getter 返回 false/null 时会清空整父节点，典型：`<div><Form/>{submitted() && <p/>}</div>` 白屏。
      */
     const node = toNodeForInsert(next as InsertValue);
-    for (const n of currentNodes) {
-      detachInsertReactiveTrackedChild(n);
+    if (anchor != null) {
+      parentNode.insertBefore(node, anchor);
+    } else {
+      parentNode.appendChild(node);
     }
-    currentNodes = [node];
-    parentNode.appendChild(node);
+    commitTracked([node]);
   });
 }
 

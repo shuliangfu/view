@@ -7,6 +7,65 @@
 
 ---
 
+## [1.3.5] - 2026-03-22
+
+### 新增
+
+- **子路径 `@dreamer/view/jsx-handoff`**：手写 **`jsx`/`jsxs`**
+  路径一站式导出——**`insertVNode`**、
+  **`mergeProps`**、**`mountVNodeTree`**、**`hydrate`**、**`createRoot`/`render`**、
+  **`enableViewRuntimeDevWarnings` /
+  `disableViewRuntimeDevWarnings`**、**`formatVNodeForDebug`** 及常用
+  runtime/compiler 符号；首行副作用 import 会注册 **`mountVNodeTree`** 所需的
+  **`insertReactive`** 桥接。
+- **子路径
+  `@dreamer/view/vnode-debug`**：**`formatVNodeForDebug`**（及选项类型），便于开发态打印
+  VNode。
+- **`dev-runtime-warn.ts`**：可选开发期诊断（**`viewRuntimeDevWarn`**、**`warnIfMultiArgControlledProp`**、
+  嵌套 **`style`** 等），由 **`globalThis.__VIEW_DEV__`**
+  控制；**`jsx-handoff`** 再导出开关函数。
+- **`route-mount-bridge.ts`**：**`coerceToMountFn`**、**`pageDefaultToMountFn`**、**`composePageWithLayouts`**——
+  将 **MountFn**（compileSource）与 **VNode**（手写 JSX）统一为挂载函数，供
+  **`RoutePage`**、布局链、 自定义 loading 共用；支持 **VNode** 数组。
+- **构建配置 `AppBuildConfig.jsx`**：**`compiler`**（默认，esbuild 前
+  **`compileSource`**）与 **`runtime`** （esbuild **`jsx: "automatic"`** +
+  **`jsxImportSource: "@dreamer/view"`**）。环境变量 **`VIEW_FORCE_BUILD_JSX`**
+  （**`compiler` | `runtime`**）经 **`getBuildConfigForMode`** 覆盖，供 CI/E2E。
+- **`insert-reactive-siblings.ts`**：文档片段/锚点辅助（**`moveFragmentChildren`**、**`resolveSiblingAnchor`**
+  等）， 使 **`insertReactive`** 更新时父节点已有其它兄弟时仍保持 DOM
+  顺序（如侧栏 + 主内容）。
+- **测试**：**`route-mount-bridge.test.ts`**、**`jsx-handoff.test.ts`**、**`dev-runtime-warn.test.ts`**、
+  **`vnode-debug.test.ts`**、**`vnode-mount-runtime-props.test.ts`**、**`build-jsx-mode.test.ts`**；
+  **`tests/e2e/e2e-env.ts`** 及 **`envForExamplesChildProcess()`**（子进程强制
+  **`VIEW_FORCE_BUILD_JSX=compiler`**）。
+- **文档**：**`ANALYSIS-full-compile-vs-handwritten-jsx.md`**（中英）、**`编译路径与运行时指南.md`**；
+  **`examples/view.config.ts`** 注释说明 **`jsx`** 模式与 E2E 覆盖。
+
+### 变更
+
+- **`RoutePage`（`route-page.tsx`）**：HMR
+  覆盖、懒加载/同步路由模块、**`tryCustomLoading`** 等路径改用挂载桥接；
+  **`mount()`** 对 **`default(match)`** 包一层 try/catch，错误展示更清晰。
+- **路由类型（`router.ts`）**：**`RouteComponentModule`** /
+  **`LayoutComponentModule`** 标明 **`default`** 可为 **`MountFn | VNode`**。
+- **`vnode-mount.ts`**：手写子树与本征节点行为进一步对齐
+  compileSource——**`value`/`checked`/`disabled`** 等与 **`SignalRef`**、 getter
+  的受控绑定；指令与 runtime 属性处理在适用场景与编译路径一致。
+- **`insert.ts`**、**`hydrate.ts`**、**`props.ts`**：响应式兄弟插入、水合与
+  spread 等配合上述能力。
+- **`runtime.ts`**、**`jsx-runtime.ts`**、**`mod.ts`**：开发期告警与子路径导出接线。
+- **`server/core/build.ts`**：客户端打包读取合并后的 **`jsx`** 模式。
+
+### 修复
+
+- **E2E（`cli.test.ts`）**：**`buildCommandInExamples()`** 增加
+  **`env: envForExamplesChildProcess()`**，使 **`view build`** 与
+  **`view start`** 子进程均带 **`VIEW_FORCE_BUILD_JSX=compiler`**。修复
+  **`examples/view.config.ts` 为 `jsx: "runtime"`** 时 仅 build 走
+  runtime、start 不重建导致的 **CI 首页空白**（断言「多页面示例」失败）。
+
+---
+
 ## [1.3.4] - 2026-03-22
 
 ### 新增

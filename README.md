@@ -1242,12 +1242,15 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.4** (2026-03-22): **Fixed** — JSX compiler: boolean DOM props with a
-**zero-arg getter** (e.g. **`disabled={() => loading.value}`**) now use
-**`createEffect`** and **`!!getter()`** so controls are not stuck disabled;
-**Added** **`jsx-compiler`** unit test for this codegen. **v1.3.3**
-(2026-03-21): **Breaking** — **`SignalRef`** / removed **`v-for`/`v-show`**
-compile; see [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
+**v1.3.5** (2026-03-22): **Added** — **`@dreamer/view/jsx-handoff`** &
+**`@dreamer/view/vnode-debug`**, dev runtime warnings, **`route-mount-bridge`**
+(MountFn + VNode for **`RoutePage`/layouts**), **`build.jsx`** **`compiler` /
+`runtime`** + **`VIEW_FORCE_BUILD_JSX`**, **`insert-reactive-siblings`** for
+**`insertReactive`** order; **Changed** — **`vnode-mount`** / **`insert`** /
+hydration parity for handwritten JSX; **Fixed** — E2E examples **`build`** now
+passes **`VIEW_FORCE_BUILD_JSX=compiler`** so **`jsx: "runtime"`** in config
+does not leave a blank homepage in CI. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

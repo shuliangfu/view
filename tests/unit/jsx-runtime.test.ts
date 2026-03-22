@@ -3,7 +3,8 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { Fragment, jsx, jsxs } from "@dreamer/view/jsx-runtime";
+import { mergeProps } from "@dreamer/view/compiler";
+import { Fragment, jsx, jsxMerge, jsxs } from "@dreamer/view/jsx-runtime";
 
 describe("jsx", () => {
   it("产出 type/props/children 结构正确", () => {
@@ -40,5 +41,17 @@ describe("jsxs", () => {
 describe("Fragment", () => {
   it("Fragment 为 Symbol 类型供 dom 识别", () => {
     expect(typeof Fragment).toBe("symbol");
+  });
+});
+
+describe("jsxMerge / mergeProps + jsx", () => {
+  it("jsxMerge 应等价于 mergeProps 后再 jsx", () => {
+    const a = { className: "a", id: "1" };
+    const b = { className: "b" };
+    const v1 = jsxMerge("div", a, b);
+    const v2 = jsx("div", mergeProps(a, b));
+    expect(v1).toEqual(v2);
+    expect(v1.props.className).toBe("b");
+    expect(v1.props.id).toBe("1");
   });
 });

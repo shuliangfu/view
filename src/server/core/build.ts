@@ -313,16 +313,30 @@ function createRootCompilePlugin(): NonNullable<ClientConfig["plugins"]>[0] {
   };
 }
 
+/**
+ * 是否对 `.tsx` 启用 compileSource（view-root-compile 插件）。
+ * `jsx: "runtime"` 时关闭，改由 esbuild automatic JSX + `@dreamer/view` 处理。
+ *
+ * @param buildConfig - 已按 dev/prod 合并后的 build 配置
+ */
+function useCompilerJsxPipeline(
+  buildConfig: AppConfig["build"] | undefined,
+): boolean {
+  return (buildConfig?.jsx ?? "compiler") === "compiler";
+}
+
 function resolvePlugins(
   buildConfig: AppConfig["build"],
   forProduction: boolean,
 ): ClientConfig["plugins"] {
   const userPlugins = buildConfig?.plugins ?? [];
-  const rootCompile = createRootCompilePlugin();
-  if (!forProduction) return [rootCompile, ...userPlugins];
+  const withCompiler = useCompilerJsxPipeline(buildConfig);
+  const rootCompile = withCompiler ? createRootCompilePlugin() : null;
+  const prefix = rootCompile ? [rootCompile] : [];
+  if (!forProduction) return [...prefix, ...userPlugins];
   const optimize = buildConfig?.optimize !== false;
-  if (!optimize) return [rootCompile, ...userPlugins];
-  return [rootCompile, createOptimizePlugin(/\.tsx$/), ...userPlugins];
+  if (!optimize) return [...prefix, ...userPlugins];
+  return [...prefix, createOptimizePlugin(/\.tsx$/), ...userPlugins];
 }
 
 /**
