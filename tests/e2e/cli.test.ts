@@ -32,6 +32,7 @@ import {
   it,
 } from "@dreamer/test";
 import { setViewLocale } from "../../src/i18n.ts";
+import { envForExamplesChildProcess } from "./e2e-env.ts";
 
 setViewLocale("zh-CN");
 
@@ -125,13 +126,19 @@ describe("CLI：init", () => {
   );
 });
 
-/** 与 start 用例一致的 build 命令选项，便于两处行为一致、避免 build 用例被误杀 */
+/**
+ * 与 start 用例一致的 build 命令选项，便于两处行为一致、避免 build 用例被误杀。
+ * 必须传入 `envForExamplesChildProcess()`：`examples/view.config.ts` 可能为 `jsx: "runtime"`，
+ * 而示例视图依赖 compileSource；若 build 子进程不设 `VIEW_FORCE_BUILD_JSX=compiler`，
+ * 会产出空白页，随后 start 虽强制 compiler 也不会重新构建 dist。
+ */
 function buildCommandInExamples() {
   return createCommand(execPath(), {
     args: IS_BUN
       ? ["run", "../src/cli.ts", "build"]
       : ["run", "-A", "../src/cli.ts", "build"],
     cwd: resolve(EXAMPLES_DIR),
+    env: envForExamplesChildProcess(),
     stdin: "null",
     stdout: "piped",
     stderr: "piped",
@@ -243,6 +250,7 @@ describe("CLI：start", () => {
             String(START_PORT),
           ],
         cwd: EXAMPLES_DIR,
+        env: envForExamplesChildProcess(),
         stdin: "null",
         stdout: "piped",
         stderr: "piped",

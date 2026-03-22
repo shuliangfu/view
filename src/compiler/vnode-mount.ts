@@ -4,7 +4,9 @@
  * 回调主 `insertReactive`。
  *
  * **手写 jsx() VNode（不经 compileSource）** 在本模块对齐的内置指令：
- * vIf、vElseIf、vElse（Fragment 兄弟链）、vCloak（data-view-cloak）、vOnce（子树 untrack）。
+ * vIf、vElseIf、vElse（**根级**与 **Fragment 兄弟链**：**vIf/vElseIf** 含 SignalRef/无参 getter/signal getter 时整链 **insertReactive**）、
+ * vCloak（data-view-cloak）、vOnce（子树 untrack）。
+ * **bindIntrinsicReactiveDomProps**：受控 value/checked、布尔 DOM、**style**（含响应式对象）。
  * **自定义指令**（`registerDirective`、如 vFocus）在元素 `append` 且 `ref` 绑定之后调用
  * `directive.applyDirectives`，与 compileSource 产物顺序一致（与 `insert` 存在模块环，运行时由
  * Deno/打包器按已存 `isDirectiveProp` 方式解析）。
@@ -14,6 +16,10 @@
 
 import { CONTEXT_SCOPE_TYPE, popContext, pushContext } from "../context.ts";
 import {
+  warnIfMultiArgControlledProp,
+  warnIfNestedStyleObject,
+} from "../dev-runtime-warn.ts";
+import {
   applyDirectives,
   isDirectiveProp,
   registerDirectiveUnmount,
@@ -21,7 +27,11 @@ import {
 import { type ChildItem, normalizeChildren } from "../dom/element.ts";
 import { isEmptyChild, isFragment, isVNodeLike } from "../dom/shared.ts";
 import { createEffect, untrack } from "../effect.ts";
-import { isSignalGetter } from "../signal.ts";
+import {
+  isSignalGetter,
+  isSignalRef,
+  unwrapSignalGetterValue,
+} from "../signal.ts";
 import type { VNode } from "../types.ts";
 import {
   type ActiveDocumentLike,
@@ -90,6 +100,23 @@ function hasVOnceInProps(props: Record<string, unknown>): boolean {
 }
 
 /**
+ * 去掉 v-if / v-else-if / v-else 相关 prop，供内层 `mountVNodeTree` 不再按链规则二次解析。
+ *
+ * @param vn - 本征 VNode
+ * @returns 浅拷贝 props 后的 VNode
+ */
+function intrinsicVnodeStripIfChainProps(vn: VNode): VNode {
+  const p = { ...(vn.props ?? {}) } as Record<string, unknown>;
+  delete p.vIf;
+  delete p["v-if"];
+  delete p.vElseIf;
+  delete p["v-else-if"];
+  delete p.vElse;
+  delete p["v-else"];
+  return { ...vn, props: p };
+}
+
+/**
  * v-cloak：与 compileSource 一致写 data-view-cloak，供首屏 CSS 隐藏与 createRoot 后 removeCloak。
  *
  * @param el - 目标元素
@@ -136,6 +163,16 @@ function mountNormalizedChildrenWithIfChain(
     }
 
     if (hasIf) {
+      const chainIdx = collectIfChainSiblingIndices(items, i);
+      if (ifChainHasReactiveCondition(items, chainIdx)) {
+        insertReactiveForVnodeSubtree(parent, () => {
+          const picked = pickWinningVNodeForIfChain(items, chainIdx);
+          if (picked === "") return "";
+          return picked;
+        });
+        i = chainIdx[chainIdx.length - 1]!;
+        continue;
+      }
       chain = { matched: false };
       if (resolveVIfForIntrinsicMount(p)) {
         mountVNodeTree(parent, vn);
@@ -261,6 +298,301 @@ function applyIntrinsicVNodeProps(
     else if (key === "class") el.setAttribute("class", String(val));
     else if (key === "htmlFor") el.setAttribute("for", String(val));
     else el.setAttribute(key, String(val));
+  }
+}
+
+/**
+ * 与 compileSource 一致：从 `value`/`checked`/布尔 prop 的「活」值读当前展示用值（signal、无参 getter、SignalRef）。
+ *
+ * @param val - props 上的原始值
+ */
+function readLiveControlledValue(val: unknown): unknown {
+  if (typeof val === "function") {
+    if (isSignalGetter(val)) {
+      return (val as () => unknown)();
+    }
+    const f = val as (...args: unknown[]) => unknown;
+    if (f.length === 0) {
+      return f();
+    }
+    return undefined;
+  }
+  return unwrapSignalGetterValue(val);
+}
+
+/**
+ * 是否应对该 prop 建立 `createEffect` 同步（applyIntrinsicVNodeProps 已跳过 function / 部分 object）。
+ *
+ * @param val - props 原始值
+ */
+function needsReactiveDomProp(val: unknown): boolean {
+  if (val == null) return false;
+  if (isSignalRef(val) || isSignalGetter(val)) return true;
+  if (typeof val === "function") {
+    const f = val as (...args: unknown[]) => unknown;
+    return f.length === 0;
+  }
+  return false;
+}
+
+/**
+ * 在 effect / insertReactive getter 内读 vIf 条件，响应式表达式走 `readLiveControlledValue`。
+ *
+ * @param raw - `vIf` / `v-if` 的原始值
+ */
+function readVIfConditionTracked(raw: unknown): boolean {
+  if (raw == null) return true;
+  if (needsReactiveDomProp(raw)) {
+    return Boolean(readLiveControlledValue(raw));
+  }
+  if (typeof raw === "function") {
+    return Boolean((raw as () => unknown)());
+  }
+  if (isSignalGetter(raw)) {
+    return Boolean((raw as () => unknown)());
+  }
+  return Boolean(raw);
+}
+
+/**
+ * 在 effect / insertReactive getter 内读 v-else-if 条件。
+ *
+ * @param raw - `vElseIf` / `v-else-if` 的原始值
+ */
+function readElseIfConditionTracked(raw: unknown): boolean {
+  if (raw == null) return false;
+  if (needsReactiveDomProp(raw)) {
+    return Boolean(readLiveControlledValue(raw));
+  }
+  if (typeof raw === "function") {
+    return Boolean((raw as () => unknown)());
+  }
+  if (isSignalGetter(raw)) {
+    return Boolean((raw as () => unknown)());
+  }
+  return Boolean(raw);
+}
+
+/**
+ * 从带 `vIf` 的项起，收集同一兄弟链上的 `vElseIf`/`vElse` 子项下标（遇新的 `vIf` 或非链节点则结束）。
+ *
+ * @param items - `normalizeChildren` 结果
+ * @param startIfIndex - 当前项下标（须为链头 `vIf`）
+ */
+function collectIfChainSiblingIndices(
+  items: ChildItem[],
+  startIfIndex: number,
+): number[] {
+  const indices = [startIfIndex];
+  for (let j = startIfIndex + 1; j < items.length; j++) {
+    const item = items[j]!;
+    if (!isVNodeLike(item)) break;
+    const p = ((item as VNode).props ?? {}) as Record<string, unknown>;
+    const hasIf = "vIf" in p || "v-if" in p;
+    if (hasIf) break;
+    const hasElseIf = "vElseIf" in p || "v-else-if" in p;
+    const hasElse = "vElse" in p || "v-else" in p;
+    if (hasElseIf || hasElse) indices.push(j);
+    else break;
+  }
+  return indices;
+}
+
+/**
+ * 兄弟链中是否至少有一段条件依赖 signal / 无参 getter（需整链包 `insertReactive`）。
+ *
+ * @param items - 子项列表
+ * @param indices - `collectIfChainSiblingIndices` 返回值
+ */
+function ifChainHasReactiveCondition(
+  items: ChildItem[],
+  indices: number[],
+): boolean {
+  for (const idx of indices) {
+    const p = ((items[idx] as VNode).props ?? {}) as Record<string, unknown>;
+    const hasIf = "vIf" in p || "v-if" in p;
+    const hasElseIf = "vElseIf" in p || "v-else-if" in p;
+    if (hasIf) {
+      const raw = p["vIf"] ?? p["v-if"];
+      if (needsReactiveDomProp(raw)) return true;
+    }
+    if (hasElseIf) {
+      const raw = p["vElseIf"] ?? p["v-else-if"];
+      if (needsReactiveDomProp(raw)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 按当前各条件求值，选出应挂载的一条分支（已剥离链上指令 prop）。
+ *
+ * @param items - 子项列表
+ * @param indices - 链覆盖的下标
+ */
+function pickWinningVNodeForIfChain(
+  items: ChildItem[],
+  indices: number[],
+): VNode | "" {
+  const head = items[indices[0]!] as VNode;
+  const hp = (head.props ?? {}) as Record<string, unknown>;
+  const vifRaw = hp["vIf"] ?? hp["v-if"];
+  if (readVIfConditionTracked(vifRaw)) {
+    return intrinsicVnodeStripIfChainProps(head);
+  }
+  for (let k = 1; k < indices.length; k++) {
+    const vn = items[indices[k]!] as VNode;
+    const p = (vn.props ?? {}) as Record<string, unknown>;
+    const hasElseIf = "vElseIf" in p || "v-else-if" in p;
+    const hasElse = "vElse" in p || "v-else" in p;
+    if (hasElseIf) {
+      const raw = p["vElseIf"] ?? p["v-else-if"];
+      if (readElseIfConditionTracked(raw)) {
+        return intrinsicVnodeStripIfChainProps(vn);
+      }
+      continue;
+    }
+    if (hasElse) {
+      return intrinsicVnodeStripIfChainProps(vn);
+    }
+  }
+  return "";
+}
+
+/** 与 jsx-compiler BOOLEAN_ATTRS 对齐：布尔 DOM 属性，无参函数/signal 时需 effect 同步 */
+const BOOLEAN_REACTIVE_PROP_NAMES = new Set([
+  "disabled",
+  "hidden",
+  "readOnly",
+  "readonly",
+  "selected",
+  "multiple",
+  "autofocus",
+  "contentEditable",
+  "contenteditable",
+  "draggable",
+  "spellCheck",
+  "spellcheck",
+]);
+
+/**
+ * 将 JSX 布尔 prop 名映射到 DOM 对象上的属性名（与 compileSource 一致）。
+ *
+ * @param name - JSX 中的 prop 名
+ */
+function booleanPropToDomKey(name: string): string {
+  if (name === "readonly") return "readOnly";
+  if (name === "contenteditable") return "contentEditable";
+  if (name === "spellcheck") return "spellCheck";
+  return name;
+}
+
+/**
+ * 手写 jsx-runtime 路径：补齐 compileSource 在构建期做的受控表单、style 对象、布尔 signal/无参函数绑定。
+ * 在 `applyIntrinsicVNodeProps` 之后调用；依赖元素已带上静态 `type` 等 attribute。
+ *
+ * @param el - 本征元素
+ * @param props - VNode.props
+ * @param inOnceSubtree - 是否在 v-once 子树内（与编译器一致：effect 内 untrack 写 DOM）
+ */
+function bindIntrinsicReactiveDomProps(
+  el: Element,
+  props: Record<string, unknown>,
+  inOnceSubtree: boolean,
+): void {
+  const schedule = (sync: () => void) => {
+    if (inOnceSubtree) {
+      createEffect(() => {
+        untrack(sync);
+      });
+    } else {
+      createEffect(sync);
+    }
+  };
+
+  const tag = el.tagName.toLowerCase();
+
+  const st = props.style;
+  const styleValueIsDomNode = typeof globalThis.Node === "function" &&
+    st != null &&
+    typeof st === "object" &&
+    st instanceof globalThis.Node;
+  /**
+   * 响应式 style：每轮用新对象覆盖（先移除 style 属性），避免上一轮 `Object.assign` 留下的键在对象变窄后仍残留。
+   */
+  if (needsReactiveDomProp(st)) {
+    schedule(() => {
+      const o = readLiveControlledValue(st);
+      if (o == null || typeof o !== "object" || Array.isArray(o)) return;
+      if (
+        typeof globalThis.Node === "function" && o instanceof globalThis.Node
+      ) {
+        return;
+      }
+      warnIfNestedStyleObject(tag, o as object);
+      const h = el as HTMLElement;
+      h.removeAttribute("style");
+      try {
+        Object.assign(h.style, o as Record<string, string>);
+      } catch {
+        /* 忽略非法 style 对象 */
+      }
+    });
+  } else if (
+    st != null && typeof st === "object" && !Array.isArray(st) &&
+    !styleValueIsDomNode
+  ) {
+    warnIfNestedStyleObject(tag, st as object);
+    try {
+      Object.assign((el as HTMLElement).style, st as Record<string, string>);
+    } catch {
+      /* 忽略非法 style 对象 */
+    }
+  }
+
+  if ("value" in props) {
+    const val = props.value;
+    if (tag === "input" || tag === "textarea" || tag === "select") {
+      warnIfMultiArgControlledProp(tag, "value", val, isSignalGetter);
+    }
+    if (
+      needsReactiveDomProp(val) &&
+      (tag === "input" || tag === "textarea" || tag === "select")
+    ) {
+      schedule(() => {
+        const v = readLiveControlledValue(val);
+        (el as HTMLInputElement).value = String(v ?? "");
+      });
+    }
+  }
+
+  if ("checked" in props) {
+    const val = props.checked;
+    if (tag === "input") {
+      warnIfMultiArgControlledProp(tag, "checked", val, isSignalGetter);
+    }
+    if (needsReactiveDomProp(val) && tag === "input") {
+      const inp = el as HTMLInputElement;
+      const tp = (inp.getAttribute("type") || "text").toLowerCase();
+      if (tp === "checkbox" || tp === "radio") {
+        schedule(() => {
+          const v = readLiveControlledValue(val);
+          inp.checked = Boolean(v);
+        });
+      }
+    }
+  }
+
+  for (const name of BOOLEAN_REACTIVE_PROP_NAMES) {
+    if (!(name in props)) continue;
+    const val = props[name];
+    warnIfMultiArgControlledProp(tag, name, val, isSignalGetter);
+    if (!needsReactiveDomProp(val)) continue;
+    const domKey = booleanPropToDomKey(name);
+    schedule(() => {
+      const v = readLiveControlledValue(val);
+      (el as unknown as Record<string, boolean>)[domKey] = Boolean(v);
+    });
   }
 }
 
@@ -433,6 +765,20 @@ export function mountVNodeTree(
     ) {
       return;
     }
+    const vifRaw = p["vIf"] ?? p["v-if"];
+    const hasReactiveVIf = ("vIf" in p || "v-if" in p) &&
+      needsReactiveDomProp(vifRaw);
+    /**
+     * 根级本征：vIf 为 SignalRef / 无参函数 / signal getter 时与编译器一致包 insertReactive，
+     * 条件变化时卸载或重挂子树（内层 VNode 去掉 vIf 以免递归）。
+     */
+    if (hasReactiveVIf) {
+      insertReactiveForVnodeSubtree(parent, () => {
+        if (!readLiveControlledValue(vifRaw)) return "";
+        return intrinsicVnodeStripIfChainProps(v);
+      });
+      return;
+    }
     /** 与 compileSource 一致：vIf 为假时不挂载本节点及子树（Hybrid SSR 避免闪屏） */
     if (!resolveVIfForIntrinsicMount(p)) {
       return;
@@ -440,15 +786,28 @@ export function mountVNodeTree(
     /** 真实 DOM 为 Element；SVG 系须用 createElementNS 才能正确渲染，SSR 伪 document 无 createElementNS 时回退 createElement */
     const el = createElementForIntrinsic(doc, v.type);
     applyIntrinsicVNodeProps(el, p);
+    const inOnce = hasVOnceInProps(p);
+    /**
+     * `<select>` 的受控 value 须在 option 子节点挂入后再同步：`createEffect` 首次会立即执行，
+     * 若先于 mountChildren 设 `select.value`，无匹配 option 时浏览器会回退到首项，导致 Signal 初值丢失。
+     */
+    const deferReactiveDomProps = String(v.type).toLowerCase() === "select";
+    if (!deferReactiveDomProps) {
+      /** 手写 jsx-runtime：受控 value/checked、style 对象、布尔 signal/无参函数，与 compileSource 对齐 */
+      bindIntrinsicReactiveDomProps(el as Element, p, inOnce);
+    }
     applyIntrinsicVCloak(el, p);
     const mountChildren = (): void => {
       const items = normalizeChildren(p.children);
       mountNormalizedChildrenWithIfChain(el as Node, items);
     };
-    if (hasVOnceInProps(p)) {
+    if (inOnce) {
       untrack(mountChildren);
     } else {
       mountChildren();
+    }
+    if (deferReactiveDomProps) {
+      bindIntrinsicReactiveDomProps(el as Element, p, inOnce);
     }
     append(parent, el as Node);
     bindIntrinsicRef(el as Element, p);

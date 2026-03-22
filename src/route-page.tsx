@@ -23,6 +23,11 @@ import type {
   Router,
 } from "./router.ts";
 import { runDirectiveUnmountOnChildren } from "./dom/unmount.ts";
+import {
+  coerceToMountFn,
+  composePageWithLayouts,
+  pageDefaultToMountFn,
+} from "./route-mount-bridge.ts";
 import { createSignal } from "./signal.ts";
 import type { SignalRef } from "./signal.ts";
 
@@ -331,8 +336,9 @@ export function RoutePage(props: {
     const loadingState = loadingGetter();
     if (loadingState.loading || !loadingState.data) return null;
     const Load = loadingState.data.default ?? loadingState.data.RouteLoading;
+    /** loading 组件可为 compile 的 MountFn，也可为手写 jsx 返回的 VNode */
     return typeof Load === "function"
-      ? (Load(matchWithRouter) as MountFn)
+      ? coerceToMountFn(Load(matchWithRouter))
       : null;
   };
 
@@ -374,50 +380,49 @@ export function RoutePage(props: {
           delete chunkMap[path];
           const pageMod = (await import(
             /* @vite-ignore */ overrideUrl
-          )) as { default: (m?: unknown) => MountFn };
+          )) as { default: (m?: unknown) => unknown };
           if (!match.layouts?.length) {
             return {
-              default: (m?: unknown) => pageMod.default(m ?? matchWithRouter),
+              default: (m?: unknown) =>
+                coerceToMountFn(pageMod.default(m ?? matchWithRouter)),
             };
           }
           const layoutMods = await Promise.all(
             match.layouts.map((loader) => loader()),
           ) as LayoutComponentModule[];
-          let innerMount: MountFn = (p) => pageMod.default(matchWithRouter)(p);
-          for (let i = layoutMods.length - 1; i >= 0; i--) {
-            const layout = layoutMods[i];
-            const prev = innerMount;
-            innerMount = (p) => layout.default({ children: prev })(p);
-          }
+          const innerMount = composePageWithLayouts(
+            pageMod.default,
+            matchWithRouter,
+            layoutMods,
+          );
           return { default: () => innerMount };
         }
         const result = match.component(matchWithRouter) as unknown;
         const pageMod =
           result && typeof (result as Promise<unknown>).then === "function"
-            ? (await result as { default: (m?: unknown) => MountFn })
+            ? (await result as { default: (m?: unknown) => unknown })
             : {
-              default: () => (result as MountFn),
+              default: () => result as unknown,
             };
-        const pageMountFn = typeof pageMod.default === "function"
-          ? pageMod.default(matchWithRouter)
-          : null;
-        if (typeof pageMountFn !== "function") {
+        if (typeof pageMod.default !== "function") {
           throw new Error(
-            `[RoutePage] page module default export did not return a mount function after call (expected (parent)=>void), path: ${path}. Ensure this .tsx was compiled with compileSource.`,
+            `[RoutePage] page module has no default export function, path: ${path}`,
           );
         }
         if (!match.layouts?.length) {
-          return { default: () => pageMountFn };
+          return {
+            default: () =>
+              pageDefaultToMountFn(pageMod.default, matchWithRouter),
+          };
         }
         const layoutMods = await Promise.all(
           match.layouts.map((loader) => loader()),
         ) as LayoutComponentModule[];
-        let innerMount: MountFn = (p) => pageMountFn(p);
-        for (let i = layoutMods.length - 1; i >= 0; i--) {
-          const layout = layoutMods[i];
-          const prev = innerMount;
-          innerMount = (p) => layout.default({ children: prev })(p);
-        }
+        const innerMount = composePageWithLayouts(
+          pageMod.default,
+          matchWithRouter,
+          layoutMods,
+        );
         return { default: () => innerMount };
       },
       { scope: pathScope },
@@ -485,10 +490,25 @@ export function RoutePage(props: {
 
       const defaultMount = d.default;
       if (!defaultMount || typeof defaultMount !== "function") return;
-      const contentMount = defaultMount(matchWithRouter);
+      /** 预打包的 `default` 多为 `() => MountFn`；HMR 分支为 `(m) => MountFn` */
+      let contentMount: MountFn;
+      try {
+        contentMount = defaultMount(matchWithRouter) as MountFn;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        mountErrorSection(container, {
+          errorTitle,
+          message,
+          retryText,
+          refetch,
+          cls,
+          sty,
+        });
+        return;
+      }
       if (typeof contentMount !== "function") {
         const msg =
-          "[RoutePage] page default(match) did not return a mount function; it may not have been compiled with compileSource.";
+          "[RoutePage] page default(match) did not return a mount function.";
         mountErrorSection(container, {
           errorTitle,
           message: msg,

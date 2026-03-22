@@ -31,6 +31,7 @@
 
 import { applyMetaToHead } from "./meta.ts";
 import { createSignal, markSignalGetter, type SignalRef } from "./signal.ts";
+import type { VNode } from "./types.ts";
 
 /**
  * 前置守卫（beforeRoute）的返回值。
@@ -88,19 +89,21 @@ export type MountFn = (parent: Node) => void;
 
 /**
  * 懒加载路由模块：动态 import 返回的模块形状。
- * RoutePage 会取 default 并传入 match，得到 MountFn 后挂载；用于 route 配置中的 component: () => import("...")。
+ * RoutePage 会取 default 并传入 match，经 `route-mount-bridge` 规范为 MountFn 后挂载。
+ * compileSource 下为 `(match?)=>MountFn`；**手写 jsx-runtime** 下可为 `(match?)=>VNode`。
  */
 export type RouteComponentModule = {
-  /** 接收可选 RouteMatch，返回该页面的挂载函数 (parent)=>void */
-  default: (match?: RouteMatch) => MountFn;
+  /** 接收可选 RouteMatch，返回 MountFn 或 VNode（由 RoutePage 统一 coerce） */
+  default: (match?: RouteMatch) => MountFn | VNode;
 };
 
 /**
  * 布局组件模块：用于嵌套布局，default 接收 { children: MountFn } 包裹子内容。
+ * 手写布局可返回 VNode（children 仍为内层 MountFn，由 mountVNodeTree 展开）。
  */
 export type LayoutComponentModule = {
-  /** 接收 children（子内容挂载函数），返回包裹后的挂载函数 */
-  default: (props: { children: MountFn }) => MountFn;
+  /** 返回 MountFn 或根为 VNode 的等价挂载结果 */
+  default: (props: { children: MountFn }) => MountFn | VNode;
 };
 
 /**

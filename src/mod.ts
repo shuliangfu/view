@@ -34,7 +34,11 @@ export {
   spreadIntrinsicProps,
 } from "./compiler/mod.ts";
 export type { InsertParent, InsertValue } from "./compiler/mod.ts";
-export { KEY_VIEW_ROUTER } from "./constants.ts";
+export { KEY_VIEW_DEV, KEY_VIEW_ROUTER } from "./constants.ts";
+export {
+  disableViewRuntimeDevWarnings,
+  enableViewRuntimeDevWarnings,
+} from "./dev-runtime-warn.ts";
 export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
 export { getDocument, setGlobal } from "./globals.ts";
 export { createRef } from "./ref.ts";

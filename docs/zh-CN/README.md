@@ -1195,11 +1195,15 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.4**（2026-03-22）：**修复** — JSX 编译器：布尔 DOM 属性使用**无参
-getter** （如 **`disabled={() => loading.value}`**）时改为 **`createEffect`** +
-**`!!getter()`**，避免控件永久禁用；**新增** 对应 **`jsx-compiler`** 单测。
-**v1.3.3**（2026-03-21）：**破坏性** — **`SignalRef`**、移除
-**`v-for`/`v-show`** 编译等；完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.3.5**（2026-03-22）：**新增** — **`@dreamer/view/jsx-handoff`**、
+**`@dreamer/view/vnode-debug`**、开发期 runtime 告警、**`route-mount-bridge`**
+（路由/布局 **`MountFn`/`VNode` 统一**）、**`build.jsx`**
+**`compiler`/`runtime`** 与
+**`VIEW_FORCE_BUILD_JSX`**、**`insert-reactive-siblings`**（**`insertReactive`**
+兄弟顺序）；**变更** — **`vnode-mount`** / **`insert`** / 水合与手写 JSX 对齐；
+**修复** — E2E 示例 **`build`** 注入 **`VIEW_FORCE_BUILD_JSX=compiler`**，避免
+配置 **`jsx: "runtime"`** 时 CI 首页空白。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

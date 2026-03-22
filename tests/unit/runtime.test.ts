@@ -269,4 +269,33 @@ describe("mount", () => {
     expect(span?.textContent).toBe("getter-inner");
     document.body.removeChild(container);
   });
+
+  /**
+   * 同一父下先有 insertReactive(VNode) 后有静态兄弟时，响应式更新须在**原位置**替换；
+   * 若错误地 append 到父末尾，DOM 会变成 [main, aside]（文档站侧栏跑到右侧）。
+   */
+  it("insertReactive 更新 VNode 时应保持在兄弟节点之前而非追加到父末尾", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const n = createSignal(0);
+    createRoot((el) => {
+      insert(el, () => ({
+        type: "aside",
+        props: { children: String(n.value) },
+      }));
+      const main = document.createElement("main");
+      main.textContent = "main";
+      el.appendChild(main);
+    }, container);
+    /** 首轮 insertReactive 可能在微任务中挂载，须先 flush 再验初始顺序 */
+    await Promise.resolve();
+    const tags = () =>
+      Array.from(container.children).map((c) => c.tagName.toLowerCase());
+    expect(tags()).toEqual(["aside", "main"]);
+    n.value = 1;
+    await Promise.resolve();
+    expect(tags()).toEqual(["aside", "main"]);
+    expect(container.querySelector("aside")?.textContent).toBe("1");
+    document.body.removeChild(container);
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

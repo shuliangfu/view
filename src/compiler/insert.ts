@@ -13,7 +13,12 @@ import { createEffect, onCleanup } from "../effect.ts";
 import { unwrapSignalGetterValue } from "../signal.ts";
 import type { EffectDispose, VNode } from "../types.ts";
 import { getActiveDocument } from "./active-document.ts";
-import { mountVNodeTree } from "./vnode-mount.ts";
+import {
+  createReactiveInsertFragment,
+  mountVNodeTreeAtSiblingAnchor,
+  moveFragmentChildren,
+  resolveSiblingAnchor,
+} from "./insert-reactive-siblings.ts";
 import { valueToNode } from "./to-node.ts";
 import type { SSRElement } from "./ssr-document.ts";
 
@@ -92,6 +97,7 @@ export function insertReactive(
 ): EffectDispose {
   const parentNode = parent as Node | null;
   let currentNodes: Node[] = [];
+  let siblingAnchorForNextRun: Node | null = null;
   return createEffect(() => {
     /** 父已卸载或非法入参时跳过，避免 MountFn 内 appendChild 抛错 */
     if (parentNode == null) {
@@ -103,27 +109,54 @@ export function insertReactive(
       }
       currentNodes = [];
     });
+    const anchor = resolveSiblingAnchor(parentNode, siblingAnchorForNextRun);
+    const commitTracked = (nodes: Node[]) => {
+      currentNodes = nodes;
+      const refreshAnchor = () => {
+        siblingAnchorForNextRun = currentNodes.length > 0
+          ? currentNodes[currentNodes.length - 1]!.nextSibling
+          : null;
+      };
+      refreshAnchor();
+      if (
+        siblingAnchorForNextRun === null &&
+        currentNodes.length > 0 &&
+        typeof globalThis.queueMicrotask === "function"
+      ) {
+        globalThis.queueMicrotask(refreshAnchor);
+      }
+    };
     const next = unwrapSignalGetterValue(getter()) as InsertReactiveResult;
     if (isMountFn(next)) {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
+      let nodes: Node[];
+      if (anchor != null) {
+        const frag = createReactiveInsertFragment();
+        (next as (p: Node) => void)(frag);
+        nodes = moveFragmentChildren(parentNode, frag, anchor);
+      } else {
+        const beforeLen = parentNode.childNodes.length;
+        (next as (p: Node) => void)(parentNode);
+        nodes = Array.from(parentNode.childNodes).slice(beforeLen);
       }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      (next as (p: Node) => void)(parentNode);
-      currentNodes = Array.from(parentNode.childNodes).slice(beforeLen);
+      commitTracked(nodes);
       return;
     }
     if (Array.isArray(next)) {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
+      let nodes: Node[];
+      if (anchor != null) {
+        const frag = createReactiveInsertFragment();
+        for (const fn of next) {
+          if (isMountFn(fn)) (fn as (p: Node) => void)(frag);
+        }
+        nodes = moveFragmentChildren(parentNode, frag, anchor);
+      } else {
+        const beforeLen = parentNode.childNodes.length;
+        for (const fn of next) {
+          if (isMountFn(fn)) (fn as (p: Node) => void)(parentNode);
+        }
+        nodes = Array.from(parentNode.childNodes).slice(beforeLen);
       }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      for (const fn of next) {
-        if (isMountFn(fn)) (fn as (p: Node) => void)(parentNode);
-      }
-      currentNodes = Array.from(parentNode.childNodes).slice(beforeLen);
+      commitTracked(nodes);
       return;
     }
     /**
@@ -131,13 +164,9 @@ export function insertReactive(
      * 与主包 runtime.insertReactive 一致；否则 valueToNode 会把 VNode 当成未知对象落成空文本节点，SSR 得到空串。
      */
     if (isVNodeLike(next)) {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
-      }
-      currentNodes = [];
-      const beforeLen = parentNode.childNodes.length;
-      mountVNodeTree(parentNode, next as VNode);
-      currentNodes = Array.from(parentNode.childNodes).slice(beforeLen);
+      commitTracked(
+        mountVNodeTreeAtSiblingAnchor(parentNode, next as VNode, anchor),
+      );
       return;
     }
     /**
@@ -145,11 +174,12 @@ export function insertReactive(
      * 避免与兄弟静态/其它 insert 点共存时被误清空。
      */
     const node = toNode(next as InsertValue);
-    for (const n of currentNodes) {
-      detachInsertReactiveTrackedChild(n);
+    if (anchor != null) {
+      parentNode.insertBefore(node, anchor);
+    } else {
+      parentNode.appendChild(node);
     }
-    currentNodes = [node];
-    parentNode.appendChild(node);
+    commitTracked([node]);
   });
 }
 

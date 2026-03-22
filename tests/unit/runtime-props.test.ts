@@ -65,6 +65,24 @@ describe("mergeProps", () => {
     expect(keys).toContain("c");
     expect(keys.length).toBe(3);
   });
+
+  it("Object.keys 与对象展开应能枚举合并键（依赖 getOwnPropertyDescriptor trap）", () => {
+    const out = mergeProps({ a: 1, b: 2 }, { b: 3, c: 4 });
+    expect(Object.keys(out).sort()).toEqual(["a", "b", "c"]);
+    expect({ ...out }).toEqual({ a: 1, b: 3, c: 4 });
+  });
+
+  it("嵌套 mergeProps 时 ownKeys 应包含内层代理上的键", () => {
+    const inner = mergeProps(
+      { a: 1 } as Record<string, unknown>,
+      { b: 2 } as Record<string, unknown>,
+    );
+    const outer = mergeProps(inner, { c: 3 } as Record<string, unknown>);
+    expect(Object.keys(outer).sort()).toEqual(["a", "b", "c"]);
+    const o = outer as Record<string, unknown>;
+    expect(o.a).toBe(1);
+    expect(o.c).toBe(3);
+  });
 });
 
 describe("splitProps", () => {

@@ -34,12 +34,34 @@ export function mergeProps<T extends Record<string, unknown>>(
     has(_, key: string) {
       return filtered.some((s) => key in s);
     },
+    /**
+     * 合并来源可能为 `mergeProps` 嵌套或其它 Proxy，`Object.keys` 不可靠，故用 `Reflect.ownKeys` 收集字符串键。
+     */
     ownKeys() {
       const keys = new Set<string>();
       for (const s of filtered) {
-        for (const k of Object.keys(s)) keys.add(k);
+        for (const k of Reflect.ownKeys(s)) {
+          if (typeof k === "string") keys.add(k);
+        }
       }
       return [...keys];
+    },
+    /**
+     * 无此 trap 时 `Object.keys`、`{ ...proxy }`、`normalizeProps` 的解构展开会拿不到键（目标空对象无属性描述符）。
+     */
+    getOwnPropertyDescriptor(_, prop: string | symbol) {
+      if (typeof prop !== "string") return undefined;
+      for (let i = filtered.length - 1; i >= 0; i--) {
+        if (prop in filtered[i]) {
+          return {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: (filtered[i] as Record<string, unknown>)[prop],
+          } as PropertyDescriptor;
+        }
+      }
+      return undefined;
     },
   });
 }

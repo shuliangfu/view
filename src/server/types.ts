@@ -147,6 +147,16 @@ export interface AppBuildConfig {
    */
   optimize?: boolean;
   /**
+   * TSX/JSX 走哪条链路（dev / prod 均生效；也可用 build.dev / build.prod 覆盖）。
+   *
+   * - **compiler**（默认）：esbuild 加载 `.tsx` 前经 `compileSource`，与 `view` 模板编译器产物一致（`insert`、指令等）。
+   * - **runtime**：不经 `compileSource`，由 esbuild 按 `jsx: "automatic"` + `jsxImportSource: "@dreamer/view"` 转为 `jsx`/`jsxs`，
+   *   行为对齐手写 `jsx-runtime` 路径；若源码依赖仅编译器支持的语法，请勿用此项。
+   *
+   * 环境变量 **`VIEW_FORCE_BUILD_JSX`**（`compiler` | `runtime`）可覆盖本项，供 E2E 在子进程中强制 `compiler`。
+   */
+  jsx?: "compiler" | "runtime";
+  /**
    * 资源处理：生产构建完成后由 @dreamer/esbuild 的 AssetsProcessor 执行。
    * 复制 publicDir 到 outDir/assetsDir，排除 exclude，并对图片做压缩/格式/hash；会更新产出中的引用路径并生成 asset-manifest.json。
    */

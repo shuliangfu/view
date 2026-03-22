@@ -8,6 +8,74 @@ and this project adheres to
 
 ---
 
+## [1.3.5] - 2026-03-22
+
+### Added
+
+- **Subpath `@dreamer/view/jsx-handoff`**: One-stop imports for the handwritten
+  **`jsx`/`jsxs`** path—**`insertVNode`**, **`mergeProps`**,
+  **`mountVNodeTree`**, **`hydrate`**, **`createRoot`/`render`**,
+  **`enableViewRuntimeDevWarnings`** / **`disableViewRuntimeDevWarnings`**,
+  **`formatVNodeForDebug`**, and related runtime/compiler symbols; initial
+  side-effect import registers the **`insertReactive`** bridge required by
+  **`mountVNodeTree`**.
+- **Subpath `@dreamer/view/vnode-debug`**: **`formatVNodeForDebug`** (and
+  options type) for readable VNode dumps in dev.
+- **`dev-runtime-warn.ts`**: Opt-in dev diagnostics (**`viewRuntimeDevWarn`**,
+  **`warnIfMultiArgControlledProp`**, nested **`style`** warnings) gated by
+  **`globalThis.__VIEW_DEV__`**; **`enableViewRuntimeDevWarnings`** /
+  **`disableViewRuntimeDevWarnings`** exported from **`jsx-handoff`**.
+- **`route-mount-bridge.ts`**: **`coerceToMountFn`**,
+  **`pageDefaultToMountFn`**, **`composePageWithLayouts`**—normalize **MountFn**
+  (compileSource) and **VNode** (handwritten JSX) so **`RoutePage`**, layout
+  chains, and custom loading components share one mount path; supports **VNode**
+  arrays.
+- **Build config `AppBuildConfig.jsx`**: **`compiler`** (default,
+  **`compileSource`** before esbuild) vs **`runtime`** (esbuild
+  **`jsx: "automatic"`** + **`jsxImportSource: "@dreamer/view"`**).
+  **`VIEW_FORCE_BUILD_JSX`** (**`compiler`** | **`runtime`**) overrides via
+  **`getBuildConfigForMode`** for CI/E2E.
+- **`insert-reactive-siblings.ts`**: Fragment/anchor helpers
+  (**`moveFragmentChildren`**, **`resolveSiblingAnchor`**, etc.) so
+  **`insertReactive`** updates keep correct sibling order when the parent
+  already has other children (e.g. layout chrome + reactive main).
+- **Tests**: **`route-mount-bridge.test.ts`**, **`jsx-handoff.test.ts`**,
+  **`dev-runtime-warn.test.ts`**, **`vnode-debug.test.ts`**,
+  **`vnode-mount-runtime-props.test.ts`**, **`build-jsx-mode.test.ts`**;
+  **`tests/e2e/e2e-env.ts`** with **`envForExamplesChildProcess()`** (forces
+  **`VIEW_FORCE_BUILD_JSX=compiler`** for child processes).
+- **Docs**: **`ANALYSIS-full-compile-vs-handwritten-jsx.md`** (en/zh),
+  **`编译路径与运行时指南.md`**; **`examples/view.config.ts`** comments on
+  **`jsx`** modes and E2E override.
+
+### Changed
+
+- **`RoutePage` (`route-page.tsx`)**: Uses the mount bridge for HMR override,
+  lazy/sync route modules, and **`tryCustomLoading`**; **`mount()`** wraps
+  **`default(match)`** errors for a clearer error surface.
+- **Router types (`router.ts`)**: **`RouteComponentModule`** /
+  **`LayoutComponentModule`** document **`default`** as **`MountFn | VNode`**.
+- **`vnode-mount.ts`**: Closer parity for handwritten trees—runtime-controlled
+  intrinsic props (**`value`**, **`checked`**, **`disabled`**, etc.) with
+  **`SignalRef`** and getters; directive/runtime prop handling aligned with
+  compileSource where applicable.
+- **`insert.ts`**, **`hydrate.ts`**, **`props.ts`**: Reactive sibling insertion,
+  hydration, and prop spread tweaks supporting the above.
+- **`runtime.ts`**, **`jsx-runtime.ts`**, **`mod.ts`**: Wiring and re-exports
+  for dev warnings and new entrypoints.
+- **`server/core/build.ts`**: Honors merged **`jsx`** mode when configuring the
+  client bundle.
+
+### Fixed
+
+- **E2E (`cli.test.ts`)**: **`buildCommandInExamples()`** now passes
+  **`env: envForExamplesChildProcess()`** so **`view build`** uses the same
+  **`VIEW_FORCE_BUILD_JSX=compiler`** as **`view start`**. Fixes a blank
+  homepage in CI when **`examples/view.config.ts`** sets **`jsx: "runtime"`**
+  (build previously wrote a runtime bundle while start only changed env).
+
+---
+
 ## [1.3.4] - 2026-03-22
 
 ### Added
