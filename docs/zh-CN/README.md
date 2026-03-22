@@ -1195,7 +1195,7 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.5**（2026-03-22）：**新增** — **`@dreamer/view/jsx-handoff`**、
+**v1.3.5**（2026-03-23）：**新增** — **`@dreamer/view/jsx-handoff`**、
 **`@dreamer/view/vnode-debug`**、开发期 runtime 告警、**`route-mount-bridge`**
 （路由/布局 **`MountFn`/`VNode` 统一**）、**`build.jsx`**
 **`compiler`/`runtime`** 与
