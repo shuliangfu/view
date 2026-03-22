@@ -3,10 +3,13 @@
  * 编译器对自定义组件的子节点统一生成 `(parent)=>void` 挂载函数（不再用会「移空」的 DocumentFragment），
  * Form 内 `{props.children}` 在 effect 重跑时会再次执行该函数复挂子树；焦点保留由 PasswordInput 受控 value 路径保证。
  * 注意：同父级若并列 `{signal.value && <p/>}` 或 `{signal && <p/>}`，运行时 insertReactive 不得 replaceChildren 父节点（已由主包 runtime 修复）。
+ *
+ * **jsx: "runtime"**：`{submitted.value && <p>…{password.value}…</p>}` 会在首次 `jsx()` 时求成快照，提交后不更新。
+ * 免在 JSX 里写 `() =>` 的做法：**`vIf={submitted}`**（本征标签支持 SignalRef）+ **`createMemo`** 派生整段文案，子节点传 **`{submittedLine}`**（memo 为 signal getter，走 insertReactive）。
  */
 
 import type { SignalRef, VNode } from "@dreamer/view";
-import { createSignal } from "@dreamer/view";
+import { createMemo, createSignal } from "@dreamer/view";
 import "../../assets/index.css";
 
 export const metadata = {
@@ -80,6 +83,11 @@ function PasswordInput(props: {
 export function FormDemo(): VNode {
   const password = createSignal("");
   const submitted = createSignal(false);
+  /** 提交后提示：runtime 下用 memo 绑定 password，避免 `{password.value}` 文本快照 */
+  const submittedLine = createMemo(() => {
+    if (!submitted.value) return "";
+    return `已提交（密码长度：${password.value.length}）`;
+  });
 
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
@@ -119,14 +127,13 @@ export function FormDemo(): VNode {
             提交
           </button>
         </Form>
-        {submitted.value && (
-          <p
-            className="mt-3 text-sm text-emerald-600 dark:text-emerald-400"
-            data-testid="form-submitted"
-          >
-            已提交（密码长度：{password.value.length}）
-          </p>
-        )}
+        <p
+          vIf={submitted}
+          className="mt-3 text-sm text-emerald-600 dark:text-emerald-400"
+          data-testid="form-submitted"
+        >
+          {submittedLine}
+        </p>
       </div>
     </section>
   );

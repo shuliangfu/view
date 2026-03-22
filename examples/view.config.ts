@@ -10,9 +10,9 @@
  * - build.jsx：`compiler`（默认，compileSource）| `runtime`（esbuild react-jsx + @dreamer/view）
  */
 
-import type { AppConfig } from "../src/server/types.ts";
-import { tailwindPlugin } from "@dreamer/plugins/tailwindcss";
 import { staticPlugin } from "@dreamer/plugins/static";
+import { tailwindPlugin } from "@dreamer/plugins/tailwindcss";
+import type { AppConfig } from "../src/server/types.ts";
 
 const config: AppConfig = {
   name: "view-examples",
@@ -42,12 +42,12 @@ const config: AppConfig = {
     splitting: true,
 
     /**
-     * TSX 链路：`compiler` = compileSource（与模板编译器一致，本示例必需）；
-     * `runtime` = 仅 esbuild automatic JSX（本仓库 views 不可用，仅用于独立对照项目）。
-     * E2E 会通过环境变量 `VIEW_FORCE_BUILD_JSX=compiler` 覆盖，防止误提交 runtime 导致 CI 空白页。
+     * TSX 链路：`compiler` = compileSource；`runtime` = esbuild automatic JSX + jsx-runtime（**本地默认用此项专测手写/VNode**）。
+     * CI E2E 子进程会设 `VIEW_FORCE_BUILD_JSX=compiler` 覆盖此处，与本地 runtime 测试互不冲突。
+     * 若整站要「不写 `() =>` 的插值」请本地改 `jsx: "compiler"`，勿在仓库里默认改掉 runtime（除非团队明确切换）。
      */
-    // jsx: "compiler",
-    jsx: "runtime",
+    // jsx: "runtime",
+    jsx: "compiler",
 
     /** 资源处理：复制 src/assets（含 images）到 dist/assets，压缩并 hash 化图片 */
     assets: {

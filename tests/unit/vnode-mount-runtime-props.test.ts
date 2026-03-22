@@ -1,5 +1,5 @@
 /**
- * @fileoverview 手写 jsx-runtime→mountVNodeTree：受控 value/checked、style 对象、布尔无参函数与 SignalRef（与 compileSource 行为对齐）。
+ * @fileoverview 手写 jsx-runtime→mountVNodeTree：受控 value/checked、style 对象、className 无参函数与 SignalRef、布尔无参函数与 SignalRef（与 compileSource 行为对齐）。
  * 根级响应式 vIf 依赖 `insertReactive` 桥接，须先加载 compiler 入口以注册 `setInsertReactiveForVnodeMount`。
  */
 
@@ -75,6 +75,40 @@ describe("mountVNodeTree 本征 DOM（手写 runtime 响应式 props）", () => 
     d.value = false;
     await new Promise<void>((r) => queueMicrotask(() => r()));
     expect(btn.disabled).toBe(false);
+    document.body.removeChild(container);
+  });
+
+  it("className 为无参函数时应随依赖更新 setAttribute('class')", async () => {
+    const on = createSignal(1);
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("div", {
+        className: () => (on.value === 1 ? "a" : "b"),
+        children: "x",
+      }),
+    );
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    const el = container.firstElementChild as HTMLElement;
+    expect(el.getAttribute("class")).toBe("a");
+    on.value = 2;
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(el.getAttribute("class")).toBe("b");
+    document.body.removeChild(container);
+  });
+
+  it("className 为 SignalRef 时应随 .value 更新", async () => {
+    const c = createSignal("p1");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    mountVNodeTree(container, jsx("div", { className: c, children: "x" }));
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    const el = container.firstElementChild as HTMLElement;
+    expect(el.getAttribute("class")).toBe("p1");
+    c.value = "p2";
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(el.getAttribute("class")).toBe("p2");
     document.body.removeChild(container);
   });
 
@@ -292,6 +326,28 @@ describe("mountVNodeTree 本征 DOM（手写 runtime 响应式 props）", () => 
     document.body.removeChild(container);
   });
 
+  it("style 无参函数在嵌套子 VNode（mountChildItemForVnode untrack）下仍应随依赖更新", async () => {
+    const color = createSignal("rgb(0, 128, 0)");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("div", {
+        children: jsx("div", {
+          style: () => ({ color: color.value }),
+          children: "s",
+        }),
+      }),
+    );
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    const el = container.firstElementChild?.firstElementChild as HTMLElement;
+    expect(el.style.color).toBe("rgb(0, 128, 0)");
+    color.value = "rgb(0, 0, 255)";
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(el.style.color).toBe("rgb(0, 0, 255)");
+    document.body.removeChild(container);
+  });
+
   it("Fragment 链仅 vElseIf 为响应式时仍应切换分支", async () => {
     const showB = createSignal(true);
     const container = document.createElement("div");
@@ -362,6 +418,41 @@ describe("mountVNodeTree 本征 DOM（手写 runtime 响应式 props）", () => 
     show.value = true;
     await new Promise<void>((r) => queueMicrotask(() => r()));
     expect(container.querySelector("span")?.textContent).toBe("hi");
+    document.body.removeChild(container);
+  });
+
+  it("子节点含 SignalRef 时插值应订阅更新（normalizeChildren→insertReactive）", async () => {
+    const s = createSignal("a");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("span", { children: ["v:", s] } as Record<string, unknown>),
+    );
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toBe("v:a");
+    s.value = "b";
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toBe("v:b");
+    document.body.removeChild(container);
+  });
+
+  it("vOnce 子节点为 SignalRef 时依赖变一次后文本冻结", async () => {
+    const t = createSignal("a");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("span", { vOnce: true, children: t } as Record<string, unknown>),
+    );
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toBe("a");
+    t.value = "c";
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toBe("c");
+    t.value = "a";
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toBe("c");
     document.body.removeChild(container);
   });
 }, { sanitizeOps: false, sanitizeResources: false });

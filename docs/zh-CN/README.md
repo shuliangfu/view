@@ -1199,11 +1199,13 @@ export const metadata = {
 **`@dreamer/view/vnode-debug`**、开发期 runtime 告警、**`route-mount-bridge`**
 （路由/布局 **`MountFn`/`VNode` 统一**）、**`build.jsx`**
 **`compiler`/`runtime`** 与
-**`VIEW_FORCE_BUILD_JSX`**、**`insert-reactive-siblings`**（**`insertReactive`**
-兄弟顺序）；**变更** — **`vnode-mount`** / **`insert`** / 水合与手写 JSX 对齐；
-**修复** — E2E 示例 **`build`** 注入 **`VIEW_FORCE_BUILD_JSX=compiler`**，避免
-配置 **`jsx: "runtime"`** 时 CI 首页空白。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+**`VIEW_FORCE_BUILD_JSX`**、**`insert-reactive-siblings`**、
+**`bindIntrinsicReactiveDomProps`** 响应式 **`className`**（手写
+**`jsx-runtime`**）； **变更** — **`vnode-mount`** / **`insert`** / 水合与手写
+JSX 对齐；**修复** — E2E **`build`** 注入
+**`VIEW_FORCE_BUILD_JSX=compiler`**；**`compileSource`** 响应式 **`style`** 经
+**`createEffect`** 解析再写入 **`element.style`**（修复变换/缩放不刷新）。
+完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

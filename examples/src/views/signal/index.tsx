@@ -28,6 +28,14 @@ const name = createSignal("");
 /** createMemo：派生值，依赖 count 时自动更新 */
 const double = createMemo(() => count.value * 2);
 
+/**
+ * 姓名问候语：供 JSX 写 `{nameLine}`（勿 `nameLine()`）。
+ * 手写 jsx-runtime 下不可写 `{name.value ? ...}`，会在 jsx() 时快照；须用 memo 或无参 getter 让 insertReactive 订阅 name。
+ */
+const nameLine = createMemo(() =>
+  name.value ? `你好，${name.value}！` : "请输入名字"
+);
+
 /** createEffect + onCleanup：控制台打印与清理 */
 createEffect(() => {
   const n = name.value;
@@ -106,7 +114,7 @@ function SignalDemo(): VNode {
             />
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            {name.value ? `你好，${name.value}！` : "请输入名字"}
+            {nameLine}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             createEffect 与 onCleanup 已在模块内使用；createMemo 用于 double。
@@ -124,19 +132,34 @@ function SignalDemo(): VNode {
               {count}
             </span>
             {" · "}
-            用上方按钮改变 count 观察下面三行是否按条件更新。子节点写在{" "}
+            用上方按钮改变 count 观察下面三行是否按条件更新。
+            <strong className="ml-1">本示例为手写 jsx-runtime</strong>
+            ：插值若在 jsx() 时先求值（如直接写{" "}
             <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"{ ... }"}
+              {"count.value"}
             </code>
-            里时，编译器会生成{" "}
+            ）会变成快照；演示区用无参 getter{" "}
             <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              insertReactive(parent, () =&gt; expr)
+              {"() => ..."}
             </code>
-            ，因此可直接写条件与 JSX，一般<strong>不必</strong>再套一层{" "}
+            包一层，与{" "}
             <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"() =>"}
+              {"{count}"}
             </code>
-            。
+            、
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              createMemo
+            </code>
+            等价。若走 <strong>compileSource</strong>
+            ，编译器常把{" "}
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              {"{ expr }"}
+            </code>
+            生成{" "}
+            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
+              insertReactive
+            </code>
+            ，那时可直接写条件表达式。
           </p>
           <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
             <li>
@@ -146,7 +169,7 @@ function SignalDemo(): VNode {
               </code>
               {" → "}
               <span className="font-mono text-amber-700 dark:text-amber-300">
-                {count.value > 1 ? "大于1" : "不大于1"}
+                {() => (count.value > 1 ? "大于1" : "不大于1")}
               </span>
             </li>
             <li>
@@ -155,11 +178,12 @@ function SignalDemo(): VNode {
                 {"{ count.value > 0 && <span>... </span> }"}
               </code>
               {" → "}
-              {count.value > 0 && (
-                <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
-                  count 大于 0 时显示
-                </span>
-              )}
+              {() =>
+                count.value > 0 && (
+                  <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
+                    count 大于 0 时显示
+                  </span>
+                )}
             </li>
             <li>
               <strong>或者</strong>{" "}
@@ -167,11 +191,12 @@ function SignalDemo(): VNode {
                 {"{ (count.value === 0 || count.value > 5) && <span>... </span> }"}
               </code>
               {" → "}
-              {(count.value === 0 || count.value > 5) && (
-                <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
-                  count 为 0 或大于 5 时显示
-                </span>
-              )}
+              {() =>
+                (count.value === 0 || count.value > 5) && (
+                  <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
+                    count 为 0 或大于 5 时显示
+                  </span>
+                )}
             </li>
           </ul>
         </div>

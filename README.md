@@ -1246,10 +1246,13 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 **`@dreamer/view/vnode-debug`**, dev runtime warnings, **`route-mount-bridge`**
 (MountFn + VNode for **`RoutePage`/layouts**), **`build.jsx`** **`compiler` /
 `runtime`** + **`VIEW_FORCE_BUILD_JSX`**, **`insert-reactive-siblings`** for
-**`insertReactive`** order; **Changed** — **`vnode-mount`** / **`insert`** /
-hydration parity for handwritten JSX; **Fixed** — E2E examples **`build`** now
-passes **`VIEW_FORCE_BUILD_JSX=compiler`** so **`jsx: "runtime"`** in config
-does not leave a blank homepage in CI. Full history:
+**`insertReactive`** order, reactive **`className`** in
+**`bindIntrinsicReactiveDomProps`** (handwritten **`jsx-runtime`**); **Changed**
+— **`vnode-mount`** / **`insert`** / hydration parity for handwritten JSX;
+**Fixed** — E2E examples **`build`** passes **`VIEW_FORCE_BUILD_JSX=compiler`**
+when config uses **`jsx: "runtime"`**; **`compileSource`** reactive **`style`**
+uses **`createEffect`** + **`Object.assign`** into **`element.style`** (fixes
+live transform/scale updates). Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---

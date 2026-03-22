@@ -117,7 +117,9 @@ export function ReactiveDemo(): VNode {
     logCount.value = (c) => c + 1;
   });
 
-  /** 表单 model 摘要：用 createMemo 派生，随 formModel 更新，模板里写 {formSummary()} 即可 */
+  /**
+   * 表单 model 摘要：createMemo 返回的是 signal getter，手写 runtime 须写 **{formSummary}**，勿写 {formSummary()}（后者在 jsx 求值时已是字符串快照）。
+   */
   const formSummary = createMemo(() =>
     `→ name=${formModel.name || "(空)"}，age=${formModel.age || "(空)"}，sex=${
       formModel.sex || "(空)"
@@ -159,7 +161,7 @@ export function ReactiveDemo(): VNode {
             >
               reactiveState.count++
             </button>
-            <span>→ effect 已执行次数：{logCount.value}</span>
+            <span>→ effect 已执行次数：{logCount}</span>
           </p>
         </div>
 
@@ -231,9 +233,7 @@ export function ReactiveDemo(): VNode {
               />
             </label>
           </div>
-          <p className="text-slate-600 dark:text-slate-300">
-            {formSummary()}
-          </p>
+          <p className="text-slate-600 dark:text-slate-300">{formSummary}</p>
         </div>
       </div>
     </section>

@@ -8,7 +8,12 @@
  * - renderToStream(fn)（view/stream）：流式 SSR，服务端逐块输出
  */
 
-import { createSignal, generateHydrationScript, insert } from "@dreamer/view";
+import {
+  createMemo,
+  createSignal,
+  generateHydrationScript,
+  insert,
+} from "@dreamer/view";
 import { renderToString } from "@dreamer/view/ssr";
 import type { VNode } from "@dreamer/view";
 
@@ -28,8 +33,16 @@ function getSsrHtml(): string {
   });
 }
 
-/** 当前 renderToString 结果（用 signal 存，点击更新时重新生成） */
+/** 当前 renderToString 结果（用 signal 存，点击「生成 HTML」时写入） */
 const html = createSignal("");
+
+/**
+ * pre 展示文案：手写 jsx-runtime 下不可写 `{html.value || "…"}`（会快照）；
+ * 用 createMemo 供 JSX 写 `{ssrHtmlPreview}`，随 html 变化更新。
+ */
+const ssrHtmlPreview = createMemo(() =>
+  html.value || "点击「生成 HTML」查看 renderToString 结果"
+);
 
 /** 统一按钮样式 */
 const btn =
@@ -85,7 +98,7 @@ export function RuntimeDemo(): VNode {
             </button>
           </p>
           <pre className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800 overflow-auto dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            {html.value || "点击「生成 HTML」查看 renderToString 结果"}
+            {ssrHtmlPreview}
           </pre>
         </div>
         <div className={block}>

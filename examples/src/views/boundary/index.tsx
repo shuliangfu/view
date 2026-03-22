@@ -2,9 +2,8 @@
  * Boundary：ErrorBoundary、Suspense
  *
  * - ErrorBoundary：捕获子树错误，显示 fallback(error)
- * - Suspense：children 为无参 getter（如 () => asyncPromise.value），getter 返回 Promise 时先显示 fallback，
- *   Promise resolve 后显示内容；getter 返回 null/undefined 时也显示 fallback。示例中 asyncPromise 由 effect 在首帧设置，
- *   故先见「加载中…」，约 1s 后变为「异步内容已加载」。
+ * - Suspense：可传 Promise / VNode，或编译器生成的无参 getter；Promise 未就绪时显示 fallback。本示例用 `{asyncPromise.value ?? undefined}`，
+ *   因 RoutePage 会随页面内读的 signal 重跑 `default()`，Promise 写入后子树会更新。约 1s 后见「异步内容已加载」。
  */
 
 import type { VNode } from "@dreamer/view";
@@ -21,7 +20,10 @@ export const metadata = {
 const btn =
   "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
 
-/** 会抛错的组件，用于演示 ErrorBoundary */
+/**
+ * 会抛错的组件，用于演示 ErrorBoundary。
+ * `shouldThrow` 由父级 JSX 传入；父级 `BoundaryDemo` 在 RoutePage 的 effect 内执行，读 `shouldThrow.value` 会订阅并在切换时重建 VNode，无需 `{() => <Thrower …/>}`。
+ */
 function Thrower(props: { shouldThrow?: boolean }): VNode {
   if (props.shouldThrow) throw new Error("子组件故意抛错");
   return <span className="text-slate-600 dark:text-slate-300">未抛错</span>;
@@ -73,10 +75,13 @@ export function BoundaryDemo(): VNode {
             ErrorBoundary
           </h3>
           <p className="mb-3">
+            {/* 切换 shouldThrow：页面 default 在 RoutePage effect 内重跑，整棵 VNode 重建，ErrorBoundary 子节点可直接写 */}
             <button
               type="button"
               className={btn}
-              onClick={() => (shouldThrow.value = (x) => !x)}
+              onClick={() => {
+                shouldThrow.value = !shouldThrow.value;
+              }}
             >
               切换「抛错」状态
             </button>

@@ -40,6 +40,12 @@
   **`VIEW_FORCE_BUILD_JSX=compiler`**）。
 - **文档**：**`ANALYSIS-full-compile-vs-handwritten-jsx.md`**（中英）、**`编译路径与运行时指南.md`**；
   **`examples/view.config.ts`** 注释说明 **`jsx`** 模式与 E2E 覆盖。
+- **`compiler/vnode-mount.ts`**：在 **`bindIntrinsicReactiveDomProps`** 中为
+  **`className`** 增加响应式绑定（无参 getter、**`SignalRef`**），手写
+  **`jsx-runtime`** 子树可使用 **`className={() => …}`** /
+  **`className={signalRef}`** 并正确更新 DOM。
+- **测试**：**`vnode-mount-runtime-props.test.ts`** — 嵌套子 VNode + 响应式
+  **`style`** getter 覆盖。
 
 ### 变更
 
@@ -63,6 +69,14 @@
   **`view start`** 子进程均带 **`VIEW_FORCE_BUILD_JSX=compiler`**。修复
   **`examples/view.config.ts` 为 `jsx: "runtime"`** 时 仅 build 走
   runtime、start 不重建导致的 **CI 首页空白**（断言「多页面示例」失败）。
+- **JSX 编译器（`jsx-compiler/transform.ts`）**：**`compileSource`** 下响应式
+  **`style`** 不再对「可订阅」表达式生成单次
+  **`Object.assign(element.style,
+  expr)`**（会把函数当对象、无法追踪依赖）。改为生成
+  **`createEffect`**，在 effect 内解析样式对象（调用 getter / 解包 ref）、清除
+  **`style`** 属性后 **`Object.assign`** 到 **`element.style`**，与手写
+  **`bindIntrinsicReactiveDomProps`** 行为一致，修复 **`style`** 为函数或 memo
+  引用时变换/缩放等不刷新的问题。
 
 ---
 

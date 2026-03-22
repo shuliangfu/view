@@ -4,8 +4,9 @@
  * - getDocument()：浏览器或 SSR 影子 document；不可用时返回 null，不抛错
  * - getGlobal/setGlobal：在 globalThis 上按 key 存取全局状态，便于跨模块共享
  *
- * 文本插值可写 `{globalCount.value}` 或 `{globalCount}`：编译器对裸标识符/props 访问会生成
- * `unwrapSignalGetterValue(...)`，运行时 insertReactive 也会解包 signal getter，双重保障。
+ * **jsx: "runtime"**：`{globalCount.value}` / `{docTitle.value}` 在 `jsx()` 时已是快照，点击改 signal 后文案不会变；
+ * 动态展示请传 **`{globalCount}`**、**`{docTitle}`**（SignalRef 在 normalizeChildren 中转为 getter，走 insertReactive）。
+ * **compileSource** 下编译器会把裸 `.value` 插值包成响应式，与手写 runtime 不同。
  *
  * 调试点击：编译产物为 `button.addEventListener("click", handler)`。若控制台无任何输出：
  * - 确认 DevTools 的上下文是当前页面（非 extension），且未过滤掉 log；
@@ -82,7 +83,7 @@ export function GlobalsDemo(): VNode {
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             当前 globalThis[{DEMO_COUNTER_KEY}] ={" "}
             <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-              {globalCount.value}
+              {globalCount}
             </span>
             。点击下方按钮自增并写回 globalThis，刷新页面后仍会保留（同 tab
             内）。
@@ -101,7 +102,7 @@ export function GlobalsDemo(): VNode {
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             当前 document.title：{" "}
             <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400">
-              {docTitle.value}
+              {docTitle}
             </span>
           </p>
           <button

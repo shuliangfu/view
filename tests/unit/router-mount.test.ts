@@ -3,7 +3,10 @@
  */
 
 import "../dom-setup.ts";
+/** 注册 mountVNodeTree 所需的 insertReactive 桥接（与手写 JSX 根挂载一致） */
+import "../../src/compiler/mod.ts";
 import { afterEach, describe, expect, it } from "@dreamer/test";
+import { jsx } from "../../src/jsx-runtime.ts";
 import type { MountFn, Router } from "@dreamer/view/router";
 import {
   createRouter,
@@ -155,6 +158,62 @@ describe("mountWithRouter", () => {
 
       await router.navigate("/missing-page");
       expect(root.textContent).toBe("NotFound");
+    } finally {
+      g.location = origLocation;
+      g.history = origHistory;
+    }
+  });
+
+  it("getMountFn 返回 VNode 时可挂载（对齐 jsx runtime 下示例 getRoot）", async () => {
+    const g = globalThis as unknown as {
+      location?: {
+        pathname: string;
+        search: string;
+        hash: string;
+        origin: string;
+      };
+      history?: { pushState: (a: unknown, b: string, c: string) => void };
+    };
+    const origLocation = g.location;
+    const origHistory = g.history;
+    try {
+      g.location = {
+        pathname: "/",
+        search: "",
+        hash: "",
+        origin: "http://localhost",
+      };
+      g.history = {
+        pushState(_a: unknown, _b: string, url: string) {
+          try {
+            const u = new URL(url);
+            if (g.location) {
+              g.location.pathname = u.pathname;
+              g.location.search = u.search ?? "";
+            }
+          } catch {
+            /* ignore */
+          }
+        },
+      };
+
+      root = globalThis.document.createElement("div");
+      globalThis.document.body.appendChild(root);
+
+      const router = createRouter({ routes });
+      await router.navigate("/");
+      mountWithRouter(
+        root,
+        router,
+        (_r) =>
+          jsx("span", { className: "rt-vnode-root", children: "VNodeOK" }),
+        {},
+      );
+
+      expect(root.querySelector(".rt-vnode-root")?.textContent).toBe("VNodeOK");
+
+      await router.navigate("/about");
+      expect(root.querySelector(".rt-vnode-root")?.textContent).toBe("VNodeOK");
     } finally {
       g.location = origLocation;
       g.history = origHistory;

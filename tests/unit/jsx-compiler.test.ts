@@ -559,4 +559,26 @@ function App() {
     expect(out).toContain('"span"');
     expect(out).not.toMatch(/<\s*span\b/);
   });
+
+  it("自定义组件 vSlotGetter：children 为无参 getter，且指令属性不进入 mergeProps", () => {
+    const source = `
+import { insert } from "@dreamer/view";
+function MyBoundary(props: unknown): unknown {
+  return null;
+}
+function App() {
+  return (
+    <MyBoundary vSlotGetter fallback={null}>
+      <span>slot</span>
+    </MyBoundary>
+  );
+}
+`;
+    const out = compileSource(source, "v-slot-getter.tsx", {
+      insertImportPath: "@dreamer/view",
+    });
+    expect(out).toContain("MyBoundary(");
+    expect(out).not.toContain("vSlotGetter");
+    expect(out).toMatch(/const _\d+ = \(\) =>/);
+  });
 });

@@ -6,7 +6,7 @@
  * - 返回 { data, loading, error, refetch }，可与 Suspense 配合
  */
 
-import { createSignal } from "@dreamer/view";
+import { createMemo, createSignal } from "@dreamer/view";
 import { createResource } from "@dreamer/view/resource";
 import { Suspense } from "@dreamer/view/boundary";
 import type { VNode } from "@dreamer/view";
@@ -42,7 +42,7 @@ const userById = createResource(userId, (id) => fakeApi(id));
 
 /**
  * 将无 source 的 createResource 结果格式化为单行展示文案。
- * 模板中写 `{formatUserResourceLine()}`，由编译器 insertReactive 在依赖变化时重算。
+ * 仅供下方 `userResourceLine`（createMemo）使用；不要在 JSX 里直接 `{formatUserResourceLine()}`（runtime 下会在 jsx 创建时快照）。
  */
 function formatUserResourceLine(): string {
   const r = user();
@@ -53,6 +53,7 @@ function formatUserResourceLine(): string {
 
 /**
  * 将有 source 的 createResource 结果格式化为单行展示文案。
+ * 仅供 `userByIdLine`（createMemo）使用。
  */
 function formatUserByIdResourceLine(): string {
   const r = userById();
@@ -60,6 +61,17 @@ function formatUserByIdResourceLine(): string {
   if (r.error) return `错误：${String(r.error)}`;
   return r.data ? `data: ${r.data.name}` : "无数据";
 }
+
+/**
+ * 手写 jsx-runtime：子节点须为无参 getter（或 SignalRef），挂载时由 insertReactive 订阅依赖。
+ * createMemo 返回已标记的 getter，JSX 写 `{userResourceLine}` 即可；勿写 `{userResourceLine()}`。
+ */
+const userResourceLine = createMemo(() => formatUserResourceLine());
+
+/**
+ * 与 `userResourceLine` 相同模式：依赖 userId 与 resource 状态，memo 内会读到双方 signal。
+ */
+const userByIdLine = createMemo(() => formatUserByIdResourceLine());
 
 /** 统一按钮样式 */
 const btn =
@@ -91,7 +103,7 @@ export function ResourceDemo(): VNode {
             </button>
           </p>
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
-            {formatUserResourceLine()}
+            {userResourceLine}
           </p>
         </div>
         <div className={block}>
@@ -126,7 +138,7 @@ export function ResourceDemo(): VNode {
             </button>
           </p>
           <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
-            {formatUserByIdResourceLine()}
+            {userByIdLine}
           </p>
         </div>
         <div className={block}>

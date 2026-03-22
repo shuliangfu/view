@@ -7,7 +7,7 @@
  * - `{ expr }` → `insert(parent, () => expr)`
  * - 文本 → `insert(parent, text)`
  *
- * **内置指令：** v-if / v-else-if / v-else（兄弟链）、v-once（`untrack`）、v-cloak（`data-view-cloak`）等；显隐请用 `vIf`。
+ * **内置指令：** v-if / v-else-if / v-else（兄弟链）、v-once（`untrack`）、v-cloak（`data-view-cloak`）、**vSlotGetter**（任意自定义组件将 children 编译为 `() => slot`，与 Suspense/ErrorBoundary 运行时约定一致）等；显隐请用 `vIf`。
  * 自定义 `registerDirective` 与运行时指令仍见 `@dreamer/view/directive`。
  *
  * @module @dreamer/view/jsx-compiler/transform
@@ -27,6 +27,65 @@ const factory = ts.factory;
 const JSX_MOUNT_FN_PARENT_PARAM = "__viewMountParent";
 
 let varCounter = 0;
+
+/**
+ * compileSource 单次 transform 期间有效：从当前文件 import 解析出的「应以无参 getter 传 children」的 JSX 标签本地名。
+ * 嵌套的 jsxToRuntimeFunction / transformExpressionJsxToCalls 共用此集合；非 compileSource 调用时为 undefined，回退标签名启发式。
+ */
+let slotGetterTagLocalsForCurrentCompile: ReadonlySet<string> | undefined =
+  undefined;
+
+/**
+ * 从 `@dreamer/view/boundary` 等路径引入时的**默认**导出名：compileSource 会按 import 解析本地绑定，自动用 `() => slot` 形态传 children（省写 `vSlotGetter`）。
+ * 用户自己的组件不要改这里：在 JSX 上写 **`vSlotGetter`**（或 `v-slot-getter`）即可，无需改编译器。
+ * 若框架在 boundary 包新增同类组件，可在此加导出名以便与 Suspense/ErrorBoundary 一样零属性开箱。
+ */
+const SLOT_GETTER_EXPORTS_FROM_BOUNDARY_MODULE: ReadonlySet<string> = new Set([
+  "Suspense",
+  "ErrorBoundary",
+]);
+
+/**
+ * 判断模块说明符是否指向 view 的 boundary 入口（支持 jsr:、相对路径等）。
+ *
+ * @param moduleSpecifier - import from 的字符串字面量文本
+ */
+function isViewBoundaryModuleSpecifier(moduleSpecifier: string): boolean {
+  return (
+    moduleSpecifier === "@dreamer/view/boundary" ||
+    moduleSpecifier.includes("@dreamer/view/boundary") ||
+    /(^|\/)view\/boundary(\.ts)?$/.test(moduleSpecifier) ||
+    moduleSpecifier.endsWith("/boundary") ||
+    moduleSpecifier.endsWith("/boundary.ts")
+  );
+}
+
+/**
+ * 扫描源文件顶层的 `import { … } from "…boundary…"`，收集应使用 slot-getter children 形态的**本地绑定名**（含 `Suspense as S` 的 `S`）。
+ *
+ * @param sf - 当前编译的源文件
+ * @returns 本地标识符集合；无匹配 import 时为空集（调用方再决定是否回退启发式）
+ */
+function collectSlotGetterTagLocalsFromImports(sf: ts.SourceFile): Set<string> {
+  const out = new Set<string>();
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt)) continue;
+    const ms = stmt.moduleSpecifier;
+    if (!ts.isStringLiteral(ms)) continue;
+    if (!isViewBoundaryModuleSpecifier(ms.text)) continue;
+    const clause = stmt.importClause;
+    if (!clause?.namedBindings || !ts.isNamedImports(clause.namedBindings)) {
+      continue;
+    }
+    for (const el of clause.namedBindings.elements) {
+      const imported = (el.propertyName ?? el.name).text;
+      if (SLOT_GETTER_EXPORTS_FROM_BOUNDARY_MODULE.has(imported)) {
+        out.add(el.name.text);
+      }
+    }
+  }
+  return out;
+}
 
 function nextVar(): string {
   return `_${varCounter++}`;
@@ -168,6 +227,10 @@ type EmitContext = {
   applyDirectivesId: ts.Identifier;
   registerDirectiveUnmountId: ts.Identifier;
   scheduleFunctionRefId: ts.Identifier;
+  /**
+   * 当前文件从 boundary 解析出的本地标签名；为 undefined 时表示未跑 import 扫描或非 compileSource 场景，配合标签名回退。
+   */
+  slotGetterTagLocals: ReadonlySet<string> | undefined;
 };
 
 /** v-if → v-else-if* → v-else? 兄弟链的一支 */
@@ -242,6 +305,39 @@ function hasVCloakAttribute(attrs: ts.JsxAttributes): boolean {
     if (!ts.isJsxAttribute(prop)) continue;
     const name = (prop.name as ts.Identifier).text;
     if (name === "vCloak" || name === "v-cloak") return true;
+  }
+  return false;
+}
+
+/**
+ * vSlotGetter / v-slot-getter：任意**自定义组件**上声明后，子节点按 `() => slot` 编译（与 Suspense/ErrorBoundary 默认形态一致）。
+ * 用于用户自写边界类组件，无需修改编译器常量。
+ */
+function hasVSlotGetterAttribute(attrs: ts.JsxAttributes): boolean {
+  for (const prop of attrs.properties) {
+    if (!ts.isJsxAttribute(prop)) continue;
+    const name = (prop.name as ts.Identifier).text;
+    if (name === "vSlotGetter" || name === "v-slot-getter") return true;
+  }
+  return false;
+}
+
+/**
+ * 是否将组件 children 编译为无参 getter：显式 vSlotGetter、或从 boundary 模块 import 解析到的绑定、或非 compileSource 场景下标签名为 Suspense/ErrorBoundary。
+ */
+function shouldCompileComponentChildrenAsSlotGetter(
+  attrs: ts.JsxAttributes,
+  tagNameStr: string,
+  ctx: EmitContext,
+): boolean {
+  if (hasVSlotGetterAttribute(attrs)) return true;
+  if (
+    ctx.slotGetterTagLocals != null && ctx.slotGetterTagLocals.has(tagNameStr)
+  ) {
+    return true;
+  }
+  if (ctx.slotGetterTagLocals == null) {
+    return tagNameStr === "Suspense" || tagNameStr === "ErrorBoundary";
   }
   return false;
 }
@@ -521,6 +617,34 @@ function domAttrNameForSetAttribute(jsxAttrName: string): string {
 }
 
 /**
+ * 响应式 style 属性：在 createEffect 内求值的对象表达式（与 value/checked 的 valueExpr 一致）。
+ *
+ * @param exprNode - `style={…}` 的 JSX 表达式
+ */
+function buildReactiveStyleValueReadExpr(
+  exprNode: ts.Expression,
+): ts.Expression {
+  if (ts.isArrowFunction(exprNode) || ts.isFunctionExpression(exprNode)) {
+    return factory.createCallExpression(exprNode, undefined, []);
+  }
+  return factory.createConditionalExpression(
+    factory.createBinaryExpression(
+      factory.createTypeOfExpression(exprNode),
+      factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
+      factory.createStringLiteral("function"),
+    ),
+    undefined,
+    factory.createCallExpression(exprNode, undefined, []),
+    undefined,
+    factory.createCallExpression(
+      factory.createIdentifier("unwrapSignalGetterValue"),
+      undefined,
+      [exprNode],
+    ),
+  );
+}
+
+/**
  * 将 JSX 属性转为对 element 的赋值、setAttribute、addEventListener、ref 等。
  * 1.1 事件：on* → addEventListener；1.2 ref 在 appendChild 后由 buildRefStatementsAfterAppend 处理；
  * 3.5 v-else / v-else-if / v-once / v-cloak 等指令名不写 DOM（cloak 由元素级 setAttribute data-view-cloak 处理）
@@ -621,8 +745,78 @@ function buildAttributeStatements(
               ),
             );
           } else if (name === "style") {
-            stmts.push(
-              factory.createExpressionStatement(
+            /**
+             * 动态 style：无参箭头 / createMemo 标识符 / 属性访问等须走 createEffect，与手写 vnode-mount 的 bindIntrinsicReactiveDomProps 一致。
+             * 历史实现 `Object.assign(el.style, expr)` 在 expr 为函数时会把函数赋给 style，缩放等永不生效。
+             */
+            const styleCanBeReactive = ts.isIdentifier(exprNode) ||
+              ts.isPropertyAccessExpression(exprNode) ||
+              ts.isElementAccessExpression(exprNode) ||
+              ((ts.isArrowFunction(exprNode) ||
+                ts.isFunctionExpression(exprNode)) &&
+                exprNode.parameters.length === 0);
+            if (styleCanBeReactive) {
+              const styleObjVar = "__viewStyleObj";
+              const readExpr = buildReactiveStyleValueReadExpr(exprNode);
+              const decl = factory.createVariableStatement(
+                undefined,
+                factory.createVariableDeclarationList(
+                  [
+                    factory.createVariableDeclaration(
+                      factory.createIdentifier(styleObjVar),
+                      undefined,
+                      undefined,
+                      readExpr,
+                    ),
+                  ],
+                  ts.NodeFlags.Const,
+                ),
+              );
+              const guard = factory.createIfStatement(
+                factory.createBinaryExpression(
+                  factory.createBinaryExpression(
+                    factory.createBinaryExpression(
+                      factory.createIdentifier(styleObjVar),
+                      factory.createToken(
+                        ts.SyntaxKind.EqualsEqualsEqualsToken,
+                      ),
+                      factory.createNull(),
+                    ),
+                    factory.createToken(ts.SyntaxKind.BarBarToken),
+                    factory.createBinaryExpression(
+                      factory.createTypeOfExpression(
+                        factory.createIdentifier(styleObjVar),
+                      ),
+                      factory.createToken(
+                        ts.SyntaxKind.ExclamationEqualsEqualsToken,
+                      ),
+                      factory.createStringLiteral("object"),
+                    ),
+                  ),
+                  factory.createToken(ts.SyntaxKind.BarBarToken),
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      factory.createIdentifier("Array"),
+                      "isArray",
+                    ),
+                    undefined,
+                    [factory.createIdentifier(styleObjVar)],
+                  ),
+                ),
+                factory.createReturnStatement(),
+                undefined,
+              );
+              const removeAttr = factory.createExpressionStatement(
+                factory.createCallExpression(
+                  factory.createPropertyAccessExpression(
+                    factory.createIdentifier(elVar),
+                    "removeAttribute",
+                  ),
+                  undefined,
+                  [factory.createStringLiteral("style")],
+                ),
+              );
+              const assignStyle = factory.createExpressionStatement(
                 factory.createCallExpression(
                   factory.createPropertyAccessExpression(
                     factory.createIdentifier("Object"),
@@ -634,11 +828,69 @@ function buildAttributeStatements(
                       factory.createIdentifier(elVar),
                       "style",
                     ),
-                    exprNode,
+                    factory.createIdentifier(styleObjVar),
                   ],
                 ),
-              ),
-            );
+              );
+              const assignBlock = factory.createBlock(
+                [decl, guard, removeAttr, assignStyle],
+                true,
+              );
+              const rootEffectArrow = ctx.inOnceSubtree
+                ? factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  [],
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  factory.createCallExpression(ctx.untrackId, undefined, [
+                    factory.createArrowFunction(
+                      undefined,
+                      undefined,
+                      [],
+                      undefined,
+                      factory.createToken(
+                        ts.SyntaxKind.EqualsGreaterThanToken,
+                      ),
+                      assignBlock,
+                    ),
+                  ]),
+                )
+                : factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  [],
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  assignBlock,
+                );
+              stmts.push(
+                factory.createExpressionStatement(
+                  factory.createCallExpression(createEffectId, undefined, [
+                    rootEffectArrow,
+                  ]),
+                ),
+              );
+            } else {
+              stmts.push(
+                factory.createExpressionStatement(
+                  factory.createCallExpression(
+                    factory.createPropertyAccessExpression(
+                      factory.createIdentifier("Object"),
+                      "assign",
+                    ),
+                    undefined,
+                    [
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier(elVar),
+                        "style",
+                      ),
+                      exprNode,
+                    ],
+                  ),
+                ),
+              );
+            }
           } else if (
             (name === "value" || name === "checked") &&
             (ts.isIdentifier(exprNode) ||
@@ -1137,6 +1389,7 @@ function isCompilerDirectivePropName(name: string): boolean {
     name === "vElseIf" || name === "v-else-if" ||
     name === "vOnce" || name === "v-once" ||
     name === "vCloak" || name === "v-cloak" ||
+    name === "vSlotGetter" || name === "v-slot-getter" ||
     name === "key"
   );
 }
@@ -1546,9 +1799,9 @@ function buildSuspenseSlotExpression(
 
 /**
  * 为组件 <Comp ... /> 或 <Comp></Comp> 生成：构建 props、运行一次 Comp(props)，挂载函数直接调用否则 insertReactive(parent, () => result)。
- * Suspense：children 为无参箭头 `() => slot`。
- * 其余自定义组件（含 ErrorBoundary、Form、ThemeContext.Provider）：children 一律为 `(parent)=>void`，
- * 避免 DocumentFragment 被 append 进父节点后变空、insertReactive 二次执行无法复挂子树。
+ * **无参 getter children**（`() => slot`）：`vSlotGetter` 任意组件、从 `@dreamer/view/boundary` 按名导入的 Suspense/ErrorBoundary（及同表列出的框架导出）、或非 compileSource 下标签名 Suspense/ErrorBoundary。
+ * ErrorBoundary 类须如此才能使 slot 内同步抛错落在其 `insertReactive` try/catch 内。
+ * 其余自定义组件：children 为 `(parent)=>void`，避免 DocumentFragment 被 append 后变空、insertReactive 二次执行无法复挂子树。
  */
 function buildComponentStatements(
   parentVar: string,
@@ -1566,7 +1819,16 @@ function buildComponentStatements(
   const propsEntries: ts.ObjectLiteralElementLike[] = [];
   const allStmts: ts.Statement[] = [];
   if (children.length > 0) {
-    if (tagNameStr === "Suspense") {
+    /**
+     * `() => slot` 分支：与 boundary 运行时约定一致；用户自写同类组件请写 `vSlotGetter`，勿依赖标签名字符串。
+     */
+    if (
+      shouldCompileComponentChildrenAsSlotGetter(
+        open.attributes,
+        tagNameStr,
+        ctx,
+      )
+    ) {
       const meaningful = children.filter(isMeaningfulSuspenseSlotChild);
       const slotExpr = buildSuspenseSlotExpression(meaningful);
       const childGetterVar = nextVar();
@@ -2143,6 +2405,7 @@ export function jsxToRuntimeFunction(
     applyDirectivesId,
     registerDirectiveUnmountId,
     scheduleFunctionRefId,
+    slotGetterTagLocals: slotGetterTagLocalsForCurrentCompile,
   };
   const stmts = buildElementStatements(
     JSX_MOUNT_FN_PARENT_PARAM,
@@ -2492,58 +2755,67 @@ export function compileSource(
       ts.ScriptKind.TSX,
     );
     resetVarCounter();
+    const slotLocals = collectSlotGetterTagLocalsFromImports(sourceFile);
+    slotGetterTagLocalsForCurrentCompile = slotLocals.size > 0
+      ? slotLocals
+      : undefined;
     let found = false;
-    const result = ts.transform(sourceFile, [
-      (context) => {
-        const visit: ts.Visitor = (node) => {
-          const visited = ts.visitEachChild(node, visit, context);
-          if (ts.isReturnStatement(visited) && visited.expression) {
-            const jsx = getJsxFromReturnExpression(visited.expression);
-            if (jsx) {
-              found = true;
-              // 不要用 updateReturnStatement：合成 expression 与带真实 pos 的旧节点合并时，
-              // TS 内部可能触发 “Node must have a real position”（如 boundary 等大 JSX 树）。
-              return factory.createReturnStatement(jsxToRuntimeFunction(jsx));
+    let result: ts.TransformationResult<ts.SourceFile>;
+    try {
+      result = ts.transform(sourceFile, [
+        (context) => {
+          const visit: ts.Visitor = (node) => {
+            const visited = ts.visitEachChild(node, visit, context);
+            if (ts.isReturnStatement(visited) && visited.expression) {
+              const jsx = getJsxFromReturnExpression(visited.expression);
+              if (jsx) {
+                found = true;
+                // 不要用 updateReturnStatement：合成 expression 与带真实 pos 的旧节点合并时，
+                // TS 内部可能触发 “Node must have a real position”（如 boundary 等大 JSX 树）。
+                return factory.createReturnStatement(jsxToRuntimeFunction(jsx));
+              }
+              if (expressionContainsJsx(visited.expression)) {
+                found = true;
+                return factory.createReturnStatement(
+                  wrapExpressionContainingJsxAsRootMountFn(visited.expression),
+                );
+              }
             }
-            if (expressionContainsJsx(visited.expression)) {
-              found = true;
-              return factory.createReturnStatement(
-                wrapExpressionContainingJsxAsRootMountFn(visited.expression),
-              );
+            if (ts.isArrowFunction(visited) && !ts.isBlock(visited.body)) {
+              const bodyExpr = visited.body as ts.Expression;
+              const jsx = getJsxFromReturnExpression(bodyExpr);
+              if (jsx) {
+                found = true;
+                const mountFn = jsxToRuntimeFunction(jsx);
+                return factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  visited.parameters,
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  mountFn,
+                );
+              }
+              if (expressionContainsJsx(bodyExpr)) {
+                found = true;
+                return factory.createArrowFunction(
+                  undefined,
+                  undefined,
+                  visited.parameters,
+                  undefined,
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  wrapExpressionContainingJsxAsRootMountFn(bodyExpr),
+                );
+              }
             }
-          }
-          if (ts.isArrowFunction(visited) && !ts.isBlock(visited.body)) {
-            const bodyExpr = visited.body as ts.Expression;
-            const jsx = getJsxFromReturnExpression(bodyExpr);
-            if (jsx) {
-              found = true;
-              const mountFn = jsxToRuntimeFunction(jsx);
-              return factory.createArrowFunction(
-                undefined,
-                undefined,
-                visited.parameters,
-                undefined,
-                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                mountFn,
-              );
-            }
-            if (expressionContainsJsx(bodyExpr)) {
-              found = true;
-              return factory.createArrowFunction(
-                undefined,
-                undefined,
-                visited.parameters,
-                undefined,
-                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                wrapExpressionContainingJsxAsRootMountFn(bodyExpr),
-              );
-            }
-          }
-          return visited;
-        };
-        return (sf) => ts.visitNode(sf, visit) as ts.SourceFile;
-      },
-    ]);
+            return visited;
+          };
+          return (sf) => ts.visitNode(sf, visit) as ts.SourceFile;
+        },
+      ]);
+    } finally {
+      slotGetterTagLocalsForCurrentCompile = undefined;
+    }
     const transformed = result.transformed[0] as ts.SourceFile;
     result.dispose();
     if (!found) return source;
