@@ -1242,7 +1242,7 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.5** (2026-03-22): **Added** — **`@dreamer/view/jsx-handoff`** &
+**v1.3.5** (2026-03-23): **Added** — **`@dreamer/view/jsx-handoff`** &
 **`@dreamer/view/vnode-debug`**, dev runtime warnings, **`route-mount-bridge`**
 (MountFn + VNode for **`RoutePage`/layouts**), **`build.jsx`** **`compiler` /
 `runtime`** + **`VIEW_FORCE_BUILD_JSX`**, **`insert-reactive-siblings`** for
