@@ -47,6 +47,12 @@ and this project adheres to
 - **Docs**: **`ANALYSIS-full-compile-vs-handwritten-jsx.md`** (en/zh),
   **`编译路径与运行时指南.md`**; **`examples/view.config.ts`** comments on
   **`jsx`** modes and E2E override.
+- **`compiler/vnode-mount.ts`**: Reactive **`className`** in
+  **`bindIntrinsicReactiveDomProps`** for zero-arg getters and **`SignalRef`**,
+  so handwritten **`jsx-runtime`** trees can use **`className={() => …}`** /
+  **`className={signalRef}`** with correct DOM updates.
+- **Tests**: **`vnode-mount-runtime-props.test.ts`** — nested child VNodes with
+  reactive **`style`** getter coverage.
 
 ### Changed
 
@@ -73,6 +79,16 @@ and this project adheres to
   **`VIEW_FORCE_BUILD_JSX=compiler`** as **`view start`**. Fixes a blank
   homepage in CI when **`examples/view.config.ts`** sets **`jsx: "runtime"`**
   (build previously wrote a runtime bundle while start only changed env).
+- **JSX compiler (`jsx-compiler/transform.ts`)**: Reactive **`style`** in
+  **`compileSource`** no longer emits a single
+  **`Object.assign(element.style,
+  expr)`** when the value is a reactive
+  expression (zero-arg arrow, getter identifier, property/element access). The
+  compiler now emits **`createEffect`** that resolves the style object (calling
+  getters / unwrapping refs), clears the **`style`** attribute, and
+  **`Object.assign`** into **`element.style`**, matching handwritten
+  **`bindIntrinsicReactiveDomProps`** and fixing broken live updates (e.g.
+  transform/scale) when **`style`** was a function or memo-backed reference.
 
 ---
 

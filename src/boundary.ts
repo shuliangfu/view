@@ -8,7 +8,11 @@
  *
  * **导出函数：** isErrorBoundary、getErrorBoundaryFallback（供编译态 try/catch 或 dom 层使用）
  *
- * **全量编译：** ErrorBoundary 接收 children 为 (parent)=>void；Suspense 接收 **children 为无参 getter** `() => slot`（由编译器从 slot JSX/表达式生成），返回 (parent)=>void，内部 `insert(..., () => resolved ?? fallback)`；解析结果与 fallback 仍可为 VNode（由 insertReactive 展开）。
+ * **全量编译：** ErrorBoundary 接收 children 为无参 getter `() => slot` 或 (parent)=>void；slot 常为 `() => () => (parent)=>void`，运行时先 **剥壳** 再包一层 MountFn try/catch，否则 `insertReactive` 认不出 MountFn、错误仍会冒泡到控制台。Suspense 接收 **children 为无参 getter** `() => slot`，返回 (parent)=>void，内部 `insert(..., () => resolved ?? fallback)`。
+ *
+ * **与「要不要手写 `() =>`」的关系：**
+ * - **`RoutePage` 已加载的页面**：内层 `createEffect` 每次重跑都会再次调用 `default()`（经 `pageDefaultToMountFn`），你在页面函数里读的任意 signal（含写在 JSX 里的 `sig.value`）都会让该 effect 订阅并在变化时 **整段重建 VNode**。因此 **ErrorBoundary 下可直接写 `<Child x={sig.value} />`**，不必为了跟 signal 而再包一层 `{() => …}`。
+ * - **非路由、或 MountFn/VNode 只构建一次且父级永不重跑视图函数**：子树仍是快照，要跟 signal 只能：**无参 getter children**、**子组件函数体内读 signal**、或 **自行用 `insertReactive` 包一整段**；框架无法在不重算视图的前提下凭空刷新 VNode props。
  *
  * @example
  * <ErrorBoundary fallback={(e) => <div>Error: {e.message}</div>}>
@@ -16,15 +20,101 @@
  * </ErrorBoundary>
  */
 
+import { isMountFn } from "./compiler/insert.ts";
+import { mountVNodeTree } from "./compiler/vnode-mount.ts";
+import { isEmptyChild, isVNodeLike } from "./dom/shared.ts";
 import { createEffect } from "./effect.ts";
 import type { SignalRef } from "./signal.ts";
-import { createSignal } from "./signal.ts";
+import { createSignal, isSignalGetter } from "./signal.ts";
 import { Fragment, jsx } from "./jsx-runtime.ts";
 import type { VNode } from "./types.ts";
-import { insert, type InsertValueWithMount } from "./runtime.ts";
+import {
+  insert,
+  insertReactive,
+  type InsertValueWithMount,
+} from "./runtime.ts";
 
 function valueOf<T>(v: T | (() => T)): T {
   return typeof v === "function" ? (v as () => T)() : v;
+}
+
+/** 防止病态递归 `() => () => …` 无限剥壳 */
+const PEEL_DEFERRED_SLOT_MAX_DEPTH = 64;
+
+/**
+ * 全量编译下 ErrorBoundary 的 slot 常为 `() => () => (parent)=>void`：连续无参箭头，`isMountFn` 认不出，
+ * `insertReactive` 会走 toNodeForInsert 误插空文本，真实 MountFn 若在其他路径被调用则错误仍冒泡到控制台。
+ * 在包装前逐层调用 `length === 0` 且非 signal getter 的函数，直到得到 MountFn、VNode 或非函数。
+ *
+ * @param slot - `fn()` 的原始返回值
+ * @returns 剥壳后的可挂载形态
+ */
+function peelDeferredSlotValue(slot: unknown): unknown {
+  let s = slot;
+  for (let d = 0; d < PEEL_DEFERRED_SLOT_MAX_DEPTH; d++) {
+    if (typeof s !== "function") break;
+    const f = s as (...args: unknown[]) => unknown;
+    if (f.length !== 0) break;
+    if (isSignalGetter(s)) break;
+    s = (s as () => unknown)();
+  }
+  return s;
+}
+
+/**
+ * 无参 children getter 可能返回「延迟执行」的单参 MountFn（全量编译下 JSX 常如此）：同步抛错发生在
+ * `insertReactive` 调用该 MountFn 时，而非 getter 求值时，故须在 MountFn 内再 try/catch 才能显示 fallback。
+ * VNode 同理：`mountVNodeTree` 在 effect 内执行，错误会逃逸到调度器。
+ *
+ * @param slot - getter 的同步返回值（MountFn、VNode、数组、文本等）
+ * @param props - ErrorBoundary props（用于取 fallback）
+ * @returns 可交给 `insertReactive` 的下一帧内容
+ */
+function wrapReactiveSlotForErrorBoundary(
+  slot: unknown,
+  props: {
+    fallback: (error: unknown) => ErrorBoundaryInsertValue;
+  },
+): ErrorBoundaryInsertValue {
+  const peeled = peelDeferredSlotValue(slot);
+  if (isEmptyChild(peeled)) return "";
+  if (isVNodeLike(peeled)) {
+    const tree = peeled as VNode;
+    return (parent: Node) => {
+      try {
+        mountVNodeTree(parent, tree);
+      } catch (e) {
+        insert(parent, getErrorBoundaryFallback(props)(e));
+      }
+    };
+  }
+  if (isMountFn(peeled)) {
+    const inner = peeled;
+    return (parent: Node) => {
+      try {
+        inner(parent);
+      } catch (e) {
+        insert(parent, getErrorBoundaryFallback(props)(e));
+      }
+    };
+  }
+  if (Array.isArray(peeled)) {
+    return peeled.map((item) => {
+      const itemPeeled = peelDeferredSlotValue(item);
+      if (isMountFn(itemPeeled)) {
+        const innerArr = itemPeeled;
+        return (parent: Node) => {
+          try {
+            innerArr(parent);
+          } catch (e) {
+            insert(parent, getErrorBoundaryFallback(props)(e));
+          }
+        };
+      }
+      return itemPeeled;
+    }) as unknown as ErrorBoundaryInsertValue;
+  }
+  return peeled as ErrorBoundaryInsertValue;
 }
 
 /** 编译态下 fallback 的返回值，与主包 insert 接受的 InsertValueWithMount 一致 */
@@ -96,22 +186,63 @@ export function getErrorBoundaryFallback(
 }
 
 /**
- * 错误边界组件（编译态）：捕获子树渲染中的同步错误，并渲染 fallback(error)。
- * 接收 children 为 (parent)=>void（由编译器在 <ErrorBoundary> 处传入），返回 (parent)=>void 并在内部 try/catch。
- * 仅捕获子组件执行时抛出的错误；事件回调等异步错误需自行处理。
+ * `jsxs`/多余空白可能把唯一子节点收成单元素数组，避免误判为非 function。
+ *
+ * @param ch - props.children
+ */
+function normalizeErrorBoundaryChildrenProp(ch: unknown): unknown {
+  if (Array.isArray(ch) && ch.length === 1) return ch[0];
+  return ch;
+}
+
+/**
+ * 错误边界组件：捕获子树中的**同步**错误，并渲染 fallback(error)。
+ *
+ * - **编译态**：children 多为单参 **`(parent)=>void`**。
+ * - **手写 jsx-runtime**：children 可为 **`VNode`**（与 `mountWithRouter` 根同理），内部 `mountVNodeTree` + try/catch。
+ * - **响应式子树（可选）**：children 为**无参函数** **`() => slot`** 时用 **`insertReactive`**，在 getter 内 try/catch，signal 更新后重跑 getter。
+ *   在 **`RoutePage` 页面 default** 中通常不必手写：页面函数本身已在 effect 内按依赖重跑并生成新 VNode；getter 适用于 **父级不会重跑视图**、仍要让边界内子树随 signal 更新的挂载点。
+ *
+ * 仅捕获同步渲染路径中的错误；事件回调、Promise 等异步错误需自行处理。
  *
  * @param props.fallback - 接收错误并返回要显示内容的函数，或原始值/Node（将转为可插入值）
- * @param props.children - 子节点挂载函数 (parent)=>void（编译态下由编译器传入）
- * @returns (parent)=>void：执行时 try children(parent)，catch 时 insert(parent, fallback(error))
+ * @param props.children - `(parent)=>void` | `() => unknown`（VNode/MountFn/文本等）| `VNode`
+ * @returns (parent)=>void
  */
 export function ErrorBoundary(props: {
   fallback: (error: unknown) => ErrorBoundaryInsertValue;
-  children?: (parent: Node) => void;
+  children?: unknown;
 }): (parent: Node) => void {
-  const children = props.children;
+  const children = normalizeErrorBoundaryChildrenProp(props.children);
   const mount = (parent: Node): void => {
+    if (typeof children === "function") {
+      const fn = children as (...args: unknown[]) => unknown;
+      /**
+       * 无参：视为「每次依赖追踪下重新求 slot」（与 Suspense 的 `() => slot` 一致），
+       * 同步抛错在 getter 内 catch 并返回 fallback 可挂载值。
+       */
+      if (fn.length === 0) {
+        insertReactive(parent, () => {
+          try {
+            const x = (fn as () => unknown)();
+            return wrapReactiveSlotForErrorBoundary(x, props);
+          } catch (e) {
+            return getErrorBoundaryFallback(props)(e);
+          }
+        });
+        return;
+      }
+      try {
+        (fn as (p: Node) => void)(parent);
+      } catch (e) {
+        insert(parent, getErrorBoundaryFallback(props)(e));
+      }
+      return;
+    }
     try {
-      if (typeof children === "function") children(parent);
+      if (isVNodeLike(children)) {
+        mountVNodeTree(parent, children);
+      }
     } catch (e) {
       insert(parent, getErrorBoundaryFallback(props)(e));
     }

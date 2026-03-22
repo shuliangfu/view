@@ -7,9 +7,10 @@
 
 import { runDirectiveUnmountOnChildren } from "./dom/unmount.ts";
 import { createEffect } from "./effect.ts";
+import { coerceToMountFn } from "./route-mount-bridge.ts";
 import { mount } from "./runtime.ts";
 import type { MountFn, Router } from "./router.ts";
-import type { MountOptions, Root } from "./types.ts";
+import type { MountOptions, Root, VNode } from "./types.ts";
 
 /**
  * 从当前 `RouteMatch` 推导用于「是否同一路由」的稳定键：优先 `fullPath`（含 query），否则 `path`。
@@ -33,7 +34,7 @@ function routeKeyFromMatch(
  *
  * @param container - 选择器（如 `"#root"`）或 `Element`，语义同 {@link mount}
  * @param router - `createRouter` 返回的实例（须已 `start()` 或即将 `start()`，以便地址与 signal 一致）
- * @param getMountFn - 接收同一 `router`，返回编译后的根挂载函数；典型写法：`(r) => () => { insert(parent, <App router={r} />) }` 即 `getRoot` 形态
+ * @param getMountFn - 接收同一 `router`，返回根内容：**`compileSource`** 下为 **`(parent)=>void`**；**`jsx: "runtime"`** 下可为 **`VNode`**（与 **`getRoot` 写 `return <App router={r} />`** 一致），内部经 **`coerceToMountFn`** 与 **`RoutePage`** 对齐
  * @param options - 透传给 `mount`（如 `noopIfNotFound`）
  * @returns 与 `mount` 相同的 `Root` 句柄
  *
@@ -47,7 +48,7 @@ function routeKeyFromMatch(
 export function mountWithRouter(
   container: string | Element,
   router: Router,
-  getMountFn: (router: Router) => MountFn,
+  getMountFn: (router: Router) => MountFn | VNode,
   options?: MountOptions,
 ): Root {
   return mount(
@@ -70,7 +71,8 @@ export function mountWithRouter(
         // 先执行子树已登记的 ref(null)/指令 unmount，再摘掉 #root 子节点，避免 ref 仍指向已脱离文档的旧节点
         runDirectiveUnmountOnChildren(el);
         while (el.firstChild) el.removeChild(el.firstChild);
-        getMountFn(router)(el);
+        /** compileSource → MountFn；esbuild automatic JSX → VNode，需与 RoutePage 相同桥接 */
+        coerceToMountFn(getMountFn(router))(el);
         lastMountedRouteKey = routeKey;
       });
     },

@@ -98,12 +98,14 @@ export function DirectiveDemo(): VNode {
         <div className={block}>
           <h3 className={subTitle}>v-once</h3>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            v-once：只渲染一次，不随 signal 更新。当前 tab 快照：
+            {/* 传 SignalRef `{tab}` 而非 `{tab.value}`：runtime 下后者在 jsx 求值时已是快照；v-once 与 compileSource 一致为「依赖再变时更新一帧后冻结」。 */}
+            v-once：只渲染一次，不随 signal 再变（点过 A/B/C
+            后快照会更新一次后冻结）。当前 tab 快照：
             <span
               vOnce
               className="font-medium text-indigo-600 dark:text-indigo-400"
             >
-              {tab.value}
+              {tab}
             </span>
           </p>
         </div>
@@ -133,7 +135,8 @@ export function DirectiveDemo(): VNode {
                 e: Event,
               ) => (vModelText.value = (e.target as HTMLInputElement).value)}
             />
-            <span>→ 当前值：{vModelText.value || "(空)"}</span>
+            {/* `{vModelText.value}` 在 runtime jsx 中为快照；用 getter 或传 SignalRef 才能订阅更新 */}
+            <span>→ 当前值：{() => vModelText.value || "(空)"}</span>
           </p>
           {/* 清空 input 示例：传 getter value={clearInputText}，applyProps 内 createEffect 订阅，set("") 后 effect 写回 DOM；根仅地址变化重跑时不再整树 patch，须靠 getter 绑定才能清空 */}
           <p className="mb-2 flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-300">
@@ -172,7 +175,7 @@ export function DirectiveDemo(): VNode {
               />
               <span>勾选即同步</span>
             </label>
-            <span>→ checked：{String(vModelChecked.value)}</span>
+            <span>→ checked：{() => String(vModelChecked.value)}</span>
           </p>
         </div>
         <div className={block}>

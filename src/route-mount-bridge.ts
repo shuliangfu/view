@@ -1,6 +1,6 @@
 /**
  * 路由挂载桥接：将 **compileSource 产物**（`(parent)=>void`）与 **手写 jsx-runtime**（`VNode`）统一到 `MountFn`，
- * 供 `RoutePage`、布局链与 loading 组件共用。
+ * 供 `RoutePage`、布局链、loading 组件与 **`mountWithRouter` 根 `getMountFn`** 共用。
  *
  * @module @dreamer/view/route-mount-bridge
  * @internal 由 route-page 引用；稳定 API 仍以 `@dreamer/view/router` 为准

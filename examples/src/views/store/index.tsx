@@ -2,7 +2,8 @@
  * Store 示例：createStore + getters + actions + persist
  *
  * 展示派生状态（getters）、方法（actions）、持久化（localStorage）的完整用法。
- * 在 JSX 中用 getter 形式（如 () => get().count、getters.double）以保证响应式更新。
+ * 手写 jsx-runtime：store getter（createMemo）须写 `{getters.double}`、`{getters.greeting}`，勿 `getters.xxx()`（会快照）；
+ * 读 state 标量须 `{() => get().count ?? 0}` 等在 insertReactive 内再读 `get()`，才会登记 store 订阅。
  */
 
 import type { VNode } from "@dreamer/view";
@@ -80,11 +81,11 @@ export function StoreDemo(): VNode {
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-              {get().count ?? 0}
+              {() => get().count ?? 0}
             </span>
             {" · "}
             double：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-              {getters.double()}
+              {getters.double}
             </span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -112,7 +113,7 @@ export function StoreDemo(): VNode {
           </p>
           <p className="mb-3 text-slate-600 dark:text-slate-300">
             <span className="font-medium text-indigo-600 dark:text-indigo-400">
-              {getters.greeting()}
+              {getters.greeting}
             </span>
           </p>
           <input

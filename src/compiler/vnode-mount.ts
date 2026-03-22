@@ -5,8 +5,8 @@
  *
  * **手写 jsx() VNode（不经 compileSource）** 在本模块对齐的内置指令：
  * vIf、vElseIf、vElse（**根级**与 **Fragment 兄弟链**：**vIf/vElseIf** 含 SignalRef/无参 getter/signal getter 时整链 **insertReactive**）、
- * vCloak（data-view-cloak）、vOnce（子树 untrack）。
- * **bindIntrinsicReactiveDomProps**：受控 value/checked、布尔 DOM、**style**（含响应式对象）。
+ * vCloak（data-view-cloak）、vOnce（子项 getter/`SignalRef` 为「再响应一次后冻结」，与 compileSource 一致；静态子项在 untrack 下单次挂载）。
+ * **bindIntrinsicReactiveDomProps**：受控 value/checked、布尔 DOM、**style**（含响应式对象）、**className**（无参 getter / SignalRef）。
  * **自定义指令**（`registerDirective`、如 vFocus）在元素 `append` 且 `ref` 绑定之后调用
  * `directive.applyDirectives`，与 compileSource 产物顺序一致（与 `insert` 存在模块环，运行时由
  * Deno/打包器按已存 `isDirectiveProp` 方式解析）。
@@ -583,6 +583,20 @@ function bindIntrinsicReactiveDomProps(
     }
   }
 
+  /**
+   * 响应式 className：`applyIntrinsicVNodeProps` 对函数与 SignalRef 会跳过不写；
+   * 手写 jsx-runtime 下 `className={() => ...}` 或 `className={sig}` 时在此用 effect 同步到 `class` 属性。
+   */
+  if ("className" in props) {
+    const cn = props.className;
+    if (needsReactiveDomProp(cn)) {
+      schedule(() => {
+        const v = readLiveControlledValue(cn);
+        (el as HTMLElement).setAttribute("class", String(v ?? ""));
+      });
+    }
+  }
+
   for (const name of BOOLEAN_REACTIVE_PROP_NAMES) {
     if (!(name in props)) continue;
     const val = props[name];
@@ -605,6 +619,66 @@ function bindIntrinsicReactiveDomProps(
  * @param el - 已创建且即将或已经挂到父节点下的元素
  * @param props - VNode.props（读取 `ref`）
  */
+/**
+ * v-once 下的动态插值：与 compileSource 一致——首次挂载文本，依赖再变时更新一次文本后 `dispose`，之后不再跟随 signal。
+ *
+ * @param parent - 父 DOM 节点
+ * @param rawGetter - 无参函数或 signal getter，返回可字符串化的值
+ */
+function mountVOnceDynamicExpression(
+  parent: Node,
+  rawGetter: () => unknown,
+): void {
+  const doc = getActiveDocument();
+  let textNode: Text | null = null;
+  const stop = createEffect(() => {
+    const raw = rawGetter();
+    const u = unwrapSignalGetterValue(raw);
+    const s = String(u ?? "");
+    if (textNode == null) {
+      const tn = doc.createTextNode(s) as Text;
+      textNode = tn;
+      parent.appendChild(tn);
+      return;
+    }
+    textNode.textContent = s;
+    stop();
+  });
+}
+
+/**
+ * 与 {@link mountChildItemForVnode} 类似，用于带 `vOnce` 的本征元素子项：MountFn 仅同步挂载一次；getter 走 {@link mountVOnceDynamicExpression}。
+ *
+ * @param parent - 父 DOM 节点
+ * @param item - 规范化后的单个子项
+ */
+function mountChildItemForVnodeOnce(parent: Node, item: ChildItem): void {
+  if (
+    typeof item === "function" &&
+    (item as (p?: unknown) => unknown).length === 1 &&
+    !isSignalGetter(item)
+  ) {
+    const mountFn = item as (p: Node) => void;
+    untrack(() => {
+      mountFn(parent);
+    });
+    return;
+  }
+  if (typeof item === "function" || isSignalGetter(item)) {
+    mountVOnceDynamicExpression(parent, item as () => unknown);
+    return;
+  }
+  if (isVNodeLike(item)) {
+    untrack(() => {
+      mountVNodeTree(parent, item as VNode);
+    });
+    return;
+  }
+  untrack(() => {
+    append(parent, toDomLeafNode(item as unknown as InsertValue));
+  });
+}
+
 function bindIntrinsicRef(el: Element, props: Record<string, unknown>): void {
   const refVal = props.ref;
   if (refVal == null) return;
@@ -801,8 +875,17 @@ export function mountVNodeTree(
       const items = normalizeChildren(p.children);
       mountNormalizedChildrenWithIfChain(el as Node, items);
     };
+    /**
+     * v-once：子树内 getter 须「再响应一次后冻结」；整段 `mountChildren` 包在 untrack 里会挡住普通 insertReactive，
+     * 故按子项分发到 {@link mountChildItemForVnodeOnce}（与 compileSource 的 createEffect+dispose 语义对齐）。
+     */
     if (inOnce) {
-      untrack(mountChildren);
+      untrack(() => {
+        const items = normalizeChildren(p.children);
+        for (const item of items) {
+          mountChildItemForVnodeOnce(el as Node, item);
+        }
+      });
     } else {
       mountChildren();
     }

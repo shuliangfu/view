@@ -5,8 +5,10 @@
 import "../dom-setup.ts";
 
 import { describe, expect, it } from "@dreamer/test";
-import { createRoot, insert } from "@dreamer/view";
+import { createRoot, createSignal, insert } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
+import { mountVNodeTree } from "../../src/compiler/vnode-mount.ts";
+import { jsx } from "../../src/jsx-runtime.ts";
 import {
   ErrorBoundary,
   getErrorBoundaryFallback,
@@ -69,7 +71,7 @@ describe("ErrorBoundary", () => {
     const container = document.createElement("div");
     const mount = ErrorBoundary({
       fallback: () => "fallback",
-      children: (parent) => {
+      children: (parent: globalThis.Node) => {
         const el = document.createElement("span");
         el.textContent = "child";
         parent.appendChild(el);
@@ -105,7 +107,7 @@ describe("ErrorBoundary", () => {
     const container = document.createElement("div");
     const mount = ErrorBoundary({
       fallback: () => "outer",
-      children: (parent) => {
+      children: (parent: globalThis.Node) => {
         const inner = ErrorBoundary({
           fallback: () => "inner",
           children: () => {
@@ -117,6 +119,104 @@ describe("ErrorBoundary", () => {
     });
     mount(container);
     expect(container.textContent).toBe("inner");
+  });
+
+  it("children 为 VNode（手写 jsx-runtime）时子组件同步抛错应显示 fallback", () => {
+    function Bad(_props: Record<string, unknown>): VNode {
+      throw new Error("vnode-sync");
+    }
+    const container = document.createElement("div");
+    const mount = ErrorBoundary({
+      fallback: (e) => `E:${(e as Error).message}`,
+      children: jsx(Bad as (p: Record<string, unknown>) => VNode, {}),
+    });
+    createRoot((el) => insert(el, mount), container);
+    expect(container.textContent).toContain("vnode-sync");
+  });
+
+  it("children 为无参 getter 时依赖 signal 更新后重跑，抛错则显示 fallback", async () => {
+    const st = createSignal(false);
+    const container = document.createElement("div");
+    const mount = ErrorBoundary({
+      fallback: (e) => `err:${(e as Error).message}`,
+      children: () => {
+        if (st.value) throw new Error("boom");
+        return textVNode("ok");
+      },
+    });
+    createRoot((el) => insert(el, mount), container);
+    expect(container.textContent).toBe("ok");
+    st.value = true;
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toContain("boom");
+  });
+
+  /**
+   * 编译产物常见 `() => () => (parent)=>void`：`isMountFn` 对最外层为 false，须剥壳后再包 try/catch。
+   */
+  it("children 为无参 getter 且返回双层无参箭头包裹的 MountFn、执行时抛错应显示 fallback", async () => {
+    const st = createSignal(false);
+    const container = document.createElement("div");
+    const mount = ErrorBoundary({
+      fallback: (e) => `err:${(e as Error).message}`,
+      children: () => () => (parent: globalThis.Node) => {
+        if (st.value) throw new Error("peel-throw");
+        parent.appendChild(document.createTextNode("ok"));
+      },
+    });
+    createRoot((el) => insert(el, mount), container);
+    expect(container.textContent).toBe("ok");
+    st.value = true;
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toContain("peel-throw");
+  });
+
+  /**
+   * 全量编译下 `{() => <Thrower />}` 常在 getter 内返回 MountFn，抛错发生在 insertReactive 调用 MountFn 时，
+   * 须在 MountFn 外包一层 try/catch 才能落到 fallback（与「getter 内直接 throw」不同）。
+   */
+  it("children 为无参 getter 且返回的 MountFn 执行时抛错应显示 fallback", async () => {
+    const st = createSignal(false);
+    const container = document.createElement("div");
+    const mount = ErrorBoundary({
+      fallback: (e) => `err:${(e as Error).message}`,
+      children: () => (parent: globalThis.Node) => {
+        if (st.value) throw new Error("mount-throw");
+        const t = document.createTextNode("ok");
+        parent.appendChild(t);
+      },
+    });
+    createRoot((el) => insert(el, mount), container);
+    expect(container.textContent).toBe("ok");
+    st.value = true;
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toContain("mount-throw");
+  });
+
+  /**
+   * jsx runtime：不经 compileSource，子节点为 `() => jsx(组件)`；与 examples `jsx: "runtime"` 对齐。
+   */
+  it("mountVNodeTree + ErrorBoundary + ()=>jsx 子组件，signal 切换抛错应显示 fallback", async () => {
+    const st = createSignal(false);
+    function RtThrow(props: { x?: boolean }): VNode {
+      if (props.x) throw new Error("runtime-jsx-throw");
+      return jsx("span", { children: "ok" });
+    }
+    /** jsx 类型假定组件返回 VNode；ErrorBoundary 实际返回 MountFn，挂载由 mountVNodeTree 处理 */
+    const EB = ErrorBoundary as unknown as (
+      props: Record<string, unknown>,
+    ) => VNode;
+    const tree = jsx(EB, {
+      fallback: (e: unknown) =>
+        `fb:${e instanceof Error ? e.message : String(e)}`,
+      children: () => jsx(RtThrow, { x: st.value }),
+    });
+    const container = document.createElement("div");
+    mountVNodeTree(container, tree);
+    expect(container.textContent).toContain("ok");
+    st.value = true;
+    await new Promise<void>((r) => queueMicrotask(() => r()));
+    expect(container.textContent).toContain("fb:runtime-jsx-throw");
   });
 });
 

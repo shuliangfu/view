@@ -5,7 +5,7 @@
  * 预览支持放大、缩小、拖拽平移（无独立 API，本页内实现）。
  */
 
-import { createEffect, createRef, createSignal } from "@dreamer/view";
+import { createEffect, createMemo, createSignal } from "@dreamer/view";
 import type { VNode } from "@dreamer/view";
 import { extractInfo } from "@dreamer/image/client";
 import type { ImageInfo } from "@dreamer/image/client";
@@ -65,8 +65,6 @@ export default function Gallery(): VNode {
   let dragStartRef: DragStart | null = null;
   /** 刚结束拖动时置 true，遮罩 onClick 不关闭；下一 tick 置回 false，避免误关后再次点击无法关闭 */
   let justFinishedDragRef = false;
-  /** 响应式 DOM ref：模板写 `ref={imageWrapRef}`，编译器生成 `ref.current = el`，setter 更新内部 signal，effect 读 `ref.current` 即可订阅 */
-  const imageWrapRef = createRef<HTMLElement>();
 
   // 当选中图片变化时，用 @dreamer/image/client 的 extractInfo 获取尺寸、格式、大小
   createEffect(() => {
@@ -93,20 +91,18 @@ export default function Gallery(): VNode {
     }
   });
 
-  // 关闭查看器时清空 ref，避免持有已脱离节点；配合编译器「仅 el.isConnected 时赋 ref」避免再次打开后 ref 指到旧节点
-  createEffect(() => {
-    if (selectedIndex.value === null) {
-      imageWrapRef.current = null;
-    }
-  });
-  // 直接更新图片容器的 transform，避免重建 DOM 导致闪动；读 imageWrapRef.current 订阅响应式 ref
-  createEffect(() => {
-    const el = imageWrapRef.current;
-    if (!el) return;
+  /**
+   * 预览图容器的 transform：用 createMemo + `style={previewWrapStyle}`。
+   * compileSource 已对动态 style 生成 createEffect（见 jsx-compiler transform），与手写 runtime 的 bindIntrinsicReactiveDomProps 对齐；
+   * 勿再依赖 querySelector/getDocument（易与真实挂载文档不一致）。
+   */
+  const previewWrapStyle = createMemo(() => {
     const pos = position.value;
     const scl = scale.value;
-    el.style.transform = `translate(${pos.x}px, ${pos.y}px) scale(${scl})`;
-    el.style.transformOrigin = "center center";
+    return {
+      transform: `translate(${pos.x}px, ${pos.y}px) scale(${scl})`,
+      transformOrigin: "center center",
+    };
   });
 
   const zoomIn =
@@ -159,7 +155,7 @@ export default function Gallery(): VNode {
   };
 
   /**
-   * 大图预览中的图片区域：读 selectedIndex、绑定 ref 与拖拽；在响应式子节点中随选中项重算。
+   * 大图预览中的图片区域：读 selectedIndex；平移/缩放由 previewWrapStyle（createMemo）驱动。
    */
   function previewImageContent(): VNode | null {
     const idx = selectedIndex.value;
@@ -167,9 +163,9 @@ export default function Gallery(): VNode {
     const img = GALLERY_IMAGES[idx];
     return (
       <div
-        ref={imageWrapRef}
         data-gallery-image-wrap
         className="flex items-center justify-center cursor-grab active:cursor-grabbing"
+        style={previewWrapStyle}
         onMouseDown={handleImageMouseDown}
       >
         <img
@@ -244,104 +240,110 @@ export default function Gallery(): VNode {
         ))}
       </div>
 
-      {/* 大图预览弹层：放大/缩小/拖拽平移 + @dreamer/image/client 的 extractInfo 信息 */}
-      {selectedIndex.value !== null && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label="图片预览"
-          onClick={() => {
-            if (justFinishedDragRef) return;
-            selectedIndex.value = null;
-          }}
-        >
-          {/* 顶部：仅关闭按钮 */}
-          <div
-            className="flex shrink-0 justify-end px-4 py-3"
-            onClick={(e: Event) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
-              aria-label="关闭"
-              onClick={() => (selectedIndex.value = null)}
+      {/* 大图预览弹层：手写 jsx-runtime 须包无参 getter；勿写 selectedIndex.value !== null && (…)，会在首屏快照成 false 后永不挂载 */}
+      {() =>
+        selectedIndex.value !== null
+          ? (
+            <div
+              className="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-label="图片预览"
+              onClick={() => {
+                if (justFinishedDragRef) return;
+                selectedIndex.value = null;
+              }}
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              {/* 顶部：仅关闭按钮 */}
+              <div
+                className="flex shrink-0 justify-end px-4 py-3"
+                onClick={(e: Event) => e.stopPropagation()}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  className="rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                  aria-label="关闭"
+                  onClick={() => (selectedIndex.value = null)}
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
 
-          {/* 可缩放查看区域：滚轮在整块区域生效；拖拽仅在图片上生效；点击图片外关闭 */}
-          <div
-            className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden"
-            onWheel={handleViewerWheel}
-            onClick={(e: Event) => {
-              if (
-                (e.target as HTMLElement).closest("[data-gallery-image-wrap]")
-              ) {
-                e.stopPropagation();
-              }
-            }}
-          >
-            {
-              /*
-               * ref={imageWrapRef} 由编译器生成 ref.current 赋值；须用 createRef()，普通 { current } 不触发响应式；
-               * 大图内容由 previewImageContent() 返回，避免在 JSX 子节点写 { () => ... }。
-               */
-            }
-            {previewImageContent()}
-          </div>
+              {/* 可缩放查看区域：滚轮在整块区域生效；拖拽仅在图片上生效；点击图片外关闭 */}
+              <div
+                className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden"
+                onWheel={handleViewerWheel}
+                onClick={(e: Event) => {
+                  if (
+                    (e.target as HTMLElement).closest(
+                      "[data-gallery-image-wrap]",
+                    )
+                  ) {
+                    e.stopPropagation();
+                  }
+                }}
+              >
+                {
+                  /*
+                   * 大图由 previewImageContent() 提供；style={previewWrapStyle}（createMemo），compileSource 会生成响应式 style effect。
+                   */
+                }
+                {previewImageContent()}
+              </div>
 
-          {/* 图片下方：放大、缩小、1:1 与百分比，便于看见 */}
-          <div
-            className="flex shrink-0 items-center justify-center gap-3 border-t border-white/10 px-4 py-3"
-            onClick={(e: Event) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
-              aria-label="缩小"
-              onClick={zoomOut}
-            >
-              缩小
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
-              aria-label="放大"
-              onClick={zoomIn}
-            >
-              放大
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
-              aria-label="重置 1:1"
-              onClick={resetZoom}
-            >
-              1:1
-            </button>
-            <span className="ml-2 text-sm font-medium text-white/90">
-              {`${Math.round(scale.value * 100)}%`}
-            </span>
-          </div>
+              {/* 图片下方：放大、缩小、1:1 与百分比，便于看见 */}
+              <div
+                className="flex shrink-0 items-center justify-center gap-3 border-t border-white/10 px-4 py-3"
+                onClick={(e: Event) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+                  aria-label="缩小"
+                  onClick={zoomOut}
+                >
+                  缩小
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+                  aria-label="放大"
+                  onClick={zoomIn}
+                >
+                  放大
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+                  aria-label="重置 1:1"
+                  onClick={resetZoom}
+                >
+                  1:1
+                </button>
+                <span className="ml-2 text-sm font-medium text-white/90">
+                  {() => `${Math.round(scale.value * 100)}%`}
+                </span>
+              </div>
 
-          {/* 底部信息栏：单次读取 imageInfo，避免多段 insertReactive 在 info 被清空瞬间仍访问 .width */}
-          {previewImageInfoFooter()}
-        </div>
-      )}
+              {/* 底部信息栏：在 getter 内读 imageInfo，fetch 完成后才重算 */}
+              {previewImageInfoFooter()}
+            </div>
+          )
+          : (
+            false
+          )}
     </div>
   );
 }
