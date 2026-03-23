@@ -10,7 +10,7 @@
  * @packageDocumentation
  *
  * **导出概要：** `Fragment`、`jsx`、`jsxs`、`jsxMerge`；`mergeProps`、`splitProps`、
- * `spreadIntrinsicProps`；`insert*`、`insertVNode`、`createRoot`、`render`、`hydrate`；`createSignal`、
+ * `spreadIntrinsicProps`、`setIntrinsicDomAttribute`；`insert*`、`insertVNode`、`createRoot`、`render`、`hydrate`；`createSignal`、
  * `unwrapSignalGetterValue` 及常用 effect API；`mountVNodeTree`；`formatVNodeForDebug`。
  */
 
@@ -58,6 +58,7 @@ export {
   onCleanup,
   render,
   setCurrentEffect,
+  setIntrinsicDomAttribute,
   splitProps,
   spreadIntrinsicProps,
   untrack,

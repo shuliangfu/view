@@ -1059,16 +1059,17 @@ function buildAttributeStatements(
               );
             }
           } else if (name === "className" || name === "class") {
-            const attrName = factory.createStringLiteral("class");
+            // 动态 class：null/undefined 须 removeAttribute，禁止 setAttribute("class", undefined) → 字面量 "undefined"
             stmts.push(
               factory.createExpressionStatement(
                 factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(elVar),
-                    "setAttribute",
-                  ),
+                  factory.createIdentifier("setIntrinsicDomAttribute"),
                   undefined,
-                  [attrName, exprNode],
+                  [
+                    factory.createIdentifier(elVar),
+                    factory.createStringLiteral("class"),
+                    exprNode,
+                  ],
                 ),
               ),
             );
@@ -1076,12 +1077,10 @@ function buildAttributeStatements(
             stmts.push(
               factory.createExpressionStatement(
                 factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier(elVar),
-                    "setAttribute",
-                  ),
+                  factory.createIdentifier("setIntrinsicDomAttribute"),
                   undefined,
                   [
+                    factory.createIdentifier(elVar),
                     factory.createStringLiteral(
                       domAttrNameForSetAttribute(name),
                     ),
@@ -2849,6 +2848,7 @@ export function compileSource(
       "untrack",
       "mergeProps",
       "spreadIntrinsicProps",
+      "setIntrinsicDomAttribute",
     ];
     const needScheduleFunctionRefImport =
       out.includes("scheduleFunctionRef(") &&
@@ -2868,6 +2868,9 @@ export function compileSource(
       if (out.includes("mergeProps(")) spec += ", mergeProps";
       if (out.includes("spreadIntrinsicProps(")) {
         spec += ", spreadIntrinsicProps";
+      }
+      if (out.includes("setIntrinsicDomAttribute(")) {
+        spec += ", setIntrinsicDomAttribute";
       }
       if (out.includes("unwrapSignalGetterValue(")) {
         spec += ", unwrapSignalGetterValue";

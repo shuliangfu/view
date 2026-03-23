@@ -5,7 +5,34 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import { createRef } from "@dreamer/view";
-import { spreadIntrinsicProps } from "../../src/compiler/spread-intrinsic.ts";
+import {
+  setIntrinsicDomAttribute,
+  spreadIntrinsicProps,
+} from "../../src/compiler/spread-intrinsic.ts";
+
+describe("setIntrinsicDomAttribute", () => {
+  it("null/undefined 应 removeAttribute，不写字面量 undefined", () => {
+    const a = document.createElement("a");
+    a.setAttribute("target", "_blank");
+    setIntrinsicDomAttribute(a, "target", undefined);
+    expect(a.hasAttribute("target")).toBe(false);
+    a.setAttribute("target", "_blank");
+    setIntrinsicDomAttribute(a, "target", null);
+    expect(a.hasAttribute("target")).toBe(false);
+  });
+
+  it("普通字符串应 setAttribute", () => {
+    const a = document.createElement("a");
+    setIntrinsicDomAttribute(a, "target", "_blank");
+    expect(a.getAttribute("target")).toBe("_blank");
+  });
+
+  it("空字符串应保留为显式空属性", () => {
+    const a = document.createElement("a");
+    setIntrinsicDomAttribute(a, "title", "");
+    expect(a.getAttribute("title")).toBe("");
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
 
 describe("spreadIntrinsicProps", () => {
   it("className 应落到 setAttribute('class')", () => {

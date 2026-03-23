@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-509%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-573%20%2F%20523%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -1195,17 +1195,13 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.5**（2026-03-23）：**新增** — **`@dreamer/view/jsx-handoff`**、
-**`@dreamer/view/vnode-debug`**、开发期 runtime 告警、**`route-mount-bridge`**
-（路由/布局 **`MountFn`/`VNode` 统一**）、**`build.jsx`**
-**`compiler`/`runtime`** 与
-**`VIEW_FORCE_BUILD_JSX`**、**`insert-reactive-siblings`**、
-**`bindIntrinsicReactiveDomProps`** 响应式 **`className`**（手写
-**`jsx-runtime`**）； **变更** — **`vnode-mount`** / **`insert`** / 水合与手写
-JSX 对齐；**修复** — E2E **`build`** 注入
-**`VIEW_FORCE_BUILD_JSX=compiler`**；**`compileSource`** 响应式 **`style`** 经
-**`createEffect`** 解析再写入 **`element.style`**（修复变换/缩放不刷新）。
-完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.3.6**（2026-03-23）：**新增** —
+**`setIntrinsicDomAttribute`**（**`@dreamer/view`** 与
+**`@dreamer/view/compiler`** 导出），动态本征属性安全写入；**变更** —
+**`compileSource`** 对动态 **`target`/`className`** 等生成该辅助函数而非裸
+**`setAttribute`**；**修复** — **`null`/`undefined`** 不再在 DOM 上留下字面量
+**`"undefined"`**；**测试/文档** — **`spread-intrinsic`**、**`jsx-compiler`**
+覆盖与 **`TEST_REPORT`** 更新。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -1213,12 +1209,12 @@ JSX 对齐；**修复** — E2E **`build`** 注入
 
 | 项目     | 值                                  |
 | -------- | ----------------------------------- |
-| 测试日期 | 2026-03-21                          |
-| 总用例数 | 509 (Deno) / 465 (Bun)              |
-| 通过     | 509 ✅ / 465 ✅                     |
+| 测试日期 | 2026-03-23                          |
+| 总用例数 | 573 (Deno) / 523 (Bun)              |
+| 通过     | 573 ✅ / 523 ✅                     |
 | 失败     | 0                                   |
 | 通过率   | 100%                                |
-| 耗时     | ~1m55s (Deno) / ~85s (Bun，45 文件) |
+| 耗时     | ~1m43s (Deno) / ~85s (Bun，51 文件) |
 
 含单元、集成、E2E（CLI/浏览器）及 **SSR document shim**（组件内访问 document
 不抛错）。详见 [TEST_REPORT.md](./TEST_REPORT.md)。
