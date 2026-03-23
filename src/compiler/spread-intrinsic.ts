@@ -5,6 +5,27 @@
  * @module @dreamer/view/runtime/spread-intrinsic
  */
 
+/**
+ * 设置或移除内置元素的字符串属性：`value` 为 `null` / `undefined` 时调用 `removeAttribute`，
+ * 避免 `el.setAttribute(name, undefined)` 在浏览器中被序列化为字面量 `"undefined"`（与 React 对可选 DOM props 的处理一致）。
+ * 其它值经 `String(value)` 写入（含空字符串，与显式写 `attr=""` 一致）。
+ *
+ * @param el - 目标元素
+ * @param name - DOM 属性名（已映射，如 `for`、`class`）
+ * @param value - 动态表达式求值结果
+ */
+export function setIntrinsicDomAttribute(
+  el: Element,
+  name: string,
+  value: unknown,
+): void {
+  if (value == null) {
+    el.removeAttribute(name);
+    return;
+  }
+  el.setAttribute(name, String(value));
+}
+
 /** 与编译器 BOOLEAN_ATTRS 对齐的布尔 DOM 属性名（小写 JSX 名 → 赋给 HTMLElement 上的属性名） */
 const BOOLEAN_HTML: Record<string, string> = {
   disabled: "disabled",

@@ -8,6 +8,38 @@ and this project adheres to
 
 ---
 
+## [1.3.6] - 2026-03-23
+
+### Added
+
+- **`setIntrinsicDomAttribute`**: Shared helper for **`compileSource`** output
+  and **`spreadIntrinsicProps`**—when the value is **`null`** or
+  **`undefined`**, the attribute is **removed**; otherwise
+  **`setAttribute(name, String(value))`** (empty string remains an explicit
+  empty attribute).
+- **Exports**: **`setIntrinsicDomAttribute`** from **`@dreamer/view`** and
+  **`@dreamer/view/compiler`** (alongside **`spreadIntrinsicProps`**).
+- **Tests**: **`spread-intrinsic.test.ts`** and **`jsx-compiler.test.ts`** cover
+  **`setIntrinsicDomAttribute`** and dynamic **`target`** / **`className`**
+  codegen.
+- **Docs**: **`TEST_REPORT`** refreshed (Deno/Bun totals and per-file counts).
+
+### Changed
+
+- **JSX compiler (`jsx-compiler/transform.ts`)**: Dynamic intrinsic string
+  attributes (e.g. **`target`**, **`className`**) now emit
+  **`setIntrinsicDomAttribute(element, name, value)`** instead of raw
+  **`setAttribute`**, consistent with spread and safe **`null`/`undefined`**
+  handling.
+
+### Fixed
+
+- Optional dynamic DOM props no longer serialize **`undefined`** to the literal
+  string **`"undefined"`** on the element (attributes are removed instead),
+  avoiding bad navigation / attribute behavior (e.g. **`target`**, links).
+
+---
+
 ## [1.3.5] - 2026-03-23
 
 ### Added

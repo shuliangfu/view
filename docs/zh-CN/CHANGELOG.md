@@ -7,6 +7,36 @@
 
 ---
 
+## [1.3.6] - 2026-03-23
+
+### 新增
+
+- **`setIntrinsicDomAttribute`**：供 **`compileSource`** 产物与
+  **`spreadIntrinsicProps`** 共用的 DOM 字符串属性写入辅助；值为 **`null`** 或
+  **`undefined`** 时 **`removeAttribute`**，否则调用 **`setAttribute`** 写入
+  **`String(value)`**（空字符串仍表示显式空属性）。
+- **导出**：主入口 **`@dreamer/view`** 与 **`@dreamer/view/compiler`** 均导出
+  **`setIntrinsicDomAttribute`**（与 **`spreadIntrinsicProps`** 并列）。
+- **测试**：**`spread-intrinsic.test.ts`**、**`jsx-compiler.test.ts`** 覆盖
+  **`setIntrinsicDomAttribute`** 及动态 **`target` / `className`** 的代码生成。
+- **文档**：**`TEST_REPORT`** 已按最新跑数更新（Deno/Bun 总数与各文件用例数）。
+
+### 变更
+
+- **JSX 编译器（`jsx-compiler/transform.ts`）**：动态本征字符串属性（如
+  **`target`**、**`className`**）改为生成
+  **`setIntrinsicDomAttribute(element,
+  name, value)`**，不再裸调
+  **`setAttribute`**，与 spread 路径及 **`null` / `undefined`** 语义一致。
+
+### 修复
+
+- 动态 DOM 属性在运行时为 **`undefined`** / **`null`** 时不再把字面量
+  **`"undefined"`** 写到元素上（改为移除属性），避免错误导航或错误属性（例如
+  **`target`**、链接场景）。
+
+---
+
 ## [1.3.5] - 2026-03-23
 
 ### 新增

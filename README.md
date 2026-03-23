@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-509%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-573%20%2F%20523%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -1242,17 +1242,13 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.5** (2026-03-23): **Added** — **`@dreamer/view/jsx-handoff`** &
-**`@dreamer/view/vnode-debug`**, dev runtime warnings, **`route-mount-bridge`**
-(MountFn + VNode for **`RoutePage`/layouts**), **`build.jsx`** **`compiler` /
-`runtime`** + **`VIEW_FORCE_BUILD_JSX`**, **`insert-reactive-siblings`** for
-**`insertReactive`** order, reactive **`className`** in
-**`bindIntrinsicReactiveDomProps`** (handwritten **`jsx-runtime`**); **Changed**
-— **`vnode-mount`** / **`insert`** / hydration parity for handwritten JSX;
-**Fixed** — E2E examples **`build`** passes **`VIEW_FORCE_BUILD_JSX=compiler`**
-when config uses **`jsx: "runtime"`**; **`compileSource`** reactive **`style`**
-uses **`createEffect`** + **`Object.assign`** into **`element.style`** (fixes
-live transform/scale updates). Full history:
+**v1.3.6** (2026-03-23): **Added** — **`setIntrinsicDomAttribute`** (exported
+from **`@dreamer/view`** and **`@dreamer/view/compiler`**) for safe dynamic
+intrinsic props; **Changed** — **`compileSource`** emits it for dynamic
+**`target`** / **`className`** etc. instead of raw **`setAttribute`**; **Fixed**
+— **`null`/`undefined`** no longer becomes literal **`"undefined"`** on the DOM;
+**Tests/Docs** — **`spread-intrinsic`** / **`jsx-compiler`** coverage and
+**`TEST_REPORT`** refresh. Full history:
 [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
@@ -1261,12 +1257,12 @@ live transform/scale updates). Full history:
 
 | Metric      | Value                                |
 | ----------- | ------------------------------------ |
-| Test date   | 2026-03-21                           |
-| Total tests | 509 (Deno) / 465 (Bun)               |
-| Passed      | 509 ✅ / 465 ✅                      |
+| Test date   | 2026-03-23                           |
+| Total tests | 573 (Deno) / 523 (Bun)               |
+| Passed      | 573 ✅ / 523 ✅                      |
 | Failed      | 0                                    |
 | Pass rate   | 100%                                 |
-| Duration    | ~1m55s (Deno) / ~85s (Bun, 45 files) |
+| Duration    | ~1m43s (Deno) / ~85s (Bun, 51 files) |
 
 Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 (component access to document does not throw). See

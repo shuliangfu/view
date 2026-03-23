@@ -11,7 +11,7 @@
  *
  * **渲染与挂载：** `createRoot`、`render`、`mount`、`insert`、`insertMount`、`insertReactive`、`insertStatic`、`scheduleFunctionRef`（编译态函数 ref 调度）、`generateHydrationScript`（向 HTML 注入 `window` 数据与客户端脚本；完整 SSR API 见子路径 `@dreamer/view/ssr`）
  *
- * **编译态 Props：** `mergeProps`、`splitProps`、`spreadIntrinsicProps`（与编译器产物配合）
+ * **编译态 Props：** `mergeProps`、`splitProps`、`spreadIntrinsicProps`、`setIntrinsicDomAttribute`（与编译器产物配合）
  *
  * **环境：** `getDocument`（浏览器 `document` 或 SSR 影子 document；不可用时 `null`）、`setGlobal`（扩展全局键时使用）、`isDOMEnvironment`
  *
@@ -30,6 +30,7 @@
 export {
   mergeProps,
   scheduleFunctionRef,
+  setIntrinsicDomAttribute,
   splitProps,
   spreadIntrinsicProps,
 } from "./compiler/mod.ts";

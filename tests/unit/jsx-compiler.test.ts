@@ -120,6 +120,31 @@ function X() {
     expect(out).not.toContain('setAttribute("htmlFor"');
   });
 
+  it('动态 target={expr} 应生成 setIntrinsicDomAttribute，避免 undefined → 字面量 "undefined"', () => {
+    const source = `
+function L(props: { t?: string }) {
+  return <a href="/" target={props.t}>x</a>;
+}
+`;
+    const out = compileSource(source, "L.tsx");
+    expect(out).toContain("setIntrinsicDomAttribute(");
+    expect(out).toMatch(/setIntrinsicDomAttribute\(\s*\w+\s*,\s*"target"/);
+    expect(out).not.toMatch(
+      /\.setAttribute\(\s*"target"\s*,\s*props\.t\s*\)/,
+    );
+  });
+
+  it('动态 className={expr} 应生成 setIntrinsicDomAttribute("class", …)', () => {
+    const source = `
+function B(props: { c?: string }) {
+  return <div className={props.c}>x</div>;
+}
+`;
+    const out = compileSource(source, "B.tsx");
+    expect(out).toContain("setIntrinsicDomAttribute(");
+    expect(out).toMatch(/setIntrinsicDomAttribute\(\s*\w+\s*,\s*"class"/);
+  });
+
   it("组件返回 ()=>子树（外层零参）时须 insertReactive(parent, ()=>_result())，不得 _result(parent) 丢 VNode", () => {
     const source = `
 function Form(props: { children?: unknown }) {

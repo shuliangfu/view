@@ -7,7 +7,7 @@
 | Package         | @dreamer/view                                                                                                                      |
 | Version         | 1.3.3                                                                                                                              |
 | Test framework  | @dreamer/test ^1.0.15                                                                                                              |
-| Test date       | 2026-03-21                                                                                                                         |
+| Test date       | 2026-03-23                                                                                                                         |
 | DOM environment | happy-dom 20.4.0 (unit/integration), browser (E2E)                                                                                 |
 | Command         | **Deno**: `deno test -A tests/`; **Bun**: `bun test tests/` (use `--preload ./tests/dom-setup.ts` when no DOM to inject happy-dom) |
 
@@ -15,19 +15,19 @@
 
 ### Deno
 
-- **Total tests**: 509
-- **Passed**: 509
+- **Total tests**: 573
+- **Passed**: 573
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~1m 55s
+- **Duration**: ~1m 43s
 
 ### Bun
 
-- **Total tests**: 465
-- **Passed**: 465
+- **Total tests**: 523
+- **Passed**: 523
 - **Failed**: 0
 - **Pass rate**: 100%
-- **Duration**: ~85s (45 test files, including E2E browser and CLI; use
+- **Duration**: ~85s (51 test files, including E2E browser and CLI; use
   `--preload ./tests/dom-setup.ts`)
 - **Note**: Use `--preload ./tests/dom-setup.ts` when no DOM is present so
   unit/integration tests that need `document` do not fail (SSR guard or missing
@@ -38,64 +38,75 @@
 
 ### Test File Summary
 
-| Test file                           | Tests | Status        |
-| ----------------------------------- | ----- | ------------- |
-| e2e/cli.test.ts                     | 6     | ✅ All passed |
-| e2e/view-example-browser.test.ts    | 72    | ✅ All passed |
-| integration/integration.test.ts     | 5     | ✅ All passed |
-| unit/active-document.test.ts        | 3     | ✅ All passed |
-| unit/boundary.test.ts               | 17    | ✅ All passed |
-| unit/build-hmr.test.ts              | 5     | ✅ All passed |
-| unit/compiled-contract.test.ts      | 3     | ✅ All passed |
-| unit/compiled-runtime.test.ts       | 23    | ✅ All passed |
-| unit/compiler.test.ts               | 13    | ✅ All passed |
-| unit/context.test.ts                | 7     | ✅ All passed |
-| unit/directive.test.ts              | 19    | ✅ All passed |
-| unit/effect.test.ts                 | 15    | ✅ All passed |
-| unit/entry-mod-smoke.test.ts        | 3     | ✅ All passed |
-| unit/escape.test.ts                 | 6     | ✅ All passed |
-| unit/form-page-compile.test.ts      | 3     | ✅ All passed |
-| unit/globals.test.ts                | 6     | ✅ All passed |
-| unit/hmr.test.ts                    | 3     | ✅ All passed |
-| unit/insert-replacing.test.ts       | 4     | ✅ All passed |
-| unit/jsx-compiler.test.ts           | 35    | ✅ All passed |
-| unit/jsx-runtime.test.ts            | 6     | ✅ All passed |
-| unit/logger-server.test.ts          | 4     | ✅ All passed |
-| unit/meta.test.ts                   | 21    | ✅ All passed |
-| unit/portal.test.ts                 | 6     | ✅ All passed |
-| unit/proxy.test.ts                  | 5     | ✅ All passed |
-| unit/reactive.test.ts               | 7     | ✅ All passed |
-| unit/ref-dom.test.ts                | 4     | ✅ All passed |
-| unit/ref.test.ts                    | 4     | ✅ All passed |
-| unit/resource.test.ts               | 8     | ✅ All passed |
-| unit/route-page.test.ts             | 4     | ✅ All passed |
-| unit/router-mount.test.ts           | 3     | ✅ All passed |
-| unit/router.test.ts                 | 40    | ✅ All passed |
-| unit/runtime-props.test.ts          | 15    | ✅ All passed |
-| unit/runtime.test.ts                | 20    | ✅ All passed |
-| unit/scheduler.test.ts              | 5     | ✅ All passed |
-| unit/signal.test.ts                 | 19    | ✅ All passed |
-| unit/spread-intrinsic.test.ts       | 10    | ✅ All passed |
-| unit/ssr-compiled.test.ts           | 16    | ✅ All passed |
-| unit/ssr-document-shim.test.ts      | 3     | ✅ All passed |
-| unit/store.test.ts                  | 29    | ✅ All passed |
-| unit/stream.test.ts                 | 4     | ✅ All passed |
-| unit/transition.test.ts             | 8     | ✅ All passed |
-| unit/unmount.test.ts                | 6     | ✅ All passed |
-| unit/version-utils.test.ts          | 9     | ✅ All passed |
-| unit/vnode-insert-bridge.test.ts    | 2     | ✅ All passed |
-| unit/vnode-mount-directives.test.ts | 3     | ✅ All passed |
+(Aligned with `deno test -A tests/` per-file counts; **51** test files total.)
+
+| Test file                              | Tests | Status        |
+| -------------------------------------- | ----- | ------------- |
+| e2e/cli.test.ts                        | 6     | ✅ All passed |
+| e2e/view-example-browser.test.ts       | 72    | ✅ All passed |
+| integration/integration.test.ts        | 5     | ✅ All passed |
+| unit/active-document.test.ts           | 3     | ✅ All passed |
+| unit/boundary.test.ts                  | 22    | ✅ All passed |
+| unit/build-hmr.test.ts                 | 5     | ✅ All passed |
+| unit/build-jsx-mode.test.ts            | 5     | ✅ All passed |
+| unit/compiled-contract.test.ts         | 3     | ✅ All passed |
+| unit/compiled-runtime.test.ts          | 23    | ✅ All passed |
+| unit/compiler.test.ts                  | 13    | ✅ All passed |
+| unit/context.test.ts                   | 7     | ✅ All passed |
+| unit/dev-runtime-warn.test.ts          | 4     | ✅ All passed |
+| unit/directive.test.ts                 | 19    | ✅ All passed |
+| unit/effect.test.ts                    | 15    | ✅ All passed |
+| unit/entry-mod-smoke.test.ts           | 3     | ✅ All passed |
+| unit/escape.test.ts                    | 6     | ✅ All passed |
+| unit/form-page-compile.test.ts         | 3     | ✅ All passed |
+| unit/globals.test.ts                   | 6     | ✅ All passed |
+| unit/hmr.test.ts                       | 3     | ✅ All passed |
+| unit/insert-replacing.test.ts          | 4     | ✅ All passed |
+| unit/jsx-compiler.test.ts              | 39    | ✅ All passed |
+| unit/jsx-handoff.test.ts               | 4     | ✅ All passed |
+| unit/jsx-runtime.test.ts               | 7     | ✅ All passed |
+| unit/logger-server.test.ts             | 4     | ✅ All passed |
+| unit/meta.test.ts                      | 21    | ✅ All passed |
+| unit/portal.test.ts                    | 6     | ✅ All passed |
+| unit/proxy.test.ts                     | 5     | ✅ All passed |
+| unit/reactive.test.ts                  | 7     | ✅ All passed |
+| unit/ref-dom.test.ts                   | 4     | ✅ All passed |
+| unit/ref.test.ts                       | 4     | ✅ All passed |
+| unit/resource.test.ts                  | 8     | ✅ All passed |
+| unit/route-mount-bridge.test.ts        | 5     | ✅ All passed |
+| unit/route-page.test.ts                | 4     | ✅ All passed |
+| unit/router-mount.test.ts              | 4     | ✅ All passed |
+| unit/router.test.ts                    | 40    | ✅ All passed |
+| unit/runtime-props.test.ts             | 17    | ✅ All passed |
+| unit/runtime.test.ts                   | 21    | ✅ All passed |
+| unit/scheduler.test.ts                 | 5     | ✅ All passed |
+| unit/signal.test.ts                    | 19    | ✅ All passed |
+| unit/spread-intrinsic.test.ts          | 13    | ✅ All passed |
+| unit/ssr-compiled.test.ts              | 16    | ✅ All passed |
+| unit/ssr-document-shim.test.ts         | 3     | ✅ All passed |
+| unit/store.test.ts                     | 29    | ✅ All passed |
+| unit/stream.test.ts                    | 4     | ✅ All passed |
+| unit/transition.test.ts                | 8     | ✅ All passed |
+| unit/unmount.test.ts                   | 6     | ✅ All passed |
+| unit/version-utils.test.ts             | 9     | ✅ All passed |
+| unit/vnode-debug.test.ts               | 4     | ✅ All passed |
+| unit/vnode-insert-bridge.test.ts       | 2     | ✅ All passed |
+| unit/vnode-mount-directives.test.ts    | 3     | ✅ All passed |
+| unit/vnode-mount-runtime-props.test.ts | 25    | ✅ All passed |
 
 ## Feature Test Details
 
-### 1. Boundary (unit/boundary.test.ts) - 17 tests
+### 1. Boundary (unit/boundary.test.ts) - 22 tests
 
 - ✅ isErrorBoundary returns true for ErrorBoundary and false for other
   functions
 - ✅ getErrorBoundaryFallback: function, VNode, undefined, null fallbacks
-- ✅ ErrorBoundary returns children; returns null when no children
-- ✅ Suspense: sync VNode, Promise with fallback then resolve, null fallback
-  edge case
+- ✅ ErrorBoundary returns children; returns null when no children; VNode child
+  sync throw; getter with signal; MountFn throw paths; mountVNodeTree + compiled
+  child
+- ✅ Suspense: sync VNode, Promise with fallback then resolve,
+  Promise&lt;MountFn&gt;, reject without unhandled rejection, null fallback edge
+  case
 - ✅ **Nested ErrorBoundary**: inner error shows inner fallback only; error does
   not bubble to outer boundary
 
@@ -164,13 +175,12 @@
 - ✅ Multiple event types: onClick and change handlers bind correctly
 - ✅ insert(getter) reads signal; external `.value` assignment updates view
 - ✅ After unmount, setting signal does not throw and DOM is not updated
-- ✅ Microtask ordering: after `Promise.resolve()`, insert-bound DOM reflects
-  signal updates (multiple cases in this file)
 
-### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
+### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 7 tests
 
 - ✅ jsx / jsxs: type/props/children, key extraction and third-arg override,
   Fragment as Symbol
+- ✅ jsxMerge / mergeProps + jsx equivalence
 
 ### 9. Meta (unit/meta.test.ts) - 21 tests
 
@@ -210,7 +220,7 @@
   target=_blank/download/data-native skip, hash anchor, modifier/right-click
   skip, interceptLinks: false
 
-### 13. Runtime (unit/runtime.test.ts) - 20 tests
+### 13. Runtime (unit/runtime.test.ts) - 21 tests
 
 - ✅ renderToString: root HTML, Fragment and multiple children; **SSR branch
   coverage**: null/undefined children, signal getter as child, plain function as
@@ -294,6 +304,16 @@
 - ✅ createOptimizePlugin: name and setup, custom filter and readFile; onLoad
   readFile failure catch returns empty string
 
+### 20b. JSX compiler & spread (unit/jsx-compiler.test.ts,
+
+unit/spread-intrinsic.test.ts)
+
+- ✅ **jsx-compiler (39)**: compileSource, Suspense/vIf, ref, controlled input,
+  **dynamic `target` / `className` emit `setIntrinsicDomAttribute`**, etc.
+- ✅ **spread-intrinsic (13)**: `spreadIntrinsicProps`;
+  **`setIntrinsicDomAttribute`** uses `removeAttribute` for `null` / `undefined`
+  (no literal `"undefined"`)
+
 ### 21. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy: get/set consistent with target, nested proxy, proxyCache
@@ -307,12 +327,12 @@
 
 ## Test Coverage Analysis
 
-| Category          | Coverage                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API methods       | createSignal (`SignalRef`), `unwrapSignalGetterValue`, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, compiler, directives (incl. custom mount + `SignalRef` updated), Boundary, Runtime/SSR, **SSR document shim**, scheduler, meta, proxy, stream, **spread-intrinsic**, **insert-replacing** |
-| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, unmount + signal set, etc.                                                                                                                                                                                                                                                                                            |
-| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                                                                                                                                                                 |
-| Integration & E2E | createRoot + events + signal + insert, microtask DOM updates, CLI init/build/start, browser multi-page and navigation, **Gallery / Layout2 / Runtime doc blocks / Store persist / Form password focus (browser)**                                                                                                                                                                                        |
+| Category          | Coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API methods       | createSignal (`SignalRef`), `unwrapSignalGetterValue`, createEffect, createMemo, createRoot, **createReactiveRoot**, **mount**, createReactive, createStore, createRouter, createResource, createContext, JSX, compiler (incl. **compileSource** + **`setIntrinsicDomAttribute` for dynamic attrs**), directives (incl. custom mount + `SignalRef` updated), Boundary, Runtime/SSR, **SSR document shim**, scheduler, meta, proxy, stream, **spread-intrinsic** (incl. **`setIntrinsicDomAttribute`**), **insert-replacing** |
+| Edge cases        | Empty array, undefined/null, non-function, no Provider, no location, empty routes, unmount + signal set, etc.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Error handling    | Effect throw, ErrorBoundary, fetcher throw, action throw                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Integration & E2E | createRoot + events + signal + insert, microtask DOM updates, CLI init/build/start, browser multi-page and navigation, **Gallery / Layout2 / Runtime doc blocks / Store persist / Form password focus (browser)**                                                                                                                                                                                                                                                                                                            |
 
 ## Advantages
 
@@ -324,17 +344,20 @@
 
 ## Conclusion
 
-All tests for @dreamer/view pass under **Deno** (509 tests) and **Bun** (465
+All tests for @dreamer/view pass under **Deno** (573 tests) and **Bun** (523
 tests; count differs by runner). 100% pass rate. Coverage includes signals
 (`SignalRef`, `unwrapSignalGetterValue`), reactivity, scheduler, router,
 resource, context, directives (built-in helpers + **vnode-mount-directives**
 custom `applyDirectives`), runtime and SSR (createRoot, render, **mount**,
 **createReactiveRoot**, hydrate, renderToString, renderToStream, **SSR document
-shim**), **spread-intrinsic** / **insert-replacing** / **runtime-props**
-(mergeProps, splitProps), store (persist, getters/actions), reactive, boundary,
-meta, proxy, compiler, stream, build/HMR, **compiled vs compiler contract**,
-RoutePage, router-mount, version-utils, logger-server, subpath entry smoke
-(csr/hybrid/ssr), **vnode-insert-bridge**, CLI (init/build/start), **browser
-E2E** (Gallery, Layout2, Form password focus, Store localStorage restore,
-v-once/vCloak copy, etc.), and **integration** (createRoot + insert + events +
-unmount), suitable for release and documentation.
+shim**), **spread-intrinsic** (incl. **`setIntrinsicDomAttribute`**) /
+**insert-replacing** / **runtime-props** (mergeProps, splitProps), store
+(persist, getters/actions), reactive, boundary, meta, proxy, compiler (incl.
+dynamic attrs **`setIntrinsicDomAttribute`**), stream, build/HMR,
+**build-jsx-mode**, **dev-runtime-warn**, **compiled vs compiler contract**,
+RoutePage, **route-mount-bridge**, router-mount, **jsx-handoff**, version-utils,
+logger-server, **vnode-debug**, **vnode-mount-runtime-props**, subpath entry
+smoke (csr/hybrid/ssr), **vnode-insert-bridge**, CLI (init/build/start),
+**browser E2E** (Gallery, Layout2, Form password focus, Store localStorage
+restore, v-once/vCloak copy, etc.), and **integration** (createRoot + insert +
+events + unmount), suitable for release and documentation.

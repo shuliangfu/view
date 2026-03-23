@@ -14,7 +14,7 @@
  *
  * **根与水合：** `createRoot`、`render`、`hydrate`，类型 `HydrateContext`
  *
- * **Props：** `mergeProps`、`splitProps`、`spreadIntrinsicProps`
+ * **Props：** `mergeProps`、`splitProps`、`spreadIntrinsicProps`、`setIntrinsicDomAttribute`
  *
  * **SSR：** `renderToString`、`renderToStream`、`createSSRDocument`，类型 `SSROptions`、`SSRElement`、`SSRNode`、`SSRTextNode`
  *
@@ -40,7 +40,10 @@ export { createRoot, render } from "./root.ts";
 export { hydrate } from "./hydrate.ts";
 export type { HydrateContext } from "./hydrate.ts";
 export { mergeProps, splitProps } from "./props.ts";
-export { spreadIntrinsicProps } from "./spread-intrinsic.ts";
+export {
+  setIntrinsicDomAttribute,
+  spreadIntrinsicProps,
+} from "./spread-intrinsic.ts";
 export { renderToStream, renderToString } from "./ssr.ts";
 export type { SSROptions } from "./ssr.ts";
 export { createSSRDocument } from "./ssr-document.ts";

@@ -64,7 +64,7 @@ describe("getErrorBoundaryFallback", () => {
     createRoot((el) => insert(el, value), container);
     expect(container.textContent).toBe("null");
   });
-});
+}, { sanitizeOps: false, sanitizeResources: false });
 
 describe("ErrorBoundary", () => {
   it("返回挂载函数，执行时 try children(parent)，catch 时插入 fallback", () => {

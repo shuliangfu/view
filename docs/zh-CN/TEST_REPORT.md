@@ -7,7 +7,7 @@
 | 测试包   | @dreamer/view                                                                                                                        |
 | 版本     | 1.3.3                                                                                                                                |
 | 测试框架 | @dreamer/test ^1.0.15                                                                                                                |
-| 测试时间 | 2026-03-21                                                                                                                           |
+| 测试时间 | 2026-03-23                                                                                                                           |
 | DOM 环境 | happy-dom 20.4.0（单元/集成）、浏览器（E2E）                                                                                         |
 | 运行命令 | **Deno**：`deno test -A tests/`；**Bun**：`bun test tests/`（Bun 下可加 `--preload ./tests/dom-setup.ts` 在无 DOM 时注入 happy-dom） |
 
@@ -15,19 +15,19 @@
 
 ### Deno
 
-- **总测试数**：509
-- **通过**：509
+- **总测试数**：573
+- **通过**：573
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 1 分 55 秒
+- **执行时间**：约 1 分 43 秒
 
 ### Bun
 
-- **总测试数**：465
-- **通过**：465
+- **总测试数**：523
+- **通过**：523
 - **失败**：0
 - **通过率**：100%
-- **执行时间**：约 85 秒（45 个测试文件，含 E2E 浏览器与 CLI；建议
+- **执行时间**：约 85 秒（51 个测试文件，含 E2E 浏览器与 CLI；建议
   `--preload ./tests/dom-setup.ts`）
 - **说明**：无 DOM 环境时建议使用 `--preload ./tests/dom-setup.ts`，否则依赖
   `document` 的单元/集成用例可能因 SSR guard 或缺少 document 而失败。
@@ -37,57 +37,65 @@
 
 ### 测试文件统计
 
-| 测试文件                            | 测试数 | 状态        |
-| ----------------------------------- | ------ | ----------- |
-| e2e/cli.test.ts                     | 6      | ✅ 全部通过 |
-| e2e/view-example-browser.test.ts    | 72     | ✅ 全部通过 |
-| integration/integration.test.ts     | 5      | ✅ 全部通过 |
-| unit/active-document.test.ts        | 3      | ✅ 全部通过 |
-| unit/boundary.test.ts               | 17     | ✅ 全部通过 |
-| unit/build-hmr.test.ts              | 5      | ✅ 全部通过 |
-| unit/compiled-contract.test.ts      | 3      | ✅ 全部通过 |
-| unit/compiled-runtime.test.ts       | 23     | ✅ 全部通过 |
-| unit/compiler.test.ts               | 13     | ✅ 全部通过 |
-| unit/context.test.ts                | 7      | ✅ 全部通过 |
-| unit/directive.test.ts              | 19     | ✅ 全部通过 |
-| unit/effect.test.ts                 | 15     | ✅ 全部通过 |
-| unit/entry-mod-smoke.test.ts        | 3      | ✅ 全部通过 |
-| unit/escape.test.ts                 | 6      | ✅ 全部通过 |
-| unit/form-page-compile.test.ts      | 3      | ✅ 全部通过 |
-| unit/globals.test.ts                | 6      | ✅ 全部通过 |
-| unit/hmr.test.ts                    | 3      | ✅ 全部通过 |
-| unit/insert-replacing.test.ts       | 4      | ✅ 全部通过 |
-| unit/jsx-compiler.test.ts           | 35     | ✅ 全部通过 |
-| unit/jsx-runtime.test.ts            | 6      | ✅ 全部通过 |
-| unit/logger-server.test.ts          | 4      | ✅ 全部通过 |
-| unit/meta.test.ts                   | 21     | ✅ 全部通过 |
-| unit/portal.test.ts                 | 6      | ✅ 全部通过 |
-| unit/proxy.test.ts                  | 5      | ✅ 全部通过 |
-| unit/reactive.test.ts               | 7      | ✅ 全部通过 |
-| unit/ref-dom.test.ts                | 4      | ✅ 全部通过 |
-| unit/ref.test.ts                    | 4      | ✅ 全部通过 |
-| unit/resource.test.ts               | 8      | ✅ 全部通过 |
-| unit/route-page.test.ts             | 4      | ✅ 全部通过 |
-| unit/router-mount.test.ts           | 3      | ✅ 全部通过 |
-| unit/router.test.ts                 | 40     | ✅ 全部通过 |
-| unit/runtime-props.test.ts          | 15     | ✅ 全部通过 |
-| unit/runtime.test.ts                | 20     | ✅ 全部通过 |
-| unit/scheduler.test.ts              | 5      | ✅ 全部通过 |
-| unit/signal.test.ts                 | 19     | ✅ 全部通过 |
-| unit/spread-intrinsic.test.ts       | 10     | ✅ 全部通过 |
-| unit/ssr-compiled.test.ts           | 16     | ✅ 全部通过 |
-| unit/ssr-document-shim.test.ts      | 3      | ✅ 全部通过 |
-| unit/store.test.ts                  | 29     | ✅ 全部通过 |
-| unit/stream.test.ts                 | 4      | ✅ 全部通过 |
-| unit/transition.test.ts             | 8      | ✅ 全部通过 |
-| unit/unmount.test.ts                | 6      | ✅ 全部通过 |
-| unit/version-utils.test.ts          | 9      | ✅ 全部通过 |
-| unit/vnode-insert-bridge.test.ts    | 2      | ✅ 全部通过 |
-| unit/vnode-mount-directives.test.ts | 3      | ✅ 全部通过 |
+（与 `deno test -A tests/` 按文件汇总一致，共 **51** 个测试文件。）
+
+| 测试文件                               | 测试数 | 状态        |
+| -------------------------------------- | ------ | ----------- |
+| e2e/cli.test.ts                        | 6      | ✅ 全部通过 |
+| e2e/view-example-browser.test.ts       | 72     | ✅ 全部通过 |
+| integration/integration.test.ts        | 5      | ✅ 全部通过 |
+| unit/active-document.test.ts           | 3      | ✅ 全部通过 |
+| unit/boundary.test.ts                  | 22     | ✅ 全部通过 |
+| unit/build-hmr.test.ts                 | 5      | ✅ 全部通过 |
+| unit/build-jsx-mode.test.ts            | 5      | ✅ 全部通过 |
+| unit/compiled-contract.test.ts         | 3      | ✅ 全部通过 |
+| unit/compiled-runtime.test.ts          | 23     | ✅ 全部通过 |
+| unit/compiler.test.ts                  | 13     | ✅ 全部通过 |
+| unit/context.test.ts                   | 7      | ✅ 全部通过 |
+| unit/dev-runtime-warn.test.ts          | 4      | ✅ 全部通过 |
+| unit/directive.test.ts                 | 19     | ✅ 全部通过 |
+| unit/effect.test.ts                    | 15     | ✅ 全部通过 |
+| unit/entry-mod-smoke.test.ts           | 3      | ✅ 全部通过 |
+| unit/escape.test.ts                    | 6      | ✅ 全部通过 |
+| unit/form-page-compile.test.ts         | 3      | ✅ 全部通过 |
+| unit/globals.test.ts                   | 6      | ✅ 全部通过 |
+| unit/hmr.test.ts                       | 3      | ✅ 全部通过 |
+| unit/insert-replacing.test.ts          | 4      | ✅ 全部通过 |
+| unit/jsx-compiler.test.ts              | 39     | ✅ 全部通过 |
+| unit/jsx-handoff.test.ts               | 4      | ✅ 全部通过 |
+| unit/jsx-runtime.test.ts               | 7      | ✅ 全部通过 |
+| unit/logger-server.test.ts             | 4      | ✅ 全部通过 |
+| unit/meta.test.ts                      | 21     | ✅ 全部通过 |
+| unit/portal.test.ts                    | 6      | ✅ 全部通过 |
+| unit/proxy.test.ts                     | 5      | ✅ 全部通过 |
+| unit/reactive.test.ts                  | 7      | ✅ 全部通过 |
+| unit/ref-dom.test.ts                   | 4      | ✅ 全部通过 |
+| unit/ref.test.ts                       | 4      | ✅ 全部通过 |
+| unit/resource.test.ts                  | 8      | ✅ 全部通过 |
+| unit/route-mount-bridge.test.ts        | 5      | ✅ 全部通过 |
+| unit/route-page.test.ts                | 4      | ✅ 全部通过 |
+| unit/router-mount.test.ts              | 4      | ✅ 全部通过 |
+| unit/router.test.ts                    | 40     | ✅ 全部通过 |
+| unit/runtime-props.test.ts             | 17     | ✅ 全部通过 |
+| unit/runtime.test.ts                   | 21     | ✅ 全部通过 |
+| unit/scheduler.test.ts                 | 5      | ✅ 全部通过 |
+| unit/signal.test.ts                    | 19     | ✅ 全部通过 |
+| unit/spread-intrinsic.test.ts          | 13     | ✅ 全部通过 |
+| unit/ssr-compiled.test.ts              | 16     | ✅ 全部通过 |
+| unit/ssr-document-shim.test.ts         | 3      | ✅ 全部通过 |
+| unit/store.test.ts                     | 29     | ✅ 全部通过 |
+| unit/stream.test.ts                    | 4      | ✅ 全部通过 |
+| unit/transition.test.ts                | 8      | ✅ 全部通过 |
+| unit/unmount.test.ts                   | 6      | ✅ 全部通过 |
+| unit/version-utils.test.ts             | 9      | ✅ 全部通过 |
+| unit/vnode-debug.test.ts               | 4      | ✅ 全部通过 |
+| unit/vnode-insert-bridge.test.ts       | 2      | ✅ 全部通过 |
+| unit/vnode-mount-directives.test.ts    | 3      | ✅ 全部通过 |
+| unit/vnode-mount-runtime-props.test.ts | 25     | ✅ 全部通过 |
 
 ## 功能测试详情
 
-### 1. Boundary (unit/boundary.test.ts) - 17 tests
+### 1. Boundary (unit/boundary.test.ts) - 22 tests
 
 - ✅ isErrorBoundary 对 ErrorBoundary 组件返回 true、对其它函数返回 false
 - ✅ getErrorBoundaryFallback：fallback 为函数/VNode/undefined/null 等边界
@@ -155,10 +163,8 @@
 - ✅ 多事件类型：onClick 与 change 等绑定正确
 - ✅ insert(getter) 读 signal，外部 `.value` 赋值后视图更新
 - ✅ unmount 后再次 set signal 不抛错、不更新 DOM
-- ✅ 微任务顺序：`Promise.resolve()` 后，insert 绑定的 DOM 能反映 signal
-  更新（本 文件内多处覆盖）
 
-### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 6 tests
+### 8. JSX Runtime (unit/jsx-runtime.test.ts) - 7 tests
 
 - ✅ jsx / jsxs：type/props/children、key 提取与第三参覆盖、Fragment 为 Symbol
 
@@ -196,7 +202,7 @@
 - ✅ interceptLinks：同源 &lt;a&gt; 拦截、target=_blank/download/data-native
   不拦截、hash 锚点、修饰键/右键不拦截、interceptLinks: false
 
-### 13. Runtime (unit/runtime.test.ts) - 20 tests
+### 13. Runtime (unit/runtime.test.ts) - 21 tests
 
 - ✅ renderToString：根组件 HTML、Fragment 与多子节点；**SSR 分支覆盖**：
   null/undefined 子节点、signal getter
@@ -273,6 +279,14 @@
 - ✅ createOptimizePlugin：name 与 setup、自定义 filter 与 readFile；onLoad
   readFile 失败时 catch 返回空字符串
 
+### 20b. JSX 编译器与 spread（unit/jsx-compiler.test.ts、unit/spread-intrinsic.test.ts）
+
+- ✅ **jsx-compiler（39）**：compileSource、Suspense/vIf、ref、受控
+  input、**动态 `target`/`className` 生成 `setIntrinsicDomAttribute`** 等
+- ✅
+  **spread-intrinsic（13）**：`spreadIntrinsicProps`；**`setIntrinsicDomAttribute`**
+  对 `null`/`undefined` 走 `removeAttribute`，避免字面量 `"undefined"`
+
 ### 21. Proxy (unit/proxy.test.ts) - 5 tests
 
 - ✅ createNestedProxy：get/set 与 target 一致、嵌套代理、proxyCache 复用
@@ -285,12 +299,12 @@
 
 ## 测试覆盖分析
 
-| 类别       | 覆盖说明                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 接口方法   | createSignal（`SignalRef`）、`unwrapSignalGetterValue`、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、compiler、指令（含自定义 `applyDirectives` 与 `SignalRef` 的 `updated`）、Boundary、Runtime/SSR、**SSR document shim**、scheduler、meta、proxy、stream、**spread-intrinsic**、**insert-replacing** |
-| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空、unmount 后 set signal 等                                                                                                                                                                                                                                                                                                                    |
-| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                                                                                                                                                                                           |
-| 集成与 E2E | createRoot + 事件 + signal + insert、微任务后 DOM 更新、CLI init/build/start、浏览器多页与导航、**Gallery / Layout2 / Runtime 文档块 / Store persist / Form 密码框焦点（浏览器）**                                                                                                                                                                                                                                 |
+| 类别       | 覆盖说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 接口方法   | createSignal（`SignalRef`）、`unwrapSignalGetterValue`、createEffect、createMemo、createRoot、**createReactiveRoot**、**mount**、createReactive、createStore、createRouter、createResource、createContext、JSX、compiler（含 **compileSource** 与 **`setIntrinsicDomAttribute` 动态属性**）、指令（含自定义 `applyDirectives` 与 `SignalRef` 的 `updated`）、Boundary、Runtime/SSR、**SSR document shim**、scheduler、meta、proxy、stream、**spread-intrinsic**（含 **`setIntrinsicDomAttribute`**）、**insert-replacing** |
+| 边界情况   | 空数组、undefined/null、非函数、无 Provider、无 location、routes 为空、unmount 后 set signal 等                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| 错误处理   | effect 抛错、ErrorBoundary、fetcher 抛错、actions 抛错等                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 集成与 E2E | createRoot + 事件 + signal + insert、微任务后 DOM 更新、CLI init/build/start、浏览器多页与导航、**Gallery / Layout2 / Runtime 文档块 / Store persist / Form 密码框焦点（浏览器）**                                                                                                                                                                                                                                                                                                                                         |
 
 ## 优点
 
@@ -302,15 +316,17 @@
 
 ## 结论
 
-当前 @dreamer/view 在 **Deno** 下 509 个用例、**Bun** 下 465
-个用例（统计方式不同），**全部通过**，通过率
+当前 @dreamer/view 在 **Deno** 下 **573** 个用例、**Bun** 下 **523**
+个用例（运行器统计方式不同，文件与场景一致），**全部通过**，通过率
 100%。覆盖信号（`SignalRef`、`unwrapSignalGetterValue`）、响应式、scheduler、路由、资源、上下文、指令（内置辅助 +
 **vnode-mount-directives** 自定义 `applyDirectives`）、运行时与
 SSR（createRoot、render、**mount**、**createReactiveRoot**、hydrate、renderToString、renderToStream、**SSR
-document shim**）、**spread-intrinsic** / **insert-replacing** /
-**runtime-props**（mergeProps、splitProps）、Store（persist、getters/actions）、Reactive、Boundary、meta、proxy、compiler、stream、build/HMR、**compiled
+document shim**）、**spread-intrinsic**（含 **`setIntrinsicDomAttribute`**）/
+**insert-replacing** /
+**runtime-props**（mergeProps、splitProps）、Store（persist、getters/actions）、Reactive、Boundary、meta、proxy、compiler（含动态属性
+**`setIntrinsicDomAttribute`**）、stream、build/HMR、**build-jsx-mode**、**dev-runtime-warn**、**compiled
 与 compiler
-契约**、RoutePage、router-mount、version-utils、logger-server、子路径入口（csr/hybrid/ssr）、**vnode-insert-bridge**、CLI（init/build/start）、**浏览器
+契约**、RoutePage、**route-mount-bridge**、router-mount、**jsx-handoff**、version-utils、logger-server、**vnode-debug**、**vnode-mount-runtime-props**、子路径入口（csr/hybrid/ssr）、**vnode-insert-bridge**、CLI（init/build/start）、**浏览器
 E2E**（Gallery、Layout2、Form 密码框焦点、Store localStorage 恢复、v-once/vCloak
 文案等），以及**集成**（createRoot + insert + 事件 +
 unmount），满足发布与文档展示需求。
