@@ -7,7 +7,7 @@
  *
  * **常量：** `KEY_VIEW_ROUTER`（根路由实例在 globalThis 上的键，供约定式布局等读取）
  *
- * **响应式：** `createSignal`（默认 `.value` 容器；第二参 `true` 时返回 `SignalTuple` / `[get, set]`）、`createRef`、`createEffect`、`createRenderEffect`（依赖更新同步或在 batch 末执行）、`createMemo`（可选第三参 `equals`）、`createDeferred`（派生值下一 rAF / `queueMicrotask` 提交）、`createReaction`、`catchError`（子 effect 抛错回调）、`on`（显式依赖列表）、`onCleanup`、`onMount`（首帧后微任务执行一次）、`untrack`、`untrackReads`（保留当前 effect、仅抑制读依赖，供高级场景）、`batch`、`getCurrentEffect`、`setCurrentEffect`、`getCurrentScope`、`setCurrentScope`、`runWithScope`、`createScopeWithDisposers`、`getOwner`、`setOwner`、`runWithOwner`、类型 `Owner`（后四者为与 `EffectScope` 同义的命名别名）、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`（编译产物解包文本插值）
+ * **响应式：** `createSignal`（同一返回值支持 `.value` 与 `const [get,set] = …` 解构）、`createRef`、`createEffect`、`createRenderEffect`（依赖更新同步或在 batch 末执行）、`createMemo`（可选第三参 `equals`）、`createDeferred`（派生值下一 rAF / `queueMicrotask` 提交）、`createReaction`、`catchError`（子 effect 抛错回调）、`on`（显式依赖列表）、`onCleanup`、`onMount`（首帧后微任务执行一次）、`untrack`、`untrackReads`（保留当前 effect、仅抑制读依赖，供高级场景）、`batch`、`getCurrentEffect`、`setCurrentEffect`、`getCurrentScope`、`setCurrentScope`、`runWithScope`、`createScopeWithDisposers`、`getOwner`、`setOwner`、`runWithOwner`、类型 `Owner`（后四者为与 `EffectScope` 同义的命名别名）、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`（编译产物解包文本插值）
  *
  * **渲染与挂载：** `createRoot`、`render`、`mount`、`insert`、`insertMount`、`insertReactive`、`insertStatic`、`scheduleFunctionRef`（编译态函数 ref 调度）、`generateHydrationScript`（向 HTML 注入 `window` 数据与客户端脚本；完整 SSR API 见子路径 `@dreamer/view/ssr`）
  *

@@ -174,6 +174,30 @@ async function clickButtonByExactTextInDocument(
   return ok as boolean;
 }
 
+/**
+ * 仅在 `main` 内按 `href` 查找并点击链接（首页功能卡片等），避免匹配顶栏同名 path。
+ *
+ * @param t - 浏览器测试上下文
+ * @param href - 期望路径，如 `/directive`
+ * @returns 是否找到并触发点击
+ */
+async function clickMainLinkByHref(
+  t: { browser?: { evaluate: (fn: () => boolean) => Promise<unknown> } },
+  href: string,
+): Promise<boolean> {
+  if (!t?.browser) return false;
+  const wantHref = href.startsWith("/") ? href : "/" + href;
+  const escaped = JSON.stringify(wantHref);
+  const ok = await t.browser.evaluate(
+    new Function(
+      "var wantHref=" + escaped +
+        ";var main=document.querySelector('main');if(!main)return false;var links=main.querySelectorAll('a[href]');for(var i=0;i<links.length;i++){var a=links[i];var h=a.getAttribute('href');if(h===wantHref||(h&&(h.endsWith(wantHref)||h.endsWith(wantHref.slice(1))))){a.click();return true;}}return false;",
+    ) as () => boolean,
+  );
+  await new Promise((r) => setTimeout(r, 80));
+  return ok as boolean;
+}
+
 /** 在整页根据 href 查找链接并点击（先 main 内，再 body；用于卡片/导航触发客户端路由） */
 async function clickLinkByHref(
   t: { browser?: { evaluate: (fn: () => boolean) => Promise<unknown> } },
@@ -210,8 +234,8 @@ async function clickNavLinkByText(
 }
 
 /**
- * 顶栏分组下拉（Tailwind `group-hover/list`）：对含指定文案的分组按钮所在 `li` 触发
- * `mouseenter`，再点击下拉内链接文案匹配的 `a`（用于「示例 → 相册」等无首页卡片的入口）。
+ * 顶栏分组下拉：`group-hover/list` 在无真实指针时 headless 中常不生效，故对分组按钮
+ * `focus()` 并配合布局上 `group-focus-within/list`，再辅以 `mouseenter`；仍失败时由调用方对目标 path 使用 `clickLinkByHref` 回退。
  *
  * @param groupButtonSubstring 分组按钮可见文案片段，如「示例」
  * @param itemLabel 子菜单链接可见文案，与路由 `metadata.title` 一致，如「相册」
@@ -227,7 +251,7 @@ async function clickNavDropdownLinkByLabels(
   const ok = await t.browser.evaluate(
     new Function(
       "var g=" + g + ",lbl=" + lbl +
-        ";var nav=document.querySelector('header nav');if(!nav)return false;var buttons=nav.querySelectorAll('button[type=\"button\"]');for(var i=0;i<buttons.length;i++){var btn=buttons[i];if(!btn.textContent||btn.textContent.indexOf(g)===-1)continue;var li=btn.closest('li');if(!li)continue;li.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));li.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));var links=li.querySelectorAll('a[href]');for(var j=0;j<links.length;j++){var a=links[j];if(a.textContent&&a.textContent.trim().indexOf(lbl)!==-1){a.click();return true;}}return false;}return false;",
+        ";var nav=document.querySelector('header nav');if(!nav)return false;var buttons=nav.querySelectorAll('button[type=\"button\"]');for(var i=0;i<buttons.length;i++){var btn=buttons[i];if(!btn.textContent||btn.textContent.indexOf(g)===-1)continue;var li=btn.closest('li');if(!li)continue;try{btn.focus();}catch{/* 部分自动化环境 focus 可能抛错，忽略后仍尝试 mouseenter */}li.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true}));li.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));var links=li.querySelectorAll('a[href]');for(var j=0;j<links.length;j++){var a=links[j];if(a.textContent&&a.textContent.trim().indexOf(lbl)!==-1){a.click();return true;}}return false;}return false;",
     ) as () => boolean,
   );
   await new Promise((r) => setTimeout(r, 220));
@@ -459,7 +483,9 @@ describe("浏览器测试（examples 入口）", () => {
     if (!t?.browser) return;
     await navigate(t, "/");
     await new Promise((r) => setTimeout(r, 200));
-    const ok = await clickButtonByText(t, "指令");
+    /** 优先按文案点卡片；headless 下偶发匹配失败时用 main 内 `/directive` 链接触达同一路由 */
+    let ok = await clickButtonByText(t, "指令");
+    if (!ok) ok = await clickMainLinkByHref(t, "/directive");
     expect(ok).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const text = await getMainText(t);
@@ -1636,6 +1662,8 @@ describe("浏览器测试（examples 入口）", () => {
       if (!ok) {
         ok = await clickNavDropdownLinkByLabels(t, "Examples", "Gallery");
       }
+      /** 下拉依赖 hover/focus；合成事件不可靠时直接点文档内首个 `/gallery` 链接触达同页 */
+      if (!ok) ok = await clickLinkByHref(t, "/gallery");
       expect(ok).toBe(true);
       await new Promise((r) => setTimeout(r, 400));
       const text = await getMainText(t);

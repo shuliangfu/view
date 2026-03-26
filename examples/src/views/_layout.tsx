@@ -192,7 +192,7 @@ export function Layout(props: LayoutProps): VNode {
                       </svg>
                     </button>
                     <ul
-                      className="absolute left-0 top-full min-w-40 rounded-lg border border-slate-200/80 bg-white pt-0.5 pb-1 shadow-lg opacity-0 pointer-events-none transition-opacity group-hover/list:opacity-100 group-hover/list:pointer-events-auto dark:border-slate-600/80 dark:bg-slate-800"
+                      className="absolute left-0 top-full min-w-40 rounded-lg border border-slate-200/80 bg-white pt-0.5 pb-1 shadow-lg opacity-0 pointer-events-none transition-opacity group-hover/list:opacity-100 group-hover/list:pointer-events-auto group-focus-within/list:opacity-100 group-focus-within/list:pointer-events-auto dark:border-slate-600/80 dark:bg-slate-800"
                       role="menu"
                     >
                       {items.map((item) => {

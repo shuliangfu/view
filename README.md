@@ -1272,12 +1272,12 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.8** (2026-03-27): **Fixed** — **`view-cli init`** now generates
-**`mountWithRouter`** in **`src/main.tsx`** so SPA navigation updates the view
-(URL no longer changes alone); **Changed** — **`getRoot`** JSDoc in the init
-template uses new locale keys (**`mainGetRootDesc`**,
-**`mainGetRootParamRouter`**, **`mainGetRootReturns`**). Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.3.9** (2026-03-27): **Added** — **`createSignal(x)`** only; same return
+supports **`.value`** and **`const [get, set] = createSignal(x)`**. **Fixed** —
+**`CreateSignalReturn`** tuple typing, **`<For>`** **`ListEachInput`** inference
+with **`CreateSignalReturn`**, examples navbar **focus-within** + E2E stability.
+**Changed** — **`CreateSignalReturn`** not re-exported from main/csr entries.
+Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

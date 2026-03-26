@@ -1225,11 +1225,11 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.8**（2026-03-27）：**修复** — **`view-cli init`** 生成的
-**`src/main.tsx`** 改用
-**`mountWithRouter`**，站内导航会同步更新视图（不再仅地址栏变化）；**变更** —
-init 模板中 **`getRoot`** 的 JSDoc 使用新 locale 键（**`mainGetRootDesc`**、
-**`mainGetRootParamRouter`**、**`mainGetRootReturns`**）。完整历史见
+**v1.3.9**（2026-03-27）：**新增** — **`createSignal(x)`** 单参，同一返回值支持
+**`.value`** 与 **`const [get, set] = createSignal(x)`**。**修复** —
+**`CreateSignalReturn`** 元组推断、**`<For>`** 的 **`ListEachInput`** 与
+**`CreateSignalReturn`** 顺序、示例顶栏 **focus-within** 与 E2E 稳定性。**变更**
+— 主/csr 入口不再导出 **`CreateSignalReturn`**。完整历史见
 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
