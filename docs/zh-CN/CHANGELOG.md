@@ -7,6 +7,39 @@
 
 ---
 
+## [1.3.9] - 2026-03-27
+
+### 新增
+
+- **`createSignal`（`signal.ts`）**：仅保留单参；同一返回值既可 **`.value`**
+  读写， 也可 **`const [get, set] = createSignal(initial)`**
+  解构（**`Symbol.iterator`** 依次给出已 **`markSignalGetter`** 的 getter 与
+  setter；setter 与 **`.value`** 的 updater 语义一致，含 updater 外
+  **`setCurrentEffect(null)`** 包裹）。
+
+### 修复
+
+- **类型**：**`CreateSignalReturn<T>`** 定义为
+  **`SignalRef<T> & SignalTuple<T>`**， 解构得到有序
+  **`[getter, setter]`**；实现侧用内部 **`IterableSignalRef<T>`** 挂载
+  generator，避免与元组自带的数组 **`Iterator`** 签名冲突。
+- **`<For>` / `<Index>`（`for.ts`）**：**`ListEachInput<T>`** 将
+  **`CreateSignalReturn<readonly T[] | …>`** 置于联合最前，避免
+  **`each={listSignal}`** 误匹配 **`readonly T[]`**（在 signal 返回值交叉
+  **`SignalTuple`** 后会导致 **`children` 的 `item`** 推断错误）。
+- **示例 E2E（`view-example-browser.test.ts`）**：顶栏下拉在
+  **`examples/src/views/_layout.tsx`** 增加 **`group-focus-within/list`**；测试
+  helper 对分组按钮 **`focus()`** 并增加 href 回退，便于 headless
+  稳定进入相册页与指令页。
+
+### 变更
+
+- **包入口导出**：主入口 **`@dreamer/view`** 与 **csr/hybrid** 不再导出类型
+  **`CreateSignalReturn`**（一般依赖推断即可；需要时仍可从 **`signal`**
+  子路径引用）。
+
+---
+
 ## [1.3.8] - 2026-03-27
 
 ### 修复

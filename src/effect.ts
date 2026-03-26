@@ -456,7 +456,7 @@ export function onCleanup(cb: () => void): void {
  * @example
  * ```ts
  * createEffect(() => {
- *   const [n, setN] = createSignal(0, true);
+ *   const [n, setN] = createSignal(0);
  *   onMount(() => {
  *     const id = setInterval(() => setN((x) => x + 1), 1000);
  *     return () => clearInterval(id);

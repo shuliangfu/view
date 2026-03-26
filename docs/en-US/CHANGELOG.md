@@ -8,6 +8,43 @@ and this project adheres to
 
 ---
 
+## [1.3.9] - 2026-03-27
+
+### Added
+
+- **`createSignal` (`signal.ts`)**: Single-argument API only; the same return
+  value supports **`.value`** and **array destructuring**
+  **`const [get, set] = createSignal(initial)`** via **`[Symbol.iterator]`**
+  (getter is **`markSignalGetter`**; setter matches **`.value`** updater
+  semantics, including **`setCurrentEffect(null)`** around updater calls).
+
+### Fixed
+
+- **Typing**: **`CreateSignalReturn<T>`** is **`SignalRef<T> & SignalTuple<T>`**
+  so destructuring infers an ordered **`[getter, setter]`** tuple;
+  implementation assigns the generator via an internal
+  **`IterableSignalRef<T>`** so the iterator signature does not clash with the
+  tuple’s array iterator type.
+- **`<For>` / `<Index>` (`for.ts`)**: **`ListEachInput<T>`** lists
+  **`CreateSignalReturn<readonly T[] | …>`** first so **`each={listSignal}`**
+  does not wrongly match the **`readonly T[]`** branch (which broke
+  **`children`** **`item`** inference after **`SignalTuple`** was added to the
+  signal return type).
+- **Examples E2E (`view-example-browser.test.ts`)**: Navbar dropdown uses
+  **`group-focus-within/list`** alongside **`group-hover/list`** in
+  **`examples/src/views/_layout.tsx`**; helpers use **`focus()`** and href
+  fallbacks so headless runs can open **「示例 → 相册」** and reach
+  **directive** from the home grid reliably.
+
+### Changed
+
+- **Public exports**: **`CreateSignalReturn`** is no longer re-exported from the
+  main **`@dreamer/view`** and **csr/hybrid** entry points (inference and
+  **`.value`** remain sufficient; the type still exists on the **`signal`**
+  subpath for advanced use).
+
+---
+
 ## [1.3.8] - 2026-03-27
 
 ### Fixed

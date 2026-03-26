@@ -4,7 +4,7 @@
  * @module @dreamer/view/signal
  * @packageDocumentation
  *
- * **导出函数：** `createSignal`（可选第二参 `true` 时返回 `[get, set]` 元组）、`getCurrentEffect`、`setCurrentEffect`、`untrackReads`、`shouldTrackReadDependency`（读依赖是否登记）、`markSignalGetter`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`
+ * **导出函数：** `createSignal`（同一返回值既可 `ref.value` 又可 `const [get,set] = ref` 解构）、`getCurrentEffect`、`setCurrentEffect`、`untrackReads`、`shouldTrackReadDependency`（读依赖是否登记）、`markSignalGetter`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`
  *
  * **导出常量：** `SIGNAL_GETTER_MARKER`、`SIGNAL_REF_MARKER`（一般通过 `isSignalGetter` / `isSignalRef` 判断即可）
  */
@@ -12,6 +12,7 @@
 import { KEY_CURRENT_EFFECT } from "./constants.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
 import { notifyEffectSubscriber } from "./scheduler.ts";
+import type { SignalGetter, SignalSetter, SignalTuple } from "./types.ts";
 
 /** 当前正在执行的 effect（run 函数），用于依赖收集；run 上可挂 _subscriptionSets 供清理 */
 type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
@@ -130,6 +131,22 @@ export type SignalRef<T> = {
 };
 
 /**
+ * `createSignal` 的返回值：`SignalRef` 且实现 `[Symbol.iterator]`（运行时依次 yield getter、setter）。
+ * 与 {@link SignalTuple} 做类型交叉，使 `const [get, set] = createSignal(0)` 能推断为有序元组，避免仅写 `IterableIterator<get|set>` 时两槽均变成可联合调用签名。
+ */
+export type CreateSignalReturn<T> = SignalRef<T> & SignalTuple<T>;
+
+/**
+ * 仅用于 {@link createSignal} 内为 ref 挂载 generator；对外类型用 {@link CreateSignalReturn}（`SignalRef & SignalTuple`），
+ * 避免 `SignalTuple` 自带的数组 `Iterator` 签名与双 yield 实现互相冲突。
+ */
+type IterableSignalRef<T> = SignalRef<T> & {
+  [Symbol.iterator](): IterableIterator<
+    SignalGetter<T> | SignalSetter<T>
+  >;
+};
+
+/**
  * Signal 引用对象的标记 Symbol。
  * 用于 `isSignalRef` 与 `unwrapSignalGetterValue` 识别 `.value` 形态的信号。
  */
@@ -213,53 +230,49 @@ function allocateSignalRef<T>(initialValue: T): SignalRef<T> {
 }
 
 /**
- * 默认：返回 `.value` 容器；第二参为严格 **`true`** 时返回 **`[get, set]`** 元组（`get` 已 {@link markSignalGetter}）。
+ * 创建 signal：返回**同一对象**既是 {@link SignalRef}（`.value`），又可被**数组解构**为 `[get, set]`（`get` 已 {@link markSignalGetter}）。
  *
- * **注意：** 若将 `function` 赋给 `ref.value` / 传给 `set`，均视为 `(prev) => next` updater，而非「状态值本身是函数」。
+ * **注意：** 若将 `function` 赋给 `ref.value` / 传给解构出的 `set`，均视为 `(prev) => next` updater，而非「状态值本身是函数」。
  * 若 `T` 含函数类型，须用 `set((prev) => fnValue)` 或 `ref.value = (prev) => fnValue`。
  *
  * @param initialValue - 初始值
- * @param asTuple - 传 `true` 时返回 `[() => T, setter]`，与 `types.SignalTuple<T>` 一致
+ * @returns 带 `Symbol.iterator` 的 `SignalRef`，见 {@link CreateSignalReturn}
  *
  * @example
  * const n = createSignal(0);
  * n.value = 1;
  *
  * @example
- * const [count, setCount] = createSignal(0, true);
+ * const [count, setCount] = createSignal(0);
  * createEffect(() => console.log(count()));
  * setCount(2);
  */
-export function createSignal<T>(initialValue: T): SignalRef<T>;
-export function createSignal<T>(
-  initialValue: T,
-  asTuple: true,
-): [() => T, (value: T | ((prev: T) => T)) => void];
-export function createSignal<T>(
-  initialValue: T,
-  asTuple?: boolean,
-): SignalRef<T> | [() => T, (value: T | ((prev: T) => T)) => void] {
+export function createSignal<T>(initialValue: T): CreateSignalReturn<T> {
   const ref = allocateSignalRef(initialValue);
-  if (asTuple === true) {
-    const get = (): T => ref.value;
-    markSignalGetter(get);
-    const set = (next: T | ((prev: T) => T)): void => {
-      const prevEff = getCurrentEffect();
-      setCurrentEffect(null);
-      try {
-        if (typeof next === "function") {
-          const cur = ref.value;
-          ref.value = (next as (prev: T) => T)(cur);
-        } else {
-          ref.value = next;
-        }
-      } finally {
-        setCurrentEffect(prevEff);
+  const get = (): T => ref.value;
+  markSignalGetter(get);
+  const set = (next: T | ((prev: T) => T)): void => {
+    const prevEff = getCurrentEffect();
+    setCurrentEffect(null);
+    try {
+      if (typeof next === "function") {
+        const cur = ref.value;
+        ref.value = (next as (prev: T) => T)(cur);
+      } else {
+        ref.value = next;
       }
-    };
-    return [get, set];
-  }
-  return ref;
+    } finally {
+      setCurrentEffect(prevEff);
+    }
+  };
+
+  /** 运行时依次 yield getter、setter，与数组解构语义一致 */
+  (ref as IterableSignalRef<T>)[Symbol.iterator] = function* () {
+    yield get;
+    yield set;
+  };
+
+  return ref as CreateSignalReturn<T>;
 }
 
 /**

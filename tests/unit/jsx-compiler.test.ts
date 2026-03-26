@@ -595,7 +595,7 @@ function OnlyFilter() {
     const source = `
 import { createSignal, insert } from "@dreamer/view";
 function Page() {
-  const [x] = createSignal(0, true);
+  const [x] = createSignal(0);
   return <p>{x()}</p>;
 }
 `;
@@ -612,7 +612,7 @@ function Page() {
     const source = `
 import { createSignal, insert } from "@dreamer/view";
 function Page() {
-  const [v, setV] = createSignal("", true);
+  const [v, setV] = createSignal("");
   return <input type="text" value={() => v()} />;
 }
 `;
@@ -1399,7 +1399,7 @@ import {
   insert,
 } from "@dreamer/view/runtime";
 function App() {
-  const [x] = createSignal(0, true);
+  const [x] = createSignal(0);
   return <span>{x}</span>;
 }
 `;
@@ -1413,7 +1413,7 @@ function App() {
   it("文本插值裸 signal 标识符应生成 unwrapSignalGetterValue 并出现在 runtime import 中", () => {
     const source = `
 function App() {
-  const [c, setC] = createSignal(0, true);
+  const [c, setC] = createSignal(0);
   return <span>{c}</span>;
 }
 `;

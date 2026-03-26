@@ -10,12 +10,20 @@
 
 import { coalesceIrList } from "./compiler/ir-coerce.ts";
 import { mapArray } from "./map-array.ts";
-import { isSignalRef, type SignalRef } from "./signal.ts";
+import {
+  type CreateSignalReturn,
+  isSignalRef,
+  type SignalRef,
+} from "./signal.ts";
 
 /**
  * `each` 可为无参 accessor、`createSignal` 返回的列表容器，或已求值的数组快照（快照不单独追踪列表内 signal，依赖外层 effect 重跑刷新）。
+ *
+ * **注意：** `CreateSignalReturn` 须写在 `SignalRef` 与 `readonly T[]` 之前，否则交叉 `SignalTuple` 后类型上含 `0`/`1` 下标，
+ * 推断易误匹配「二元组数组」分支，把 `children` 的 `item` 错推成 getter/setter 联合而非列表元素类型 `T`。
  */
 export type ListEachInput<T> =
+  | CreateSignalReturn<readonly T[] | null | undefined>
   | (() => readonly T[] | null | undefined)
   | SignalRef<readonly T[] | null | undefined>
   | readonly T[]

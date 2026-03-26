@@ -84,9 +84,9 @@ describe("createSignal", () => {
   });
 });
 
-describe("createSignal(initial, true) 元组形态（）", () => {
-  it("应返回 [get, set]，get 为 signal getter，set 可写值与 updater", () => {
-    const [get, set] = createSignal(0, true);
+describe("createSignal 数组解构（Symbol.iterator）", () => {
+  it("应解构为 [get, set]，get 为 signal getter，set 可写值与 updater", () => {
+    const [get, set] = createSignal(0);
     expect(isSignalGetter(get)).toBe(true);
     expect(isSignalRef(get)).toBe(false);
     expect(get()).toBe(0);
@@ -98,7 +98,7 @@ describe("createSignal(initial, true) 元组形态（）", () => {
 
   /** 元组与默认形态共用同一套底层 ref，行为应与 .value 一致。 */
   it("unwrapSignalGetterValue(get) 应等价于读当前值", () => {
-    const [g, set] = createSignal("a", true);
+    const [g, set] = createSignal("a");
     expect(unwrapSignalGetterValue(g)).toBe("a");
     set("b");
     expect(unwrapSignalGetterValue(g)).toBe("b");
@@ -106,8 +106,8 @@ describe("createSignal(initial, true) 元组形态（）", () => {
 
   /** set 内 updater 读前值须在 untrack 语义下，避免把外层 effect 误挂到「读」上。 */
   it("在 createEffect 内 set(updater) 不应使 effect 订阅 updater 内的中间读", async () => {
-    const [a, setA] = createSignal(0, true);
-    const [b, setB] = createSignal(0, true);
+    const [a, setA] = createSignal(0);
+    const [b, setB] = createSignal(0);
     let runs = 0;
     createEffect(() => {
       void a();
