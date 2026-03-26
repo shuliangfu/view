@@ -1284,7 +1284,8 @@ signal reads do not re-trigger the outer reactive mount (avoids remount / focus
 loss); **Tests/Docs** — expanded **`jsx-compiler`** folding tests, **`for` /
 `show` / `dynamic`** SignalRef tests, **`insert-reactive-mountfn-untrack`**,
 browser E2E title i18n for control-flow / list-insert, **`TEST_REPORT`** (892
-Deno / 826 Bun). Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+Deno / 826 Bun); **examples** use theme **`min-h-*`** utilities for Tailwind v4.
+Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

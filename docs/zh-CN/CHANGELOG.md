@@ -62,6 +62,10 @@
     及 AST 常量求值 / nullish / 真假判定工具。
 - **`jsx-compiler.test.ts`**：大量新增用例覆盖上述折叠规则及与之相关的 import
   注入边界。
+- **示例（Tailwind CSS
+  v4）**：最小高度改用主题间距工具类——**`list-insert/index.tsx`** 使用
+  **`min-h-16`** 替代 **`min-h-[4rem]`**；**`_app.tsx`** 加载占位区使用
+  **`min-h-70`** 替代 **`min-h-[280px]`**，与默认刻度及编辑器/规范提示一致。
 
 ### 修复
 
