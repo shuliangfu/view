@@ -8,7 +8,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-573%20%2F%20523%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-892%20%2F%20826%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -542,6 +542,35 @@ function Demo(): VNode {
 }
 ```
 
+### Control-flow components (`For`, `Index`, `Show`, `Switch`, `Dynamic`)
+
+Import from **`jsr:@dreamer/view`** (alongside `createSignal`). They work with
+**`insertReactive`** the same way as **`compileSource`** output.
+
+**Hand-written JSX — keep list/condition/component inputs reactive:**
+
+| Prop                         | Pass                                                                                            | Avoid                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **`For` / `Index`** — `each` | **`SignalRef`** (e.g. **`each={items}`**) or zero-arg getter **`() => items.value`**            | **`each={items.value}`** — JSX evaluates once, so the list does not subscribe to changes |
+| **`Show`** — `when`          | **`SignalRef`** (e.g. **`when={open}`**) or **`() => open.value`**                              | **`when={open.value}`** — one-shot boolean snapshot                                      |
+| **`Dynamic`** — `component`  | **`SignalRef`** (e.g. **`component={tag}`** for an intrinsic tag name) or **`() => tag.value`** | **`component={tag.value}`** — one-shot snapshot                                          |
+
+**Why:** In JSX, **`prop={ref.value}`** is evaluated **before** the child runs;
+the runtime only receives a plain value, not the **`SignalRef`**, so it cannot
+track updates. Passing the **ref** or a **getter** lets **`readWhenInput`** /
+**`readEach`** read **`.value`** inside a **memo/effect** and register
+dependencies.
+
+**`compileSource`:** the compiler wraps **`each={expr}`**, **`when={expr}`**,
+**`component={expr}`** in zero-arg accessors so fine-grained deps work without
+passing the ref object.
+
+**`Switch`:** use **`matches`** (per-case **`when`** + **`children`**) and
+optional **`fallback`**. For hand-written **`matches`**, each **`when`** should
+be a getter (or read reactive state inside one) so branches stay reactive.
+
+Live demo: examples app route **`/control-flow`**.
+
 **Custom: registerDirective + use in JSX**
 
 ```tsx
@@ -982,29 +1011,30 @@ store, stream, boundary, portal, transition, etc.; import those from subpaths
 (e.g. `@dreamer/view/router`) so unused modules are not bundled (tree-shake
 friendly).
 
-| Export                                                                               | Description                                                                                                                                                        |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **createSignal**                                                                     | Returns **`SignalRef<T>`**; use **`.value`** to read/write; reading in effect registers dependency                                                                 |
-| **createEffect**                                                                     | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                              |
-| **createMemo**                                                                       | Cached derived getter                                                                                                                                              |
-| **onCleanup**                                                                        | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                          |
-| **untrack**                                                                          | Read signals in callback without registering deps (advanced)                                                                                                       |
-| **getCurrentEffect** / **setCurrentEffect**                                          | Current effect (internal)                                                                                                                                          |
-| **isSignalGetter**                                                                   | Detect signal getter                                                                                                                                               |
-| **isSignalRef**                                                                      | Detect `SignalRef` from `createSignal`                                                                                                                             |
-| **unwrapSignalGetterValue**                                                          | Unwrap getter or `SignalRef` (used by compiler for text / controlled inputs)                                                                                       |
-| **createRef**                                                                        | Create ref object; use with `ref={refObj}` so effect re-runs when node mounts/unmounts                                                                             |
-| **createRoot**                                                                       | Create root: runs **`fn(container)`** once, use **insert** inside to build UI; returns **Root** (`unmount`, `container`)                                           |
-| **render**                                                                           | Same as **`createRoot(fn, container)`**; **`fn`** is **`(container) => void`** (matches compiled output)                                                           |
-| **mount**                                                                            | Convenience for **`render(fn, el)`**: `container` = selector or Element; **`options.noopIfNotFound`** returns empty Root when not found; **does not** auto-hydrate |
-| **insert** / **insertReactive** / **insertStatic** / **insertMount**                 | Insert-point APIs; aligned with compiler output                                                                                                                    |
-| **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | Compile-time props and function ref (re-exported from compiler)                                                                                                    |
-| **generateHydrationScript**                                                          | Generate hydration script tag (hybrid apps)                                                                                                                        |
-| **hydrate** (explicit API)                                                           | From **`jsr:@dreamer/view/compiler`**; use **`hydrate(fn, container)`** for client hydration (same `fn` as SSR); **mount** does not auto-hydrate                   |
-| **getDocument**                                                                      | Safe document access: returns `document` on client, **`null`** without DOM / SSR (unless shadow document is set)                                                   |
-| **Types**                                                                            | VNode, Root, MountOptions, SignalRef, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions, ElementRef, InsertParent, InsertValue        |
-| **setGlobal**                                                                        | Set global document etc. (internal/advanced)                                                                                                                       |
-| **isDOMEnvironment**                                                                 | Whether in DOM environment                                                                                                                                         |
+| Export                                                                               | Description                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **createSignal**                                                                     | Returns **`SignalRef<T>`**; use **`.value`** to read/write; reading in effect registers dependency                                                                                                                                                              |
+| **createEffect**                                                                     | Runs once, then re-runs when deps change (microtask); returns dispose                                                                                                                                                                                           |
+| **createMemo**                                                                       | Cached derived getter                                                                                                                                                                                                                                           |
+| **onCleanup**                                                                        | Register cleanup in effect/memo (runs when effect re-runs or is disposed)                                                                                                                                                                                       |
+| **untrack**                                                                          | Read signals in callback without registering deps (advanced)                                                                                                                                                                                                    |
+| **getCurrentEffect** / **setCurrentEffect**                                          | Current effect (internal)                                                                                                                                                                                                                                       |
+| **isSignalGetter**                                                                   | Detect signal getter                                                                                                                                                                                                                                            |
+| **isSignalRef**                                                                      | Detect `SignalRef` from `createSignal`                                                                                                                                                                                                                          |
+| **unwrapSignalGetterValue**                                                          | Unwrap getter or `SignalRef` (used by compiler for text / controlled inputs)                                                                                                                                                                                    |
+| **For** / **Index** / **Show** / **Switch** / **Dynamic**                            | Control-flow list/condition/dynamic tag; hand JSX: **`each` / `when` / `component`** as **`SignalRef`** or **`() => …`**; **`prop={ref.value}`** is a one-shot snapshot (see [Control-flow components](#control-flow-components-for-index-show-switch-dynamic)) |
+| **createRef**                                                                        | Create ref object; use with `ref={refObj}` so effect re-runs when node mounts/unmounts                                                                                                                                                                          |
+| **createRoot**                                                                       | Create root: runs **`fn(container)`** once, use **insert** inside to build UI; returns **Root** (`unmount`, `container`)                                                                                                                                        |
+| **render**                                                                           | Same as **`createRoot(fn, container)`**; **`fn`** is **`(container) => void`** (matches compiled output)                                                                                                                                                        |
+| **mount**                                                                            | Convenience for **`render(fn, el)`**: `container` = selector or Element; **`options.noopIfNotFound`** returns empty Root when not found; **does not** auto-hydrate                                                                                              |
+| **insert** / **insertReactive** / **insertStatic** / **insertMount**                 | Insert-point APIs; aligned with compiler output                                                                                                                                                                                                                 |
+| **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | Compile-time props and function ref (re-exported from compiler)                                                                                                                                                                                                 |
+| **generateHydrationScript**                                                          | Generate hydration script tag (hybrid apps)                                                                                                                                                                                                                     |
+| **hydrate** (explicit API)                                                           | From **`jsr:@dreamer/view/compiler`**; use **`hydrate(fn, container)`** for client hydration (same `fn` as SSR); **mount** does not auto-hydrate                                                                                                                |
+| **getDocument**                                                                      | Safe document access: returns `document` on client, **`null`** without DOM / SSR (unless shadow document is set)                                                                                                                                                |
+| **Types**                                                                            | VNode, Root, MountOptions, SignalRef, SignalGetter, SignalSetter, SignalTuple, EffectDispose, HydrationScriptOptions, ElementRef, InsertParent, InsertValue                                                                                                     |
+| **setGlobal**                                                                        | Set global document etc. (internal/advanced)                                                                                                                                                                                                                    |
+| **isDOMEnvironment**                                                                 | Whether in DOM environment                                                                                                                                                                                                                                      |
 
 **SSR** (`renderToString`, `renderToStream`, `getActiveDocument`,
 `createSSRDocument`) is on **`jsr:@dreamer/view/ssr`**; omit for CSR-only to
@@ -1242,27 +1272,32 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.6** (2026-03-23): **Added** — **`setIntrinsicDomAttribute`** (exported
-from **`@dreamer/view`** and **`@dreamer/view/compiler`**) for safe dynamic
-intrinsic props; **Changed** — **`compileSource`** emits it for dynamic
-**`target`** / **`className`** etc. instead of raw **`setAttribute`**; **Fixed**
-— **`null`/`undefined`** no longer becomes literal **`"undefined"`** on the DOM;
-**Tests/Docs** — **`spread-intrinsic`** / **`jsx-compiler`** coverage and
-**`TEST_REPORT`** refresh. Full history:
-[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.3.7** (2026-03-26): **Added** — Hand-written **`<For>` / `<Show>` /
+`<Dynamic>`** (and shared **`readWhenInput`**) accept **`SignalRef`** for
+**`each`**, **`when`**, **`component`** with correct **`.value`** tracking;
+**examples** home card for **`/list-insert`** and control-flow demos;
+**Changed** — **`compileSource`** **compile-time constant folding** for JSX in
+**`&&` / `||` / `??`**, constant **ternaries**, and safe **comma** tails (fewer
+**`insertReactive`** when branches are provable at build time); **Fixed** —
+**`insertReactive`** runs **`markMountFn`** bodies inside **`untrack`** so inner
+signal reads do not re-trigger the outer reactive mount (avoids remount / focus
+loss); **Tests/Docs** — expanded **`jsx-compiler`** folding tests, **`for` /
+`show` / `dynamic`** SignalRef tests, **`insert-reactive-mountfn-untrack`**,
+browser E2E title i18n for control-flow / list-insert, **`TEST_REPORT`** (892
+Deno / 826 Bun). Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 
 ## 📊 Test Report
 
-| Metric      | Value                                |
-| ----------- | ------------------------------------ |
-| Test date   | 2026-03-23                           |
-| Total tests | 573 (Deno) / 523 (Bun)               |
-| Passed      | 573 ✅ / 523 ✅                      |
-| Failed      | 0                                    |
-| Pass rate   | 100%                                 |
-| Duration    | ~1m43s (Deno) / ~85s (Bun, 51 files) |
+| Metric      | Value                                 |
+| ----------- | ------------------------------------- |
+| Test date   | 2026-03-26                            |
+| Total tests | 892 (Deno) / 826 (Bun)                |
+| Passed      | 892 ✅ / 826 ✅                       |
+| Failed      | 0                                     |
+| Pass rate   | 100%                                  |
+| Duration    | ~3m14s (Deno) / ~140s (Bun, 67 files) |
 
 Includes unit, integration, E2E (CLI/browser), and **SSR document shim**
 (component access to document does not throw). See
@@ -1310,7 +1345,10 @@ on update (see CHANGELOG [1.0.4]).
   root re-runs with fine-grained patch.
 - **Reactive JSX**: Use `SignalRef` in text (`{count}`), `.value` in handlers
   and effects, and functions for directives (e.g. `vIf={() => visible.value}`)
-  so the engine can track and update.
+  so the engine can track and update. For **`For` / `Show` / `Dynamic`**, pass
+  the **`SignalRef`** or a zero-arg getter for **`each` / `when` /
+  `component`**; do not pass **`ref.value`** in those props (snapshot). See
+  [Control-flow components](#control-flow-components-for-index-show-switch-dynamic).
 - **JSX config**: `compilerOptions.jsx: "react-jsx"` and
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"` in deno.json.
 - **Effect scope**: For modals/toasts/conditionals that use a local signal (e.g.

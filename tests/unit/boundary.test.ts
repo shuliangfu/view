@@ -275,7 +275,7 @@ describe("Suspense", () => {
     });
     /**
      * 须在 createRoot(fn) 内调用 Suspense（与 compileSource 页面一致）；
-     * 若在 createRoot 之前调用，effect 登记时机与根 scope 不一致，易导致 epoch 竞态、一直停在 fallback。
+     * 若在 createRoot 之前调用，effect 登记时机与根 scope 不一致，易导致 Promise 回调与 effect 重跑微任务交错、一直停在 fallback。
      */
     createRoot((el) => {
       const mount = Suspense({

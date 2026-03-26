@@ -4,7 +4,7 @@
  * beforeAll 直接启动 examples 的 dev 服务器（无需先 build），浏览器通过 goto 打开该地址，
  * 对每个示例页执行主要交互（点击、输入等）并断言 DOM 效果。
  *
- * CI 依赖说明：启动时 cwd=examples，但执行的入口是 view 的 src/cli.ts（deno task dev / bun run dev），
+ * CI 依赖说明：启动时 cwd=examples，子进程执行 `deno run -A ../src/cli.ts dev --port <E2E 专用端口>`（Bun 为 `bun run ../src/cli.ts dev --port …`），
  * 因此 view.config.ts 的 dynamic import 解析用的是 **view** 的 deno.json/package.json，不是 examples 的。
  * 若 examples/view.config.ts 里 import 了 @dreamer/plugins（tailwind、static），则 view 的根配置必须声明
  * @dreamer/plugins，否则 CI 会报 Cannot find module '@dreamer/plugins/tailwindcss'。本地通过可能是因为
@@ -16,6 +16,7 @@ import {
   createCommand,
   dirname,
   execPath,
+  getEnv,
   IS_DENO,
   join,
 } from "@dreamer/runtime-adapter";
@@ -33,8 +34,17 @@ import { setViewLocale } from "../../src/i18n.ts";
 
 setViewLocale("zh-CN");
 
-const SERVER_PORT = 8787;
-const BASE_URL = `http://127.0.0.1:${SERVER_PORT}`;
+/**
+ * 与 view.config 默认 8787 错开：避免连到本机已占用的 dev；且须避免「固定备用端口」与上一次测试子进程残留冲突。
+ * 未设 VIEW_EXAMPLES_E2E_PORT 时在 18000–25999 内随机选一端口（仍可通过环境变量指定固定端口）。
+ */
+const EXAMPLES_E2E_PORT = (() => {
+  const raw = getEnv("VIEW_EXAMPLES_E2E_PORT");
+  const n = raw != null && raw !== "" ? Number(raw) : NaN;
+  if (Number.isFinite(n) && n > 0 && n < 65536) return Math.floor(n);
+  return 18000 + Math.floor(Math.random() * 8000);
+})();
+const BASE_URL = `http://127.0.0.1:${EXAMPLES_E2E_PORT}`;
 
 /** 规整路径：消除 .. 与 .；Windows 盘符路径不输出前导 /，与 cli.test.ts 一致 */
 function normalizeAbsolutePath(p: string): string {
@@ -235,6 +245,51 @@ async function getMainText(
   })) as string;
 }
 
+/**
+ * 读取 Signal 示例页**首块**（含 `double（createMemo）` 文案）的 count / double 展示数字。
+ * 用段落 `textContent` 正则提取：不依赖 `data-testid`（部分构建未带上时仍可用），且即使运行时把数字插在 `span` 外、
+ * `span.textContent` 为空，整段文案仍含 `count：n · double（createMemo）：m`。
+ *
+ * @param t - 浏览器句柄
+ */
+/**
+ * 读取 Signal 页 `createMemo` 派生值展示（`double（createMemo）：n` 全页唯一，比多处 `count：` 更适合 e2e）。
+ *
+ * @param t - 浏览器句柄
+ */
+async function readSignalDemoMemoDouble(
+  t: { browser?: { evaluate: (fn: () => unknown) => Promise<unknown> } },
+): Promise<string> {
+  if (!t.browser) return "";
+  return (await t.browser.evaluate(() => {
+    const main = document.querySelector("main");
+    const it = main?.innerText.replace(/\r\n/g, "\n") ?? "";
+    return it.match(/double（createMemo）[：:]\s*(\d+)/)?.[1] ?? "";
+  })) as string;
+}
+
+/**
+ * 轮询直到 memo double 展示为期望值（`count ≈ double/2`，与示例 `createMemo(() => count.value * 2)` 一致）。
+ *
+ * @param t - 浏览器句柄
+ * @param wantDouble - 期望的 double 字符串
+ * @param maxMs - 最长等待毫秒
+ */
+async function waitForSignalDemoMemoDouble(
+  t: { browser?: { evaluate: (fn: () => unknown) => Promise<unknown> } },
+  wantDouble: string,
+  maxMs = 8000,
+): Promise<void> {
+  const step = 100;
+  for (let w = 0; w < maxMs; w += step) {
+    const d = await readSignalDemoMemoDouble(t);
+    if (d === wantDouble) return;
+    await new Promise((r) => setTimeout(r, step));
+  }
+  const last = await readSignalDemoMemoDouble(t);
+  expect(last).toBe(wantDouble);
+}
+
 /** 轮询直到 main 内文本包含 substring，或超时（ms）；用于路由切换后等待页面渲染完成 */
 async function waitForMainToContain(
   t: { browser?: { evaluate: (fn: () => string) => Promise<unknown> } },
@@ -297,7 +352,23 @@ describe("浏览器测试（examples 入口）", () => {
     const cmd = createCommand(
       execPath(),
       {
-        args: IS_DENO ? ["task", "dev"] : ["run", "dev"],
+        /** 显式 --port，避免与默认 8787 上已运行的 dev 错配 */
+        args: IS_DENO
+          ? [
+            "run",
+            "-A",
+            "../src/cli.ts",
+            "dev",
+            "--port",
+            String(EXAMPLES_E2E_PORT),
+          ]
+          : [
+            "run",
+            join("..", "src", "cli.ts"),
+            "dev",
+            "--port",
+            String(EXAMPLES_E2E_PORT),
+          ],
         cwd: examplesDir,
         env: envForExamplesChildProcess(),
         stdout: "inherit",
@@ -342,6 +413,8 @@ describe("浏览器测试（examples 入口）", () => {
     expect(text).toMatch(/多页面示例|Multi-page/);
     expect(text).toContain("createSignal");
     expect(text).toContain("createStore");
+    expect(text).toContain("列表插入");
+    expect(text).toContain("控制流");
     expect(text).toContain("Reactive");
     expect(text).toMatch(/进入示例|Enter/);
     const title = await getDocumentTitle(t);
@@ -485,6 +558,55 @@ describe("浏览器测试（examples 入口）", () => {
     expect(text).toContain("renderToString");
   }, exampleBrowserConfig);
 
+  /** For / Index / Show / Switch / Dynamic 控制流示例 */
+  it("控制流页：/control-flow 含 For 与 Show 等说明", async (t) => {
+    if (!t?.browser) return;
+    await navigate(t, "/control-flow");
+    await new Promise((r) => setTimeout(r, 300));
+    const text = await waitForMainToContain(t, "For", 8000);
+    expect(text).toContain("Index");
+    expect(text).toContain("Switch");
+    expect(text).toContain("Dynamic");
+    const title = await getDocumentTitle(t);
+    /** 标题随 i18n 可为中文「控制流」或英文「Control Flow」 */
+    expect(title).toMatch(/控制流|Control Flow/i);
+  }, exampleBrowserConfig);
+
+  /** 列表插入示例页：与 `insertIrList` / `coalesceIrList` / `expandIrArray` 文档一致 */
+  it("列表插入页：/list-insert 含 API 说明", async (t) => {
+    if (!t?.browser) return;
+    await navigate(t, "/list-insert");
+    await new Promise((r) => setTimeout(r, 300));
+    const text = await waitForMainToContain(t, "insertIrList", 8000);
+    expect(text).toContain("coalesceIrList");
+    const title = await getDocumentTitle(t);
+    /** 标题随 i18n 可为中文「列表插入」或英文「List Insert」 */
+    expect(title).toMatch(/列表插入|List Insert/i);
+  }, exampleBrowserConfig);
+
+  it(
+    "列表插入页：置 null 显示 fallback，点击两条文本显示 alpha/bravo",
+    async (t) => {
+      if (!t?.browser) return;
+      await navigate(t, "/list-insert");
+      await new Promise((r) => setTimeout(r, 400));
+      const clickedNull = await clickButtonByText(t, "置 null");
+      expect(clickedNull).toBe(true);
+      await new Promise((r) => setTimeout(r, 250));
+      const hasFallback = await t.browser!.evaluate(() =>
+        document.querySelector('[data-testid="ir-list-fallback"]') !== null
+      );
+      expect(hasFallback).toBe(true);
+      const clickedTwo = await clickButtonByText(t, "两条文本");
+      expect(clickedTwo).toBe(true);
+      await new Promise((r) => setTimeout(r, 300));
+      const text = await getMainText(t);
+      expect(text).toContain("alpha");
+      expect(text).toContain("bravo");
+    },
+    exampleBrowserConfig,
+  );
+
   it("首页点击「Router」卡片进入 Router 页", async (t) => {
     if (!t?.browser) return;
     await navigate(t, "/");
@@ -539,6 +661,10 @@ describe("浏览器测试（examples 入口）", () => {
     expect(title).toContain("Transition");
   }, exampleBrowserConfig);
 
+  /**
+   * 通过 **`double（createMemo）：n`**（全页唯一）断言计数：`n = count*2`。
+   * 不用 `count：` 旁数字：`innerText` 上多处 count 展示/换行导致正则不可靠（易长期读到 0）。
+   */
   it("Signal 页：+1 / -1 / 归零 后 count 与 double 更新", async (t) => {
     if (!t?.browser) return;
     await navigate(t, "/signal");
@@ -546,22 +672,19 @@ describe("浏览器测试（examples 入口）", () => {
     expect(title).toContain("Signal");
     const textBefore = await getMainText(t);
     expect(textBefore).toContain("createSignal");
+    /** 懒加载路由下首块可能晚于 layout；先等到该段文案出现再读数字 */
+    await waitForMainToContain(t, "double（createMemo）", 5000);
+    await waitForSignalDemoMemoDouble(t, "0");
     const clickedPlus = await clickButtonByText(t, "+1");
     expect(clickedPlus).toBe(true);
-    await new Promise((r) => setTimeout(r, 150));
-    let text = await getMainText(t);
-    expect(text).toMatch(/\b1\b/);
+    await waitForSignalDemoMemoDouble(t, "2");
     await clickButtonByText(t, "+1");
-    await new Promise((r) => setTimeout(r, 80));
-    text = await getMainText(t);
-    expect(text).toMatch(/\b2\b/);
+    await waitForSignalDemoMemoDouble(t, "4");
     await clickButtonByText(t, "-1");
-    await new Promise((r) => setTimeout(r, 80));
-    text = await getMainText(t);
-    expect(text).toMatch(/\b1\b/);
+    await waitForSignalDemoMemoDouble(t, "2");
     await clickButtonByText(t, "归零");
-    await new Promise((r) => setTimeout(r, 80));
-    text = await getMainText(t);
+    await waitForSignalDemoMemoDouble(t, "0");
+    const text = await getMainText(t);
     expect(text).toContain("0");
   }, exampleBrowserConfig);
 

@@ -10,9 +10,12 @@ import {
   createSignal,
   hydrate,
   insert,
+  insertReactive,
+  markMountFn,
   render,
   renderToString,
 } from "@dreamer/view/compiler";
+import type { InsertValue } from "@dreamer/view/compiler";
 
 describe("runtime", () => {
   it("insert 静态文本应直接挂到容器", () => {
@@ -130,12 +133,16 @@ describe("runtime", () => {
     count.value = 1;
     await Promise.resolve();
     expect(container.textContent).toBe("1");
-    expect(runCount).toBe(2);
+    /**
+     * `insertReactive` 重跑前 `onCleanup` 内 {@link runInsertReactiveIntrinsicVNodeCleanup} 会
+     * `untrack(() => readReactiveInsertRawFromGetter(getter))` 预读下一轮，故每次依赖更新 getter 执行 2 次（peek + 正跑）。
+     */
+    expect(runCount).toBe(3);
 
     count.value = 2;
     await Promise.resolve();
     expect(container.textContent).toBe("2");
-    expect(runCount).toBe(3);
+    expect(runCount).toBe(5);
   });
 
   it("unmount 后应回收 effect，不再响应 signal", async () => {
@@ -185,12 +192,13 @@ describe("runtime", () => {
     items.value = [10, 2, 3];
     await Promise.resolve();
     expect(container.textContent).toContain("10");
-    expect(runCounts).toEqual([2, 2, 2]); // 同一 signal items.value，三处 insert 都会重跑
+    /** 同上：每条 insert 的 effect 每次重跑前 peek + 体各调一次 getter */
+    expect(runCounts).toEqual([3, 3, 3]);
 
     items.value = [10, 20, 3];
     await Promise.resolve();
     expect(container.textContent).toContain("20");
-    expect(runCounts).toEqual([3, 3, 3]);
+    expect(runCounts).toEqual([5, 5, 5]);
   });
 
   /**
@@ -217,12 +225,12 @@ describe("runtime", () => {
     current.value = 1;
     await Promise.resolve();
     expect(container.querySelector(".carousel")?.textContent).toBe("slide1");
-    expect(getterRuns).toBe(2);
+    expect(getterRuns).toBe(3);
 
     current.value = 2;
     await Promise.resolve();
     expect(container.querySelector(".carousel")?.textContent).toBe("slide2");
-    expect(getterRuns).toBe(3);
+    expect(getterRuns).toBe(5);
   });
 
   it("container 为 null 时应抛明确错误", () => {
@@ -255,6 +263,69 @@ describe("runtime", () => {
     root.unmount();
     expect(container.childNodes.length).toBe(0);
     expect(container.textContent).toBe("");
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+/**
+ * compiler/insert 与 runtime 对齐：单参 MountFn 不得误走 insertReactive；insertReactive 须支持 DocumentFragment。
+ */
+describe("compiler insert：MountFn 与 insertReactive(DocumentFragment)", () => {
+  it("insert(markMountFn) 在 createRoot 下应挂载子节点", () => {
+    const container = document.createElement("div");
+    createRoot((el: Element) => {
+      insert(
+        el,
+        markMountFn((p: Node) => {
+          const span = document.createElement("span");
+          span.className = "mf-node";
+          span.textContent = "mf";
+          p.appendChild(span);
+        }) as unknown as InsertValue,
+      );
+    }, container);
+    expect(container.querySelector(".mf-node")?.textContent).toBe("mf");
+  });
+
+  it("insertReactive 返回 DocumentFragment 时应挂入子节点（compiler 路径）", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    try {
+      insertReactive(parent, () => {
+        const f = document.createDocumentFragment();
+        const span = document.createElement("span");
+        span.className = "frag-child";
+        span.textContent = "frag";
+        f.appendChild(span);
+        return f;
+      });
+      expect(parent.querySelector(".frag-child")?.textContent).toBe("frag");
+    } finally {
+      document.body.removeChild(parent);
+    }
+  });
+
+  it("hydrate 与 insert(markMountFn) 应对齐 SSR DOM", () => {
+    const fn = (el: Element) => {
+      insert(
+        el,
+        markMountFn((p: Node) => {
+          const span = document.createElement("span");
+          span.className = "hy-mf";
+          span.textContent = "h";
+          p.appendChild(span);
+        }) as unknown as InsertValue,
+      );
+    };
+    const html = renderToString(
+      fn as unknown as (
+        el: import("@dreamer/view/compiler").SSRElement,
+      ) => void,
+    );
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    const root = hydrate(fn, container);
+    expect(container.querySelector(".hy-mf")?.textContent).toBe("h");
+    root.unmount();
   });
 }, { sanitizeOps: false, sanitizeResources: false });
 

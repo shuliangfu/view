@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Lightweight reactive view engine with signals and effects; fine-grained DOM updates without virtual DOM. Supports CSR, SSR, streaming SSR, and hydration. JSX with v-if, v-once, v-cloak and store, router, context.",
@@ -16,7 +16,14 @@
     "./csr": "./src/mod-csr.ts",
     "./hybrid": "./src/mod-hybrid.ts",
     "./jsx-runtime": "./src/jsx-runtime.ts",
+    "./jsx-runtime/jsx-runtime": "./src/jsx-runtime/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
+    "./jsx-handoff": "./src/jsx-handoff.ts",
+    "./vnode-debug": "./src/vnode-debug.ts",
+    "./lazy": "./src/lazy.ts",
+    "./map-array": "./src/map-array.ts",
+    "./for": "./src/for.ts",
+    "./show": "./src/show.ts",
     "./ref": "./src/ref.ts",
     "./signal": "./src/signal.ts",
     "./effect": "./src/effect.ts",
@@ -37,7 +44,9 @@
     "./globals": "./src/globals.ts",
     "./dom": "./src/dom.ts",
     "./jsx-compiler": "./src/jsx-compiler/mod.ts",
-    "./compiled": "./src/compiled.ts"
+    "./compiled": "./src/compiled.ts",
+    "./switch-match": "./src/switch-match.ts",
+    "./dynamic": "./src/dynamic.ts"
   },
   "scripts": {
     "test": "bun test --preload ./tests/dom-setup.ts tests/",

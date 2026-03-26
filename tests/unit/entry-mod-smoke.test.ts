@@ -5,7 +5,7 @@
 import { describe, expect, it } from "@dreamer/test";
 import { createSignal as csrSig } from "@dreamer/view/csr";
 import { createSignal as hybridSig } from "@dreamer/view/hybrid";
-import { createSignal as mainSig } from "@dreamer/view";
+import { createSignal as mainSig, jsxMerges, jsxs } from "@dreamer/view";
 import { insert } from "@dreamer/view/compiler";
 import { renderToString } from "@dreamer/view/ssr";
 
@@ -34,5 +34,19 @@ describe("入口 mod 烟测", () => {
       insert(el, "ssr-smoke");
     });
     expect(html).toContain("ssr-smoke");
+  });
+
+  /**
+   * 主入口与 `@dreamer/view/jsx-runtime` 同源导出 `jsxMerges` / `jsxs`，便于手写 JSX 时少记一条子路径。
+   */
+  it("主包应导出 jsxMerges 且单子项 children 仍为数组", () => {
+    const child = {
+      type: "#text" as const,
+      props: { nodeValue: "mod" },
+      children: [],
+    };
+    const vMerge = jsxMerges("span", { className: "x" }, { children: [child] });
+    const vJsxs = jsxs("span", { className: "x", children: [child] });
+    expect(vMerge).toEqual(vJsxs);
   });
 });

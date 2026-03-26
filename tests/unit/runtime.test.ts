@@ -11,6 +11,7 @@ import {
   generateHydrationScript,
   insert,
   insertReactive,
+  markMountFn,
   mount,
   render,
 } from "@dreamer/view";
@@ -209,12 +210,12 @@ describe("mount", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     createRoot((el) => {
-      const childMount = (p: Node) => {
+      const childMount = markMountFn((p: Node) => {
         const span = document.createElement("span");
         span.className = "fm-child";
         span.textContent = "in-form";
         p.appendChild(span);
-      };
+      });
       const props = { children: childMount };
       const formMount = (parent: Element) => {
         const f = document.createElement("form");
@@ -267,6 +268,27 @@ describe("mount", () => {
     const span = container.querySelector("span");
     expect(span).not.toBeNull();
     expect(span?.textContent).toBe("getter-inner");
+    document.body.removeChild(container);
+  });
+
+  /**
+   * 未走 compileSource 时，打包器可能对静态 JSX 生成 `insert(parent, jsx(...))`（第二参为 VNode 对象而非 getter）。
+   * 须走 mountVNodeTree，不得落入 insertStatic→toNodeForInsert。
+   */
+  it("insert(静态 VNode) 应展开本征子树（模拟 esbuild 静态 JSX）", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const staticVNode = {
+      type: "p" as const,
+      props: { className: "static-jsx", children: "leaf" },
+      key: undefined,
+      children: "leaf" as unknown,
+    } as import("@dreamer/view").VNode;
+    createRoot((el) => {
+      insert(el, staticVNode as never);
+    }, container);
+    const p = container.querySelector("p.static-jsx");
+    expect(p?.textContent).toBe("leaf");
     document.body.removeChild(container);
   });
 

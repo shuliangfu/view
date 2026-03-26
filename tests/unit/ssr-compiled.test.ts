@@ -4,9 +4,11 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import type { InsertValue } from "@dreamer/view/compiler";
+import { insertReactive, markMountFn } from "@dreamer/view";
+import type { InsertParent, InsertValue } from "@dreamer/view/compiler";
 import {
   createSSRDocument,
+  getChildNodesList,
   insert,
   renderToStream,
   renderToString,
@@ -25,6 +27,43 @@ describe("createSSRDocument", () => {
     expect(text.nodeValue).toBe("hi");
     expect(text.serialize()).toBe("hi");
   });
+
+  /**
+   * SSR 伪 document 的 createTextNode 若对 function 使用 `String(fn)`，会与浏览器行为不一致且整页输出挂载函数源码。
+   */
+  it("createTextNode 在运行时为 function 时应降级为空串而非序列化函数体", () => {
+    const doc = createSSRDocument();
+    const mountLike = () => {};
+    const tn = doc.createTextNode(mountLike as unknown as string);
+    expect(tn.nodeValue).toBe("");
+    expect(tn.serialize()).toBe("");
+  });
+
+  /**
+   * 与浏览器 Text 节点一致：存在 childNodes（空数组），避免 insertReactive 等路径读 length 时报 undefined。
+   */
+  it("SSR Text 节点应提供空 childNodes 且 getChildNodesList 可读", () => {
+    const doc = createSSRDocument();
+    const tn = doc.createTextNode("x");
+    expect(tn.childNodes.length).toBe(0);
+    expect(getChildNodesList(tn as unknown as Node).length).toBe(0);
+  });
+
+  /**
+   * 回归：受控组件 ref 内 `el.innerHTML = value` 在 Hybrid/SSR 须可写。
+   * 仅 getter 时 Deno/SSR 抛「Cannot set property innerHTML」；setter 以 SSRRawHtmlNode 承载并参与序列化。
+   */
+  it("SSRElement 应支持 innerHTML setter，outerHTML 含赋值片段且 textContent 可近似读取", () => {
+    const doc = createSSRDocument();
+    const div = doc.createElement("div");
+    div.setAttribute("data-ed", "1");
+    div.innerHTML = '<p class="x">初始</p>';
+    expect(div.innerHTML).toBe('<p class="x">初始</p>');
+    expect(div.textContent).toBe("初始");
+    const out = div.serialize();
+    expect(out).toContain('<p class="x">初始</p>');
+    expect(out).toMatch(/^<div[^>]*data-ed/);
+  });
 });
 
 describe("renderToString", () => {
@@ -34,6 +73,23 @@ describe("renderToString", () => {
     });
     expect(typeof html).toBe("string");
     expect(html).toBe("hello");
+  });
+
+  /**
+   * 主入口 `@dreamer/view` 加载末尾会用 `runtime.insertReactive` 覆盖 vnode 桥接；
+   * MountFn 分支通过 `captureNewChildren` 收集新子节点，须用 `getChildNodesList`，禁止裸读 `parent.childNodes`（缺失时会 `undefined.length`）。
+   */
+  it("insertReactive 在 getter 返回 MountFn 时 SSR 应能序列化挂载子树", () => {
+    const html = renderToString((el) => {
+      insertReactive(el as InsertParent, () =>
+        markMountFn((p) => {
+          const span = document.createElement("span");
+          span.setAttribute("data-ssr-mountfn", "1");
+          p.appendChild(span as unknown as Node);
+        }));
+    });
+    expect(html).toContain("<span");
+    expect(html).toContain("data-ssr-mountfn");
   });
 
   it("insert 静态多段应串联", () => {
@@ -162,6 +218,39 @@ describe("renderToString", () => {
     expect(html).not.toContain(">1<");
     expect(html).toContain(">2<");
     expect(html).not.toContain(">3<");
+  });
+
+  /**
+   * 布局 `{children}` 经 compileSource 后常为「无参 getter 返回内层 MountFn」；
+   * mountChildItemForVnode 若对 MountFn 走 String()，SSR 会把整段挂载函数打进 HTML（Hybrid 首屏满屏 JS）。
+   */
+  it("本征 div 的 children 为 getter 且返回 MountFn 时应序列化真实文本，不得含函数源码", () => {
+    const html = renderToString((el) => {
+      insert(el, () =>
+        jsx("div", {
+          class: "wrap",
+          children: () => {
+            /**
+             * 模拟 compileSource 内层产物：单参挂载函数。
+             *
+             * @param p - 父节点（SSR 为 SSRElement）
+             */
+            const mountInner = markMountFn(
+              (p: { appendChild(n: unknown): unknown }) => {
+                const d = (globalThis as unknown as {
+                  document: ReturnType<typeof createSSRDocument>;
+                }).document;
+                p.appendChild(d.createTextNode("inside-ssr"));
+              },
+            );
+            return mountInner;
+          },
+        }) as unknown as InsertValue);
+    });
+    expect(html).toContain("inside-ssr");
+    expect(html).toContain("wrap");
+    expect(html).not.toContain("__viewMountParent");
+    expect(html).not.toMatch(/function\s*\(/);
   });
 });
 

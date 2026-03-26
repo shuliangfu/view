@@ -150,3 +150,9 @@ export function createResource<T>(
   };
   return markSignalGetter(getter) as () => ResourceResult<T>;
 }
+
+/** 懒组件：与 `createResource` 同路径导出，便于 `import { createResource, lazy } from "jsr:@dreamer/view/resource"` */
+export { lazy } from "./lazy.ts";
+export type { LazyComponentModule } from "./lazy.ts";
+/** `mapArray` 简化版：列表 memo 映射，见模块文档 */
+export { mapArray } from "./map-array.ts";

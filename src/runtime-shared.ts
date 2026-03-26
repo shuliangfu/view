@@ -1,6 +1,6 @@
 /**
  * 运行时共享：resolveMountContainer、NOOP_ROOT、removeCloak。
- * 供 runtime / runtime-csr / runtime-hybrid 的 mount 等复用。
+ * 供 `runtime.ts`（主包）与 `runtime-csr.ts`（csr/hybrid 共用）的 mount 等复用。
  * @internal 仅由上述 runtime 模块使用，不对外导出
  */
 

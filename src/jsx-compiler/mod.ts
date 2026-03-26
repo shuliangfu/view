@@ -10,6 +10,13 @@
  */
 
 export {
+  collectScopedSignalsAndShadows,
+  expressionReadsReactiveBinding,
+  expressionReferencesPropsLikeParameter,
+  isCreateSignalCall,
+  jsxExpressionMayHoistToInsertWithDeps,
+} from "./dependency-graph.ts";
+export {
   compileSource,
   type CompileSourceOptions,
   jsxToRuntimeFunction,

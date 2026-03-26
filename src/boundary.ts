@@ -8,7 +8,7 @@
  *
  * **导出函数：** isErrorBoundary、getErrorBoundaryFallback（供编译态 try/catch 或 dom 层使用）
  *
- * **全量编译：** ErrorBoundary 接收 children 为无参 getter `() => slot` 或 (parent)=>void；slot 常为 `() => () => (parent)=>void`，运行时先 **剥壳** 再包一层 MountFn try/catch，否则 `insertReactive` 认不出 MountFn、错误仍会冒泡到控制台。Suspense 接收 **children 为无参 getter** `() => slot`，返回 (parent)=>void，内部 `insert(..., () => resolved ?? fallback)`。
+ * **全量编译：** ErrorBoundary 接收 children 为无参 getter `() => slot` 或 (parent)=>void；slot 常为 `() => () => (parent)=>void`，运行时先 **剥壳** 再经 {@link wrapMountFnSlotWithTrackedReactiveInsert} 挂 **内层** `insertReactive`（在 fragment 上执行 MountFn，使其中 signal 读能订阅），否则外层 MountFn 在 `untrack` 中执行会 **漏订阅**、错误边界无法在 signal 更新后落 fallback。Suspense 接收 **children 为无参 getter** `() => slot`，返回 (parent)=>void，内部 `insert(..., () => resolved ?? fallback)`。
  *
  * **与「要不要手写 `() =>`」的关系：**
  * - **`RoutePage` 已加载的页面**：内层 `createEffect` 每次重跑都会再次调用 `default()`（经 `pageDefaultToMountFn`），你在页面函数里读的任意 signal（含写在 JSX 里的 `sig.value`）都会让该 effect 订阅并在变化时 **整段重建 VNode**。因此 **ErrorBoundary 下可直接写 `<Child x={sig.value} />`**，不必为了跟 signal 而再包一层 `{() => …}`。
@@ -20,7 +20,8 @@
  * </ErrorBoundary>
  */
 
-import { isMountFn } from "./compiler/insert.ts";
+import { isMountFn, markMountFn } from "./compiler/insert.ts";
+import { createReactiveInsertFragment } from "./compiler/insert-reactive-siblings.ts";
 import { mountVNodeTree } from "./compiler/vnode-mount.ts";
 import { isEmptyChild, isVNodeLike } from "./dom/shared.ts";
 import { createEffect } from "./effect.ts";
@@ -62,6 +63,32 @@ function peelDeferredSlotValue(slot: unknown): unknown {
 }
 
 /**
+ * 将单参 MountFn 挂到 **内层** `insertReactive`：getter 内在 fragment 上同步执行 `inner`，使其中对 signal 的读
+ * 登记到该内层 effect（外层对 MountFn 的 `insertReactive` 调用在 `untrack` 中，否则会漏订阅，signal 变后子树不刷新、错误边界不落 fallback）。
+ *
+ * @param inner - 剥壳后的 DOM 挂载函数
+ * @param props - 用于取 fallback
+ */
+function wrapMountFnSlotWithTrackedReactiveInsert(
+  inner: (parent: Node) => void,
+  props: {
+    fallback: (error: unknown) => ErrorBoundaryInsertValue;
+  },
+): ErrorBoundaryInsertValue {
+  return markMountFn((parent: Node) => {
+    insertReactive(parent, () => {
+      const frag = createReactiveInsertFragment();
+      try {
+        inner(frag);
+      } catch (e) {
+        return getErrorBoundaryFallback(props)(e);
+      }
+      return frag;
+    });
+  });
+}
+
+/**
  * 无参 children getter 可能返回「延迟执行」的单参 MountFn（全量编译下 JSX 常如此）：同步抛错发生在
  * `insertReactive` 调用该 MountFn 时，而非 getter 求值时，故须在 MountFn 内再 try/catch 才能显示 fallback。
  * VNode 同理：`mountVNodeTree` 在 effect 内执行，错误会逃逸到调度器。
@@ -80,39 +107,39 @@ function wrapReactiveSlotForErrorBoundary(
   if (isEmptyChild(peeled)) return "";
   if (isVNodeLike(peeled)) {
     const tree = peeled as VNode;
-    return (parent: Node) => {
+    return markMountFn((parent: Node) => {
       try {
         mountVNodeTree(parent, tree);
       } catch (e) {
         insert(parent, getErrorBoundaryFallback(props)(e));
       }
-    };
+    });
   }
   if (isMountFn(peeled)) {
-    const inner = peeled;
-    return (parent: Node) => {
-      try {
-        inner(parent);
-      } catch (e) {
-        insert(parent, getErrorBoundaryFallback(props)(e));
-      }
-    };
+    return wrapMountFnSlotWithTrackedReactiveInsert(peeled, props);
   }
   if (Array.isArray(peeled)) {
     return peeled.map((item) => {
       const itemPeeled = peelDeferredSlotValue(item);
       if (isMountFn(itemPeeled)) {
-        const innerArr = itemPeeled;
-        return (parent: Node) => {
-          try {
-            innerArr(parent);
-          } catch (e) {
-            insert(parent, getErrorBoundaryFallback(props)(e));
-          }
-        };
+        return wrapMountFnSlotWithTrackedReactiveInsert(itemPeeled, props);
       }
       return itemPeeled;
     }) as unknown as ErrorBoundaryInsertValue;
+  }
+  /**
+   * 单测/旧手写 slot 可能返回未打标的 `(parent)=>void`；包一层 try/catch 并 markMountFn，避免 insertReactive 拒识。
+   * （业务 slot 不应传入 `expandedRowRender(record)` 这类单参回调，否则会误当 MountFn 调用。）
+   */
+  if (
+    typeof peeled === "function" &&
+    (peeled as (p: unknown) => unknown).length === 1 &&
+    !isSignalGetter(peeled as () => unknown)
+  ) {
+    return wrapMountFnSlotWithTrackedReactiveInsert(
+      peeled as (p: Node) => void,
+      props,
+    );
   }
   return peeled as ErrorBoundaryInsertValue;
 }
@@ -214,7 +241,7 @@ export function ErrorBoundary(props: {
   children?: unknown;
 }): (parent: Node) => void {
   const children = normalizeErrorBoundaryChildrenProp(props.children);
-  const mount = (parent: Node): void => {
+  const mountImpl = (parent: Node): void => {
     if (typeof children === "function") {
       const fn = children as (...args: unknown[]) => unknown;
       /**
@@ -247,7 +274,7 @@ export function ErrorBoundary(props: {
       insert(parent, getErrorBoundaryFallback(props)(e));
     }
   };
-  return mount;
+  return markMountFn(mountImpl);
 }
 (ErrorBoundary as unknown as Record<symbol, unknown>)[ERROR_BOUNDARY_MARKER] =
   true;
@@ -289,7 +316,7 @@ function normalizeSuspenseResolvedValue(v: unknown): SuspenseResolvedContent {
   if (typeof v === "function") {
     const fn = v as (p: Node) => void;
     if (fn.length === 1) {
-      return fn;
+      return markMountFn(fn);
     }
   }
   return v as VNode;
@@ -335,24 +362,25 @@ export function Suspense(props: {
 }): (parent: Node) => void {
   const resolved = createSignal<SuspenseResolvedContent>(null);
   /**
-   * 单调 epoch：cleanup 时递增，使旧 Promise 回调与当前 effect 代数不一致时放弃写入 resolved。
-   * 旧实现用 `generation = -1` 再 `++generation`，导致多轮后 gen 恒为 0、竞态与「一直 fallback」更难排查。
+   * 用「本轮 effect 专属」存活标记淘汰旧 Promise 回调，避免与全局 epoch 比较在微任务顺序下误判：
+   * `createEffect` 重跑由调度器入队微任务，`Promise.prototype.then` 回调也是微任务，二者交错时
+   * `myEpoch !== epoch` 可能让**仍应生效**的 resolve 被跳过（examples Boundary 在切换 ErrorBoundary 后一直停在「加载中…」）。
+   * cleanup 仅将**本闭包**的 `runAlive.v` 置 false，与新一代 effect 的标记无关。
    */
-  let epoch = 0;
   createEffect(() => {
-    const myEpoch = ++epoch;
+    const runAlive = { v: true };
     const c = readSuspenseChildSource(props.children);
     if (c != null && typeof (c as Promise<unknown>).then === "function") {
       void (c as Promise<unknown>)
         .then((v) => {
-          if (myEpoch !== epoch) return;
+          if (!runAlive.v) return;
           setSuspenseResolvedState(
             resolved,
             normalizeSuspenseResolvedValue(v),
           );
         })
         .catch(() => {
-          if (myEpoch !== epoch) return;
+          if (!runAlive.v) return;
           setSuspenseResolvedState(resolved, null);
         });
     } else {
@@ -362,10 +390,10 @@ export function Suspense(props: {
       );
     }
     return () => {
-      epoch++;
+      runAlive.v = false;
     };
   });
-  return (parent: Node) => {
+  return markMountFn((parent: Node) => {
     insert(parent, () => resolved.value ?? valueOf(props.fallback));
-  };
+  });
 }

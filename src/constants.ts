@@ -16,6 +16,28 @@
 /** 调度器队列与 scheduled 状态（scheduler.ts） */
 export const KEY_SCHEDULER = "__VIEW_SCHEDULER";
 
+/**
+ * 为 true 时 `flushQueue` 在批末尝试按 id/name+type+value 启发式恢复上一活跃 `input`/`textarea`/`select` 焦点（步骤 6，默认未设置视为 false）。
+ */
+export const KEY_VIEW_SCHEDULER_FOCUS_RESTORE_ENABLED =
+  "__VIEW_SCHEDULER_FOCUS_RESTORE_ENABLED__";
+
+/**
+ * 为严格 `true` 时，组字期间（`KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH` 大于 0）推迟 `flushQueue`，
+ * 以微任务链轮询直至深度归零后一次合并 flush。**默认未设置或其它值视为关闭**，避免误设深度导致微任务无法收敛。
+ * 与 {@link KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH} 配合，见 scheduler.ts。
+ */
+export const KEY_VIEW_SCHEDULER_DEFER_FLUSH_WHILE_COMPOSING =
+  "__VIEW_SCHEDULER_DEFER_FLUSH_WHILE_COMPOSING__";
+
+/** 当前文档上 IME 组字会话嵌套深度（compositionstart +1 / compositionend -1），存于 globalThis */
+export const KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH =
+  "__VIEW_SCHEDULER_COMPOSITION_DEPTH__";
+
+/** 已在 document 上挂载 composition 监听时为 true，避免重复 addEventListener */
+export const KEY_VIEW_SCHEDULER_COMPOSITION_LISTENERS_INSTALLED =
+  "__VIEW_SCHEDULER_COMPOSITION_LISTENERS_INSTALLED__";
+
 /** 当前正在执行的 effect，用于依赖收集（signal.ts） */
 export const KEY_CURRENT_EFFECT = "__VIEW_CURRENT_EFFECT";
 
@@ -62,6 +84,13 @@ export const KEY_VIEW_HYDRATE = "__VIEW_HYDRATE__";
 
 /** 开发模式：启用 hydration 不匹配告警、忘记 getter 提示等（可由构建或运行时设置） */
 export const KEY_VIEW_DEV = "__VIEW_DEV__";
+
+/**
+ * 严格 `true` 时，`insertReactive` 在「提交前已有追踪节点」的轮次中累计 patch vs 整段重挂次数，
+ * 由 `getIrMetrics`（`compiler/ir-metrics.ts`）读取；默认关。
+ */
+export const KEY_VIEW_IR_METRICS_ENABLED =
+  "__VIEW_INSERT_REACTIVE_METRICS_ENABLED__";
 
 /**
  * `globalThis` 键：根 `_app` 挂载的 Router 实例，供约定式布局等读取当前路径（见 `@dreamer/view/router` 文档）。

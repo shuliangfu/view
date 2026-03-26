@@ -216,6 +216,40 @@ const ModuleIcons: Record<string, () => VNode> = {
       />
     </svg>
   ),
+  /** For、Index、Show、Switch、Match、Dynamic */
+  controlFlow: () => (
+    <svg
+      className="h-8 w-8 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+      />
+    </svg>
+  ),
+  /** insertIrList、coalesceIrList、expandIrArray */
+  listInsert: () => (
+    <svg
+      className="h-8 w-8 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M4 6h16M4 12h10M4 18h16"
+      />
+    </svg>
+  ),
   /** 原生 form + 密码框，焦点保留验证 */
   form: () => (
     <svg
@@ -283,6 +317,23 @@ const HOME_MODULES: Array<{
     iconKey: "reactive",
     accent: "border-l-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10",
     accentText: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    title: "控制流",
+    desc: "For、Index、Show、Switch、Match、Dynamic",
+    href: "/control-flow",
+    iconKey: "controlFlow",
+    accent: "border-l-purple-500 bg-purple-500/5 dark:bg-purple-500/10",
+    accentText: "text-purple-600 dark:text-purple-400",
+  },
+  /** 与 tests/e2e 首页烟测「列表插入」文案一致 */
+  {
+    title: "列表插入",
+    desc: "insertIrList、coalesceIrList、expandIrArray",
+    href: "/list-insert",
+    iconKey: "listInsert",
+    accent: "border-l-fuchsia-500 bg-fuchsia-500/5 dark:bg-fuchsia-500/10",
+    accentText: "text-fuchsia-600 dark:text-fuchsia-400",
   },
   {
     title: "Resource",
@@ -423,6 +474,10 @@ export function Home(): VNode {
                     ? "bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-400"
                     : mod.iconKey === "transition"
                     ? "bg-sky-600 hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400"
+                    : mod.iconKey === "listInsert"
+                    ? "bg-fuchsia-600 hover:bg-fuchsia-500 dark:bg-fuchsia-500 dark:hover:bg-fuchsia-400"
+                    : mod.iconKey === "controlFlow"
+                    ? "bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400"
                     : "bg-sky-600 hover:bg-sky-500 dark:bg-sky-500 dark:hover:bg-sky-400")}
               >
                 进入示例

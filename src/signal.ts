@@ -4,14 +4,14 @@
  * @module @dreamer/view/signal
  * @packageDocumentation
  *
- * **导出函数：** `createSignal`、`getCurrentEffect`、`setCurrentEffect`、`markSignalGetter`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`
+ * **导出函数：** `createSignal`（可选第二参 `true` 时返回 `[get, set]` 元组）、`getCurrentEffect`、`setCurrentEffect`、`untrackReads`、`shouldTrackReadDependency`（读依赖是否登记）、`markSignalGetter`、`isSignalGetter`、`isSignalRef`、`unwrapSignalGetterValue`
  *
  * **导出常量：** `SIGNAL_GETTER_MARKER`、`SIGNAL_REF_MARKER`（一般通过 `isSignalGetter` / `isSignalRef` 判断即可）
  */
 
 import { KEY_CURRENT_EFFECT } from "./constants.ts";
 import { getGlobal, setGlobal } from "./globals.ts";
-import { schedule } from "./scheduler.ts";
+import { notifyEffectSubscriber } from "./scheduler.ts";
 
 /** 当前正在执行的 effect（run 函数），用于依赖收集；run 上可挂 _subscriptionSets 供清理 */
 type EffectRun = (() => void) & { _subscriptionSets?: Subscriber[] };
@@ -42,6 +42,84 @@ export function getCurrentEffect(): (() => void) | null {
 type Subscriber = Set<() => void>;
 
 /**
+ * 嵌套深度：大于 0 时 signal 读值**不**把当前 effect 登记为订阅者，
+ * 但 `getCurrentEffect()` 仍可非 null（供 `onMount` 回调内 `onCleanup` 等与同类方案 同向语义）。
+ */
+let untrackReadDepth = 0;
+
+/**
+ * 在**保留**当前 effect 上下文的前提下执行 `fn`，其中对 signal 的读取**不会**建立依赖（读侧与 `setCurrentEffect(null)` 的 `untrack` 等价，但不影响 `onCleanup` 登记到当前 effect）。
+ *
+ * @param fn - 在抑制读追踪期间执行的函数
+ * @returns `fn()` 的返回值
+ * @internal 主要由 `effect.ts` 的 `onMount` 使用
+ */
+export function untrackReads<T>(fn: () => T): T {
+  untrackReadDepth++;
+  try {
+    return fn();
+  } finally {
+    untrackReadDepth--;
+  }
+}
+
+/**
+ * 当前是否应对 signal / store 的读取登记 effect 依赖（`untrackReads` 嵌套内为 false）。
+ *
+ * @returns 未处于 `untrackReads` 内则为 true
+ */
+export function shouldTrackReadDependency(): boolean {
+  return untrackReadDepth === 0;
+}
+
+/**
+ * 由 {@link createSignal} 注册的「忽略 Object.is、仍调度订阅者」写入器，供 {@link createMemo} 的 `equals: false` 使用。
+ * 不挂在 `SignalRef` 上，避免公开 API 膨胀。
+ */
+const signalForceNotifyWriters = new WeakMap<
+  SignalRef<unknown>,
+  (next: unknown) => void
+>();
+
+/**
+ * 由 {@link createSignal} 注册的「按值写入、不把 `function` 当 updater」写入器，供 `createMemo` / `createDeferred` 缓存任意 `T`（含函数、`markMountFn`）。
+ */
+const signalRawValueWriters = new WeakMap<
+  SignalRef<unknown>,
+  (next: unknown) => void
+>();
+
+/**
+ * 将 `next` 直接写入底层缓存（与 `ref.value = next` 不同：**不会**在 `typeof next === "function"` 时走 updater 语义）。
+ * 仍遵守 `Object.is` 相等则跳过写入与通知。
+ *
+ * @param ref - `createSignal` 返回值
+ * @param next - 要缓存的下一值（可为函数）
+ * @internal
+ */
+export function writeSignalValueRaw<T>(ref: SignalRef<T>, next: T): void {
+  const w = signalRawValueWriters.get(ref as SignalRef<unknown>);
+  if (w != null) {
+    w(next);
+  }
+}
+
+/**
+ * 写入 signal 并**始终** `schedule` 订阅者，即使新值与当前值 `Object.is` 为真。
+ * 仅用于 `createMemo(..., { equals: false })` 等需对齐 同类方案 的窄场景；一般业务请用 `.value =`。
+ *
+ * @param ref - `createSignal` 返回值
+ * @param next - 下一缓存值
+ * @internal
+ */
+export function writeSignalForceNotify<T>(ref: SignalRef<T>, next: T): void {
+  const w = signalForceNotifyWriters.get(ref as SignalRef<unknown>);
+  if (w != null) {
+    w(next);
+  }
+}
+
+/**
  * 响应式单值容器：读 `ref.value` 登记依赖，写 `ref.value = next` 或 `ref.value = prev => next` 更新并通知订阅。
  *
  * 由 `createSignal` 返回；模板中可写 `{count}`，编译器会生成 `unwrapSignalGetterValue(count)`，内部会读 `.value`。
@@ -69,27 +147,18 @@ export function isSignalRef(x: unknown): x is SignalRef<unknown> {
 }
 
 /**
- * 创建响应式信号（单对象 + `.value` 读写）
+ * 分配底层 `SignalRef`（单例存储 + 订阅表），供 {@link createSignal} 两种返回形态共用。
  *
- * @param initialValue 初始值
- * @returns `SignalRef<T>`：读 `ref.value` 登记依赖，写 `ref.value = x` 或 `ref.value = (prev) => next` 更新
- *
- * **注意：** 若将 `function` 赋给 `.value`，会当作 `(prev) => next` 更新函数，而非「状态值本身是函数」。
- * 若 `T` 含函数类型（如存 MountFn），须用 `ref.value = (prev) => fnValue` 写入，参见 `boundary.ts` 的 `setSuspenseResolvedState`。
- *
- * @example
- * const count = createSignal(0);
- * createEffect(() => console.log(count.value));
- * count.value = 1;
- * count.value = (n) => n + 1;
+ * @param initialValue - 初始值
+ * @returns 带 `SIGNAL_REF_MARKER` 与 force-notify 注册的容器
  */
-export function createSignal<T>(initialValue: T): SignalRef<T> {
+function allocateSignalRef<T>(initialValue: T): SignalRef<T> {
   let value = initialValue;
   const subscribers: Subscriber = new Set();
 
   const read = (): T => {
     const currentEffect = getCurrentEffect() as EffectRun | null;
-    if (currentEffect) {
+    if (currentEffect && shouldTrackReadDependency()) {
       subscribers.add(currentEffect);
       if (currentEffect._subscriptionSets) {
         currentEffect._subscriptionSets.push(subscribers);
@@ -106,7 +175,11 @@ export function createSignal<T>(initialValue: T): SignalRef<T> {
       return;
     }
     value = nextValue;
-    subscribers.forEach((run) => schedule(run));
+    /** 快照后再通知：同步 `createRenderEffect` 会在回调内重新 `subscribers.add`，禁止在 forEach 迭代同一 Set 时就地变更（会死循环或漏调）。 */
+    const toNotify = [...subscribers];
+    for (let i = 0; i < toNotify.length; i++) {
+      notifyEffectSubscriber(toNotify[i]!);
+    }
   };
 
   const box: SignalRef<T> = {
@@ -118,7 +191,75 @@ export function createSignal<T>(initialValue: T): SignalRef<T> {
     },
   };
   (box as unknown as Record<symbol, boolean>)[SIGNAL_REF_MARKER] = true;
+  signalForceNotifyWriters.set(box as SignalRef<unknown>, (next: unknown) => {
+    value = next as T;
+    const toNotify = [...subscribers];
+    for (let i = 0; i < toNotify.length; i++) {
+      notifyEffectSubscriber(toNotify[i]!);
+    }
+  });
+  signalRawValueWriters.set(box as SignalRef<unknown>, (next: unknown) => {
+    const nextValue = next as T;
+    if (Object.is(value, nextValue)) {
+      return;
+    }
+    value = nextValue;
+    const toNotify = [...subscribers];
+    for (let i = 0; i < toNotify.length; i++) {
+      notifyEffectSubscriber(toNotify[i]!);
+    }
+  });
   return box;
+}
+
+/**
+ * 默认：返回 `.value` 容器；第二参为严格 **`true`** 时返回 **`[get, set]`** 元组（`get` 已 {@link markSignalGetter}）。
+ *
+ * **注意：** 若将 `function` 赋给 `ref.value` / 传给 `set`，均视为 `(prev) => next` updater，而非「状态值本身是函数」。
+ * 若 `T` 含函数类型，须用 `set((prev) => fnValue)` 或 `ref.value = (prev) => fnValue`。
+ *
+ * @param initialValue - 初始值
+ * @param asTuple - 传 `true` 时返回 `[() => T, setter]`，与 `types.SignalTuple<T>` 一致
+ *
+ * @example
+ * const n = createSignal(0);
+ * n.value = 1;
+ *
+ * @example
+ * const [count, setCount] = createSignal(0, true);
+ * createEffect(() => console.log(count()));
+ * setCount(2);
+ */
+export function createSignal<T>(initialValue: T): SignalRef<T>;
+export function createSignal<T>(
+  initialValue: T,
+  asTuple: true,
+): [() => T, (value: T | ((prev: T) => T)) => void];
+export function createSignal<T>(
+  initialValue: T,
+  asTuple?: boolean,
+): SignalRef<T> | [() => T, (value: T | ((prev: T) => T)) => void] {
+  const ref = allocateSignalRef(initialValue);
+  if (asTuple === true) {
+    const get = (): T => ref.value;
+    markSignalGetter(get);
+    const set = (next: T | ((prev: T) => T)): void => {
+      const prevEff = getCurrentEffect();
+      setCurrentEffect(null);
+      try {
+        if (typeof next === "function") {
+          const cur = ref.value;
+          ref.value = (next as (prev: T) => T)(cur);
+        } else {
+          ref.value = next;
+        }
+      } finally {
+        setCurrentEffect(prevEff);
+      }
+    };
+    return [get, set];
+  }
+  return ref;
 }
 
 /**

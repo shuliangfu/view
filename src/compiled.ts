@@ -6,12 +6,13 @@
  * @module @dreamer/view/compiled
  * @packageDocumentation
  *
- * **与主入口对齐的导出：** `createRef`、`createEffect`、`createMemo`、`onCleanup`、`untrack`、`getDocument`、`setGlobal`、`createRoot`、`render`、`mount`、`generateHydrationScript`、`insert`、`insertMount`、`insertReactive`、`insertStatic`、`getActiveDocument`、`renderToString`、`renderToStream`、`createSignal` 与相关类型等（见本文件 `export` 列表）
+ * **与主入口对齐的导出：** `createRef`、`createEffect`、`createRenderEffect`、`createMemo`、`children`、`createDeferred`、`createReaction`、`catchError`、`on`、`onCleanup`、`onMount`、`untrack`、`getDocument`、`setGlobal`、`createRoot`、`render`、`mount`、`generateHydrationScript`、`insert`、`insertMount`、`insertReactive`、`insertStatic`、`getActiveDocument`、`renderToString`、`renderToStream`、`createSignal`、`mergeRefs`、`defaultProps`、`createResource`、`lazy`、`mapArray` 与相关类型等（见本文件 `export` 列表）
  */
 
 export { createRef } from "./ref.ts";
 export type { ElementRef } from "./ref.ts";
-export { createEffect, createMemo, onCleanup, untrack } from "./effect.ts";
+/** Signal / Effect / Resource / 控制流 / 常用类型：与 `@dreamer/view/csr` 核心子集同源（见 `client-exports.ts`） */
+export * from "./client-exports.ts";
 export { getDocument, setGlobal } from "./globals.ts";
 export {
   createRoot,
@@ -27,24 +28,10 @@ export {
   insertStatic,
 } from "./runtime.ts";
 export { getActiveDocument } from "./compiler/active-document.ts";
-export { renderToStream, renderToString } from "./compiler/mod.ts";
-export type { InsertParent, InsertValue, SSROptions } from "./compiler/mod.ts";
 export {
-  createSignal,
-  getCurrentEffect,
-  isSignalGetter,
-  isSignalRef,
-  setCurrentEffect,
-  unwrapSignalGetterValue,
-} from "./signal.ts";
-export type { SignalRef } from "./signal.ts";
-export { isDOMEnvironment } from "./types.ts";
-export type {
-  EffectDispose,
-  MountOptions,
-  Root,
-  SignalGetter,
-  SignalSetter,
-  SignalTuple,
-  VNode,
-} from "./types.ts";
+  defaultProps,
+  mergeRefs,
+  renderToStream,
+  renderToString,
+} from "./compiler/mod.ts";
+export type { InsertParent, InsertValue, SSROptions } from "./compiler/mod.ts";

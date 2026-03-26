@@ -24,8 +24,8 @@ import { DEFAULT_STORE_KEY, KEY_STORE_REGISTRY } from "./constants.ts";
 import { createMemo, onCleanup } from "./effect.ts";
 import { getGlobalOrDefault } from "./globals.ts";
 import { createNestedProxy } from "./proxy.ts";
-import { schedule } from "./scheduler.ts";
-import { getCurrentEffect } from "./signal.ts";
+import { notifyEffectSubscriber } from "./scheduler.ts";
+import { getCurrentEffect, shouldTrackReadDependency } from "./signal.ts";
 import type { SignalTuple } from "./types.ts";
 
 function getGlobalStoreRegistry(): Map<string, unknown> {
@@ -230,7 +230,7 @@ function createRootStoreProxy<T extends Record<string, unknown>>(
         return (t as unknown as Record<symbol, T>)[STORE_INTERNAL];
       }
       const effect = getCurrentEffect();
-      if (effect) {
+      if (effect && shouldTrackReadDependency()) {
         subscribers.add(effect);
         onCleanup(() => subscribers.delete(effect));
       }
@@ -252,7 +252,10 @@ function createRootStoreProxy<T extends Record<string, unknown>>(
       } else {
         (state as Record<string, unknown>)[key as string] = value;
       }
-      subscribers.forEach((run) => schedule(run));
+      const toNotify = [...subscribers];
+      for (let i = 0; i < toNotify.length; i++) {
+        notifyEffectSubscriber(toNotify[i]!);
+      }
       return true;
     },
     ownKeys(t) {
@@ -575,7 +578,10 @@ export function createStore<
       ? (value as (prev: T) => T)(prev)
       : value;
     stateRef[STORE_INTERNAL] = { ...next } as T;
-    subscribers.forEach((run) => schedule(run));
+    const toNotify = [...subscribers];
+    for (let i = 0; i < toNotify.length; i++) {
+      notifyEffectSubscriber(toNotify[i]!);
+    }
     if (persist?.key) {
       const storage = persist.storage ?? getDefaultStorage();
       const serialize = persist.serialize ?? defaultSerialize;
