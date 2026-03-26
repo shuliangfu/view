@@ -1272,20 +1272,12 @@ More: [docs/zh-CN/README.md](./docs/zh-CN/README.md) (中文) |
 
 ## 📋 Changelog
 
-**v1.3.7** (2026-03-26): **Added** — Hand-written **`<For>` / `<Show>` /
-`<Dynamic>`** (and shared **`readWhenInput`**) accept **`SignalRef`** for
-**`each`**, **`when`**, **`component`** with correct **`.value`** tracking;
-**examples** home card for **`/list-insert`** and control-flow demos;
-**Changed** — **`compileSource`** **compile-time constant folding** for JSX in
-**`&&` / `||` / `??`**, constant **ternaries**, and safe **comma** tails (fewer
-**`insertReactive`** when branches are provable at build time); **Fixed** —
-**`insertReactive`** runs **`markMountFn`** bodies inside **`untrack`** so inner
-signal reads do not re-trigger the outer reactive mount (avoids remount / focus
-loss); **Tests/Docs** — expanded **`jsx-compiler`** folding tests, **`for` /
-`show` / `dynamic`** SignalRef tests, **`insert-reactive-mountfn-untrack`**,
-browser E2E title i18n for control-flow / list-insert, **`TEST_REPORT`** (892
-Deno / 826 Bun); **examples** use theme **`min-h-*`** utilities for Tailwind v4.
-Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.3.8** (2026-03-27): **Fixed** — **`view-cli init`** now generates
+**`mountWithRouter`** in **`src/main.tsx`** so SPA navigation updates the view
+(URL no longer changes alone); **Changed** — **`getRoot`** JSDoc in the init
+template uses new locale keys (**`mainGetRootDesc`**,
+**`mainGetRootParamRouter`**, **`mainGetRootReturns`**). Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

@@ -7,6 +7,23 @@
 
 ---
 
+## [1.3.8] - 2026-03-27
+
+### 修复
+
+- **`view-cli init`（`cmd/init.ts`）**：生成的 **`src/main.tsx`** 改为使用
+  **`mountWithRouter`**，与 **`examples/src/main.tsx`** 一致；原先 **`mount` +
+  `insert`** 未订阅路由 signal，导致站内导航地址栏变化但主内容不更新。
+
+### 变更
+
+- **Init 模板文案**：生成 **`main.tsx`** 中 **`getRoot`** 的 JSDoc 改为引用
+  **`init.template.mainGetRootDesc`**、**`mainGetRootParamRouter`**、
+  **`mainGetRootReturns`**（各语言 locale），与文件头
+  **`mainMountWithRouterComment`** 一并随 init 语言输出。
+
+---
+
 ## [1.3.7] - 2026-03-26
 
 ### 新增

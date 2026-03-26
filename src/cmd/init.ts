@@ -826,17 +826,30 @@ body {
   // ---------------------------------------------------------------------------
   const mainTsx = `/**
  * ${$tr("init.template.mainComment")}
+ *
+ * ${$tr("init.template.mainMountWithRouterComment")}
  */
 /** ${$tr("init.template.globalCssImportComment")} */
 // import "./assets/global.css";
 
-import { mount, insert } from "@dreamer/view";
+import { mountWithRouter, type Router } from "@dreamer/view/router";
 import { createAppRouter } from "./router/router.ts";
 import { App } from "./views/_app.tsx";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 
+/**
+ * ${$tr("init.template.mainGetRootDesc")}
+ *
+ * @param router - ${$tr("init.template.mainGetRootParamRouter")}
+ * @returns ${$tr("init.template.mainGetRootReturns")}
+ */
+function getRoot(router: Router) {
+  return <App router={router} />;
+}
+
 const router = createAppRouter({ routes, notFound: notFoundRoute });
-mount("#root", (el) => insert(el, () => <App router={router} />), { noopIfNotFound: true });
+
+mountWithRouter("#root", router, (r) => getRoot(r), { noopIfNotFound: true });
 `;
   await writeTextFile(join(targetDir, "src", "main.tsx"), mainTsx);
   addFile("src/main.tsx");

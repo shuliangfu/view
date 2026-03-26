@@ -1225,17 +1225,12 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.7**（2026-03-26）：**新增** — 手写 **`<For>` / `<Show>` / `<Dynamic>`**
-及共用 **`readWhenInput`** 支持 **`SignalRef`**（**`each` / `when` /
-`component`** 在 memo 内读 **`.value`** 订阅）；首页 **`/list-insert`**
-卡片与控制流示例；**变更** — **`compileSource`** 对含 JSX 的 **`&&` / `||` /
-`??`**、编译期可判三元、安全逗号尾 做**常量折叠**，减少不必要的
-**`insertReactive`**；**修复** — **`insertReactive`** 同步执行 **`markMountFn`**
-时包 **`untrack`**，避免内部 signal 读挂到外层 effect
-导致整段重挂与失焦；**测试/文档** — **`jsx-compiler`** 折叠用例扩充、**`for` /
-`show` / `dynamic`** SignalRef、**`insert-reactive-mountfn-untrack`**、浏览器
-E2E 标题中英文、**`TEST_REPORT`**（Deno 892 / Bun 826）；**示例** Tailwind v4
-采用主题 **`min-h-*`** 工具类。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.3.8**（2026-03-27）：**修复** — **`view-cli init`** 生成的
+**`src/main.tsx`** 改用
+**`mountWithRouter`**，站内导航会同步更新视图（不再仅地址栏变化）；**变更** —
+init 模板中 **`getRoot`** 的 JSDoc 使用新 locale 键（**`mainGetRootDesc`**、
+**`mainGetRootParamRouter`**、**`mainGetRootReturns`**）。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
