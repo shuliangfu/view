@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-573%20%2F%20523%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-892%20%2F%20826%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -518,6 +518,35 @@ function Demo(): VNode {
 }
 ```
 
+### 控制流：For / Index / Show / Switch / Dynamic
+
+从 **`jsr:@dreamer/view`** 与 `createSignal` 同入口引入，与
+**`insertReactive`**、**`compileSource`** 产物语义一致。
+
+**手写 JSX — 让列表 / 条件 / 动态标签保持响应式：**
+
+| 属性                              | 推荐写法                                                                        | 避免                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **`For` / `Index`** 的 **`each`** | 传 **`SignalRef`**（如 **`each={items}`**）或无参函数 **`() => items.value`**   | **`each={items.value}`**：JSX 先求值，列表无法订阅后续变化 |
+| **`Show`** 的 **`when`**          | **`SignalRef`**（如 **`when={open}`**）或 **`() => open.value`**                | **`when={open.value}`**：首屏布尔快照                      |
+| **`Dynamic`** 的 **`component`**  | **`SignalRef`**（如本征标签名用 **`component={tag}`**）或 **`() => tag.value`** | **`component={tag.value}`**：首屏快照                      |
+
+**原因：** 在 JSX 里 **`prop={ref.value}`**
+会在传入子组件**之前**就求值，运行时拿到的是普通值，**拿不到
+`SignalRef`**，无法建立订阅。传入 **ref 本体**或 **无参 getter**，由
+**`readWhenInput`** / **`readEach`** 在 **memo/effect** 内读 **`.value`**
+才能登记依赖。
+
+**`compileSource`：** 编译器会把
+**`each={expr}`**、**`when={expr}`**、**`component={expr}`** 包成无参
+accessor，无需手写 ref。
+
+**`Switch`：** 使用 **`matches`**（每项 **`when`** + **`children`**）及可选
+**`fallback`**。手写 **`matches`** 时，各 **`when`** 宜用 getter（或在 getter
+内读 signal），分支才随数据更新。
+
+示例站路由 **`/control-flow`** 可交互演示。
+
 **自定义指令：registerDirective + 在 JSX 中使用**
 
 ```tsx
@@ -949,29 +978,30 @@ themeStore.toggleTheme();
 router、store、stream、boundary、portal、transition 等，请从子路径按需导入（如
 `@dreamer/view/router`），未使用的模块不会打进 bundle（利于 tree-shake）。
 
-| 导出                                                                                 | 说明                                                                                                                                                        |
-| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **createSignal**                                                                     | 创建 signal，返回 **`SignalRef`**；用 **`.value`** 读/写；在 effect 中读会登记依赖                                                                          |
-| **createEffect**                                                                     | 创建 effect，先执行一次，依赖的 signal 变化后在微任务中重跑，返回 dispose                                                                                   |
-| **createMemo**                                                                       | 创建带缓存的派生 getter                                                                                                                                     |
-| **onCleanup**                                                                        | 在 effect/memo 内注册清理函数（当前 effect 重跑或 dispose 时执行）                                                                                          |
-| **untrack**                                                                          | 在回调内读取 signal 但不登记依赖（高级用法）                                                                                                                |
-| **getCurrentEffect** / **setCurrentEffect**                                          | 当前运行的 effect（内部/高级用法）                                                                                                                          |
-| **isSignalGetter**                                                                   | 判断是否为 signal getter                                                                                                                                    |
-| **isSignalRef**                                                                      | 判断是否为 `createSignal` 返回的 `SignalRef`                                                                                                                |
-| **unwrapSignalGetterValue**                                                          | 解包 getter 或 `SignalRef`（编译器用于文本插值与受控属性）                                                                                                  |
-| **createRef**                                                                        | 创建 ref 对象，配合 `ref={refObj}` 在 effect 中随节点挂载/卸载重跑                                                                                          |
-| **createRoot**                                                                       | 创建根：执行一次 **`fn(container)`**，内部用 **insert** 建 UI；返回 **Root**（`unmount`、`container`）                                                      |
-| **render**                                                                           | 等同于 **`createRoot(fn, container)`**；`fn` 为 **`(container) => void`**（与编译产物一致）                                                                 |
-| **mount**                                                                            | **`render(fn, el)`** 的便捷入口：`container` 为选择器或 **Element**；**`options.noopIfNotFound`** 可查不到节点时返回空 Root；**不**自动水合                 |
-| **insert** / **insertReactive** / **insertStatic** / **insertMount**                 | 插入点 API；与编译器产出对齐                                                                                                                                |
-| **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | 编译期 props 与函数 ref（从 compiler 再导出至主入口）                                                                                                       |
-| **generateHydrationScript**                                                          | 生成激活脚本标签（混合应用）                                                                                                                                |
-| **hydrate**（显式 API）                                                              | 在 **`jsr:@dreamer/view/compiler`** 导出；客户端水合请使用 **`hydrate(fn, container)`**（与 SSR 同一 `fn`），**mount** 不会根据子节点自动水合               |
-| **getDocument**                                                                      | 安全访问 document：浏览器返回 `document`；无 DOM / SSR 时返回 **`null`**（除非已设影子 document）                                                           |
-| **类型**                                                                             | VNode、Root、MountOptions、SignalRef、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions、ElementRef、InsertParent、InsertValue |
-| **setGlobal**                                                                        | 设置全局 document 等（内部/高级用法）                                                                                                                       |
-| **isDOMEnvironment**                                                                 | 当前是否为 DOM 环境                                                                                                                                         |
+| 导出                                                                                 | 说明                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **createSignal**                                                                     | 创建 signal，返回 **`SignalRef`**；用 **`.value`** 读/写；在 effect 中读会登记依赖                                                                                                                        |
+| **createEffect**                                                                     | 创建 effect，先执行一次，依赖的 signal 变化后在微任务中重跑，返回 dispose                                                                                                                                 |
+| **createMemo**                                                                       | 创建带缓存的派生 getter                                                                                                                                                                                   |
+| **onCleanup**                                                                        | 在 effect/memo 内注册清理函数（当前 effect 重跑或 dispose 时执行）                                                                                                                                        |
+| **untrack**                                                                          | 在回调内读取 signal 但不登记依赖（高级用法）                                                                                                                                                              |
+| **getCurrentEffect** / **setCurrentEffect**                                          | 当前运行的 effect（内部/高级用法）                                                                                                                                                                        |
+| **isSignalGetter**                                                                   | 判断是否为 signal getter                                                                                                                                                                                  |
+| **isSignalRef**                                                                      | 判断是否为 `createSignal` 返回的 `SignalRef`                                                                                                                                                              |
+| **unwrapSignalGetterValue**                                                          | 解包 getter 或 `SignalRef`（编译器用于文本插值与受控属性）                                                                                                                                                |
+| **For** / **Index** / **Show** / **Switch** / **Dynamic**                            | 列表/条件/动态标签；手写 JSX 时 **`each` / `when` / `component`** 传 **`SignalRef`** 或 **`() => …`**；**`prop={ref.value}`** 仅为一次性快照（见 [控制流小节](#控制流for--index--show--switch--dynamic)） |
+| **createRef**                                                                        | 创建 ref 对象，配合 `ref={refObj}` 在 effect 中随节点挂载/卸载重跑                                                                                                                                        |
+| **createRoot**                                                                       | 创建根：执行一次 **`fn(container)`**，内部用 **insert** 建 UI；返回 **Root**（`unmount`、`container`）                                                                                                    |
+| **render**                                                                           | 等同于 **`createRoot(fn, container)`**；`fn` 为 **`(container) => void`**（与编译产物一致）                                                                                                               |
+| **mount**                                                                            | **`render(fn, el)`** 的便捷入口：`container` 为选择器或 **Element**；**`options.noopIfNotFound`** 可查不到节点时返回空 Root；**不**自动水合                                                               |
+| **insert** / **insertReactive** / **insertStatic** / **insertMount**                 | 插入点 API；与编译器产出对齐                                                                                                                                                                              |
+| **mergeProps** / **splitProps** / **spreadIntrinsicProps** / **scheduleFunctionRef** | 编译期 props 与函数 ref（从 compiler 再导出至主入口）                                                                                                                                                     |
+| **generateHydrationScript**                                                          | 生成激活脚本标签（混合应用）                                                                                                                                                                              |
+| **hydrate**（显式 API）                                                              | 在 **`jsr:@dreamer/view/compiler`** 导出；客户端水合请使用 **`hydrate(fn, container)`**（与 SSR 同一 `fn`），**mount** 不会根据子节点自动水合                                                             |
+| **getDocument**                                                                      | 安全访问 document：浏览器返回 `document`；无 DOM / SSR 时返回 **`null`**（除非已设影子 document）                                                                                                         |
+| **类型**                                                                             | VNode、Root、MountOptions、SignalRef、SignalGetter、SignalSetter、SignalTuple、EffectDispose、HydrationScriptOptions、ElementRef、InsertParent、InsertValue                                               |
+| **setGlobal**                                                                        | 设置全局 document 等（内部/高级用法）                                                                                                                                                                     |
+| **isDOMEnvironment**                                                                 | 当前是否为 DOM 环境                                                                                                                                                                                       |
 
 **SSR
 相关**（`renderToString`、`renderToStream`、`getActiveDocument`、`createSSRDocument`）已移至子路径
@@ -1195,26 +1225,30 @@ export const metadata = {
 
 ## 📋 变更日志
 
-**v1.3.6**（2026-03-23）：**新增** —
-**`setIntrinsicDomAttribute`**（**`@dreamer/view`** 与
-**`@dreamer/view/compiler`** 导出），动态本征属性安全写入；**变更** —
-**`compileSource`** 对动态 **`target`/`className`** 等生成该辅助函数而非裸
-**`setAttribute`**；**修复** — **`null`/`undefined`** 不再在 DOM 上留下字面量
-**`"undefined"`**；**测试/文档** — **`spread-intrinsic`**、**`jsx-compiler`**
-覆盖与 **`TEST_REPORT`** 更新。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.3.7**（2026-03-26）：**新增** — 手写 **`<For>` / `<Show>` / `<Dynamic>`**
+及共用 **`readWhenInput`** 支持 **`SignalRef`**（**`each` / `when` /
+`component`** 在 memo 内读 **`.value`** 订阅）；首页 **`/list-insert`**
+卡片与控制流示例；**变更** — **`compileSource`** 对含 JSX 的 **`&&` / `||` /
+`??`**、编译期可判三元、安全逗号尾 做**常量折叠**，减少不必要的
+**`insertReactive`**；**修复** — **`insertReactive`** 同步执行 **`markMountFn`**
+时包 **`untrack`**，避免内部 signal 读挂到外层 effect
+导致整段重挂与失焦；**测试/文档** — **`jsx-compiler`** 折叠用例扩充、**`for` /
+`show` / `dynamic`** SignalRef、**`insert-reactive-mountfn-untrack`**、浏览器
+E2E 标题中英文、**`TEST_REPORT`**（Deno 892 / Bun 826）。完整历史见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
 ## 📊 测试报告
 
-| 项目     | 值                                  |
-| -------- | ----------------------------------- |
-| 测试日期 | 2026-03-23                          |
-| 总用例数 | 573 (Deno) / 523 (Bun)              |
-| 通过     | 573 ✅ / 523 ✅                     |
-| 失败     | 0                                   |
-| 通过率   | 100%                                |
-| 耗时     | ~1m43s (Deno) / ~85s (Bun，51 文件) |
+| 项目     | 值                                   |
+| -------- | ------------------------------------ |
+| 测试日期 | 2026-03-26                           |
+| 总用例数 | 892 (Deno) / 826 (Bun)               |
+| 通过     | 892 ✅ / 826 ✅                      |
+| 失败     | 0                                    |
+| 通过率   | 100%                                 |
+| 耗时     | ~3m14s (Deno) / ~140s (Bun，67 文件) |
 
 含单元、集成、E2E（CLI/浏览器）及 **SSR document shim**（组件内访问 document
 不抛错）。详见 [TEST_REPORT.md](./TEST_REPORT.md)。
@@ -1256,7 +1290,10 @@ effect** 中渲染（见 CHANGELOG [1.0.4]）。此时 signal 只在这个内部
 - **无虚拟 DOM**：更新由 signal/store/reactive 的订阅驱动；根以细粒度 patch
   重跑。
 - **JSX 响应式**：文本可用 `{count}`（`SignalRef` 解包）；指令用函数（如
-  `vIf={() => visible.value}`）；effect/事件内用 `.value`。
+  `vIf={() => visible.value}`）；effect/事件内用 `.value`。 **`For` / `Show` /
+  `Dynamic`** 的 **`each` / `when` / `component`** 请传 **`SignalRef`** 或无参
+  getter，勿写 **`ref.value`**（仅为快照）；见
+  [控制流：For / Index / Show / Switch / Dynamic](#控制流for--index--show--switch--dynamic)。
 - **JSX 配置**：在 deno.json 中设置 `compilerOptions.jsx: "react-jsx"` 与
   `compilerOptions.jsxImportSource: "jsr:@dreamer/view"`。
 - **Effect 作用域**：对使用本地 signal 的弹窗/Toast/条件块（如

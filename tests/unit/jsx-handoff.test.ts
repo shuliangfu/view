@@ -5,11 +5,19 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import {
+  Dynamic,
+  For,
   formatVNodeForDebug,
   insertVNode,
   jsx,
+  jsxMerges,
+  lazy,
+  mapArray,
+  Match,
   mergeProps,
   mountVNodeTree,
+  Show,
+  Switch,
 } from "../../src/jsx-handoff.ts";
 
 describe("@dreamer/view/jsx-handoff", () => {
@@ -44,5 +52,33 @@ describe("@dreamer/view/jsx-handoff", () => {
     insertVNode(el, jsx("em", { children: "iv" }));
     expect(el.querySelector("em")?.textContent).toBe("iv");
     document.body.removeChild(el);
+  });
+
+  it("应透传 lazy / mapArray / For / Show / Switch / Match / Dynamic（与 compiler 聚合一致）", () => {
+    expect(typeof lazy).toBe("function");
+    expect(typeof mapArray).toBe("function");
+    expect(typeof For).toBe("function");
+    expect(typeof Show).toBe("function");
+    expect(typeof Switch).toBe("function");
+    expect(typeof Match).toBe("function");
+    expect(typeof Dynamic).toBe("function");
+  });
+
+  /**
+   * {@link jsxMerges} 与 {@link jsx} 同源从 jsx-handoff 透出，便于聚合入口手写 merge + 静态多子。
+   */
+  it("应导出 jsxMerges 且单子项 children 仍为数组", () => {
+    const child = {
+      type: "#text" as const,
+      props: { nodeValue: "h" },
+      children: [],
+    };
+    const v = jsxMerges(
+      "span",
+      { className: "c" } as Record<string, unknown>,
+      { children: [child] } as Record<string, unknown>,
+    );
+    expect(Array.isArray(v.props.children)).toBe(true);
+    expect(v.props.children).toEqual([child]);
   });
 });

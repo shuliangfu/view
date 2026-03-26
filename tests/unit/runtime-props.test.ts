@@ -1,12 +1,14 @@
 /**
- * @fileoverview 编译路径下 Props 工具单元测试：mergeProps、splitProps
+ * @fileoverview 编译路径下 Props 工具单元测试：mergeProps、mergeRefs、defaultProps、splitProps
  */
 
 import { describe, expect, it } from "@dreamer/test";
 import {
   createSignal,
+  defaultProps,
   isSignalRef,
   mergeProps,
+  mergeRefs,
   splitProps,
 } from "@dreamer/view/compiler";
 import type { SignalRef } from "@dreamer/view/types";
@@ -82,6 +84,206 @@ describe("mergeProps", () => {
     const o = outer as Record<string, unknown>;
     expect(o.a).toBe(1);
     expect(o.c).toBe(3);
+  });
+
+  /**
+   * 同类方案：`mergeProps` 对 `on*` / `on*Capture` 多函数合并为一次监听内按来源顺序调用。
+   */
+  it("onClick 多来源均为函数时合并依次调用", () => {
+    const calls: string[] = [];
+    const f1 = () => calls.push("1");
+    const f2 = () => calls.push("2");
+    const p = mergeProps(
+      { onClick: f1 } as Record<string, unknown>,
+      { onClick: f2 } as Record<string, unknown>,
+    );
+    const h = (p as { onClick: (e?: unknown) => void }).onClick;
+    expect(typeof h).toBe("function");
+    h.call(null, {});
+    expect(calls).toEqual(["1", "2"]);
+  });
+
+  /** 最后一档显式为非函数时整键以最后一档为准（覆盖前档函数）。 */
+  it("onClick 最后一档非函数时以最后一档为准", () => {
+    const f1 = () => {};
+    const p = mergeProps(
+      { onClick: f1 } as Record<string, unknown>,
+      { onClick: "nope" } as Record<string, unknown>,
+    );
+    expect((p as { onClick: unknown }).onClick).toBe("nope");
+  });
+
+  it("onClickCapture 同样合并多个函数", () => {
+    const calls: number[] = [];
+    const p = mergeProps(
+      { onClickCapture: () => calls.push(1) } as Record<string, unknown>,
+      { onClickCapture: () => calls.push(2) } as Record<string, unknown>,
+    );
+    (p as { onClickCapture: (e: unknown) => void }).onClickCapture({});
+    expect(calls).toEqual([1, 2]);
+  });
+
+  /**
+   * 同类方案：`class` / `className` 多段字符串拼成空格分隔的单一 class。
+   */
+  it("class 多来源字符串合并为空格分隔", () => {
+    const p = mergeProps(
+      { class: "a b" } as Record<string, unknown>,
+      { class: "c" } as Record<string, unknown>,
+    );
+    expect((p as { class: string }).class).toBe("a b c");
+    expect((p as { className: string }).className).toBe("a b c");
+  });
+
+  it("class 与 className 跨来源合并为同一字符串", () => {
+    const p = mergeProps(
+      { class: "foo" } as Record<string, unknown>,
+      { className: "bar" } as Record<string, unknown>,
+    );
+    expect((p as { class: string }).class).toBe("foo bar");
+    expect((p as { className: string }).className).toBe("foo bar");
+  });
+
+  it("class 含数组片段时与 spread 本征语义一致（filter + join）", () => {
+    const p = mergeProps(
+      { class: ["x", "", "y"] } as unknown as Record<string, unknown>,
+      { class: "z" } as Record<string, unknown>,
+    );
+    expect((p as { class: string }).class).toBe("x y z");
+  });
+
+  /** 任一档为非字符串类值时退回最后一档 className / class（模拟响应式 class）。 */
+  it("含函数 class 时以最后一档有值者为准", () => {
+    const dyn = () => "dyn";
+    const p = mergeProps(
+      { class: "a" } as Record<string, unknown>,
+      { class: dyn } as unknown as Record<string, unknown>,
+    );
+    expect((p as { class: unknown }).class).toBe(dyn);
+  });
+
+  /**
+   * 同类方案：`mergeProps` 对多档普通 `style` 对象做浅合并，后者覆盖同名键。
+   */
+  it("style 多来源普通对象浅合并", () => {
+    const p = mergeProps(
+      { style: { color: "red", margin: "0" } } as Record<string, unknown>,
+      { style: { backgroundColor: "blue", margin: "8px" } } as Record<
+        string,
+        unknown
+      >,
+    );
+    const st = (p as { style: Record<string, string> }).style;
+    expect(st).toEqual({
+      color: "red",
+      backgroundColor: "blue",
+      margin: "8px",
+    });
+  });
+
+  /**
+   * 多来源走代理时，单档普通 style 经 `Object.assign` 产出新对象，避免与来源共用引用。
+   */
+  it("style 经 mergeProps 代理读取时为浅拷贝而非来源引用", () => {
+    const inner = { color: "red" };
+    const p = mergeProps(
+      {} as Record<string, unknown>,
+      { style: inner } as Record<string, unknown>,
+    );
+    const st = (p as { style: Record<string, string> }).style;
+    expect(st).toEqual({ color: "red" });
+    expect(st).not.toBe(inner);
+  });
+
+  /** 含非普通 style（函数）时整键以最后一档为准。 */
+  it("style 含函数时以最后一档有值者为准", () => {
+    const dyn = () => ({ display: "flex" });
+    const p = mergeProps(
+      { style: { color: "red" } } as Record<string, unknown>,
+      { style: dyn } as unknown as Record<string, unknown>,
+    );
+    expect((p as { style: unknown }).style).toBe(dyn);
+  });
+
+  /**
+   * 同类方案：`mergeProps` 对多档 `ref` 合并为单次回调内按来源顺序调用（同 `mergeRefs`）。
+   */
+  it("ref 多档均为函数时合并依次调用", () => {
+    const calls: (string | null)[] = [];
+    const p = mergeProps(
+      { ref: (n: unknown) => calls.push(n === null ? "null" : "a") } as Record<
+        string,
+        unknown
+      >,
+      { ref: (n: unknown) => calls.push(n === null ? "null" : "b") } as Record<
+        string,
+        unknown
+      >,
+    );
+    const r = (p as { ref: (n: unknown) => void }).ref;
+    expect(typeof r).toBe("function");
+    const el = {};
+    r(el);
+    expect(calls).toEqual(["a", "b"]);
+    r(null);
+    expect(calls).toEqual(["a", "b", "null", "null"]);
+  });
+
+  it("ref 回调与对象 ref 合并时先回调再写 current", () => {
+    const calls: string[] = [];
+    const obj = { current: null as unknown };
+    const p = mergeProps(
+      { ref: () => calls.push("fn") } as Record<string, unknown>,
+      { ref: obj } as Record<string, unknown>,
+    );
+    /** 占位节点，无需真实 DOM（本文件未统一 `dom-setup`） */
+    const el = { tag: "div" } as unknown as Element;
+    (p as { ref: (n: Element | null) => void }).ref(el);
+    expect(calls).toEqual(["fn"]);
+    expect(obj.current).toBe(el);
+  });
+
+  /** 最后一档显式 `null` 时整键以 `null` 为准（清空）。 */
+  it("ref 最后一档为 null 时以 null 为准", () => {
+    const p = mergeProps(
+      { ref: () => {} } as Record<string, unknown>,
+      { ref: null } as Record<string, unknown>,
+    );
+    expect((p as { ref: unknown }).ref).toBeNull();
+  });
+});
+
+describe("mergeRefs", () => {
+  it("无参时为空操作", () => {
+    const m = mergeRefs();
+    expect(() => m(null)).not.toThrow();
+  });
+
+  it("单个函数 ref 原样返回", () => {
+    const f = (n: unknown) => n;
+    expect(mergeRefs(f)).toBe(f);
+  });
+
+  it("多个函数按顺序调用", () => {
+    const seq: string[] = [];
+    const m = mergeRefs(
+      () => seq.push("a"),
+      () => seq.push("b"),
+    );
+    m(null);
+    expect(seq).toEqual(["a", "b"]);
+  });
+});
+
+describe("defaultProps", () => {
+  it("语义同 mergeProps：后者覆盖前者", () => {
+    const p = defaultProps(
+      { a: 1, b: 2 } as Record<string, unknown>,
+      { b: 3, c: 4 } as Record<string, unknown>,
+    );
+    expect(p.a).toBe(1);
+    expect(p.b).toBe(3);
+    expect(p.c).toBe(4);
   });
 });
 

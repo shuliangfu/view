@@ -8,8 +8,8 @@
  */
 
 import { onCleanup } from "./effect.ts";
-import { schedule } from "./scheduler.ts";
-import { getCurrentEffect } from "./signal.ts";
+import { notifyEffectSubscriber } from "./scheduler.ts";
+import { getCurrentEffect, shouldTrackReadDependency } from "./signal.ts";
 
 export function createNestedProxy<T extends object>(
   target: T,
@@ -21,7 +21,7 @@ export function createNestedProxy<T extends object>(
   const proxy = new Proxy(target, {
     get(t, key: string) {
       const effect = getCurrentEffect();
-      if (effect) {
+      if (effect && shouldTrackReadDependency()) {
         subscribers.add(effect);
         onCleanup(() => subscribers.delete(effect));
       }
@@ -37,7 +37,12 @@ export function createNestedProxy<T extends object>(
     },
     set(t, key: string, value: unknown) {
       const ok = Reflect.set(t, key, value);
-      if (ok) subscribers.forEach((run) => schedule(run));
+      if (ok) {
+        const toNotify = [...subscribers];
+        for (let i = 0; i < toNotify.length; i++) {
+          notifyEffectSubscriber(toNotify[i]!);
+        }
+      }
       return ok;
     },
   }) as T;

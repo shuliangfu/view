@@ -4,14 +4,15 @@
  * **`insertReactive`、`mergeProps`、`unwrapSignalGetterValue`** 等与 VNode 路径配套的符号。
  *
  * **注意：** 首行对 `./compiler/mod.ts` 的副作用 import 会注册 `mountVNodeTree` 所需的
- * `insertReactive` 桥接，请勿删以免仅引 `mountVNodeTree` 时运行时报未绑定。
+ * `insertReactive` 桥接（与 `jsx-runtime.ts` 内对齐；仅引 `@dreamer/view/jsx-runtime` 时也会加载 compiler 并完成注册）。
+ * 本子路径仍保留聚合导出，请勿删首行以免仅引 `mountVNodeTree` 时运行时报未绑定。
  *
  * @module @dreamer/view/jsx-handoff
  * @packageDocumentation
  *
- * **导出概要：** `Fragment`、`jsx`、`jsxs`、`jsxMerge`；`mergeProps`、`splitProps`、
+ * **导出概要：** `Fragment`、`jsx`、`jsxs`、`jsxDEV`、`jsxMerge`、`jsxMerges`；`mergeProps`、`mergeRefs`、`defaultProps`、`splitProps`、
  * `spreadIntrinsicProps`、`setIntrinsicDomAttribute`；`insert*`、`insertVNode`、`createRoot`、`render`、`hydrate`；`createSignal`、
- * `unwrapSignalGetterValue` 及常用 effect API；`mountVNodeTree`；`formatVNodeForDebug`。
+ * `unwrapSignalGetterValue` 及常用 effect API；`createResource`、`lazy`、`mapArray`、`For`、`Index`、`Show`、`Switch`、`Match`、`Dynamic`（列表/条件控制流）；`mountVNodeTree`；`formatVNodeForDebug`。
  */
 
 import "./compiler/mod.ts";
@@ -24,11 +25,31 @@ export {
 export { formatVNodeForDebug } from "./vnode-debug.ts";
 export type { FormatVNodeForDebugOptions } from "./vnode-debug.ts";
 
-export { Fragment, jsx, jsxMerge, jsxs } from "./jsx-runtime.ts";
+export { For, Index } from "./for.ts";
+export type { ForProps, ListEachInput } from "./for.ts";
+export { Show } from "./show.ts";
+export type { ShowProps, ShowWhenInput } from "./show.ts";
+export { Match, Switch } from "./switch-match.ts";
+export type { SwitchMatchCase, SwitchProps } from "./switch-match.ts";
+export { Dynamic } from "./dynamic.ts";
+export type { DynamicProps } from "./dynamic.ts";
+
+export {
+  Fragment,
+  jsx,
+  jsxDEV,
+  jsxMerge,
+  jsxMerges,
+  jsxs,
+} from "./jsx-runtime.ts";
 
 import { mountVNodeTree } from "./compiler/vnode-mount.ts";
 
-export { mountVNodeTree } from "./compiler/vnode-mount.ts";
+export {
+  mountVNodeTree,
+  patchMountedIntrinsicElementProps,
+  prepareIntrinsicElementForPropResync,
+} from "./compiler/vnode-mount.ts";
 export type { MountVNodeTreeOptions } from "./compiler/vnode-mount.ts";
 
 /**
@@ -43,22 +64,41 @@ export function insertVNode(parent: Node, vnode: unknown): void {
 }
 
 export {
+  catchError,
+  children,
+  createDeferred,
   createEffect,
   createMemo,
+  createReaction,
+  createRenderEffect,
+  createResource,
   createRoot,
+  createScopeWithDisposers,
   createSignal,
+  defaultProps,
   getCurrentEffect,
+  getCurrentScope,
+  getOwner,
   hydrate,
   insert,
   insertReactive,
   insertStatic,
   isSignalGetter,
   isSignalRef,
+  lazy,
+  mapArray,
   mergeProps,
+  mergeRefs,
+  on,
   onCleanup,
+  onMount,
   render,
+  runWithOwner,
+  runWithScope,
   setCurrentEffect,
+  setCurrentScope,
   setIntrinsicDomAttribute,
+  setOwner,
   splitProps,
   spreadIntrinsicProps,
   untrack,
@@ -67,4 +107,14 @@ export {
 
 export type { HydrateContext } from "./compiler/mod.ts";
 export type { InsertParent, InsertValue } from "./compiler/mod.ts";
+export type {
+  CreateDeferredOptions,
+  CreateMemoOptions,
+  CreateResourceOptions,
+  EffectScope,
+  LazyComponentModule,
+  OnOptions,
+  Owner,
+  ResourceResult,
+} from "./compiler/mod.ts";
 export type { Root } from "./compiler/mod.ts";

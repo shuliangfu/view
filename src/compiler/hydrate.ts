@@ -8,16 +8,20 @@
  */
 
 import { KEY_VIEW_HYDRATE, KEY_VIEW_SSR_DOCUMENT } from "../constants.ts";
+import { isVNodeLike } from "../dom/shared.ts";
 import { createScopeWithDisposers, setCurrentScope } from "../effect.ts";
 import { createEffect } from "../effect.ts";
 import { getGlobal, setGlobal } from "../globals.ts";
 import { removeCloak } from "../runtime-shared.ts";
-import type { Root } from "../types.ts";
+import { isSignalGetter, unwrapSignalGetterValue } from "../signal.ts";
+import type { Root, VNode } from "../types.ts";
 import {
   type ActiveDocumentLike,
   setSSRShadowDocument,
 } from "./active-document.ts";
 import type { InsertValue } from "./insert.ts";
+import { isMountFn } from "./mount-fn.ts";
+import { mountVNodeTree } from "./vnode-mount.ts";
 
 /** DOM Node.nodeType 常量，避免依赖全局 Node（Deno 等环境中可能未定义） */
 const NODE_TYPE_ELEMENT = 1;
@@ -47,11 +51,14 @@ function* walkDepthFirst(container: Node): Generator<Node> {
 }
 
 /**
- * 将 value 转为真实 DOM 节点（用于 effect 内更新槽位）。
- * 始终使用全局 document，避免在 effect 中误用 hydrate 用的伪 document。
+ * 将水合槽位 effect 中 getter 的求值结果转为可 `replaceChild` 的单个节点（或 DocumentFragment）。
+ * 须覆盖 compileSource / `insertReactive` 同语义：VNode、标记 MountFn、零参壳函数；否则 Hybrid 水合后仅空文本，文档站等表现为整块空白。
  * 使用 nodeType 判断 Node，避免依赖全局 Node（Deno 等环境可能未定义）。
+ *
+ * @param value - 已解包 SignalRef / signal getter 后的展示值
+ * @param doc - 真实 document（非迭代器代理），用于空占位文本节点
  */
-function valueToNode(value: InsertValue, doc: Document): Node {
+function hydrateSlotValueToNode(value: unknown, doc: Document): Node {
   if (value == null) return doc.createTextNode("");
   if (typeof value === "string" || typeof value === "number") {
     return doc.createTextNode(String(value));
@@ -64,6 +71,30 @@ function valueToNode(value: InsertValue, doc: Document): Node {
   ) {
     return value as Node;
   }
+  if (isVNodeLike(value)) {
+    const frag = doc.createDocumentFragment();
+    mountVNodeTree(frag, value as VNode);
+    const ch = Array.from(frag.childNodes);
+    if (ch.length === 0) return doc.createTextNode("");
+    if (ch.length === 1) return ch[0] as Node;
+    return frag as unknown as Node;
+  }
+  if (typeof value === "function" && isMountFn(value)) {
+    const frag = doc.createDocumentFragment();
+    (value as (p: Node) => void)(frag);
+    const ch = Array.from(frag.childNodes);
+    if (ch.length === 0) return doc.createTextNode("");
+    if (ch.length === 1) return ch[0] as Node;
+    return frag as unknown as Node;
+  }
+  /** 与 reactiveInsertNextFromGetterResult 对齐：剥一层零参非 signal 函数壳 */
+  if (
+    typeof value === "function" &&
+    (value as () => unknown).length === 0 &&
+    !isSignalGetter(value)
+  ) {
+    return hydrateSlotValueToNode((value as () => unknown)(), doc);
+  }
   return doc.createTextNode("");
 }
 
@@ -74,10 +105,10 @@ function valueToNode(value: InsertValue, doc: Document): Node {
 function replaceSlot(
   parent: Node | null,
   current: Node,
-  value: InsertValue,
+  value: unknown,
   doc: Document,
 ): Node {
-  const next = valueToNode(value, doc);
+  const next = hydrateSlotValueToNode(unwrapSignalGetterValue(value), doc);
   if (!parent) return next;
   if (next !== current) {
     parent.replaceChild(next, current);
@@ -151,6 +182,19 @@ function createHydrateInsert(
   realDocument: Document,
 ): (parent: Node, value: InsertValue) => void {
   return function hydrateInsert(parent: Node, value: InsertValue): void {
+    /**
+     * 单参 `MountFn` 须与 `runtime.insertMount` 一致：直接 `(parent)=>void`，由内部 `createElement` 按 DFS 消费迭代器。
+     * 若误走下方「零参 getter」分支会执行 `fn()` 无参调用，导致挂载异常或迭代错位（手写 `insert(el, markMountFn(...))` 等）。
+     */
+    if (
+      typeof value === "function" &&
+      (value as (p?: Node) => void).length === 1 &&
+      isMountFn(value as unknown)
+    ) {
+      (value as (p: Node) => void)(parent);
+      return;
+    }
+
     const result = iterator.next();
     if (result.done) {
       throw new Error(
@@ -161,11 +205,11 @@ function createHydrateInsert(
     const slot = result.value;
 
     if (typeof value === "function") {
-      const getter = value;
+      const getter = value as () => unknown;
       let current: Node = slot;
       createEffect(() => {
-        const parent = current.parentNode;
-        current = replaceSlot(parent, current, getter(), realDocument);
+        const p = current.parentNode;
+        current = replaceSlot(p, current, getter(), realDocument);
       });
       return;
     }

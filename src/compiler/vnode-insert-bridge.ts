@@ -2,6 +2,9 @@
  * 打破 `runtime.ts` 与 `vnode-mount.ts` 的循环依赖：VNode 子树挂载时需在内部再次调用
  * `insertReactive`，实现仅在 `runtime` 模块求值末尾注册一次。
  *
+ * **步骤 5**：函数组件 `() => VNode` 与本征 `insertReactive` 共用主包 `insertReactive`；
+ * 当 `canPatchIntrinsic` 允许（含受控表单项 `value`/`checked` 等）时由 `patchIntrinsicSubtree` 保留组件展开后的本征根 DOM。
+ *
  * @module @dreamer/view/runtime/vnode-insert-bridge
  */
 

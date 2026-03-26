@@ -6,6 +6,7 @@
  * @module @dreamer/view/runtime/ssr-document
  */
 
+import { safeTextForDom } from "../dom/shared.ts";
 import { escapeForAttr, escapeForText } from "../escape.ts";
 
 /** 自闭合标签，不生成闭合标签 */
@@ -26,8 +27,8 @@ const VOID_ELEMENTS = new Set([
   "wbr",
 ]);
 
-/** SSR 序列化节点：元素或文本 */
-export type SSRNode = SSRElement | SSRTextNode;
+/** SSR 序列化节点：元素、文本，或 {@link SSRRawHtmlNode}（innerHTML 赋值产生的原始 HTML 片段） */
+export type SSRNode = SSRElement | SSRTextNode | SSRRawHtmlNode;
 
 /** 将 camelCase 转换为 kebab-case（如 backgroundColor -> background-color） */
 function camelToKebab(str: string): string {
@@ -188,16 +189,66 @@ class SSRDOMTokenList {
   }
 }
 
+/** 与 DOM Text#childNodes 一致：无子节点；避免 insertReactive 里读 `parent.childNodes.length` 时为 undefined 抛错 */
+const EMPTY_TEXT_CHILD_NODES: readonly SSRNode[] = Object.freeze([]);
+
 /** 文本节点：仅序列化为转义文本 */
 export class SSRTextNode {
   nodeValue: string;
   nodeType: number = 3; // Node.TEXT_NODE
-  constructor(text: string) {
-    this.nodeValue = String(text ?? "");
+  /**
+   * @param text - 文本内容；须经 {@link safeTextForDom}，禁止对 function 使用 `String(fn)`（SSR 会吐出整段挂载源码）。
+   */
+  constructor(text: unknown) {
+    this.nodeValue = safeTextForDom(text);
+  }
+  /** 与浏览器 Text 节点一致，供 insertReactive / Array.from(childNodes) 使用 */
+  get childNodes(): SSRNode[] {
+    return EMPTY_TEXT_CHILD_NODES as SSRNode[];
   }
   /** 序列化为 HTML 文本内容（转义） */
   serialize(): string {
     return escapeForText(this.nodeValue);
+  }
+}
+
+/**
+ * 表示 `SSRElement#innerHTML = "..."` 写入的原始 HTML 片段。
+ * 不参与标签转义，{@link serialize} 原样输出，以便 SSR 字符串与浏览器 `innerHTML` 替换子树后的结果一致；
+ * 避免仅实现 getter 时 ref/受控组件在服务端对 `innerHTML` 赋值抛错。
+ *
+ * 安全语义与浏览器 `innerHTML` 相同：调用方须保证内容可信。
+ */
+export class SSRRawHtmlNode {
+  /** 非标准占位，避免与 ELEMENT/TEXT 混淆 */
+  nodeType = -1;
+  readonly html: string;
+
+  /**
+   * @param html - 已赋值的 HTML 字符串
+   */
+  constructor(html: string) {
+    this.html = html;
+  }
+
+  /** 与 Text 节点一致：无子节点 */
+  get childNodes(): SSRNode[] {
+    return EMPTY_TEXT_CHILD_NODES as SSRNode[];
+  }
+
+  /**
+   * 近似 DOM textContent：剥标签后合并空白，供字数统计等仅读文本的路径使用。
+   */
+  get textContent(): string {
+    return this.html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  /** 拼入父元素 innerHTML 时原样输出 */
+  serialize(): string {
+    return this.html;
   }
 }
 
@@ -235,14 +286,15 @@ export class SSRElement {
       .map((c) => {
         if (c instanceof SSRTextNode) return c.nodeValue;
         if (c instanceof SSRElement) return c.textContent;
+        if (c instanceof SSRRawHtmlNode) return c.textContent;
         return "";
       })
       .join("");
   }
 
   /** 设置文本内容（清空子节点并添加文本节点） */
-  set textContent(value: string) {
-    this.children = [new SSRTextNode(String(value ?? ""))];
+  set textContent(value: unknown) {
+    this.children = [new SSRTextNode(value)];
   }
 
   /** 获取 style 对象（CSSStyleDeclaration 兼容） */
@@ -407,9 +459,18 @@ export class SSRElement {
     }
   }
 
-  /** 子节点的 HTML 串联 */
+  /**
+   * 子节点序列化后的 HTML 串联；若曾执行 `innerHTML = "..."`，则包含原始片段（见 {@link SSRRawHtmlNode}）。
+   */
   get innerHTML(): string {
     return this.children.map((c) => c.serialize()).join("");
+  }
+
+  /**
+   * 与浏览器一致：清空现有子树并替换为赋值字符串的序列化结果（以 {@link SSRRawHtmlNode} 存储，不做 HTML 解析）。
+   */
+  set innerHTML(html: string) {
+    this.children = [new SSRRawHtmlNode(String(html))];
   }
 
   /** 自身 + 子节点的完整 HTML（含标签与属性） */

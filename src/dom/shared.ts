@@ -4,9 +4,10 @@
  * View 模板引擎 — DOM 层共享类型与工具。Fragment、IfContext、SSROptions、isFragment、isVNodeLike 等，供 element 等复用。
  *
  * **本模块导出：**
- * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`createTextVNode(value)`
+ * - `FragmentType`、`isFragment(vnode)`、`IfContext`、`SSROptions`、`isVNodeLike(x)`、`isEmptyChild(value)`、`safeTextForDom(value)`、`createTextVNode(value)`
  */
 
+import { viewRuntimeDevWarn } from "../dev-runtime-warn.ts";
 import type { VNode } from "../types.ts";
 
 /**
@@ -61,15 +62,43 @@ export function isVNodeLike(x: unknown): boolean {
 }
 
 /**
- * 创建文本类型的 VNode（type 为 "#text"，props.nodeValue 为字符串化后的 value）。
+ * 将任意叶子值转为可安全写入文本节点的字符串。
+ * 禁止对 `function` 使用 `String(fn)`：在 V8 中会序列化出整段函数体，SSR/CSR 会表现为整页「源码」。
  *
- * @param value - 文本内容（会被转为字符串）
+ * @param value - 文本或数字等叶子值
+ * @returns 可交给 `createTextNode` 的字符串
+ */
+export function safeTextForDom(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "function") {
+    viewRuntimeDevWarn(
+      "text:leaf:function",
+      "文本插值收到 function（多为 MountFn / getter 误入 createTextVNode）。已降级为空串。请用 insertReactive 或子树 MountFn 分支；开启 enableViewRuntimeDevWarnings 或设 globalThis.__VIEW_DEV__=true 可看到本条。",
+    );
+    return "";
+  }
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "bigint") return String(value);
+  try {
+    return String(value);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 创建文本类型的 VNode（type 为 "#text"，props.nodeValue 为经 {@link safeTextForDom} 处理后的字符串）。
+ *
+ * @param value - 文本内容（会被安全字符串化）
  * @returns 文本 VNode
  */
 export function createTextVNode(value: unknown): VNode {
   return {
     type: "#text",
-    props: { nodeValue: String(value) },
+    props: { nodeValue: safeTextForDom(value) },
     children: [],
   };
 }

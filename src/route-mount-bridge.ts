@@ -6,7 +6,7 @@
  * @internal 由 route-page 引用；稳定 API 仍以 `@dreamer/view/router` 为准
  */
 
-import { isMountFn } from "./compiler/insert.ts";
+import { isMountFn, markMountFn } from "./compiler/insert.ts";
 import { mountVNodeTree } from "./compiler/vnode-mount.ts";
 import { isVNodeLike } from "./dom/shared.ts";
 import type { MountFn } from "./router.ts";
@@ -25,14 +25,23 @@ export function coerceToMountFn(value: unknown): MountFn {
   if (isMountFn(value)) {
     return value as MountFn;
   }
+  /**
+   * 手写路由页常返回未打标的 `(parent)=>void`；与 compile 产物一致须 markMountFn，insertReactive 才认作挂载函数。
+   */
+  if (
+    typeof value === "function" &&
+    (value as (p: unknown) => unknown).length === 1
+  ) {
+    return markMountFn(value as MountFn);
+  }
   if (isVNodeLike(value)) {
     const vnode = value;
-    return (parent) => {
+    return markMountFn((parent) => {
       mountVNodeTree(parent, vnode);
-    };
+    });
   }
   if (Array.isArray(value)) {
-    return (parent) => {
+    return markMountFn((parent) => {
       for (const item of value) {
         if (isMountFn(item)) {
           (item as MountFn)(parent);
@@ -44,7 +53,7 @@ export function coerceToMountFn(value: unknown): MountFn {
           );
         }
       }
-    };
+    });
   }
   throw new Error(
     `[RoutePage] Expected MountFn or VNode from route default/layout, got ${
@@ -89,10 +98,10 @@ export function composePageWithLayouts(
   for (let i = layoutMods.length - 1; i >= 0; i--) {
     const layout = layoutMods[i]!;
     const prev = inner;
-    inner = (parent) => {
+    inner = markMountFn((parent) => {
       const out = layout.default({ children: prev });
       coerceToMountFn(out)(parent);
-    };
+    });
   }
   return inner;
 }

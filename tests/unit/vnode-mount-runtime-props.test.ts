@@ -5,13 +5,48 @@
 
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal } from "@dreamer/view";
+import { createSignal, setGlobal } from "@dreamer/view";
+import { KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH } from "../../src/constants.ts";
 import { mergeProps } from "@dreamer/view/compiler";
 import { Fragment, jsx, jsxMerge } from "@dreamer/view/jsx-runtime";
 import "../../src/compiler/mod.ts";
 import { mountVNodeTree } from "../../src/compiler/vnode-mount.ts";
 
 describe("mountVNodeTree 本征 DOM（手写 runtime 响应式 props）", () => {
+  it("input maxLength 为 SignalRef 时应随 .value 更新 maxlength attribute", async () => {
+    const max = createSignal("4");
+    const container = globalThis.document.createElement("div");
+    globalThis.document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("input", { type: "text", maxLength: max, value: "" }),
+    );
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.getAttribute("maxlength")).toBe("4");
+    max.value = "10";
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    expect(input.getAttribute("maxlength")).toBe("10");
+    globalThis.document.body.removeChild(container);
+  });
+
+  it("input placeholder 为 SignalRef 时应随 .value 更新 attribute", async () => {
+    const hint = createSignal("a");
+    const container = globalThis.document.createElement("div");
+    globalThis.document.body.appendChild(container);
+    mountVNodeTree(
+      container,
+      jsx("input", { type: "text", placeholder: hint, value: "" }),
+    );
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.getAttribute("placeholder")).toBe("a");
+    hint.value = "b";
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    expect(input.getAttribute("placeholder")).toBe("b");
+    globalThis.document.body.removeChild(container);
+  });
+
   it("input value 为 SignalRef 时应随 .value 更新", async () => {
     const text = createSignal("a");
     const container = document.createElement("div");
@@ -25,6 +60,82 @@ describe("mountVNodeTree 本征 DOM（手写 runtime 响应式 props）", () => 
     await new Promise<void>((r) => queueMicrotask(() => r()));
     expect(input.value).toBe("b");
     document.body.removeChild(container);
+  });
+
+  /**
+   * 与 `scheduler` 维护的 composition 深度配合：组字期不强行 `value = signal`，避免打断拼音中间态。
+   */
+  it("IME composition 深度大于 0 且 input 为 activeElement 时跳过受控 value 回写", async () => {
+    const text = createSignal("a");
+    const container = globalThis.document.createElement("div");
+    globalThis.document.body.appendChild(container);
+    mountVNodeTree(container, jsx("input", { type: "text", value: text }));
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    const input = container.querySelector("input") as HTMLInputElement;
+    input.focus();
+    input.value = "组字中间态";
+    setGlobal(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH, 1);
+    try {
+      text.value = "from-signal";
+      await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+      expect(input.value).toBe("组字中间态");
+    } finally {
+      setGlobal(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH, 0);
+    }
+    text.value = "after-ime";
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    expect(input.value).toBe("after-ime");
+    globalThis.document.body.removeChild(container);
+  });
+
+  /**
+   * 组字期内跳过的受控回写，应在 `compositionend` 后通过微任务与 signal 对齐（细粒度常见闭环）。
+   */
+  it("compositionend 后微任务应再同步受控 value（补组字期跳过的更新）", async () => {
+    const text = createSignal("a");
+    const container = globalThis.document.createElement("div");
+    globalThis.document.body.appendChild(container);
+    mountVNodeTree(container, jsx("input", { type: "text", value: text }));
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    const input = container.querySelector("input") as HTMLInputElement;
+    input.focus();
+    input.value = "拼音";
+    setGlobal(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH, 1);
+    text.value = "after-ime";
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    expect(input.value).toBe("拼音");
+    const CE = (globalThis as { CompositionEvent?: typeof CompositionEvent })
+      .CompositionEvent;
+    const ev = CE != null
+      ? new CE("compositionend", { bubbles: true, data: "" })
+      : new Event("compositionend", { bubbles: true });
+    input.dispatchEvent(ev);
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    expect(input.value).toBe("after-ime");
+    globalThis.document.body.removeChild(container);
+  });
+
+  it("IME composition 深度大于 0 但 input 非活动元素时仍回写受控 value", async () => {
+    const text = createSignal("a");
+    const container = globalThis.document.createElement("div");
+    globalThis.document.body.appendChild(container);
+    mountVNodeTree(container, jsx("input", { type: "text", value: text }));
+    await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+    const input = container.querySelector("input") as HTMLInputElement;
+    const btn = globalThis.document.createElement("button");
+    btn.type = "button";
+    globalThis.document.body.appendChild(btn);
+    btn.focus();
+    setGlobal(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH, 1);
+    try {
+      text.value = "b";
+      await new Promise<void>((r) => globalThis.queueMicrotask(() => r()));
+      expect(input.value).toBe("b");
+    } finally {
+      setGlobal(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH, 0);
+      globalThis.document.body.removeChild(btn);
+    }
+    globalThis.document.body.removeChild(container);
   });
 
   it("checkbox checked 为无参函数时应随依赖更新", async () => {

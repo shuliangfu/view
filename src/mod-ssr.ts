@@ -7,7 +7,7 @@
  *
  * **函数：** `getActiveDocument`、`setSSRShadowDocument`（无法替换全局 `document` 时挂影子 document）、`renderToString`、`renderToStream`、`createSSRDocument`
  *
- * **类型：** `SSROptions`、`SSRElement`、`SSRNode`、`SSRTextNode`
+ * **类型：** `SSROptions`、`SSRElement`、`SSRNode`、`SSRTextNode`、`SSRRawHtmlNode`
  *
  * @example
  * ```ts
@@ -25,3 +25,4 @@ export type {
   SSRNode,
   SSRTextNode,
 } from "./compiler/ssr-document.ts";
+export { SSRRawHtmlNode } from "./compiler/ssr-document.ts";

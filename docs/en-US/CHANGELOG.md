@@ -8,6 +8,80 @@ and this project adheres to
 
 ---
 
+## [1.3.7] - 2026-03-26
+
+### Added
+
+- **`readWhenInput` (`when-shared.ts`)**: Accepts **`SignalRef<T>`** in addition
+  to zero-arg getters and plain snapshots. Reactive code paths read **`.value`**
+  so subscriptions stay correct when hand-writing JSX as **`when={flag}`** or
+  **`component={tagRef}`** instead of wrapping **`() => flag.value`**
+  everywhere.
+- **`<For>` / `<Index>` (`for.ts`)**: **`ListEachInput<T>`** may be
+  **`SignalRef<readonly T[] | null | undefined>`**; internal **`readEach`**
+  unwraps **`SignalRef`** via **`.value`**, so **`each={listRef}`** tracks list
+  updates like a zero-arg accessor.
+- **`<Show>` (`show.ts`)**: **`ShowWhenInput<T>`** includes **`SignalRef<T>`**
+  for **`when`**; same **`readWhenInput`** semantics as **`Switch` / `Match`**
+  branches.
+- **`<Dynamic>` (`dynamic.ts`)**: Resolves **`component`** with
+  **`readWhenInput`** so **`SignalRef`** values (e.g. reactive intrinsic tag
+  name) subscribe inside the memo.
+- **Examples**: **`examples/src/views/home/index.tsx`** — new home card linking
+  to **`/list-insert`** (list insert / `insertIrList` demo) with
+  **`listInsert`** icon wiring; **`examples/src/views/control-flow/index.tsx`**
+  demonstrates **`SignalRef`**-first props for **`each`**, **`when`**, and
+  **`component`** where appropriate.
+- **Docs**: **`README.md`** / **`docs/zh-CN/README.md`** — control-flow table
+  spelling out **`SignalRef` vs `prop={ref.value}`** (snapshot) pitfalls and
+  recommended patterns; **`docs/*/TEST_REPORT.md`** refreshed with latest
+  Deno/Bun totals (**892** / **826**), **`deno test -A --no-check tests`**,
+  per-file counts (**67** files), and updated feature summaries.
+- **Tests**:
+  - **`for.test.ts`**, **`show.test.ts`**, **`dynamic.test.ts`** —
+    **`SignalRef`** branches for **`each`**, **`when`**, **`component`**.
+  - **`insert-reactive-mountfn-untrack.test.ts`** — asserts MountFn mount body
+    does not re-run the outer **`insertReactive`** when only inner signals
+    change.
+  - **`view-example-browser.test.ts`** — **`document.title`** checks use regex
+    for zh/en (**`/控制流|Control Flow/i`**, **`/列表插入|List Insert/i`**);
+    list-insert page flow (fallback + row clicks).
+
+### Changed
+
+- **JSX compiler (`jsx-compiler/transform.ts`)**: **Compile-time folding** of
+  JSX-heavy expressions when branches are **provably constant** at build time,
+  reducing unnecessary **`insertReactive`** and preferring static **`insert`** /
+  **`markMountFn`** where safe:
+  - **Logical operators** **`&&`**, **`||`**, **`??`**: e.g.
+    **`true && <div />`**, **`false || <div />`**, **`null ?? <div />`**,
+    **`void 0 ?? <jsx>`** — only folds when JSX lives on the correct operand and
+    the other side is statically known; recursive fold on nested logicals.
+  - **Conditional (`cond ? a : b`)**: when **`cond`** has no JSX and is
+    compile-time truthy/falsy — covers literals, **`typeof`**, **`==` / `!=`
+    with `null`**, numeric/string comparisons, **`BigInt`**, string
+    concatenation, and similar patterns used in tests.
+  - **Comma operator**: flatten operands and fold **only the final** JSX-bearing
+    segment while preserving left-hand evaluation order; explicit guard so a
+    leading string literal statement body is **not** mis-treated as a comma
+    expression for folding.
+  - Implementation centers on **`tryFoldStaticLogicalJsxForInsert`**,
+    **`tryFoldStaticConditionalJsxForInsert`**, **`flattenCommaOperandsRoot`**,
+    and shared **constant-eval** / nullish-truthiness helpers over the TS AST.
+- **`jsx-compiler.test.ts`**: Expanded coverage (dozens of cases) for the
+  folding rules above and import injection edge cases tied to folded output.
+
+### Fixed
+
+- **`insertReactive`** ( **`runtime`** path and **`compiler/insert.ts`** aligned
+  ): when the reactive getter returns **`markMountFn`**, the **synchronous**
+  mount callback runs inside **`untrack`**. Signal reads inside the MountFn
+  therefore **do not** subscribe the **parent** `insertReactive` effect,
+  avoiding **full subtree remount** and **lost focus** on each keystroke (e.g.
+  search-like inputs inside a MountFn shell).
+
+---
+
 ## [1.3.6] - 2026-03-23
 
 ### Added

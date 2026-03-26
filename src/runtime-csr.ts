@@ -1,8 +1,8 @@
 /**
- * View 模板引擎 — 仅 CSR 运行时（createRoot / render / mount）
+ * 客户端轻量挂载运行时：`createRoot` / `render` / `mount`（`fn(container) => void`）。
  *
- * 不包含 renderToString、generateHydrationScript，打主包时可从 @dreamer/view/csr 引入以减小体积。
- * 新标准：createRoot/render 为 fn(container) => void 形态。
+ * **不含** `renderToString`、`generateHydrationScript`。由 `@dreamer/view/csr` 与 `@dreamer/view/hybrid`
+ * **共用本实现**（两入口仅文档与语义区分，避免重复维护两份相同代码）。
  */
 
 import { NOOP_ROOT, resolveMountContainer } from "./runtime-shared.ts";

@@ -9,6 +9,26 @@ import { getActiveDocument } from "./active-document.ts";
 import type { VNode } from "../types.ts";
 import { mountVNodeTree } from "./vnode-mount.ts";
 
+/** `Array.from(undefined)` 会读 `undefined.length`；与空父级子列表等价 */
+const EMPTY_CHILD_LIST: ArrayLike<ChildNode> = Object.freeze([]);
+
+/**
+ * 安全读取 `parent.childNodes`：SSR 伪节点若未实现 `childNodes` 会得到 `undefined`，
+ * `parent.childNodes.length` / `Array.from(parent.childNodes)` 会抛 `Cannot read properties of undefined (reading 'length')`。
+ *
+ * @param parent - DOM 或 SSR 父节点
+ * @returns 可索引的子节点列表（缺失时等价空列表）
+ */
+export function getChildNodesList(parent: Node): ArrayLike<ChildNode> {
+  const raw =
+    (parent as unknown as { childNodes?: ArrayLike<ChildNode> | null })
+      .childNodes;
+  if (raw != null && typeof raw.length === "number") {
+    return raw;
+  }
+  return EMPTY_CHILD_LIST;
+}
+
 /**
  * ActiveDocumentLike 类型未声明 createDocumentFragment，但浏览器 Document 与运行时均有；
  * insertReactive 锚点路径依赖 fragment 作临时容器。
@@ -58,6 +78,24 @@ export function moveFragmentChildren(
 }
 
 /**
+ * 收集 `parent` 在挂载前已有 `fromIndex` 个子节点之后新增的子节点（与 `getChildNodesList` 对齐，避免 `childNodes` 缺失时抛错）。
+ *
+ * @param parent - 挂载后的父节点
+ * @param fromIndex - 挂载前子列表长度
+ * @returns 本次新增的 DOM 节点
+ */
+export function captureNewChildrenSince(
+  parent: Node,
+  fromIndex: number,
+): Node[] {
+  const list: Node[] = [];
+  const cn = getChildNodesList(parent);
+  const len = cn.length;
+  for (let i = fromIndex; i < len; i++) list.push(cn[i] as Node);
+  return list;
+}
+
+/**
  * 将 VNode 挂到 parent：有合法锚点时插在锚点之前，否则 append。
  * 调用方须保证旧 DOM 已由 effect `onCleanup` 摘除；本函数不再 detach。
  *
@@ -76,10 +114,7 @@ export function mountVNodeTreeAtSiblingAnchor(
     mountVNodeTree(frag, vnode);
     return moveFragmentChildren(parent, frag, anchor);
   }
-  const beforeLen = parent.childNodes.length;
+  const beforeLen = getChildNodesList(parent).length;
   mountVNodeTree(parent, vnode);
-  const list: Node[] = [];
-  const len = parent.childNodes.length;
-  for (let i = beforeLen; i < len; i++) list.push(parent.childNodes[i]!);
-  return list;
+  return captureNewChildrenSince(parent, beforeLen);
 }

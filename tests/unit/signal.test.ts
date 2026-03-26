@@ -1,9 +1,14 @@
 /**
- * @fileoverview Signal 单元测试：createSignal（SignalRef）、isSignalGetter、isSignalRef、markSignalGetter、unwrapSignalGetterValue
+ * @fileoverview Signal 单元测试：createSignal（SignalRef / 元组）、isSignalGetter、isSignalRef、markSignalGetter、unwrapSignalGetterValue
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal, isSignalGetter, isSignalRef } from "@dreamer/view";
+import {
+  createEffect,
+  createSignal,
+  isSignalGetter,
+  isSignalRef,
+} from "@dreamer/view";
 import { markSignalGetter, unwrapSignalGetterValue } from "../../src/signal.ts";
 
 describe("createSignal", () => {
@@ -76,6 +81,48 @@ describe("createSignal", () => {
     expect(s.value).toBe(1);
     s.value = null;
     expect(s.value).toBeNull();
+  });
+});
+
+describe("createSignal(initial, true) 元组形态（）", () => {
+  it("应返回 [get, set]，get 为 signal getter，set 可写值与 updater", () => {
+    const [get, set] = createSignal(0, true);
+    expect(isSignalGetter(get)).toBe(true);
+    expect(isSignalRef(get)).toBe(false);
+    expect(get()).toBe(0);
+    set(5);
+    expect(get()).toBe(5);
+    set((n) => n + 1);
+    expect(get()).toBe(6);
+  });
+
+  /** 元组与默认形态共用同一套底层 ref，行为应与 .value 一致。 */
+  it("unwrapSignalGetterValue(get) 应等价于读当前值", () => {
+    const [g, set] = createSignal("a", true);
+    expect(unwrapSignalGetterValue(g)).toBe("a");
+    set("b");
+    expect(unwrapSignalGetterValue(g)).toBe("b");
+  });
+
+  /** set 内 updater 读前值须在 untrack 语义下，避免把外层 effect 误挂到「读」上。 */
+  it("在 createEffect 内 set(updater) 不应使 effect 订阅 updater 内的中间读", async () => {
+    const [a, setA] = createSignal(0, true);
+    const [b, setB] = createSignal(0, true);
+    let runs = 0;
+    createEffect(() => {
+      void a();
+      runs++;
+    });
+    expect(runs).toBe(1);
+    setA(() => {
+      void b();
+      return 1;
+    });
+    await Promise.resolve();
+    expect(runs).toBe(2);
+    setB(9);
+    await Promise.resolve();
+    expect(runs).toBe(2);
   });
 });
 

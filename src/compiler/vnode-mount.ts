@@ -7,6 +7,9 @@
  * vIf、vElseIf、vElse（**根级**与 **Fragment 兄弟链**：**vIf/vElseIf** 含 SignalRef/无参 getter/signal getter 时整链 **insertReactive**）、
  * vCloak（data-view-cloak）、vOnce（子项 getter/`SignalRef` 为「再响应一次后冻结」，与 compileSource 一致；静态子项在 untrack 下单次挂载）。
  * **bindIntrinsicReactiveDomProps**：受控 value/checked、布尔 DOM、**style**（含响应式对象）、**className**（无参 getter / SignalRef）。
+ * 受控 **value** / **checked** / **placeholder** 与同类方案 一致：`value` 与 `placeholder` 仅在与当前 DOM 不一致时写入，减少选区跳动与 layout；
+ * 组字期（composition 深度大于 0，见 `KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH`）且为活动文本控件时跳过 `value` 回写，减轻 IME 被打断；
+ * `compositionend` 后微任务再同步一次，避免组字期内被跳过的更新让 DOM 与 signal 长期不一致。
  * **自定义指令**（`registerDirective`、如 vFocus）在元素 `append` 且 `ref` 绑定之后调用
  * `directive.applyDirectives`，与 compileSource 产物顺序一致（与 `insert` 存在模块环，运行时由
  * Deno/打包器按已存 `isDirectiveProp` 方式解析）。
@@ -19,25 +22,40 @@ import {
   warnIfMultiArgControlledProp,
   warnIfNestedStyleObject,
 } from "../dev-runtime-warn.ts";
+import { REACTIVE_STRING_PROP_KEYS_FOR_TEXT_CONTROL } from "./tc-reactive.ts";
+import {
+  dataAttributeStringValue,
+  domAttributeNameFromPropKey,
+  eventBindingFromOnProp,
+} from "./spread-intrinsic.ts";
 import {
   applyDirectives,
   isDirectiveProp,
   registerDirectiveUnmount,
 } from "../directive.ts";
 import { type ChildItem, normalizeChildren } from "../dom/element.ts";
-import { isEmptyChild, isFragment, isVNodeLike } from "../dom/shared.ts";
+import {
+  isEmptyChild,
+  isFragment,
+  isVNodeLike,
+  safeTextForDom,
+} from "../dom/shared.ts";
 import { createEffect, untrack } from "../effect.ts";
 import {
   isSignalGetter,
   isSignalRef,
   unwrapSignalGetterValue,
 } from "../signal.ts";
-import type { VNode } from "../types.ts";
+import type { EffectDispose, VNode } from "../types.ts";
+import { KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH } from "../constants.ts";
+import { getDocument, getGlobal } from "../globals.ts";
 import {
   type ActiveDocumentLike,
   getActiveDocument,
 } from "./active-document.ts";
 import type { InsertParent, InsertValue } from "./insert.ts";
+import { expandIrArray, peelThunksForReactiveInsert } from "./ir-coerce.ts";
+import { isMountFn } from "./mount-fn.ts";
 import { scheduleFunctionRef } from "./ref-dom.ts";
 import { valueToNode } from "./to-node.ts";
 import {
@@ -48,6 +66,173 @@ import {
 const append = (p: InsertParent, child: Node): void => {
   (p as { appendChild(n: unknown): unknown }).appendChild(child);
 };
+
+/** 记录 `on*` 监听以便复用 DOM 时 `removeEventListener`（与 {@link applyIntrinsicVNodeProps} 成对） */
+type IntrinsicEventBinding = {
+  type: string;
+  listener: EventListener;
+  capture: boolean;
+};
+
+const intrinsicEventBindingsByElement = new WeakMap<
+  Element,
+  IntrinsicEventBinding[]
+>();
+
+/** `bindIntrinsicReactiveDomProps` 为本元素登记的 effect dispose（patch 前统一回收） */
+const intrinsicReactivePropDisposersByElement = new WeakMap<
+  Element,
+  EffectDispose[]
+>();
+
+/**
+ * 受控文本控件上为「组字结束再同步 value」注册的 `compositionend` 监听，须在 patch 前移除以免重复。
+ */
+const intrinsicCompositionEndListenersByElement = new WeakMap<
+  Element,
+  EventListener
+>();
+
+/**
+ * 移除 {@link intrinsicCompositionEndListenersByElement} 中登记的组字结束监听（patch / 卸载前调用）。
+ *
+ * @param el - 本征元素
+ */
+function removeIntrinsicCompositionEndListener(el: Element): void {
+  const fn = intrinsicCompositionEndListenersByElement.get(el);
+  if (fn != null) {
+    el.removeEventListener("compositionend", fn);
+    intrinsicCompositionEndListenersByElement.delete(el);
+  }
+}
+
+/**
+ * 将本节点上一次 `bindIntrinsicReactiveDomProps` 产生的 effect dispose 登记到元素上。
+ */
+function pushIntrinsicReactivePropDisposer(
+  el: Element,
+  dispose: EffectDispose,
+): void {
+  let list = intrinsicReactivePropDisposersByElement.get(el);
+  if (list == null) {
+    list = [];
+    intrinsicReactivePropDisposersByElement.set(el, list);
+  }
+  list.push(dispose);
+}
+
+/**
+ * 复用同一本征元素、即将重写 props 之前：取消响应式 DOM 绑定并移除已登记的 `on*` 监听。
+ * 供 {@link patchMountedIntrinsicElementProps} 与后续 reconcile 路径调用。
+ *
+ * @param el - 已挂载的本征元素
+ */
+export function prepareIntrinsicElementForPropResync(el: Element): void {
+  removeIntrinsicCompositionEndListener(el);
+  const disposers = intrinsicReactivePropDisposersByElement.get(el);
+  if (disposers != null && disposers.length > 0) {
+    for (let i = disposers.length - 1; i >= 0; i--) {
+      disposers[i]!();
+    }
+    disposers.length = 0;
+  }
+  intrinsicReactivePropDisposersByElement.delete(el);
+  const evs = intrinsicEventBindingsByElement.get(el);
+  if (evs != null && evs.length > 0) {
+    for (const r of evs) {
+      el.removeEventListener(
+        r.type,
+        r.listener,
+        r.capture ? { capture: true } : undefined,
+      );
+    }
+    intrinsicEventBindingsByElement.delete(el);
+  }
+}
+
+/**
+ * 已挂载的本征节点上同步新一轮 VNode props：先清理旧监听与响应式 effect，再 `apply` + `bind`（含 select 延后绑定）。
+ * 不重复调用 {@link applyDirectives}，避免指令重复挂载；自定义指令与 patch 并存见后续迭代。
+ *
+ * @param el - 已存在于文档树中的本征元素
+ * @param props - 新一轮 `VNode.props`
+ */
+export function patchMountedIntrinsicElementProps(
+  el: Element,
+  props: Record<string, unknown>,
+): void {
+  prepareIntrinsicElementForPropResync(el);
+  applyIntrinsicVNodeProps(el, props);
+  const inOnce = hasVOnceInProps(props);
+  const deferReactiveDomProps = el.tagName.toLowerCase() === "select";
+  if (!deferReactiveDomProps) {
+    bindIntrinsicReactiveDomProps(el, props, inOnce);
+  }
+  applyIntrinsicVCloak(el, props);
+  if (deferReactiveDomProps) {
+    bindIntrinsicReactiveDomProps(el, props, inOnce);
+  }
+  bindIntrinsicRef(el, props);
+}
+
+/**
+ * 将无参 getter 的一次求值结果规范为 {@link insertReactiveForVnodeSubtree} 可交给主包 `insertReactive` 的值。
+ *
+ * **背景：** `compileSource` 会把 `return () => ( <JSX/> )` 内层编译成 `() => MountFn`（单参 `(parent)=>void`）。
+ * 组件整体仍返回零参 getter `() => MountFn`。若此处未识别 MountFn 而落入 `String(函数)`，会把**函数源码**
+ * 当文本插入 DOM（dweb 文档站等多页表现为整页显示 JS）。
+ *
+ * @param inner - 零参 getter 执行一次的结果
+ * @returns VNode、空、Node、单参 MountFn、signal getter、或标量展示值（不对函数使用 `String(fn)`）；
+ *          **数组**经 {@link expandIrArray} 与 `insertReactive` 对齐（嵌套数组、VNode+MountFn 混排、原始值→文本）。
+ */
+function reactiveInsertNextFromGetterResult(
+  inner: unknown,
+): ReactiveInsertNext {
+  const v = peelThunksForReactiveInsert(inner);
+
+  if (Array.isArray(v)) {
+    const items = expandIrArray(v);
+    if (items.length === 0) return "";
+    if (items.length === 1) {
+      const one = items[0]!;
+      return (typeof one === "function" ? one : one) as ReactiveInsertNext;
+    }
+    return items as unknown as ReactiveInsertNext;
+  }
+
+  /**
+   * 与同类方案 列表源 `list() ?? []` 同向：VNode/Fragment 内 `insertReactive` 子 getter 返回 null/undefined 时
+   * 走**空数组**分支，由上层 `insertReactive` 清空追踪节点且不插空文本节点（顶层 `{null}` 仍走 runtime 标量分支，见 runtime 单测）。
+   */
+  if (v === null || v === undefined) {
+    return [] as unknown as ReactiveInsertNext;
+  }
+
+  if (isVNodeLike(v)) return v as ReactiveInsertNext;
+  if (isEmptyChild(v)) return "";
+  if (
+    typeof v === "object" &&
+    v !== null &&
+    "nodeType" in v &&
+    typeof (v as Node).nodeType === "number"
+  ) {
+    return v as Node;
+  }
+  if (typeof v === "function" && isSignalGetter(v as () => unknown)) {
+    return v as ReactiveInsertNext;
+  }
+  if (typeof v === "function" && isMountFn(v)) {
+    return v as ReactiveInsertNext;
+  }
+  /**
+   * 非常规函数勿 `String(fn)`（V8 会输出整段源码 → 整页像代码）；交给 insertReactive→valueToNode 落成空文本。
+   */
+  if (typeof v === "function") {
+    return v as ReactiveInsertNext;
+  }
+  return String(v) as ReactiveInsertNext;
+}
 
 /**
  * 本征元素 VNode 上 vIf/v-if 是否应挂载子树（与 directive 模块中 getVIfValue 语义一致）。
@@ -282,22 +467,81 @@ function applyIntrinsicVNodeProps(
     if (key === "ref") continue;
     const val = props[key];
     if (val == null) continue;
-    if (typeof val === "function" && /^on[A-Z]/.test(key)) {
-      const name = key.slice(2).toLowerCase();
-      el.addEventListener(name, val as EventListener);
+    if (typeof val === "function") {
+      const binding = eventBindingFromOnProp(key);
+      if (binding !== null) {
+        const capture = Boolean(binding.capture);
+        let list = intrinsicEventBindingsByElement.get(el);
+        if (list == null) {
+          list = [];
+          intrinsicEventBindingsByElement.set(el, list);
+        }
+        const idx = list.findIndex(
+          (r: IntrinsicEventBinding) =>
+            r.type === binding.type && r.capture === capture,
+        );
+        if (idx >= 0) {
+          const old = list[idx]!;
+          el.removeEventListener(
+            old.type,
+            old.listener,
+            old.capture ? { capture: true } : undefined,
+          );
+          list.splice(idx, 1);
+        }
+        const listener = val as EventListener;
+        el.addEventListener(
+          binding.type,
+          listener,
+          capture ? { capture: true } : undefined,
+        );
+        list.push({ type: binding.type, listener, capture });
+      }
       continue;
     }
-    if (typeof val === "object" && val !== null) continue;
-    if (typeof val === "function") continue;
+    if (
+      key === "dangerouslySetInnerHTML" && typeof val === "object" &&
+      val !== null
+    ) {
+      const raw = (val as { __html?: unknown }).__html;
+      if (typeof raw === "string") {
+        el.innerHTML = raw;
+      }
+      continue;
+    }
+    if (typeof val === "object" && val !== null) {
+      if (key === "style") continue;
+      if (key.startsWith("data-")) {
+        const s = dataAttributeStringValue(val);
+        if (s != null) el.setAttribute(key, s);
+        continue;
+      }
+      if (Array.isArray(val)) {
+        if (key === "className" || key === "class") {
+          el.setAttribute("class", val.filter(Boolean).join(" "));
+        } else {
+          el.setAttribute(domAttributeNameFromPropKey(key), String(val));
+        }
+        continue;
+      }
+      if (val instanceof Date) {
+        el.setAttribute(
+          domAttributeNameFromPropKey(key),
+          val.toISOString(),
+        );
+        continue;
+      }
+      continue;
+    }
     if (val === true) {
-      el.setAttribute(key, "");
+      el.setAttribute(domAttributeNameFromPropKey(key), "");
       continue;
     }
     if (val === false) continue;
     if (key === "className") el.setAttribute("class", String(val));
     else if (key === "class") el.setAttribute("class", String(val));
     else if (key === "htmlFor") el.setAttribute("for", String(val));
-    else el.setAttribute(key, String(val));
+    else el.setAttribute(domAttributeNameFromPropKey(key), String(val));
   }
 }
 
@@ -488,6 +732,80 @@ function booleanPropToDomKey(name: string): string {
 }
 
 /**
+ * 是否为可能使用 IME 组字的文本类控件（`textarea` 或非按钮类 `input`）。
+ *
+ * @param el - 本征元素
+ */
+function isImeSensitiveTextControl(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "textarea") return true;
+  if (tag !== "input") return false;
+  const t = ((el as HTMLInputElement).getAttribute("type") || "text")
+    .toLowerCase();
+  if (
+    t === "hidden" || t === "file" || t === "button" || t === "submit" ||
+    t === "reset" || t === "image" || t === "checkbox" || t === "radio" ||
+    t === "range" || t === "color"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 将受控字符串 `value` 同步到 `input` / `textarea` / `select`：仅当与当前 `.value` 不同才赋值。
+ *
+ * 背景：本征 patch 后 effect 仍会随**其它**依赖重跑；若每轮都执行 `el.value = 相同字符串`，
+ * 多数浏览器会把 **选区重置到末尾**（与 常见编译器「只在新旧不等时写 DOM」相反）。
+ *
+ * 组字期：若调度器已安装 composition 监听且 composition 深度大于 0，且本节点为当前 `activeElement` 的文本控件，
+ * 则**不**写回 `value`，避免框架把拼音中间态覆盖掉（见 `scheduler.ts` 内 composition 监听）。
+ * 组字结束后由元素上 `compositionend` 监听排队微任务，以 `ignoreImeGate: true` 再同步一次（避免 DOM 与 signal 长期分叉）。
+ *
+ * @param el - 本征表单控件
+ * @param raw - 已与 {@link readLiveControlledValue} 对齐的展示值
+ * @param options - `ignoreImeGate` 为 true 时跳过组字门闩（仅用于 compositionend 尾随同步）
+ */
+function syncControlledStringValueIfChanged(
+  el: Element,
+  raw: unknown,
+  options?: { ignoreImeGate?: boolean },
+): void {
+  const tag = el.tagName.toLowerCase();
+  if (
+    !options?.ignoreImeGate && (tag === "textarea" || tag === "input")
+  ) {
+    const depth = getGlobal<number>(KEY_VIEW_SCHEDULER_COMPOSITION_DEPTH);
+    if (typeof depth === "number" && depth > 0) {
+      const doc = getDocument();
+      if (
+        doc != null && doc.activeElement === el && isImeSensitiveTextControl(el)
+      ) {
+        return;
+      }
+    }
+  }
+  const next = String(raw ?? "");
+  const ctl = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+  if (ctl.value === next) return;
+  ctl.value = next;
+}
+
+/**
+ * 同步 `checkbox` / `radio` 的受控 `checked`：仅当与当前 DOM 不一致时写入，避免无谓刷新。
+ *
+ * @param inp - 目标 input
+ * @param nextChecked - 下一帧应为的选中态
+ */
+function syncCheckboxOrRadioCheckedIfChanged(
+  inp: HTMLInputElement,
+  nextChecked: boolean,
+): void {
+  if (inp.checked === nextChecked) return;
+  inp.checked = nextChecked;
+}
+
+/**
  * 手写 jsx-runtime 路径：补齐 compileSource 在构建期做的受控表单、style 对象、布尔 signal/无参函数绑定。
  * 在 `applyIntrinsicVNodeProps` 之后调用；依赖元素已带上静态 `type` 等 attribute。
  *
@@ -500,14 +818,16 @@ function bindIntrinsicReactiveDomProps(
   props: Record<string, unknown>,
   inOnceSubtree: boolean,
 ): void {
+  /**
+   * 每个响应式 DOM 片段对应一个 effect；dispose 记入元素，供 {@link prepareIntrinsicElementForPropResync} 在 patch 前回收。
+   */
   const schedule = (sync: () => void) => {
-    if (inOnceSubtree) {
-      createEffect(() => {
+    const dispose = inOnceSubtree
+      ? createEffect(() => {
         untrack(sync);
-      });
-    } else {
-      createEffect(sync);
-    }
+      })
+      : createEffect(sync);
+    pushIntrinsicReactivePropDisposer(el, dispose);
   };
 
   const tag = el.tagName.toLowerCase();
@@ -561,7 +881,73 @@ function bindIntrinsicReactiveDomProps(
     ) {
       schedule(() => {
         const v = readLiveControlledValue(val);
-        (el as HTMLInputElement).value = String(v ?? "");
+        syncControlledStringValueIfChanged(el, v);
+      });
+      /**
+       * 组字期间 effect 可能多次跳过写回；`compositionend` 后在微任务里强制按当前 signal 对齐 DOM（仍遵守「值相等则不赋」）。
+       */
+      if (
+        tag === "textarea" || (tag === "input" && isImeSensitiveTextControl(el))
+      ) {
+        removeIntrinsicCompositionEndListener(el);
+        const onCompositionEnd: EventListener = () => {
+          globalThis.queueMicrotask(() => {
+            const v = readLiveControlledValue(val);
+            syncControlledStringValueIfChanged(el, v, {
+              ignoreImeGate: true,
+            });
+          });
+        };
+        el.addEventListener("compositionend", onCompositionEnd);
+        intrinsicCompositionEndListenersByElement.set(el, onCompositionEnd);
+      }
+    }
+  }
+
+  /**
+   * 响应式 `placeholder`：`applyIntrinsicVNodeProps` 对无参 getter 不写 attribute，由本处 effect 对齐；
+   * 与受控 `value` 相同策略：字符串与当前 `placeholder` 一致则不 `setAttribute`，减轻无关布局计算。
+   */
+  if ("placeholder" in props) {
+    const ph = props.placeholder;
+    if (
+      needsReactiveDomProp(ph) &&
+      (tag === "input" || tag === "textarea")
+    ) {
+      schedule(() => {
+        const v = readLiveControlledValue(ph);
+        const next = String(v ?? "");
+        const cur = el.getAttribute("placeholder") ?? "";
+        if (cur === next) return;
+        if (next === "") {
+          el.removeAttribute("placeholder");
+        } else {
+          el.setAttribute("placeholder", next);
+        }
+      });
+    }
+  }
+
+  /**
+   * 文本控件常见字符串 attribute（maxlength、pattern、name 等）：响应式时由 effect 同步，相等则跳过 setAttribute。
+   * 白名单见 {@link REACTIVE_STRING_PROP_KEYS_FOR_TEXT_CONTROL}，与 {@link canPatchIntrinsic} 放行一致。
+   */
+  if (tag === "input" || tag === "textarea") {
+    for (const key of REACTIVE_STRING_PROP_KEYS_FOR_TEXT_CONTROL) {
+      if (!(key in props)) continue;
+      const val = props[key];
+      if (!needsReactiveDomProp(val)) continue;
+      const attrName = domAttributeNameFromPropKey(key);
+      schedule(() => {
+        const v = readLiveControlledValue(val);
+        const next = String(v ?? "");
+        const cur = el.getAttribute(attrName) ?? "";
+        if (cur === next) return;
+        if (next === "") {
+          el.removeAttribute(attrName);
+        } else {
+          el.setAttribute(attrName, next);
+        }
       });
     }
   }
@@ -577,7 +963,7 @@ function bindIntrinsicReactiveDomProps(
       if (tp === "checkbox" || tp === "radio") {
         schedule(() => {
           const v = readLiveControlledValue(val);
-          inp.checked = Boolean(v);
+          syncCheckboxOrRadioCheckedIfChanged(inp, Boolean(v));
         });
       }
     }
@@ -592,7 +978,28 @@ function bindIntrinsicReactiveDomProps(
     if (needsReactiveDomProp(cn)) {
       schedule(() => {
         const v = readLiveControlledValue(cn);
-        (el as HTMLElement).setAttribute("class", String(v ?? ""));
+        const next = String(v ?? "");
+        const h = el as HTMLElement;
+        /** 与受控 value 同理：无变化不写 `class`，减少 layout 与无关重绘（利于输入框父级频繁改 class 的场景） */
+        if (h.getAttribute("class") === next) return;
+        h.setAttribute("class", next);
+      });
+    }
+  }
+
+  /**
+   * 响应式 `class`（HTML 属性名）：与 `className` 同语义，`applyIntrinsicVNodeProps` 对无参 getter 跳过，
+   * 须在此 effect 同步，否则 patch 路径下 class 永不更新。
+   */
+  if ("class" in props) {
+    const cls = props.class;
+    if (needsReactiveDomProp(cls)) {
+      schedule(() => {
+        const v = readLiveControlledValue(cls);
+        const next = String(v ?? "");
+        const h = el as HTMLElement;
+        if (h.getAttribute("class") === next) return;
+        h.setAttribute("class", next);
       });
     }
   }
@@ -634,7 +1041,8 @@ function mountVOnceDynamicExpression(
   const stop = createEffect(() => {
     const raw = rawGetter();
     const u = unwrapSignalGetterValue(raw);
-    const s = String(u ?? "");
+    /** 与 createTextVNode 一致：勿对 function 使用 String（会吐出整段源码） */
+    const s = safeTextForDom(u ?? "");
     if (textNode == null) {
       const tn = doc.createTextNode(s) as Text;
       textNode = tn;
@@ -719,18 +1127,8 @@ function mountChildItemForVnode(parent: Node, item: ChildItem): void {
   if (typeof item === "function" || isSignalGetter(item)) {
     const rawGetter = item as () => unknown;
     insertReactiveForVnodeSubtree(parent, () => {
-      const x = rawGetter();
-      if (isVNodeLike(x)) return x as ReactiveInsertNext;
-      if (isEmptyChild(x)) return "";
-      if (
-        typeof x === "object" &&
-        x !== null &&
-        "nodeType" in x &&
-        typeof (x as Node).nodeType === "number"
-      ) {
-        return x as Node;
-      }
-      return String(x) as ReactiveInsertNext;
+      /** 与 Fragment/函数组件分支一致：getter 可返回 compileSource 式 MountFn，不可 String(函数)（SSR 会吐出整段源码） */
+      return reactiveInsertNextFromGetterResult(rawGetter());
     });
     return;
   }
@@ -762,11 +1160,10 @@ export function mountVNodeTree(
   const v = vnode as VNode;
   const doc = getActiveDocument();
   if (v.type === "#text") {
+    const raw = (v.props as { nodeValue?: unknown })?.nodeValue;
     append(
       parent,
-      doc.createTextNode(
-        String((v.props as { nodeValue?: unknown })?.nodeValue ?? ""),
-      ) as Node,
+      doc.createTextNode(safeTextForDom(raw ?? "")) as Node,
     );
     return;
   }
@@ -806,18 +1203,7 @@ export function mountVNodeTree(
     if (typeof raw === "function" || isSignalGetter(raw)) {
       const g = raw as () => unknown;
       insertReactiveForVnodeSubtree(parent, () => {
-        const inner = g();
-        if (isVNodeLike(inner)) return inner as ReactiveInsertNext;
-        if (isEmptyChild(inner)) return "";
-        if (
-          typeof inner === "object" &&
-          inner !== null &&
-          "nodeType" in inner &&
-          typeof (inner as Node).nodeType === "number"
-        ) {
-          return inner as Node;
-        }
-        return String(inner) as ReactiveInsertNext;
+        return reactiveInsertNextFromGetterResult(g());
       });
       return;
     }
@@ -924,18 +1310,7 @@ export function mountVNodeTree(
       const fn = out as () => unknown;
       if (fn.length === 0) {
         insertReactiveForVnodeSubtree(parent, () => {
-          const inner = fn();
-          if (isVNodeLike(inner)) return inner as ReactiveInsertNext;
-          if (isEmptyChild(inner)) return "";
-          if (
-            typeof inner === "object" &&
-            inner !== null &&
-            "nodeType" in inner &&
-            typeof (inner as Node).nodeType === "number"
-          ) {
-            return inner as Node;
-          }
-          return String(inner) as ReactiveInsertNext;
+          return reactiveInsertNextFromGetterResult(fn());
         });
         return;
       }

@@ -3,7 +3,7 @@
  *
  * - `createRoot` / `render` / `mount`：`fn(container)` 只执行一次，内部通过 `insert` 建立 DOM。
  * - `insert`：支持 `(parent) => void`、静态值、或 getter → 上述；水合期间可委托 `KEY_VIEW_HYDRATE` 上下文。
- * - `insertReactive`：可处理 `MountFn`、数组、`VNode`、`DocumentFragment` 与文本节点等（与 Suspense / 编译产物配合）。
+ * - `insertReactive` / `insertIrList`：可处理 `MountFn`、数组、`VNode`、`DocumentFragment` 与文本节点等；后者对齐 同类方案 可空列表源（`list() ?? []`）。
  */
 
 import { KEY_VIEW_DATA, KEY_VIEW_HYDRATE } from "./constants.ts";
@@ -17,16 +17,45 @@ import {
 } from "./compiler/insert.ts";
 import { valueToNode } from "./compiler/to-node.ts";
 import {
+  captureNewChildrenSince,
   createReactiveInsertFragment,
+  getChildNodesList,
   mountVNodeTreeAtSiblingAnchor,
   moveFragmentChildren,
   resolveSiblingAnchor,
 } from "./compiler/insert-reactive-siblings.ts";
 import {
+  coalesceIrList,
+  expandIrArray,
+  type IrListOptions,
+  readReactiveInsertRawFromGetter,
+} from "./compiler/ir-coerce.ts";
+import { untrack } from "./effect.ts";
+import {
+  beginInsertReactiveChildCollect,
+  endInsertReactiveChildCollect,
+  registerChildInsertReactiveDispose,
+} from "./compiler/ir-nested.ts";
+import { runInsertReactiveIntrinsicVNodeCleanup } from "./compiler/ir-clean.ts";
+import {
+  extractStableVNodeKeysFromCoercedItems,
+  patchInsertReactiveArrayInPlaceOrKeyed,
+} from "./compiler/ir-array-patch.ts";
+import { mountVNodeTree } from "./compiler/vnode-mount.ts";
+import {
+  noteInsertReactiveIntrinsicDomPatched,
+  noteInsertReactiveIntrinsicDomReplaced,
+} from "./compiler/ir-metrics.ts";
+import {
+  canPatchIntrinsic,
+  patchIntrinsicSubtree,
+} from "./compiler/vnode-reconcile.ts";
+import {
   type ReactiveInsertNext,
   setInsertReactiveForVnodeMount,
 } from "./compiler/vnode-insert-bridge.ts";
-import type { VNode } from "./types.ts";
+import { isSignalGetter } from "./signal.ts";
+import type { EffectDispose, VNode } from "./types.ts";
 
 /**
  * 主包 `insert` 可接受的值：`InsertValue`（字符串、数字、节点等）或单参挂载函数 `(parent) => void`。
@@ -40,7 +69,6 @@ export type InsertValueWithMount = InsertValue | ((parent: Node) => void);
  */
 import { createEffect, onCleanup } from "./effect.ts";
 import { escapeForAttr } from "./escape.ts";
-import { isSignalGetter, unwrapSignalGetterValue } from "./signal.ts";
 import { NOOP_ROOT, resolveMountContainer } from "./runtime-shared.ts";
 import { createRoot, render } from "./compiler/mod.ts";
 import type { MountOptions, Root } from "./types.ts";
@@ -114,23 +142,21 @@ const append = (p: InsertParent, child: Node): void => {
   (p as { appendChild(n: unknown): unknown }).appendChild(child);
 };
 
-/** 2.3 原语：仅静态插入，无 effect；供编译器或手写按需使用以利 tree-shaking */
+/**
+ * 2.3 原语：仅静态插入，无 effect；供编译器或手写按需使用以利 tree-shaking。
+ * 若误传入 VNode（与 `insert(parent, jsx(...))` 漏检同源），改为 `mountVNodeTree` 展开，避免空文本占位。
+ */
 export function insertStatic(
   parent: InsertParent,
   value: string | number | Node | null | undefined,
 ): undefined {
-  append(parent, toNodeForInsert(value));
+  const v = value as unknown;
+  if (isVNodeLike(v)) {
+    mountVNodeTree(parent as Node, v as VNode);
+    return undefined;
+  }
+  append(parent, toNodeForInsert(value as InsertValue));
   return undefined;
-}
-
-/**
- * 仅收集 parent 上 fromIndex 起的新子节点，避免 Array.from(childNodes).slice(fromIndex) 的临时数组（见 ANALYSIS_OPTIMIZATION.md 1.2）。
- */
-function captureNewChildren(parent: Node, fromIndex: number): Node[] {
-  const list: Node[] = [];
-  const len = parent.childNodes.length;
-  for (let i = fromIndex; i < len; i++) list.push(parent.childNodes[i]);
-  return list;
 }
 
 /**
@@ -150,137 +176,288 @@ export function insertReactive(
   const parentNode = parent as Node | null;
   let currentNodes: Node[] = [];
   /**
+   * 上一轮数组 commit 的稳定 VNode key 列（与 `currentNodes` 下标对齐），供 key 重排 patch。
+   */
+  let prevArrayVNodeKeys: string[] | null = null;
+  /**
    * 下一轮须在 `insertBefore(anchor)` 插入：effect 重跑前 onCleanup 会清空 `currentNodes`，
    * 锚点只能每轮挂载后记 `tracked[last].nextSibling`（见 ui-view 侧栏 + main 兄弟序）。
    */
   let siblingAnchorForNextRun: Node | null = null;
-  return createEffect(() => {
-    /** 父已卸载或非法入参时跳过，避免 MountFn 内 appendChild 抛错（Suspense 竞态等） */
-    if (parentNode == null) {
-      return;
-    }
-    onCleanup(() => {
-      for (const n of currentNodes) {
-        detachInsertReactiveTrackedChild(n);
-      }
-      currentNodes = [];
-    });
-    const anchor = resolveSiblingAnchor(parentNode, siblingAnchorForNextRun);
-    const commitTracked = (nodes: Node[]) => {
-      currentNodes = nodes;
-      const refreshAnchor = () => {
-        siblingAnchorForNextRun = currentNodes.length > 0
-          ? currentNodes[currentNodes.length - 1]!.nextSibling
-          : null;
-      };
-      refreshAnchor();
-      /**
-       * 同一同步挂载函数里若先 `insertReactive` 再 `appendChild` 兄弟，首帧结束时 `nextSibling` 仍为 null；
-       * 微任务阶段兄弟已挂上，再读一次锚点（见 runtime 单测与文档侧栏 + main）。
-       */
-      if (
-        siblingAnchorForNextRun === null &&
-        currentNodes.length > 0 &&
-        typeof globalThis.queueMicrotask === "function"
-      ) {
-        globalThis.queueMicrotask(refreshAnchor);
-      }
-    };
-    // 热路径：MountFn 最常见，已置于首分支（见 ANALYSIS_OPTIMIZATION.md 1.2）
-    // getter 返回 getter 引用时需解包以订阅 signal，见 unwrapSignalGetterValue
-    const raw = getter();
-    /** 与 compiler/insert 一致：getter 可返回 `SignalRef` 或标记 getter，须解包后再走 MountFn/VNode/文本分支 */
-    const next = unwrapSignalGetterValue(
-      typeof raw === "function" && isSignalGetter(raw)
-        ? (raw as () => unknown)()
-        : raw,
-    ) as ReactiveInsertNext;
-    if (isMountFn(next)) {
-      let nodes: Node[];
-      if (anchor != null) {
-        const frag = createReactiveInsertFragment();
-        (next as (parent: Node) => void)(frag);
-        nodes = moveFragmentChildren(parentNode, frag, anchor);
-      } else {
-        const beforeLen = parentNode.childNodes.length;
-        (next as (parent: Node) => void)(parentNode);
-        nodes = captureNewChildren(parentNode, beforeLen);
-      }
-      commitTracked(nodes);
-      return;
-    }
-    // getter 返回 MountFn 数组（如 .map(() => (parent)=>...)）时依次挂载并追踪子节点
-    if (Array.isArray(next)) {
-      let nodes: Node[];
-      if (anchor != null) {
-        const frag = createReactiveInsertFragment();
-        for (const fn of next) {
-          if (isMountFn(fn)) {
-            (fn as (parent: Node) => void)(frag);
-          }
-        }
-        nodes = moveFragmentChildren(parentNode, frag, anchor);
-      } else {
-        const beforeLen = parentNode.childNodes.length;
-        for (const fn of next) {
-          if (isMountFn(fn)) {
-            (fn as (parent: Node) => void)(parentNode);
-          }
-        }
-        nodes = captureNewChildren(parentNode, beforeLen);
-      }
-      commitTracked(nodes);
-      return;
-    }
-
-    // getter 返回 VNode（如 Suspense 的 fallback/resolved）时在此展开
-    if (isVNodeLike(next)) {
-      commitTracked(
-        mountVNodeTreeAtSiblingAnchor(parentNode, next as VNode, anchor),
-      );
-      return;
-    }
-
-    /**
-     * DocumentFragment：appendChild/replaceChildren 后子节点会从 fragment 移入父节点，fragment 随即为空。
-     * 若走下方 replaceChildren(fragment) 且把 fragment 记入 currentNodes，下一轮 effect 会对「空 fragment」再次
-     * replaceChildren，把父节点清空（遗留：旧版曾把组件 children 编成 DocumentFragment；现编译器已改为 (parent)=>void 挂载函数）。
-     * 因此：用 appendChild 移动子树，并只把**实际挂到父上的子节点**记入 currentNodes。
-     */
-    if (
-      typeof next === "object" &&
-      next !== null &&
-      typeof (next as Node).nodeType === "number" &&
-      (next as Node).nodeType === 11
-    ) {
-      const frag = next as DocumentFragment;
-      if (frag.childNodes.length === 0) {
+  /**
+   * 上一轮本插入块「第一个追踪节点」的前一个兄弟（仍在 parent 内时通常稳定）。
+   * 当 `siblingAnchorForNextRun` 指向的「后兄弟」被其它 insertReactive 整节点替换而脱离文档时，
+   * `resolveSiblingAnchor` 会得到 null，若直接 append 会把整块插到父末尾（如文档站 Table 跑到 CodeBlock 下）。
+   */
+  let stablePreviousSiblingSnapshot: Node | null = null;
+  /** 用户显式 dispose 时须完整清理，不可保留 DOM 走 patch */
+  let forceFullInsertReactiveCleanup = false;
+  /**
+   * 上一轮 effect 体结束时的 `currentNodes.length`；重跑时 cleanup 会先清空数组，
+   * insertReactive metrics 依赖此快照判断 `hadPriorDom`。
+   */
+  let prevCommitTrackedLen = 0;
+  const innerDispose = createEffect(() => {
+    /** 同步挂载阶段更深 `insertReactive` 的 dispose，须在 detach 本层 DOM 前先执行（见 ir-nested） */
+    const childInsertDisposers: EffectDispose[] = [];
+    beginInsertReactiveChildCollect(childInsertDisposers);
+    try {
+      /** 父已卸载或非法入参时跳过，避免 MountFn 内 appendChild 抛错（Suspense 竞态等） */
+      if (parentNode == null) {
         return;
       }
-      let nodes: Node[];
-      if (anchor != null) {
-        nodes = moveFragmentChildren(parentNode, frag, anchor);
-      } else {
-        const beforeLen = parentNode.childNodes.length;
-        parentNode.appendChild(frag);
-        nodes = captureNewChildren(parentNode, beforeLen);
+      let anchor = resolveSiblingAnchor(parentNode, siblingAnchorForNextRun);
+      if (anchor === null && siblingAnchorForNextRun !== null) {
+        const prev = stablePreviousSiblingSnapshot;
+        if (prev != null && prev.parentNode === parentNode) {
+          anchor = prev.nextSibling;
+        } else {
+          anchor = parentNode.firstChild;
+        }
       }
-      commitTracked(nodes);
-      return;
+      const commitTracked = (nodes: Node[]) => {
+        currentNodes = nodes;
+        const refreshAnchor = () => {
+          siblingAnchorForNextRun = currentNodes.length > 0
+            ? currentNodes[currentNodes.length - 1]!.nextSibling
+            : null;
+        };
+        refreshAnchor();
+        /**
+         * 同一同步挂载函数里若先 `insertReactive` 再 `appendChild` 兄弟，首帧结束时 `nextSibling` 仍为 null；
+         * 微任务阶段兄弟已挂上，再读一次锚点（见 runtime 单测与文档侧栏 + main）。
+         */
+        if (
+          siblingAnchorForNextRun === null &&
+          currentNodes.length > 0 &&
+          typeof globalThis.queueMicrotask === "function"
+        ) {
+          globalThis.queueMicrotask(refreshAnchor);
+        }
+      };
+      /** 是否上一轮提交后曾有追踪节点（见 `prevCommitTrackedLen`，供 metrics） */
+      const hadPriorDom = prevCommitTrackedLen > 0;
+      /** 与 compiler/insert、`ir-coerce` 共用解包语义 */
+      const next = readReactiveInsertRawFromGetter(
+        getter as () => unknown,
+      ) as ReactiveInsertNext;
+      /**
+       * 与 vnode-mount 的 mountChildItemForVnode 一致：compileSource 可能产出未打标的 `(parent)=>void`
+       * （如 `{() => (() => (parent)=>{ insertReactive(parent, …) })()}` 外层），若仅认 isMountFn 会落入 toNodeForInsert，
+       * 函数被当成非法插入值 → 相册预览等含 role="dialog" 的子树永不挂载。
+       */
+      const nextIsDomMountFn = typeof next === "function" &&
+        (isMountFn(next) ||
+          ((next as (p: Node) => void).length === 1 && !isSignalGetter(next)));
+      if (nextIsDomMountFn) {
+        prevArrayVNodeKeys = null;
+        const mountFn = next as (parent: Node) => void;
+        let nodes: Node[];
+        /**
+         * MountFn 在 `createEffect` 体内同步调用：若此处不 `untrack`，fn 内读到的 signal 会登记到**本层**
+         * insertReactive effect，导致整段挂载被误订阅（如 Transfer 搜索框键入即整列 detach 失焦）。
+         * 内层 `insertReactive` / `createEffect` 仍会各自 `setCurrentEffect` 并正常收集依赖。
+         */
+        if (anchor != null) {
+          const frag = createReactiveInsertFragment();
+          untrack(() => {
+            mountFn(frag);
+          });
+          nodes = moveFragmentChildren(parentNode, frag, anchor);
+        } else {
+          const beforeLen = getChildNodesList(parentNode).length;
+          untrack(() => {
+            mountFn(parentNode);
+          });
+          nodes = captureNewChildrenSince(parentNode, beforeLen);
+        }
+        commitTracked(nodes);
+        if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+      } else if (Array.isArray(next)) {
+        /**
+         * 数组分支：`expandIrArray` 扁平嵌套数组、原始值→文本 VNode、读 SignalRef，
+         * **VNode 与 MountFn 可混排**（与 jsx-runtime 手写列表一致）。
+         */
+        const items = expandIrArray(next as unknown[]);
+        if (items.length === 0) {
+          commitTracked([]);
+          prevArrayVNodeKeys = null;
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+        } else if (
+          currentNodes.length > 0 &&
+          patchInsertReactiveArrayInPlaceOrKeyed(
+            items,
+            currentNodes,
+            prevArrayVNodeKeys,
+          )
+        ) {
+          commitTracked(currentNodes);
+          prevArrayVNodeKeys = extractStableVNodeKeysFromCoercedItems(items);
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomPatched();
+        } else {
+          let nodes: Node[];
+          if (anchor != null) {
+            const frag = createReactiveInsertFragment();
+            for (const item of items) {
+              if (typeof item === "function") {
+                untrack(() => {
+                  (item as (parent: Node) => void)(frag);
+                });
+              } else {
+                mountVNodeTree(frag, item);
+              }
+            }
+            nodes = moveFragmentChildren(parentNode, frag, anchor);
+          } else {
+            const beforeLen = getChildNodesList(parentNode).length;
+            for (const item of items) {
+              if (typeof item === "function") {
+                untrack(() => {
+                  (item as (parent: Node) => void)(parentNode);
+                });
+              } else {
+                mountVNodeTree(parentNode, item);
+              }
+            }
+            nodes = captureNewChildrenSince(parentNode, beforeLen);
+          }
+          commitTracked(nodes);
+          prevArrayVNodeKeys = extractStableVNodeKeysFromCoercedItems(items);
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+        }
+      } else if (isVNodeLike(next)) {
+        prevArrayVNodeKeys = null;
+        const vn = next as VNode;
+        if (
+          currentNodes.length === 1 &&
+          currentNodes[0]!.nodeType === 1 &&
+          canPatchIntrinsic(currentNodes[0]!, vn)
+        ) {
+          patchIntrinsicSubtree(currentNodes[0] as Element, vn);
+          commitTracked([currentNodes[0]!]);
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomPatched();
+        } else {
+          commitTracked(
+            mountVNodeTreeAtSiblingAnchor(parentNode, vn, anchor),
+          );
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+        }
+      } else if (
+        typeof next === "object" &&
+        next !== null &&
+        typeof (next as Node).nodeType === "number" &&
+        (next as Node).nodeType === 11
+      ) {
+        prevArrayVNodeKeys = null;
+        /**
+         * DocumentFragment：appendChild 后子节点会从 fragment 移入父节点，fragment 随即为空。
+         * 只把**实际挂到父上的子节点**记入 currentNodes；空 fragment 须 commitTracked([]) 以便与本轮 detach 对齐。
+         */
+        const frag = next as DocumentFragment;
+        if (getChildNodesList(frag as unknown as Node).length === 0) {
+          commitTracked([]);
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+        } else {
+          let nodes: Node[];
+          if (anchor != null) {
+            nodes = moveFragmentChildren(parentNode, frag, anchor);
+          } else {
+            const beforeLen = getChildNodesList(parentNode).length;
+            parentNode.appendChild(frag);
+            nodes = captureNewChildrenSince(parentNode, beforeLen);
+          }
+          commitTracked(nodes);
+          if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+        }
+      } else {
+        prevArrayVNodeKeys = null;
+        /**
+         * 文本/数字/单节点等：只替换本 effect 曾插入的 currentNodes，禁止 replaceChildren(parent)
+         * 否则同一父下若有兄弟（如先 insertMount 了 Form、再 insertReactive 条件分支），
+         * getter 返回 false/null 时会清空整父节点，典型：`<div><Form/>{submitted() && <p/>}</div>` 白屏。
+         */
+        const node = toNodeForInsert(next as InsertValue);
+        if (anchor != null) {
+          /** 与 compiler/insert 一致：父节点无 insertBefore 时回退 appendChild */
+          const ins = (parentNode as unknown as {
+            insertBefore?: (n: Node, ref: Node | null) => void;
+          }).insertBefore;
+          if (typeof ins === "function") {
+            ins.call(parentNode, node, anchor);
+          } else {
+            (parentNode as Node).appendChild(node);
+          }
+        } else {
+          parentNode.appendChild(node);
+        }
+        commitTracked([node]);
+        if (hadPriorDom) noteInsertReactiveIntrinsicDomReplaced();
+      }
+      /**
+       * 与 `compiler/insert.ts` 中 `insertReactive` 一致：detach 的 onCleanup 须排在 MountFn 同步挂载完成之后登记，
+       * 使 MountFn 内嵌套的 insertReactive 所登记的 onCleanup 先执行（FIFO），避免父先摘 DOM 而子 effect 未 dispose 导致重复挂载。
+       *
+       * VNode 子树内嵌套 `insertReactive` 与外层同读一 signal 时，须先逆序 dispose 子层（ir-nested）。
+       */
+      onCleanup(() => {
+        if (currentNodes.length > 0) {
+          stablePreviousSiblingSnapshot = currentNodes[0]!.previousSibling;
+        } else {
+          stablePreviousSiblingSnapshot = null;
+        }
+        runInsertReactiveIntrinsicVNodeCleanup({
+          forceFullCleanup: forceFullInsertReactiveCleanup,
+          getter: getter as () => unknown,
+          currentNodes,
+          prevArrayVNodeKeys,
+          childInsertDisposers,
+          detachTracked: detachInsertReactiveTrackedChild,
+        });
+      });
+    } finally {
+      if (parentNode != null) {
+        prevCommitTrackedLen = currentNodes.length;
+      }
+      endInsertReactiveChildCollect();
     }
+  });
+  const dispose = (): void => {
+    forceFullInsertReactiveCleanup = true;
+    try {
+      innerDispose();
+    } finally {
+      forceFullInsertReactiveCleanup = false;
+    }
+  };
+  registerChildInsertReactiveDispose(dispose);
+  return dispose;
+}
 
-    /**
-     * 文本/数字/单节点等：只替换本 effect 曾插入的 currentNodes，禁止 replaceChildren(parent)
-     * 否则同一父下若有兄弟（如先 insertMount 了 Form、再 insertReactive 条件分支），
-     * getter 返回 false/null 时会清空整父节点，典型：`<div><Form/>{submitted() && <p/>}</div>` 白屏。
-     */
-    const node = toNodeForInsert(next as InsertValue);
-    if (anchor != null) {
-      parentNode.insertBefore(node, anchor);
-    } else {
-      parentNode.appendChild(node);
+/**
+ * 与同类方案 `<For each={list()}>` / `mapArray` 内 `list() ?? []` 同向：将 accessor 可能返回的
+ * `null`/`undefined` 规范为**空数组**后再走 {@link insertReactive} 的数组分支（keyed 协调等语义不变）。
+ * 可选 `fallback` 对齐 同类方案 `<For fallback={…}>`：扁平后**无项**时展示占位而非空列表。
+ *
+ * @param parent - 插入父节点（与 `insertReactive` 一致）
+ * @param accessor - 返回列表源，可为 null/undefined（如异步数据未就绪）
+ * @param options - 如 `fallback`，列表展开为空时调用
+ * @returns `createEffect` 的 dispose
+ */
+export function insertIrList(
+  parent: InsertParent,
+  accessor: () => readonly unknown[] | null | undefined,
+  options?: IrListOptions,
+): import("./types.ts").EffectDispose {
+  return insertReactive(parent, () => {
+    const raw = coalesceIrList(accessor());
+    if (options?.fallback != null) {
+      /** 与同类方案 一致：仅当「无可见子项」时走 fallback，须与 `expandIrArray` 判定一致 */
+      const flat = expandIrArray(raw);
+      if (flat.length === 0) {
+        return options.fallback() as ReactiveInsertNext;
+      }
     }
-    commitTracked([node]);
+    return raw as ReactiveInsertNext;
   });
 }
 
@@ -317,13 +494,30 @@ export function insert(
     if (typeof value === "function" && value.length === 0) {
       return insertReactive(parent, value as () => ReactiveInsertNext);
     }
+    /**
+     * 静态 VNode（jsx-runtime / 打包器 `insert(parent, jsx(...))`）亦不能交给 hydrate.insert：
+     * 后者对非 getter 仅「消费迭代器」不挂载，与 CSR 下 insertStatic 误伤同根因。
+     */
+    if (typeof value !== "function" && isVNodeLike(value)) {
+      return insertReactive(parent, () => value as ReactiveInsertNext);
+    }
     hydrate.insert(parent as Node, value);
     return undefined;
   }
+  /**
+   * 单参 `(parent)=>void`：编译产物多为 `markMountFn`；未打标时仍按历史行为直挂（与 insertReactive 内 MountFn 识别一致）。
+   */
   if (typeof value === "function" && value.length === 1) {
     return insertMount(parent, value as (p: Node) => void);
   }
+  /**
+   * 非函数：除文本/节点外，可能是 **esbuild/TS 对静态 JSX** 生成的 `insert(parent, jsx(...))`（第二参为 VNode）。
+   * 若走 insertStatic→toNodeForInsert 会误报「returned VNode」且根节点空白；须走 insertReactive + mountVNodeTree。
+   */
   if (typeof value !== "function") {
+    if (isVNodeLike(value)) {
+      return insertReactive(parent, () => value as ReactiveInsertNext);
+    }
     return insertStatic(parent, value);
   }
   return insertReactive(parent, value as () => ReactiveInsertNext);

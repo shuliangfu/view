@@ -64,11 +64,20 @@ function SignalDemo(): VNode {
       <div className="space-y-6">
         <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30">
           <p className="mb-3 text-slate-600 dark:text-slate-300">
-            count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+            count：
+            {/* data-testid 供 e2e 读取计数，避免对整页 innerText 用 \b2\b 等易碎正则 */}
+            <span
+              className="font-mono font-semibold text-indigo-600 dark:text-indigo-400"
+              data-testid="signal-demo-count"
+            >
               {count}
             </span>
             {" · "}
-            double（createMemo）：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+            double（createMemo）：
+            <span
+              className="font-mono font-semibold text-indigo-600 dark:text-indigo-400"
+              data-testid="signal-demo-double"
+            >
               {double}
             </span>
           </p>

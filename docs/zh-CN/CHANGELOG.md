@@ -7,6 +7,72 @@
 
 ---
 
+## [1.3.7] - 2026-03-26
+
+### 新增
+
+- **`readWhenInput`（`when-shared.ts`）**：除无参 getter 与静态快照外，支持
+  **`SignalRef<T>`**；在 memo/effect 内读 **`.value`** 以正确登记依赖。手写 JSX
+  可写 **`when={flag}`**、**`component={tagRef}`**，减少处处包一层
+  **`() => flag.value`**。
+- **`<For>` / `<Index>`（`for.ts`）**：**`ListEachInput<T>`** 可为
+  **`SignalRef<readonly T[] | null | undefined>`**；内部 **`readEach`** 对
+  **`SignalRef`** 解 **`.value`**，**`each={listRef}`** 与
+  **`() => listRef.value`** 语义对齐订阅行为。
+- **`<Show>`（`show.ts`）**：**`ShowWhenInput<T>`** 纳入
+  **`SignalRef`**；**`when`** 与 **`Switch` / `Match`** 分支共用
+  **`readWhenInput`** 语义。
+- **`<Dynamic>`（`dynamic.ts`）**：**`component`** 经 **`readWhenInput`**
+  解析，支持 本征标签名或组件描述的 **`SignalRef`**，在 memo 内订阅切换。
+- **示例**：**`examples/src/views/home/index.tsx`** 增加首页卡片入口
+  **`/list-insert`**（列表插入 / `insertIrList` 等 API 演示），含
+  **`listInsert`** 图标分支；**`examples/src/views/control-flow/index.tsx`**
+  展示控制流上 **`each` / `when` / `component`** 直接传 **`SignalRef`** 的写法。
+- **文档**：**`README.md`**、**`docs/zh-CN/README.md`** — 控制流表格说明
+  **`SignalRef` 直传** 与 **`prop={ref.value}`**
+  快照陷阱；**`docs/*/TEST_REPORT.md`** 按最新跑数更新（Deno **892** / Bun
+  **826**、命令 **`deno test -A --no-check tests`**、 **67**
+  个测试文件及按文件用例表、功能摘要与结论）。
+- **测试**：**`for.test.ts`**、**`show.test.ts`**、**`dynamic.test.ts`** 增补
+  **`SignalRef`** 场景；**`insert-reactive-mountfn-untrack.test.ts`** 校验
+  MountFn 同步挂载不误订阅外层
+  **`insertReactive`**；**`view-example-browser.test.ts`**
+  标题断言兼容中英文（**`/控制流|Control Flow/i`**、**`/列表插入|List Insert/i`**），
+  列表插入页交互（null fallback、点击条目）。
+
+### 变更
+
+- **JSX
+  编译器（`jsx-compiler/transform.ts`）**：对「一侧为编译期可证常量、另一侧含
+  JSX」的表达式做 **编译期折叠**，在安全时改为静态 **`insert`** /
+  **`markMountFn`**， 减少多余的 **`insertReactive`** 与结构抖动：
+  - 短路运算符 **`&&` / `||` / `??`**：如
+    **`true && <div />`**、**`false || <jsx>`**、
+    **`null ?? <jsx>`**、**`void 0 ?? <jsx>`** 等；JSX
+    须落在可到达分支；支持嵌套逻辑 表达式递归折叠。
+  - **三元表达式**：条件不含 JSX
+    且编译期恒真/恒假时折叠为单支；覆盖字面量、**`typeof`**、 与 **`null` 的
+    `==` / `!=`**、算术比较、字符串拼接、**`BigInt`** 等（与
+    **`jsx-compiler.test.ts`** 用例一致）。
+  - **逗号表达式**：摊平操作数，仅对**最后一项**含 JSX
+    时折叠，保留左侧求值顺序；避免
+    将「块体首条字符串字面量」误判为逗号表达式体而错误折叠。
+  - 核心辅助：**`tryFoldStaticLogicalJsxForInsert`**、
+    **`tryFoldStaticConditionalJsxForInsert`**、**`flattenCommaOperandsRoot`**
+    及 AST 常量求值 / nullish / 真假判定工具。
+- **`jsx-compiler.test.ts`**：大量新增用例覆盖上述折叠规则及与之相关的 import
+  注入边界。
+
+### 修复
+
+- **`insertReactive`**（**`runtime`** 与 **`compiler/insert.ts`** 对齐）：当
+  getter 返回 **`markMountFn`** 时，**同步**执行挂载体包在 **`untrack`** 中，使
+  MountFn 内部的 signal 读**不会**挂到**外层** `insertReactive` 的
+  effect，避免每次输入都整段重挂、 **焦点丢失**（例如 MountFn
+  外壳内的搜索/筛选输入框场景）。
+
+---
+
 ## [1.3.6] - 2026-03-23
 
 ### 新增

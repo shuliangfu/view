@@ -25,7 +25,7 @@ export type SignalSetter<T> = (value: T | ((prev: T) => T)) => void;
 export type { SignalRef } from "./signal.ts";
 
 /**
- * `createStore` 在 `asObject: false` 时返回的 [getter, setter] 元组形态（非 `createSignal`）。
+ * `[getter, setter]` 元组：`createStore(..., { asObject: false })` 与 **`createSignal(initial, true)`** 的返回形态（）。
  */
 export type SignalTuple<T> = [getter: SignalGetter<T>, setter: SignalSetter<T>];
 
