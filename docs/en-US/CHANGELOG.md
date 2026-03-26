@@ -8,6 +8,25 @@ and this project adheres to
 
 ---
 
+## [1.3.8] - 2026-03-27
+
+### Fixed
+
+- **`view-cli init` (`cmd/init.ts`)**: Generated **`src/main.tsx`** now uses
+  **`mountWithRouter`** instead of **`mount` + `insert`**, matching
+  **`examples/src/main.tsx`**. Plain mount did not subscribe to the route
+  signal, so in-app navigation updated the URL but left the page content stale.
+
+### Changed
+
+- **Init template locales**: **`getRoot`** JSDoc in generated **`main.tsx`** is
+  driven by **`init.template.mainGetRootDesc`**,
+  **`init.template.mainGetRootParamRouter`**, and
+  **`init.template.mainGetRootReturns`** (all locale JSON files), alongside the
+  existing **`mainMountWithRouterComment`** line in the file header.
+
+---
+
 ## [1.3.7] - 2026-03-26
 
 ### Added
