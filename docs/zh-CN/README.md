@@ -1234,8 +1234,8 @@ export const metadata = {
 时包 **`untrack`**，避免内部 signal 读挂到外层 effect
 导致整段重挂与失焦；**测试/文档** — **`jsx-compiler`** 折叠用例扩充、**`for` /
 `show` / `dynamic`** SignalRef、**`insert-reactive-mountfn-untrack`**、浏览器
-E2E 标题中英文、**`TEST_REPORT`**（Deno 892 / Bun 826）。完整历史见
-[CHANGELOG.md](./CHANGELOG.md)。
+E2E 标题中英文、**`TEST_REPORT`**（Deno 892 / Bun 826）；**示例** Tailwind v4
+采用主题 **`min-h-*`** 工具类。完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

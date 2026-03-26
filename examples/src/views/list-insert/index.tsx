@@ -105,7 +105,7 @@ function ListInsertDemo(): VNode {
         </p>
 
         <div
-          className="min-h-[4rem] rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 dark:border-slate-600 dark:bg-slate-700/30"
+          className="min-h-16 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 dark:border-slate-600 dark:bg-slate-700/30"
           ref={listHostRef}
           data-testid="ir-list-host"
         />

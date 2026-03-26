@@ -70,6 +70,10 @@ and this project adheres to
     and shared **constant-eval** / nullish-truthiness helpers over the TS AST.
 - **`jsx-compiler.test.ts`**: Expanded coverage (dozens of cases) for the
   folding rules above and import injection edge cases tied to folded output.
+- **Examples (Tailwind CSS v4)**: Replace arbitrary min-heights with theme
+  spacing utilities — **`list-insert/index.tsx`** uses **`min-h-16`** instead of
+  **`min-h-[4rem]`**; **`_app.tsx`** loading shell uses **`min-h-70`** instead
+  of **`min-h-[280px]`**, matching default scale and IDE/linter suggestions.
 
 ### Fixed
 
