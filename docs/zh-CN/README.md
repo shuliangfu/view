@@ -36,7 +36,16 @@
 deno run -A jsr:@dreamer/view/setup
 ```
 
-安装后可使用 `view-cli init`、`view-cli dev`、`view-cli build` 等（详见 `view-cli --help`）。
+安装后 `view-cli` 在 `PATH` 中。根级支持 **`--version` / `-v`**。完整参数以解析器为准，可执行 **`view-cli --help`**、**`view-cli <子命令> --help`**。
+
+| 命令 | 说明 | 常用选项 |
+| --- | --- | --- |
+| **`view-cli init`** `[目录]` | 在指定目录（省略则为当前目录）生成新项目脚手架。 | **`--beta`** — 在适用场景下采用偏 beta 链路的默认项。 |
+| **`view-cli dev`** | 开发服务器（HMR、路由表生成等）。 | **`-h` / `--host`** — 监听主机；**`-p` / `--port`** — 端口。 |
+| **`view-cli start`** | 托管 **已构建** 的静态产物（需先 **`build`**）。 | **`-h` / `--host`**、**`-p` / `--port`**。 |
+| **`view-cli build`** | 按 `view.config.ts` 执行生产构建并输出到配置目录。 | — |
+| **`view-cli upgrade`** | 向 JSR 查询 **`@dreamer/view`** 最新版；若高于当前 CLI 所用版本，则执行 **`jsr:@dreamer/view@<version>/setup`**，使 **全局** 安装的 `view-cli` 与该发行版对齐。 | **`--beta`** — 解析「最新」时包含 beta / 预发布线。 |
+| **`view-cli update`** | 在 **当前项目** 目录执行 **`deno update`** 或 **`bun update`**，更新 **工程内** 依赖与 lockfile。 | **`--latest`** — 传给运行时；其余参数可一并附加（如 **`--interactive`**）。 |
 
 ### 2.2 在项目中添加依赖
 

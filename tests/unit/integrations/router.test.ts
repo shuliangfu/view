@@ -218,4 +218,43 @@ describe("integrations/router", () => {
       expect(pushes).toBe(1);
     }
   });
+
+  /**
+   * 与 v1.3.9 一致：路由表中的 metadata 在命中变化时写入 document.title 与 name=description 等 meta。
+   */
+  it("metadata：路由切换时应同步 document.title 与 description meta", async () => {
+    const Home = () => jsx("div", { id: "home", children: "H" });
+    const About = () => jsx("div", { id: "about", children: "A" });
+    const routes: RouteConfig[] = [
+      {
+        path: "/",
+        component: Home,
+        metadata: { title: "首页", description: "首页说明" },
+      },
+      {
+        path: "/about",
+        component: About,
+        metadata: { title: "关于", description: "关于说明" },
+      },
+    ];
+    const router = createRouter({ routes, documentTitleSuffix: " | Test" });
+    mountWithRouter("#app", router);
+    await waitUntilComplete();
+
+    expect(document.title).toBe("首页 | Test");
+    expect(
+      document.querySelector('meta[name="description"]')?.getAttribute(
+        "content",
+      ),
+    ).toBe("首页说明");
+
+    await router.navigate("/about");
+    await waitUntilComplete();
+    expect(document.title).toBe("关于 | Test");
+    expect(
+      document.querySelector('meta[name="description"]')?.getAttribute(
+        "content",
+      ),
+    ).toBe("关于说明");
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

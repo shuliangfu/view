@@ -12,6 +12,8 @@
  *
  * **`navigate` / `replace`：** 返回 `Promise<void>`，在 `beforeEach` 与 `pushState`/`replaceState` 提交完成后 resolve。
  *
+ * **metadata：** 路由表中的 `metadata`（来自页面 `export const metadata` 与 codegen）在命中变化时由框架同步到 `document.title` 与对应 `<meta>`（与 v1.3.9 行为一致）。
+ *
  * **仍未覆盖：** 与 SSR 同构、路由级动画、`popstate` 上的异步守卫、嵌套路由树配置。
  *
  * @usage
@@ -40,6 +42,7 @@ import { mount } from "../runtime/browser.ts";
 import { jsx } from "../jsx-runtime.ts";
 import type { VNode } from "../types.ts";
 import { createResource } from "./resource.ts";
+import { applyMetaToHead } from "./meta.ts";
 
 // ———————————————————————————————————————————————————————————————————————————
 // 类型
@@ -95,6 +98,10 @@ export interface CreateRouterOptions {
     to: RouteLocation,
     from: RouteLocation | null,
   ) => boolean | void | Promise<boolean | void>;
+  /**
+   * 追加在 `document.title` 末尾的后缀（如 ` | 站点名`），与 v1.3.9 `documentTitleSuffix` 一致。
+   */
+  documentTitleSuffix?: string;
 }
 
 /** 路由实例 */
@@ -334,6 +341,8 @@ export function createRouter(
   const scrollMode = opts.scroll === undefined ? false : opts.scroll;
   const interceptLinks = opts.interceptLinks !== false;
   const beforeEach = opts.beforeEach;
+  /** 与 v1.3.9 一致：拼接到 metadata.title 之后 */
+  const documentTitleSuffix = opts.documentTitleSuffix ?? "";
   const compiled = compileRouteList(opts.routes, opts.notFound);
 
   const scrollMemory = new Map<string, number>();
@@ -446,6 +455,14 @@ export function createRouter(
       : `${loc.pathname}-no-match`;
     if (key !== lastMatchKey) {
       lastMatchKey = key;
+      /** 路由命中变化时同步 `<title>` 与 meta（页面 export 的 metadata 经 codegen 进入路由表） */
+      if (typeof globalThis.document !== "undefined") {
+        applyMetaToHead(
+          m?.route.metadata as Record<string, unknown> | undefined,
+          documentTitleSuffix,
+          m?.path ?? "",
+        );
+      }
       subscribers.forEach((fn) => {
         try {
           fn();
