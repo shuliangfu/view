@@ -415,7 +415,7 @@ export default function Home() {
             DREAMER VIEW · 极致响应式框架
           </p>
           <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-6xl">
-            更小，更快，更现代。222
+            更小，更快，更现代。
           </h1>
           <p className="max-w-xl text-slate-600 dark:text-slate-300 sm:text-lg leading-relaxed font-medium">
             基于 Signal 的微型响应式引擎，支持 SSR、Hydration 与模块热重载。
