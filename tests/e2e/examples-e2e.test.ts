@@ -275,20 +275,46 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
   });
 
   afterAll(async () => {
-    if (examplesDevChild) {
-      try {
-        examplesDevChild.kill(9);
-      } catch {
-        /* ignore */
-      }
-      try {
-        await examplesDevChild.status;
-      } catch {
-        /* ignore */
-      }
-      examplesDevChild = null;
-    }
+    /**
+     * Teardown 顺序与超时说明（避免 CI 上 afterAll 报「运行超过 1m/2m」）：
+     * - 先 `cleanupAllBrowsers`：在 dev 仍存活时断开 Playwright 页面，避免先 SIGKILL 子进程后页面/WebSocket 半死不活导致 `close()` 长期挂起。
+     * - 再结束 dev：`await child.status` 在 Deno + inherit stdio 下偶发 kill 后仍不 resolve，故与超时竞态，并 `unref()` 释放子进程对事件循环的引用（见 runtime-adapter SpawnedProcess 注释）。
+     */
     await cleanupAllBrowsers();
+
+    if (examplesDevChild) {
+      const child = examplesDevChild;
+      examplesDevChild = null;
+      try {
+        child.kill(9);
+      } catch {
+        /* ignore */
+      }
+      const STATUS_WAIT_MS = 15_000;
+      let statusTimeoutId: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          child.status,
+          new Promise<never>((_, reject) => {
+            statusTimeoutId = setTimeout(
+              () => reject(new Error("examples dev child status timeout")),
+              STATUS_WAIT_MS,
+            );
+          }),
+        ]);
+      } catch {
+        /* 已 SIGKILL，status 超时或失败均可忽略 */
+      } finally {
+        if (statusTimeoutId !== undefined) {
+          clearTimeout(statusTimeoutId);
+        }
+      }
+      try {
+        child.unref();
+      } catch {
+        /* ignore */
+      }
+    }
   });
 
   it("[首页] Hero、顶栏、主题切换、GitHub、首页模块卡片网格导航", async (t) => {

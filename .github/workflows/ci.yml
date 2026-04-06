@@ -132,8 +132,9 @@ jobs:
       - name: Install Playwright Chromium
         run: npx -y playwright@latest install chromium
 
+      # dom-setup 与单测同目录在 tests/unit/（原 tests/dom-setup.ts 已迁移）
       - name: Test (Bun)
-        run: bun test --preload ./tests/dom-setup.ts tests/
+        run: bun test --preload ./tests/unit/dom-setup.ts tests/
 
   test-macos-bun:
     runs-on: macos-latest
@@ -160,7 +161,7 @@ jobs:
         run: npx -y playwright@latest install chromium
 
       - name: Test (Bun, macOS)
-        run: bun test --preload ./tests/dom-setup.ts tests/
+        run: bun test --preload ./tests/unit/dom-setup.ts tests/
 
   test-windows-bun:
     runs-on: windows-latest

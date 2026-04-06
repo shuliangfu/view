@@ -21,7 +21,7 @@
     "./portal": "./src/runtime/portal.ts"
   },
   "scripts": {
-    "test": "bun test --preload ./tests/dom-setup.ts tests/",
+    "test": "bun test --preload ./tests/unit/dom-setup.ts tests/",
     "build": "deno run -A build.ts"
   },
   "dependencies": {
