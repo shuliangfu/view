@@ -53,11 +53,10 @@ export interface Memo<T> extends Source<T>, Observer, Owner {
 }
 
 /**
- * 创建一个派生状态 (Memo)。
- * 核心特性：
- * 1. Lazy：仅在读取时且依赖已脏时才计算。
- * 2. 缓存：计算结果在依赖未变前保持不变。
- * 3. 智能传播：若计算出的新值与旧值相同 (Object.is)，不触发下游更新。
+ * 创建惰性派生值：仅在读取且脏时重算；`Object.is` 相同时不通知下游。
+ * @template T 计算结果类型
+ * @param fn 无参计算函数，其内读取的 signal 会成为依赖
+ * @returns 可重复调用的 getter（读时 `track` 本 memo）
  */
 export function createMemo<T>(fn: () => T): () => T {
   const parent = getOwner();

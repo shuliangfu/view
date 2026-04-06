@@ -9,10 +9,16 @@ import { createRoot } from "../reactivity/owner.ts";
 import type { InsertCurrent, JSXRenderable } from "../types.ts";
 import { insert } from "./insert.ts";
 
+/**
+ * {@link createPortal} 返回的根句柄：`unmount` 清空插入并释放 Owner。
+ */
 export type CreatePortalRoot = { unmount: () => void };
 
 /**
- * 在 `container` 内响应式插入 `render()` 的返回值；返回带 `unmount` 的根句柄。
+ * 命令式 Portal：在 `container` 内对 `render()` 建立 effect，随响应式更新子树。
+ * @param render 返回可插入内容的函数
+ * @param container 目标 DOM 节点
+ * @returns `{ unmount }` 用于拆除传送门
  */
 export function createPortal(
   render: () => JSXRenderable,

@@ -26,8 +26,10 @@ import { insert } from "./insert.ts";
 import { internalHydrate, stopHydration } from "./hydration.ts";
 
 /**
- * 挂载应用到 DOM 容器。
- * 会自动清理容器内容和 loading 状态。
+ * 在 `container` 内执行 `fn()` 并 `insert` 结果；卸载时 `dispose` 并清空子节点。
+ * @param fn 返回可插入视图（VNode/节点等）的函数
+ * @param container 挂载目标 DOM 节点
+ * @returns 卸载函数：释放 Owner 并移除子节点
  */
 export function mount(fn: () => any, container: Node): () => void {
   return createRoot((dispose) => {
@@ -61,9 +63,11 @@ export function mount(fn: () => any, container: Node): () => void {
 }
 
 /**
- * 水合已渲染的 HTML 内容。
- * 用于 SSR 场景，将静态 HTML 变为交互式应用。
- * 支持传入编译器生成的 bindingMap。
+ * 在已有 SSR 标记的 `container` 上启用水合并插入 `fn()`；`bindings` 为编译器生成的动态位点映射。
+ * @param fn 客户端根组件
+ * @param container 服务端已输出 HTML 的节点
+ * @param bindings 可选 `[path, exprId][]` 绑定表
+ * @returns `createRoot` 的 `dispose`，用于卸载（不默认清空容器，与 `mount` 对称语义见实现）
  */
 export function hydrate(
   fn: () => any,

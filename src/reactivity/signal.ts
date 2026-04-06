@@ -27,12 +27,20 @@
 import { schedule } from "../scheduler/batch.ts";
 import { core } from "./master.ts";
 
+/** 观察者处于干净态，无需重新执行。 */
 export const STATE_CLEAN = 0;
+/** 检查态：向依赖源确认是否仍为干净。 */
 export const STATE_CHECK = 1;
+/** 脏态：依赖已变，待重新执行。 */
 export const STATE_DIRTY = 2;
+/** 已释放，不应再被调度。 */
 export const STATE_DISPOSED = 3;
 
-/** 响应式订阅关系 */
+/**
+ * 观察者与其依赖源之间的双向链表边。
+ * @property source 被订阅的源或上游观察者
+ * @property observer 订阅方（effect / memo 等）
+ */
 export interface Subscription {
   source: Source<any> | Observer;
   observer: Observer;
@@ -42,7 +50,12 @@ export interface Subscription {
   nextSource: Subscription | null;
 }
 
-/** 观察者 (Effect, Memo) */
+/**
+ * 可订阅响应式源并在脏时执行 `run()` 的观察者（如 Effect、Memo）。
+ * @property state 当前状态，见 {@link STATE_CLEAN} 等常量
+ * @property sources 上游订阅链表头
+ * @property sourcesTail 上游订阅链表尾
+ */
 export interface Observer {
   state: number;
   sources: Subscription | null;
@@ -50,17 +63,29 @@ export interface Observer {
   run(): void;
 }
 
-/** 物理数据源 (Signal, Store) */
+/**
+ * 可产生值并被追踪的响应式源（如 Signal 底层、Store 根等）。
+ * @template T 当前缓存值的类型
+ * @property value 当前值
+ * @property observers 下游订阅链表头
+ * @property observersTail 下游订阅链表尾
+ */
 export interface Source<T> {
   value: T;
   observers: Subscription | null;
   observersTail: Subscription | null;
 }
 
-/** Setter 函数类型 */
+/**
+ * 信号写入函数：支持直接值或函数式更新。
+ * @template T 状态类型
+ */
 export type Setter<T> = (v: T | ((prev: T) => T), ...args: any[]) => T;
 
-/** 信号类型 */
+/**
+ * 可读可写的信号：既可当函数 `sig()` / `sig(v)` 使用，也可解构 `[get, set]`，并带 `value` / `set`。
+ * @template T 值类型
+ */
 export type Signal<T> = [() => T, Setter<T>] & {
   (): T;
   (v: T | ((prev: T) => T)): T;
@@ -72,8 +97,9 @@ export type Signal<T> = [() => T, Setter<T>] & {
 const _session = Math.random().toString(36).slice(2);
 
 /**
- * 追踪响应式依赖。
- * 性能优化：引入快速退出逻辑，对于已存在的订阅关系直接返回。
+ * 将当前正在运行的观察者订阅到给定源（建立依赖边）。
+ * 若已存在相同 `source` 的订阅则快速返回。
+ * @param source 被读取的响应式源
  */
 export function track(source: Source<any>) {
   const observer = core.current;
@@ -109,8 +135,8 @@ export function track(source: Source<any>) {
 }
 
 /**
- * 发送响应式通知。
- * 无订阅者时立即返回，避免热路径上无意义链表遍历。
+ * 通知所有订阅了 `source` 的观察者：标脏并进入调度队列。
+ * @param source 值已发生变化的源
  */
 export function notify(source: Source<any>) {
   let sub = source.observers;
@@ -149,7 +175,17 @@ function notifyCheck(source: Source<any>) {
   }
 }
 
+/**
+ * 获取当前正在执行的观察者；无收集上下文时为 `null`。
+ * @returns 当前 `Observer`，或 `null`
+ */
 export const getCurrentObserver = () => core.current;
+
+/**
+ * 设置当前观察者并返回之前的观察者（用于 `untrack` 等临时切换）。
+ * @param o 新的当前观察者，传 `null` 表示停止依赖收集
+ * @returns 设置前的观察者
+ */
 export const setCurrentObserver = (o: Observer | null): Observer | null => {
   const p = core.current;
   core.current = o;
@@ -157,7 +193,11 @@ export const setCurrentObserver = (o: Observer | null): Observer | null => {
 };
 
 /**
- * 创建信号。
+ * 创建响应式信号；可选 `name` 用于 HMR/调试下的物理单例复用。
+ * @template T 初始值与后续值的类型
+ * @param val 初始值
+ * @param name 可选具名 id，相同 name 复用同一底层源
+ * @returns 可调用的 `Signal`（`sig()` 读、`sig(x)` 写，或解构 `[get, set]`）
  */
 export function createSignal<T>(val: T, name?: string): Signal<T> {
   // 1. 生成唯一 ID (优先使用用户提供的 name，否则自动生成)
@@ -219,7 +259,8 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
 }
 
 /**
- * 清理观察者的所有上游订阅。
+ * 断开 `observer` 与其所有上游源之间的订阅边。
+ * @param observer 要清理依赖的观察者
  */
 export function cleanupObserver(observer: Observer) {
   let sub = observer.sources;
@@ -236,7 +277,10 @@ export function cleanupObserver(observer: Observer) {
 }
 
 /**
- * 在无依赖收集的状态下执行。
+ * 在「不订阅任何源」的上下文中执行 `fn`（内部临时清空当前观察者）。
+ * @template T 返回值类型
+ * @param fn 同步函数
+ * @returns `fn` 的返回值
  */
 export function untrack<T>(fn: () => T): T {
   const prev = setCurrentObserver(null);

@@ -8,7 +8,8 @@
  */
 
 /**
- * Match 描述符上的标记字段名，供 `Switch` 在子树中识别（非 DOM，不直接插入文档）。
+ * `Match` 描述符上的标记字段名，供 `Switch` 识别（非 DOM，不直接插入文档）。
+ * @constant
  */
 export const VIEW_MATCH_KEY = "__VIEW_MATCH__" as const;
 

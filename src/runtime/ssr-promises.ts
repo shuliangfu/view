@@ -5,11 +5,15 @@
  * 独立文件以避免 `resource.ts` 静态依赖 `server.ts`（SSR 入口体积与副作用隔离）。
  */
 
-/** 待排空的全局 Promise 列表（由 `registerSSRPromise` 追加） */
+/**
+ * 异步 SSR 期间由 {@link registerSSRPromise} 收集的 Promise 队列，供 `renderToStringAsync` 等排空。
+ */
 export const ssrPromises: Promise<unknown>[] = [];
 
 /**
- * 在异步数据加载路径中注册 Promise，供 SSR 异步渲染轮询完成。
+ * 将资源加载 Promise 登记到全局队列，便于异步 SSR 轮次 `await` 全部完成。
+ * @param p 任意 Promise（通常为 `fetch` 链）
+ * @returns `void`
  */
 export function registerSSRPromise(p: Promise<unknown>) {
   ssrPromises.push(p);

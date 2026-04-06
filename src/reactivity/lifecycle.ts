@@ -26,9 +26,9 @@ import { createEffect } from "./effect.ts";
 import { untrack } from "./signal.ts";
 
 /**
- * 挂载完成后执行。
- * 对应 Solid.js 的 onMount，仅在组件挂载后执行一次。
- * @param fn 执行函数
+ * 在挂载后执行一次 `fn`（通过 effect + `untrack` 避免把外层依赖误绑到 `fn`）。
+ * @param fn 挂载后执行的回调
+ * @returns `void`
  */
 export function onMount(fn: () => void): void {
   createEffect(() => {

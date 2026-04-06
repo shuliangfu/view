@@ -55,11 +55,9 @@ export interface Effect extends Observer, Owner {
 }
 
 /**
- * 创建一个副作用 (Effect)。
- * 立即执行一次回调函数，并在此过程中建立依赖关系。
- * 当依赖的 Signal 变化时，回调函数将重新执行。
- *
- * @param fn 副作用回调函数
+ * 创建副作用：立即执行一次 `fn` 并订阅其间读取的源；依赖变化时重新执行。
+ * @param fn 副作用回调（可调用 `onCleanup` 登记每次重跑前的清理）
+ * @returns `void`
  */
 export function createEffect(fn: () => void): void {
   const parent = getOwner();
@@ -128,10 +126,9 @@ export function createEffect(fn: () => void): void {
 }
 
 /**
- * 创建一个渲染副作用 (Render Effect)。
- * 与 createEffect 类似，但在渲染前执行，且不会被调度器推迟。
- *
- * @param fn 副作用回调函数
+ * 创建渲染用副作用：同步执行、不经 `batch` 微任务推迟，常用于 DOM 属性等紧耦合更新。
+ * @param fn 副作用回调
+ * @returns `void`
  */
 export function createRenderEffect(fn: () => void): void {
   const parent = getOwner();
@@ -169,12 +166,11 @@ export function createRenderEffect(fn: () => void): void {
 }
 
 /**
- * 创建一个延迟计算值 (Deferred)。
- * 用于推迟某些低优先级的更新，直到高优先级更新完成。
- *
- * @param source 响应式源
- * @param options 配置项
- * @returns 延迟后的响应式源
+ * 将 `source` 的更新推迟到微任务，避免与高优先级同步更新争抢。
+ * @template T 值类型
+ * @param source 同步读取的派生源
+ * @param options 可选 `equals` 自定义相等判断
+ * @returns 与 `source` 同步的 getter（读时建立对内部 signal 的订阅）
  */
 export function createDeferred<T>(
   source: () => T,
@@ -204,10 +200,8 @@ export function createDeferred<T>(
 const [pendingCount, setPendingCount] = createSignal(0);
 
 /**
- * useTransition 钩子。
- * 返回一个表示是否正在挂起的信号，以及一个用于启动 Transition 的函数。
- *
- * @returns [isPending, startTransition]
+ * 返回 Transition 状态与启动函数：`start` 内更新在 `batch` 中执行，`isPending` 反映进行中的 Transition 数量。
+ * @returns 元组 `[isPending, startTransition]`
  */
 export function useTransition(): [
   () => boolean,
@@ -231,8 +225,9 @@ export function useTransition(): [
 }
 
 /**
- * startTransition 函数。
- * 与 useTransition 类似，但不返回 isPending 信号。
+ * 将 `fn` 包在 Transition 批处理中执行（语义同 `useTransition` 返回的 `start`）。
+ * @param fn 同步或异步更新函数
+ * @returns `fn` 完成后的 Promise
  */
 export function startTransition(fn: () => void | Promise<void>): Promise<void> {
   const [_, start] = useTransition();

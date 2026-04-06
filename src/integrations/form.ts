@@ -81,9 +81,11 @@ function toValidateOnSet(
 }
 
 /**
- * 创建一个受控表单状态。
- * @param initialValues 初始字段表（键集决定 errors 形状）
- * @param options 可选：规则与校验时机
+ * 创建受控表单：`data`/`errors` 为 Store，`field` 产出输入绑定，`handleSubmit` 封装校验与提交。
+ * @template T 字段表类型
+ * @param initialValues 初始字段值（键集决定 errors 与 rules 形状）
+ * @param options 可选校验规则与 `validateOn`
+ * @returns {@link CreateFormReturn}
  */
 export function createForm<T extends Record<string, unknown>>(
   initialValues: T,

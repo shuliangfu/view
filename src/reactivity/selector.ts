@@ -38,8 +38,12 @@ function defaultSelectorCompare<T, U>(a: U, b: T): boolean {
 }
 
 /**
- * 创建一个选择器。
- * 专门用于优化列表的选中状态。
+ * 根据响应式 `source`（如当前选中 id）为每个 `key` 返回独立的选中布尔 getter，避免整表重算。
+ * @template T `source()` 返回类型（如选中 id）
+ * @template U 列表项键类型，默认与 `T` 相同
+ * @param source 须在 `createEffect` 内被本实现订阅，勿在外层随意读取
+ * @param fn 比较 `(key, selected) => boolean`，默认 `===`
+ * @returns `(key) => boolean`：读时订阅对应行级 signal
  */
 export function createSelector<T, U = T>(
   source: () => T,

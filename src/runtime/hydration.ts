@@ -23,7 +23,9 @@
 import { walk } from "./template.ts";
 
 /**
- * 水合上下文接口。
+ * 水合阶段全局状态：绑定 id → 真实 DOM 节点。
+ * @property bindingMap 编译器生成的节点 id 映射
+ * @property active 是否处于水合流程中
  */
 export interface HydrationContext {
   bindingMap: Map<string, Node>;
@@ -33,9 +35,10 @@ export interface HydrationContext {
 let hydrationContext: HydrationContext | null = null;
 
 /**
- * 内部水合注册。
- * @param root 根节点。
- * @param bindings 编译生成的绑定映射。
+ * 根据 `bindings` 在 `root` 子树上解析节点并写入全局水合上下文（供运行时绑定读回）。
+ * @param root SSR 输出的根节点
+ * @param bindings `[path, id][]`，path 为 `walk` 下标路径
+ * @returns `void`
  */
 export function internalHydrate(root: Node, bindings: [number[], string][]) {
   const map = new Map<string, Node>();
@@ -51,15 +54,17 @@ export function internalHydrate(root: Node, bindings: [number[], string][]) {
 }
 
 /**
- * 停止水合过程。
+ * 清除水合上下文，表示水合阶段结束或放弃。
+ * @returns `void`
  */
 export function stopHydration() {
   hydrationContext = null;
 }
 
 /**
- * 获取当前水合中的节点。
- * @param id 编译器生成的节点 ID。
+ * 在水合激活时从绑定表取已解析的 DOM 节点。
+ * @param id 编译器生成的绑定 id
+ * @returns 对应节点，未水合或不存在时 `undefined`
  */
 export function useHydratedNode(id: string): Node | undefined {
   if (!hydrationContext?.active) return undefined;
@@ -67,7 +72,8 @@ export function useHydratedNode(id: string): Node | undefined {
 }
 
 /**
- * 是否正在进行水合。
+ * 当前是否存在激活的水合上下文。
+ * @returns 水合进行中为 `true`
  */
 export function isHydrating(): boolean {
   return hydrationContext?.active ?? false;

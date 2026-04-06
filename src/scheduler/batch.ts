@@ -95,14 +95,18 @@ const scheduler = getInternal("scheduler", (): SchedulerCore => ({
 }));
 
 /**
- * 调度一个更新任务。
+ * 将已标脏的 `Observer` 放入微任务队列（去重）；SSR 活跃时可能仅入队不调度微任务。
+ * @param task 待执行的观察者（须实现 `run()`）
  */
 export function schedule(task: Observer) {
   scheduler.schedule(task);
 }
 
 /**
- * 手动批处理更新。
+ * 在批处理窗口内执行 `fn`，结束时同步刷新队列中的观察者。
+ * @template T `fn` 返回值类型
+ * @param fn 可能触发多处 `set` 的同步函数
+ * @returns `fn()` 的返回值
  */
 export function batch<T>(fn: () => T): T {
   const p = scheduler.isBatching;

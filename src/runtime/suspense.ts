@@ -24,16 +24,18 @@
 import { createSignal, untrack } from "../reactivity/signal.ts";
 import { createEffect } from "../reactivity/effect.ts";
 import {
+  type Context,
   createContext,
   useContext,
-  type Context,
 } from "../reactivity/context.ts";
 import { createRoot, onCleanup } from "../reactivity/owner.ts";
 import type { JSXRenderable } from "../types.ts";
 import { insert } from "./insert.ts";
 
 /**
- * Suspense 上下文接口
+ * Suspense 边界对外暴露的上下文：注册 loading 与查询是否悬挂。
+ * @property register 由 `createResource` 等注册 `() => loading`
+ * @property isSuspended 是否应展示 fallback
  */
 export interface SuspenseContextType {
   /** 注册一个 loading 信号 */
@@ -51,21 +53,25 @@ export interface SuspenseContextType {
 const suspenseContextStack: SuspenseContextType[] = [];
 
 /**
- * 进入 Suspense 子树插入阶段（供 insert 递归时注册资源）。
+ * 压入当前 Suspense 上下文（`insert` 路径上供 `registerForSuspense` 解析最近边界）。
+ * @param ctx 由 `Suspense` 组件构造的上下文对象
+ * @returns `void`
  */
 export function pushSuspenseContext(ctx: SuspenseContextType): void {
   suspenseContextStack.push(ctx);
 }
 
 /**
- * 离开 Suspense 子树插入阶段。
+ * 弹出栈顶 Suspense 上下文（与 {@link pushSuspenseContext} 配对）。
+ * @returns `void`
  */
 export function popSuspenseContext(): void {
   suspenseContextStack.pop();
 }
 
 /**
- * 供 createResource 使用：取当前插入路径上最近的 Suspense 上下文。
+ * 供 `createResource` / `registerForSuspense` 使用：返回插入栈顶的上下文。
+ * @returns 最近的 `SuspenseContextType`，无则 `null`
  */
 export function getCurrentSuspenseContext(): SuspenseContextType | null {
   const n = suspenseContextStack.length;
@@ -73,23 +79,24 @@ export function getCurrentSuspenseContext(): SuspenseContextType | null {
 }
 
 /**
- * 创建 Suspense Context
+ * Reactivity `Context`，默认值 `null`；由 `Suspense` 的 Provider 注入边界实例。
  */
 export const SuspenseContext: Context<SuspenseContextType | null> =
   createContext<SuspenseContextType | null>(null);
 
 /**
- * 获取当前 Suspense 上下文
+ * 在 Provider 子树内读取当前 Suspense 边界上下文（基于 `useContext`）。
+ * @returns 上下文或 `null`
  */
 export function useSuspense(): SuspenseContextType | null {
   return useContext(SuspenseContext);
 }
 
 /**
- * Suspense 组件 - 完整实现
- *
- * 当 isSuspended() 为 true 时显示 fallback，
- * 否则显示 children。使用 createEffect 实时监听状态变化。
+ * 异步边界：任一已注册资源的 `loading` 为真时渲染 `fallback`，否则渲染 `children`。
+ * @param props.fallback 加载中 UI
+ * @param props.children 主内容（可与 {@link SuspenseContext} 配合）
+ * @returns `DocumentFragment`
  */
 export function Suspense(props: {
   fallback: JSXRenderable;
