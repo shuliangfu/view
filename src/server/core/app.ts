@@ -194,15 +194,15 @@ export class App implements ViewApp {
           },
           watch: { paths: watchPaths, ignore: watchIgnore },
           builder: {
-            rebuild(opts?: { changedPath?: string }) {
-              return rebuild(opts).then((result) => {
-                latestOutputs = result.devServeOutputs;
-                return {
-                  outputFiles: result.outputFiles,
-                  chunkUrl: result.chunkUrl,
-                  routePath: result.routePath,
-                };
-              });
+            async rebuild(opts?: { changedPath?: string }) {
+              const result = await rebuild(opts);
+              latestOutputs = result.devServeOutputs;
+              return {
+                outputFiles: result.outputFiles,
+                chunkUrl: result.chunkUrl,
+                routePath: result.routePath,
+                type: result.chunkUrl ? "update" : "reload", // update 触发局部无感刷新，reload 触发整页重载
+              };
             },
           },
         },

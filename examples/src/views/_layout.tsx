@@ -1,16 +1,15 @@
 /**
  * 多页面示例 — 布局（约定 _layout.tsx，路由扫描自动屏蔽）：顶部 Navbar + 主内容区
  *
- * 链接直接写 path（如 href="/signal"），由 router 拦截实现无刷新跳转。
+ * 链接直接 write path（如 href="/signal"），由 router 拦截实现无刷新跳转。
  * 导航项由 routes 在内部派生（过滤 *、取 path + meta.title），可传 currentPath 高亮当前页。
  * 支持 light/dark 主题切换。
  * default 即根布局，供 RoutePage 的 layouts 链调用。
  */
 
-import type { VNode } from "@dreamer/view";
-import type { RouteConfig } from "@dreamer/view/router";
+import { Link, useRouter } from "@dreamer/view";
 import { routes } from "../router/routers.tsx";
-import { theme, toggleTheme } from "../stores/theme.ts";
+import { theme, toggleTheme } from "../hooks/theme.ts";
 
 /** 导航项：path 即 href，group 用于分组（核心 / 路由 / 示例），供 Navbar 渲染 */
 export interface NavItem {
@@ -23,12 +22,20 @@ export interface NavItem {
 const GROUP_ORDER = ["首页", "核心", "路由", "示例"];
 
 /**
- * 从 path 推断分组（无 meta.group 时使用）：/ -> 首页，/router|/runtime -> 路由，/layout|/loading|/gallery -> 示例，其余 -> 核心
+ * 从 path 推断分组（无 meta.group 时使用）：/ -> 首页，/router、/route-guard、/router/* -> 路由；/runtime -> 核心（运行时演示非路由专题）；/layout|/loading|/gallery -> 示例，其余 -> 核心
  */
 function groupFromPath(path: string): string {
   if (path === "/") return "首页";
-  if (path === "/router" || path === "/runtime") return "路由";
-  if (path === "/layout" || path === "/loading" || path === "/gallery") {
+  if (
+    path === "/router" || path === "/route-guard" ||
+    path.startsWith("/router/")
+  ) {
+    return "路由";
+  }
+  if (
+    path === "/layout" || path === "/loading" || path === "/gallery" ||
+    path.startsWith("/layout-nested")
+  ) {
     return "示例";
   }
   return "核心";
@@ -37,7 +44,7 @@ function groupFromPath(path: string): string {
 /**
  * 从路由表派生导航项：排除通配 *，取 path、meta.title 与 meta.group（或按 path 推断）
  */
-function navItemsFromRoutes(routes: RouteConfig[]): NavItem[] {
+function navItemsFromRoutes(routes: any[]): NavItem[] {
   return routes
     .filter((r) => r.path !== "*")
     .map((r) => ({
@@ -59,16 +66,7 @@ function groupNavItems(items: NavItem[]): Map<string, NavItem[]> {
   return map;
 }
 
-interface LayoutProps {
-  /** 路由表（不传则用本模块 routes）；用于在布局内派生导航项 */
-  routes?: RouteConfig[];
-  /** 当前路径，用于高亮 Navbar（不传则从 global router 取） */
-  currentPath?: string;
-  /** 主内容区（JSX 子节点会注入到此） */
-  children?: VNode | VNode[];
-}
-
-/** GitHub 图标（24x24），用于 Navbar 外链；用 fill-* 直接着色，避免仅靠 currentColor 受全局 CSS 影响 */
+/** GitHub 图标 (24x24) */
 const GitHubIcon = () => (
   <svg
     className="h-6 w-6 shrink-0 fill-slate-600 transition-colors hover:fill-slate-900 dark:fill-slate-400 dark:hover:fill-slate-200"
@@ -85,7 +83,7 @@ const GitHubIcon = () => (
   </svg>
 );
 
-/** 太阳图标（light 模式时显示，点击切到 dark） */
+/** 太阳图标 */
 const SunIcon = () => (
   <svg
     className="h-5 w-5 text-slate-600 dark:text-slate-400"
@@ -101,7 +99,7 @@ const SunIcon = () => (
   </svg>
 );
 
-/** 月亮图标（dark 模式时显示，点击切到 light） */
+/** 月亮图标 */
 const MoonIcon = () => (
   <svg
     className="h-5 w-5 shrink-0 fill-slate-600 dark:fill-slate-400"
@@ -121,19 +119,19 @@ function navLinkClass(isActive: boolean): string {
     : "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100";
 }
 
-/** 布局：顶部固定 Navbar + 主内容区；作为根布局时仅传 children，routes/currentPath 从 global 补全 */
-export function Layout(props: LayoutProps): VNode {
-  const { children } = props;
-  const routesProp = props.routes ?? routes;
-  const currentPath = props.currentPath ?? "";
-  const navItems = navItemsFromRoutes(routesProp);
+/** 布局：顶部固定 Navbar + 主内容区 */
+export default function Layout(props: { children: any }) {
+  const router = useRouter();
+  const currentPath = router.path();
+  const navItems = navItemsFromRoutes(routes);
   const grouped = groupNavItems(navItems);
-  const isDark = theme() === "dark";
+  const isDark = theme && theme() === "dark";
+
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100/80 dark:from-slate-900 dark:to-slate-800/80">
+    <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100/80 dark:from-slate-900 dark:to-slate-800/80 transition-colors duration-300">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
         <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <a
+          <Link
             href="/"
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-lg font-semibold tracking-tight text-slate-800 hover:text-indigo-600 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:text-indigo-400 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
           >
@@ -141,27 +139,29 @@ export function Layout(props: LayoutProps): VNode {
             <span className="rounded-md border border-slate-200 bg-slate-100/80 px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-600 dark:bg-slate-700/80 dark:text-slate-300">
               示例
             </span>
-          </a>
+          </Link>
           <div className="flex items-center gap-1 sm:gap-2">
             <ul className="flex flex-wrap items-center gap-1 sm:gap-2">
               {GROUP_ORDER.map((groupName) => {
                 const items = grouped.get(groupName) ?? [];
                 if (items.length === 0) return null;
+
                 if (groupName === "首页") {
                   const item = items[0];
                   const isActive = currentPath === item.path;
                   return (
                     <li key={item.path}>
-                      <a
+                      <Link
                         href={item.path}
                         className={navLinkClass(isActive) +
                           " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
                       >
                         {item.label}
-                      </a>
+                      </Link>
                     </li>
                   );
                 }
+
                 const isGroupActive = items.some((i) => i.path === currentPath);
                 return (
                   <li
@@ -173,10 +173,8 @@ export function Layout(props: LayoutProps): VNode {
                       className={navLinkClass(isGroupActive) +
                         " inline-flex items-center gap-1.5 pr-4 overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
                       aria-haspopup="true"
-                      aria-expanded="false"
                     >
                       <span className="shrink-0">{groupName}</span>
-                      {/* 向下箭头：butt+miter 避免 round 导致视觉上一边长一边短 */}
                       <svg
                         className="h-4 w-4 shrink-0 opacity-70 overflow-visible -mt-1"
                         viewBox="0 0 24 24"
@@ -185,21 +183,20 @@ export function Layout(props: LayoutProps): VNode {
                         strokeWidth="2"
                         strokeLinecap="butt"
                         strokeLinejoin="miter"
-                        preserveAspectRatio="xMidYMid meet"
                         aria-hidden="true"
                       >
                         <path d="M6 9l6 7 6-7" />
                       </svg>
                     </button>
                     <ul
-                      className="absolute left-0 top-full min-w-40 rounded-lg border border-slate-200/80 bg-white pt-0.5 pb-1 shadow-lg opacity-0 pointer-events-none transition-opacity group-hover/list:opacity-100 group-hover/list:pointer-events-auto group-focus-within/list:opacity-100 group-focus-within/list:pointer-events-auto dark:border-slate-600/80 dark:bg-slate-800"
+                      className="absolute left-0 top-full min-w-40 rounded-lg border border-slate-200/80 bg-white pt-0.5 pb-1 shadow-lg opacity-0 pointer-events-none transition-opacity group-hover/list:opacity-100 group-hover/list:pointer-events-auto dark:border-slate-600/80 dark:bg-slate-800"
                       role="menu"
                     >
                       {items.map((item) => {
                         const isActive = currentPath === item.path;
                         return (
                           <li key={item.path} role="none">
-                            <a
+                            <Link
                               href={item.path}
                               className={"block px-4 py-2 text-sm " + (isActive
                                 ? "text-indigo-600 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-900/50"
@@ -207,7 +204,7 @@ export function Layout(props: LayoutProps): VNode {
                               role="menuitem"
                             >
                               {item.label}
-                            </a>
+                            </Link>
                           </li>
                         );
                       })}
@@ -216,15 +213,18 @@ export function Layout(props: LayoutProps): VNode {
                 );
               })}
             </ul>
-            <button
-              type="button"
-              onClick={() => toggleTheme()}
-              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
-              title={isDark ? "切换到浅色" : "切换到深色"}
-              aria-label={isDark ? "切换到浅色" : "切换到深色"}
-            >
-              {isDark ? <SunIcon /> : <MoonIcon />}
-            </button>
+
+            {toggleTheme && (
+              <button
+                type="button"
+                onClick={() => toggleTheme()}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
+                title={isDark ? "切换到浅色" : "切换到深色"}
+              >
+                {isDark ? <SunIcon /> : <MoonIcon />}
+              </button>
+            )}
+
             <a
               href="https://github.com/shuliangfu/view"
               target="_blank"
@@ -238,11 +238,10 @@ export function Layout(props: LayoutProps): VNode {
         </nav>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        {children}
+        <div className="animate-in fade-in duration-500">
+          {props.children}
+        </div>
       </main>
     </div>
   );
 }
-
-/** default 即根布局（RoutePage layouts 链只传 children） */
-export default Layout;

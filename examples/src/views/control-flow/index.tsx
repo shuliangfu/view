@@ -1,287 +1,271 @@
 /**
- * 控制流运行时组件示例：`For` / `Index` / `Show` / `Switch`+`Match` / `Dynamic`。
- *
- * **手写 JSX**：可传 **`createSignal` 返回的 ref 本身**（`each={fruits}`、`when={panelOpen}`、`component={emphasisTag}`），
- * 运行时会在 memo 内读 `.value` 并订阅；勿写 `each={fruits.value}`（JSX 先求值，只剩快照）。
- * compileSource 仍会把 `each={expr}` 等编成无参 accessor。与 `vIf` 等可并存。
+ * @module views/control-flow
+ * @description 展示 @dreamer/view 核心控制流组件。
  */
+import {
+  createContext,
+  createSignal,
+  Dynamic,
+  For,
+  Index,
+  Match,
+  Show,
+  Switch,
+  useContext,
+} from "@dreamer/view";
 
-import type { VNode } from "@dreamer/view";
-import { createSignal, Dynamic, For, Index, Show, Switch } from "@dreamer/view";
-import type { SwitchMatchCase } from "@dreamer/view";
+const UserContext = createContext({ name: "Guest", role: "none" });
 
-export const metadata = {
-  title: "控制流",
-  description: "For、Index、Show、Switch、Match、Dynamic 列表与条件分支示例",
-  keywords: "For, Index, Show, Switch, Match, Dynamic, 控制流",
-};
-
-/** 列表源：`each={fruits}` 传 SignalRef；亦可用 `each={() => fruits.value}` */
-const fruits = createSignal<string[]>(["苹果", "橙子", "香蕉"]);
-
-/** `Index` 与 `For` 同实现，演示数值列表与下标 */
-const scores = createSignal<number[]>([92, 88, 76]);
-
-/** `Show` 的 `when` */
-const panelOpen = createSignal(false);
-
-/** `Switch` 当前分支键 */
-const tab = createSignal<"a" | "b" | "none">("a");
-
-/** `Dynamic`：本征标签名字符串在 `span` / `em` 间切换 */
-const emphasisTag = createSignal<"span" | "em">("span");
-
-/**
- * `Switch` 的 `matches`：手写 TS 时须显式传入（编译器才会把子级 `Match` 展开为数组）。
- */
-const switchMatches: SwitchMatchCase[] = [
-  {
-    when: () => tab.value === "a",
-    children: <span data-testid="cf-switch-a">当前：分支 A</span>,
-  },
-  {
-    when: () => tab.value === "b",
-    children: <span data-testid="cf-switch-b">当前：分支 B</span>,
-  },
-];
-
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-
-const subTitle =
-  "mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
-
-/**
- * 控制流示例根组件：各块独立 signal，便于在页内点击观察 DOM 变化。
- */
-function ControlFlowDemo(): VNode {
+function DeepChild() {
+  const user = useContext(UserContext);
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-        控制流
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        For / Index / Show / Switch · Match / Dynamic
-      </h2>
-
-      <div className="space-y-10">
-        {/* For：列表 + fallback */}
-        <div className={block}>
-          <p className={subTitle}>For</p>
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              each
-            </code>{" "}
-            订阅列表；空列表时走{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              fallback
-            </code>
-            。
-          </p>
-          <ul className="mb-3 list-disc space-y-1 pl-5 text-slate-800 dark:text-slate-100">
-            {/* each 须为无参 accessor，勿 each={fruits.value} 快照 */}
-            <For
-              each={() => fruits.value}
-              fallback={
-                <li className="text-amber-700 dark:text-amber-300">
-                  暂无水果（fallback）
-                </li>
-              }
-            >
-              {(item, index) => (
-                <li data-testid={`cf-for-item-${index}`}>
-                  {index + 1}. {item}
-                </li>
-              )}
-            </For>
-          </ul>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={btn}
-              data-testid="cf-for-clear"
-              onClick={() => {
-                fruits.value = [];
-              }}
-            >
-              清空列表
-            </button>
-            <button
-              type="button"
-              className={btn}
-              data-testid="cf-for-restore"
-              onClick={() => {
-                fruits.value = ["苹果", "橙子", "香蕉"];
-              }}
-            >
-              恢复三项
-            </button>
-          </div>
-        </div>
-
-        {/* Index：与 For 同实现，强调 (item, index) */}
-        <div className={block}>
-          <p className={subTitle}>Index</p>
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-            与{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              For
-            </code>{" "}
-            共享运行时；适合按索引展示的列表。
-          </p>
-          <ul
-            className="list-decimal space-y-1 pl-5 text-slate-800 dark:text-slate-100"
-            data-testid="cf-index-list"
-          >
-            <Index each={scores}>
-              {(score, idx) => (
-                <li>
-                  第 {idx} 项分数：<strong>{score}</strong>
-                </li>
-              )}
-            </Index>
-          </ul>
-          <button
-            type="button"
-            className={btn + " mt-3"}
-            data-testid="cf-index-bump"
-            onClick={() => {
-              scores.value = scores.value.map((s) => s + 1);
-            }}
-          >
-            每项 +1
-          </button>
-        </div>
-
-        {/* Show */}
-        <div className={block}>
-          <p className={subTitle}>Show</p>
-          <div className="mb-3 min-h-6 text-slate-800 dark:text-slate-100">
-            <Show
-              when={panelOpen}
-              fallback={
-                <span className="text-slate-500" data-testid="cf-show-fallback">
-                  面板关闭（fallback）
-                </span>
-              }
-            >
-              {(v: boolean) => (
-                <span className="text-emerald-700 dark:text-emerald-300">
-                  面板打开，when 值为 {String(v)}
-                </span>
-              )}
-            </Show>
-          </div>
-          <button
-            type="button"
-            className={btn}
-            data-testid="cf-show-toggle"
-            onClick={() => {
-              panelOpen.value = !panelOpen.value;
-            }}
-          >
-            切换 Show
-          </button>
-        </div>
-
-        {/* Switch + Match */}
-        <div className={block}>
-          <p className={subTitle}>Switch · Match</p>
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-            按顺序匹配首个为真的{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              Match
-            </code>
-            ；否则走{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              fallback
-            </code>
-            。
-          </p>
-          <div
-            className="mb-3 min-h-6 font-medium text-slate-800 dark:text-slate-100"
-            data-testid="cf-switch-outlet"
-          >
-            <Switch
-              matches={switchMatches}
-              fallback={
-                <span data-testid="cf-switch-fallback">无匹配分支</span>
-              }
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                tab.value = "a";
-              }}
-            >
-              A
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                tab.value = "b";
-              }}
-            >
-              B
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                tab.value = "none";
-              }}
-            >
-              无匹配
-            </button>
-          </div>
-        </div>
-
-        {/* Dynamic：本征标签名 */}
-        <div className={block}>
-          <p className={subTitle}>Dynamic</p>
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              component
-            </code>{" "}
-            可为本征标签字符串或函数组件；此处在{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              span
-            </code>{" "}
-            /{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              em
-            </code>{" "}
-            间切换。
-          </p>
-          <div className="mb-3 text-slate-800 dark:text-slate-100">
-            <Dynamic
-              component={emphasisTag}
-              className="text-indigo-600 dark:text-indigo-400"
-            >
-              这段文字随标签类型改变强调样式
-            </Dynamic>
-          </div>
-          <button
-            type="button"
-            className={btn}
-            data-testid="cf-dynamic-toggle"
-            onClick={() => {
-              emphasisTag.value = emphasisTag.value === "span" ? "em" : "span";
-            }}
-          >
-            切换 span / em
-          </button>
-        </div>
+    <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl">
+      <h5 className="text-[10px] font-black uppercase tracking-widest text-indigo-400 dark:text-indigo-500 mb-3">
+        当前用户信息 (Consumer)
+      </h5>
+      <div className="space-y-1">
+        <p className="text-sm font-bold dark:text-slate-300">
+          用户名:{" "}
+          <span className="text-indigo-600 dark:text-indigo-400">
+            {user.name}
+          </span>
+        </p>
+        <p className="text-sm font-bold dark:text-slate-300">
+          角色:{" "}
+          <span className="text-indigo-600 dark:text-indigo-400">
+            {user.role}
+          </span>
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
-export default ControlFlowDemo;
+function MiddleLayer() {
+  return (
+    <div className="p-6 border border-slate-100 dark:border-slate-700 rounded-2xl">
+      <h4 className="text-sm font-bold mb-4 dark:text-slate-300 text-slate-600">
+        中间层组件 (不传递 Props)
+      </h4>
+      <DeepChild />
+    </div>
+  );
+}
+
+export default function ControlFlowDemo() {
+  const [tab, setTab] = createSignal<"a" | "b" | "none">("a");
+  const [fruits, setFruits] = createSignal(["苹果", "橙子", "香蕉"]);
+  const [scores, setScores] = createSignal([88, 92, 75]);
+  const [panelOpen, setPanelOpen] = createSignal(true);
+  const [emphasisTag, setEmphasisTag] = createSignal<"em" | "span">("em");
+  const [user, setUser] = createSignal({ name: "Guest", role: "none" });
+
+  return (
+    <section className="space-y-12">
+      {/* 1. Switch / Match */}
+      <section className="p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold italic dark:text-slate-100">
+          多路分支 (Switch / Match)
+        </h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("a")}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-all active:scale-95"
+          >
+            显示 A
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("b")}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-all active:scale-95"
+          >
+            显示 B
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("none")}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-all active:scale-95"
+          >
+            隐藏全部
+          </button>
+        </div>
+
+        <Switch
+          fallback={
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl italic text-slate-400 dark:text-slate-500 text-sm">
+              目前没有任何匹配项
+            </div>
+          }
+        >
+          <Match when={() => tab() === "a"}>
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl text-indigo-700 dark:text-indigo-300 font-medium animate-in fade-in duration-300">
+              选项 A 已激活
+            </div>
+          </Match>
+          <Match when={() => tab() === "b"}>
+            <div className="p-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800 rounded-xl text-violet-700 dark:text-violet-300 font-medium animate-in fade-in duration-300">
+              选项 B 已激活
+            </div>
+          </Match>
+        </Switch>
+      </section>
+
+      {/* 2. For (Keyed) */}
+      <section className="p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold italic dark:text-slate-100">
+          列表循环 (For)
+        </h2>
+        <p className="text-sm text-slate-400 dark:text-slate-500 italic">
+          适用于唯一标识符的列表，极致复用 DOM。
+        </p>
+        <ul className="space-y-2">
+          <For
+            each={fruits}
+            fallback={
+              <li className="text-red-500 dark:text-red-400 italic p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                暂无水果数据
+              </li>
+            }
+          >
+            {(item: string, index: () => number) => (
+              <li className="p-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center transition-colors">
+                <span className="font-medium dark:text-slate-200">
+                  {() => index() + 1}. {item}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFruits((prev) => prev.filter((f) => f !== item));
+                  }}
+                  className="px-3 py-1 text-xs font-bold bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-all"
+                >
+                  删除
+                </button>
+              </li>
+            )}
+          </For>
+        </ul>
+        <Show
+          when={() => fruits().includes("西瓜")}
+          fallback={
+            <button
+              type="button"
+              onClick={() => setFruits([...fruits(), "西瓜"])}
+              className="text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:underline"
+            >
+              增加西瓜
+            </button>
+          }
+        >
+          <button
+            type="button"
+            onClick={() => setFruits(["苹果", "橙子", "香蕉"])}
+            className="text-red-500 dark:text-red-400 font-bold text-sm hover:underline"
+          >
+            重置列表
+          </button>
+        </Show>
+      </section>
+
+      {/* 3. Index (Non-Keyed) */}
+      <section className="p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold italic dark:text-slate-100">
+          基于索引的循环 (Index)
+        </h2>
+        <p className="text-sm text-slate-400 dark:text-slate-500 italic">
+          适用于基础值列表（如数字数组）。
+        </p>
+        <div className="flex gap-2">
+          <Index each={scores}>
+            {(score: number, _index: () => number) => (
+              <div className="p-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-2xl w-12 h-12 flex items-center justify-center font-black shadow-lg shadow-indigo-100 dark:shadow-none animate-in zoom-in duration-300">
+                {score}
+              </div>
+            )}
+          </Index>
+        </div>
+        <button
+          type="button"
+          onClick={() => setScores((s) => s.map((v) => v + 5))}
+          className="text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:underline"
+        >
+          全部增加 5 分
+        </button>
+      </section>
+
+      {/* 4. Show & Dynamic */}
+      <section className="p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold italic dark:text-slate-100">
+          显示控制 (Show) 与 动态组件 (Dynamic)
+        </h2>
+        <button
+          type="button"
+          onClick={() => setPanelOpen(!panelOpen())}
+          className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-sm hover:bg-indigo-100 transition-all"
+        >
+          {() => panelOpen() ? "关闭面板" : "开启面板"}
+        </button>
+        <Show when={panelOpen}>
+          <div className="p-6 border border-slate-100 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-900/50 animate-in fade-in slide-in-from-top-2 duration-500">
+            <h4 className="font-black mb-4 uppercase text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500">
+              内部面板 (Scoped Content)
+            </h4>
+            <div className="flex items-center gap-6">
+              <span className="text-sm font-medium dark:text-slate-300">
+                动态渲染标签：
+              </span>
+              <Dynamic
+                component={emphasisTag}
+                className="text-indigo-600 dark:text-indigo-400 font-black text-lg"
+              >
+                响应式动态内容
+              </Dynamic>
+              <button
+                type="button"
+                onClick={() =>
+                  setEmphasisTag((t) => t === "em" ? "span" : "em")}
+                className="px-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 dark:text-slate-400 hover:border-indigo-500 transition-all"
+              >
+                切换标签 (Current: {() => emphasisTag()})
+              </button>
+            </div>
+          </div>
+        </Show>
+      </section>
+
+      {/* 5. Context API */}
+      <section className="p-6 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm space-y-6 transition-colors">
+        <header>
+          <h2 className="text-xl font-bold italic dark:text-slate-100">
+            上下文集成 (Context API)
+          </h2>
+          <p className="text-sm text-slate-400 dark:text-slate-500 italic mt-1">
+            通过根级 Provider 注入状态，任意深度的子组件均可获取其响应式数据。
+          </p>
+        </header>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setUser({ name: "Admin", role: "superuser" })}
+            className="px-4 py-2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-all active:scale-95"
+          >
+            登录为管理员
+          </button>
+          <button
+            type="button"
+            onClick={() => setUser({ name: "Guest", role: "none" })}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-black uppercase tracking-widest rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-all active:scale-95"
+          >
+            注销
+          </button>
+        </div>
+
+        <UserContext.Provider value={user}>
+          <MiddleLayer />
+        </UserContext.Provider>
+      </section>
+    </section>
+  );
+}

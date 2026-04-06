@@ -1,7 +1,7 @@
 /**
  * 路由表代码生成（routers codegen）
  *
- * 扫描 src/views 目录（最多 5 层），根据文件路径与 _layout.tsx、metadata、inheritLayout 等约定，
+ * 扫描 src/views 目录（最多 5 层），根据文件路径与 _layout.tsx、metadata、inheritLayout、可选 `export const routePath` 等约定，
  * 生成 src/router/routers.tsx（RouteConfig[] 源码，含动态 import）。
  * dev/build 前会调用 generateRoutersFile，使路由表与 views 目录同步；生成文件在 .gitignore 中。
  */
@@ -12,8 +12,8 @@ import {
   existsSync,
   join,
   mkdir,
-  pathToFileUrl,
   readdir,
+  readTextFile,
   resolve,
   writeTextFile,
 } from "@dreamer/runtime-adapter";
@@ -141,25 +141,62 @@ function toSerializableMeta(value: unknown): unknown {
  * @param fileAbs 路由文件绝对路径
  * @returns 解析出的 metadata 对象（仅含可 JSON 序列化的结构），无或加载失败时返回 undefined
  */
+/**
+ * 读取路由页可选的 `export const routePath`：覆盖由文件路径推断的 URL（如 `/router/user/:userId`）。
+ * @param fileAbs 页面源文件绝对路径
+ */
+async function extractRoutePathFromFile(
+  fileAbs: string,
+): Promise<string | undefined> {
+  try {
+    const text = await readTextFile(fileAbs);
+    const match = text.match(
+      /export\s+(?:const|let|var)\s+routePath\s*=\s*(['"])(.*?)\1/,
+    );
+    if (match) {
+      const p = match[2];
+      if (typeof p === "string" && p.startsWith("/")) {
+        return p.replace(/\/+$/, "") || "/";
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 async function extractMetaFromFile(
   fileAbs: string,
 ): Promise<Record<string, unknown> | undefined> {
   try {
-    const url = pathToFileUrl(fileAbs);
-    const mod = await import(url);
-    const raw = (mod as { metadata?: unknown }).metadata ??
-      (mod.default as { metadata?: unknown } | undefined)?.metadata;
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-    const serialized = toSerializableMeta(raw);
-    if (
-      serialized == null || typeof serialized !== "object" ||
-      Array.isArray(serialized)
-    ) return undefined;
-    const meta = serialized as Record<string, unknown>;
-    return Object.keys(meta).length > 0 ? meta : undefined;
+    const text = await readTextFile(fileAbs);
+    // 使用正则提取静态 metadata 避免动态 import() 在无配置的 Bun 环境下因 JSX 解析失败
+    // 仅支持简单的静态对象字面量（无法跨文件引用变量）
+    const match = text.match(
+      /export\s+(?:const|let|var)\s+metadata\s*=\s*(\{[\s\S]*?\});?(?:\n|$)/,
+    );
+    if (match) {
+      try {
+        // eslint-disable-next-line no-new-func
+        const raw = new Function("return " + match[1])();
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+          return undefined;
+        }
+        const serialized = toSerializableMeta(raw);
+        if (
+          serialized == null || typeof serialized !== "object" ||
+          Array.isArray(serialized)
+        ) return undefined;
+        const meta = serialized as Record<string, unknown>;
+        return Object.keys(meta).length > 0 ? meta : undefined;
+      } catch {
+        return undefined;
+      }
+    }
   } catch {
     return undefined;
   }
+  return undefined;
 }
 
 /**
@@ -225,11 +262,15 @@ export async function scanRouteEntries(
 
         const relativeNoExt = relPath.slice(0, -ext.length);
         const relativeNoExtSlash = relativeNoExt.replace(/\\/g, "/");
-        const { path, isNotFound } = pathFromRelative(relativeNoExtSlash);
+        const fileAbs = join(dirAbs, e.name);
+        let { path, isNotFound } = pathFromRelative(relativeNoExtSlash);
+        const routePathOverride = await extractRoutePathFromFile(fileAbs);
+        if (routePathOverride && !isNotFound) {
+          path = routePathOverride;
+        }
 
         const importPath = ["..", "views", relPathSlash].join("/");
         const titleFallback = titleFromRelative(relativeNoExtSlash, isNotFound);
-        const fileAbs = join(dirAbs, e.name);
         const metaFromFile = await extractMetaFromFile(fileAbs);
         const title = (metaFromFile?.title as string) ?? titleFallback;
         let { inheritLayout, layoutImportPaths } = await computeLayoutChain(
@@ -249,7 +290,7 @@ export async function scanRouteEntries(
             }
           }
         } catch {
-          // 读取失败则保持 layout 链结果
+          // 读取失败则保持 layout链结果
         }
         const pageWantsLoading = await readLoadingFromPageFile(fileAbs);
         const localLoadingPath = join(viewsDirAbs, relativeDir, "_loading.tsx");
@@ -311,18 +352,33 @@ export async function scanRouteEntries(
  */
 export function generateRoutersContent(routeEntries: RouteEntry[]): string {
   const notFound = routeEntries.find((e) => e.isNotFound);
-  const routes = routeEntries.filter((e) => !e.isNotFound);
+  const routesArr = routeEntries.filter((e) => !e.isNotFound);
+
+  // 收集所有唯一的 loading 导入路径
+  const loadingPaths = new Set<string>();
+  for (const e of routeEntries) {
+    if (e.loadingImportPath) loadingPaths.add(e.loadingImportPath);
+  }
 
   const lines: string[] = [
     "/**",
     " * " + $tr("init.template.routersComment1"),
     " * " + $tr("init.template.routersComment2"),
     " */",
-    "// @ts-nocheck " + $tr("generate.tsNocheckComment"),
-    'import type { RouteConfig } from "@dreamer/view/router";',
-    "",
-    "export const routes: RouteConfig[] = [",
+    'import type { RouteConfig } from "@dreamer/view";',
   ];
+
+  // 静态导入 loading 组件，确保它们在主包中，可以立即显示
+  let loadingIdx = 1;
+  const loadingMap = new Map<string, string>();
+  for (const path of loadingPaths) {
+    const alias = `Loading${loadingIdx++}`;
+    loadingMap.set(path, alias);
+    lines.push(`import ${alias} from "${path}";`);
+  }
+
+  lines.push("");
+  lines.push("export const routes: RouteConfig[] = [");
 
   const metaToJson = (entry: RouteEntry): string => {
     const base = entry.metadata
@@ -331,21 +387,23 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
     return JSON.stringify(base);
   };
 
-  for (const e of routes) {
+  for (const e of routesArr) {
     const metaJson = metaToJson(e);
     const inheritProp = e.inheritLayout === false
       ? ", inheritLayout: false"
       : "";
-    // 由 layout.ts 计算：inheritLayout=false 时 layoutImportPaths 已为 []，不继承父级布局；
-    // inheritLayout=true 时使用完整链（含根 _layout），由 RoutePage 统一应用，_app 不再判断 inheritLayout
     const layoutPaths = e.layoutImportPaths ?? [];
     const layoutsArr = layoutPaths
       .map((p) => `() => import("${p}")`)
       .join(", ");
     const layoutsProp = layoutsArr ? `, layouts: [ ${layoutsArr} ]` : "";
-    const loadingProp = e.loadingImportPath
-      ? `, loading: () => import("${e.loadingImportPath}")`
-      : "";
+
+    // 使用静态导入的别名
+    const loadingAlias = e.loadingImportPath
+      ? loadingMap.get(e.loadingImportPath)
+      : null;
+    const loadingProp = loadingAlias ? `, loading: ${loadingAlias}` : "";
+
     const skipLoadingProp = e.skipLoading ? ", skipLoading: true" : "";
     lines.push(
       `  { path: "${e.path}", component: () => import("${e.importPath}"), metadata: ${metaJson}${inheritProp}${layoutsProp}${loadingProp}${skipLoadingProp} },`,
@@ -360,9 +418,12 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
       ? nfLayoutPaths.map((p) => `() => import("${p}")`).join(", ")
       : "";
     const nfLayoutsProp = nfLayoutsArr ? `, layouts: [ ${nfLayoutsArr} ]` : "";
-    const nfLoadingProp = notFound.loadingImportPath
-      ? `, loading: () => import("${notFound.loadingImportPath}")`
-      : "";
+
+    const nfLoadingAlias = notFound.loadingImportPath
+      ? loadingMap.get(notFound.loadingImportPath)
+      : null;
+    const nfLoadingProp = nfLoadingAlias ? `, loading: ${nfLoadingAlias}` : "";
+
     lines.push("export const notFoundRoute: RouteConfig = {");
     lines.push(
       `  path: "${notFound.path}", component: () => import("${notFound.importPath}"), metadata: ${
@@ -372,7 +433,7 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
     lines.push("};");
   } else {
     lines.push(
-      'export const notFoundRoute: RouteConfig = { path: "*", component: () => Promise.resolve({ default: () => null as import("@dreamer/view").VNode }), metadata: { title: "404" } };',
+      'export const notFoundRoute: RouteConfig = { path: "*", component: () => document.createTextNode("404 Not Found"), metadata: { title: "404" } };',
     );
   }
 

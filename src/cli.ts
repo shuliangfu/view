@@ -1,169 +1,38 @@
-#!/usr/bin/env -S deno run -A
-
 /**
- * view-cli 入口：init、dev、build、start、upgrade、update；支持 version/-v 显示版本。
- *
- * @module @dreamer/view/cli
- * @packageDocumentation
- *
- * 使用 @dreamer/console 的 Command 注册子命令，子命令由 `./cmd/*` 动态导入执行。
- *
- * **导出函数：** createCLI(version) — 创建并返回 CLI Command 实例
- *
- * @example
- * deno run -A jsr:@dreamer/view/cli dev
- * view-cli --version
- * view-cli upgrade --beta
+ * @module cli
+ * @description View CLI 入口。
  */
 
 import { Command } from "@dreamer/console";
-import { args } from "@dreamer/runtime-adapter";
-import { $tr } from "./i18n.ts";
-import { getViewVersion } from "./server/utils/version.ts";
+import { main as build } from "./cli/build.ts";
+import { main as dev } from "./cli/dev.ts";
+import { main as init } from "./cli/init.ts";
+import { main as start } from "./cli/start.ts";
 
-/**
- * 构建 CLI 版本展示字符串（供 setVersion 与 --version/-v 输出），文案走 i18n
- */
-function buildVersionStr(version: string): string {
-  return $tr("cli.versionBanner", { version });
-}
+const program = new Command("view")
+  .info("Dreamer View CLI");
 
-/**
- * 创建 view-cli 命令实例并注册子命令（init、dev、build、start、upgrade、update、version 等）。
- *
- * @param version - 框架版本号（由 getViewVersion() 获取），用于 setVersion 与 --version/-v 输出
- * @returns Command 实例，可调用 .parse() 等执行
- */
-export function createCLI(version: string): Command {
-  // setVersion 的字符串会由 @dreamer/console 在 -v/--version 时 console.log 输出，末尾加空行
-  const cli = new Command("view-cli", $tr("cli.description")).setVersion(
-    "\n" + buildVersionStr(version) + "\n",
-  );
+program
+  .command("init", "Initialize a new View project")
+  .option({ name: "-d, --dir <dir>", description: "Target directory" })
+  .option({ name: "--beta", description: "Use beta version" })
+  .action((_args, options) => init(options));
 
-  // ---------------------------------------------------------------------------
-  // init — 初始化项目
-  // ---------------------------------------------------------------------------
-  cli
-    .command("init", $tr("cli.initDesc"))
-    .argument({
-      name: "dir",
-      description: $tr("cli.initArgDir"),
-      required: false,
-    })
-    .option({
-      name: "beta",
-      description: $tr("cli.initOptionBeta"),
-      type: "boolean",
-      defaultValue: false,
-    })
-    .action(async (args: string[], options: Record<string, unknown>) => {
-      const { main: initMain } = await import("./cmd/init.ts");
-      const initOptions: Record<string, unknown> = {
-        ...options,
-        dir: args[0],
-      };
-      await initMain(initOptions);
-    });
+program
+  .keepAlive()
+  .command("dev", "Start development server with HMR")
+  .option({ name: "-p, --port <port>", description: "Server port" })
+  .option({ name: "-h, --host <host>", description: "Server host" })
+  .action((_args, options) => dev(options));
 
-  // ---------------------------------------------------------------------------
-  // dev — 开发服务器（构建 + 静态服务）
-  // ---------------------------------------------------------------------------
-  cli
-    .command("dev", $tr("cli.devDesc"))
-    .option({
-      name: "host",
-      alias: "h",
-      description: $tr("cli.optionHost"),
-      requiresValue: true,
-      type: "string",
-    })
-    .option({
-      name: "port",
-      alias: "p",
-      description: $tr("cli.optionPort"),
-      requiresValue: true,
-      type: "number",
-    })
-    .keepAlive()
-    .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: devMain } = await import("./cmd/dev.ts");
-      await devMain(options);
-    });
+program
+  .command("build", "Build the project for production")
+  .action((_args, options) => build(options));
 
-  // ---------------------------------------------------------------------------
-  // start — 生产静态服务
-  // ---------------------------------------------------------------------------
-  cli
-    .command("start", $tr("cli.startDesc"))
-    .option({
-      name: "host",
-      alias: "h",
-      description: $tr("cli.optionHost"),
-      requiresValue: true,
-      type: "string",
-    })
-    .option({
-      name: "port",
-      alias: "p",
-      description: $tr("cli.optionPort"),
-      requiresValue: true,
-      type: "number",
-    })
-    .keepAlive()
-    .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: startMain } = await import("./cmd/start.ts");
-      await startMain(options);
-    });
+program
+  .command("start", "Start production server")
+  .option({ name: "-p, --port <port>", description: "Server port" })
+  .option({ name: "-h, --host <host>", description: "Server host" })
+  .action((_args, options) => start(options));
 
-  // ---------------------------------------------------------------------------
-  // build — 构建
-  // ---------------------------------------------------------------------------
-  cli
-    .command("build", $tr("cli.buildDesc"))
-    .action(async () => {
-      const { main: buildMain } = await import("./cmd/build.ts");
-      await buildMain();
-    });
-
-  // ---------------------------------------------------------------------------
-  // upgrade — 升级 view-cli 到最新版本
-  // ---------------------------------------------------------------------------
-  cli
-    .command("upgrade", $tr("cli.upgradeDesc"))
-    .option({
-      name: "beta",
-      description: $tr("cli.upgradeOptionBeta"),
-      type: "boolean",
-      defaultValue: false,
-    })
-    .action(async (_args: string[], options: Record<string, unknown>) => {
-      const { main: upgradeMain } = await import("./cmd/upgrade.ts");
-      await upgradeMain(_args, options);
-    });
-
-  // ---------------------------------------------------------------------------
-  // update — 更新项目依赖与 lockfile（deno update / bun update）
-  // ---------------------------------------------------------------------------
-  cli
-    .command("update", $tr("cli.updateDesc"))
-    .option({
-      name: "latest",
-      description: $tr("cli.updateOptionLatest"),
-      type: "boolean",
-      defaultValue: false,
-    })
-    .action(async (args: string[], options: Record<string, unknown>) => {
-      const { main: updateMain } = await import("./cmd/update.ts");
-      await updateMain(args, options);
-    });
-
-  // ---------------------------------------------------------------------------
-
-  return cli;
-}
-
-if (import.meta.main) {
-  const version = await getViewVersion(false);
-  const cli = createCLI(version);
-  await cli.execute(args());
-}
+await program.execute();

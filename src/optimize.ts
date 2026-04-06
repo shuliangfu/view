@@ -1,278 +1,48 @@
 /**
- * **构建期源码优化**：对 TS/TSX 做**常量折叠**与**静态提升**，减少运行时重复创建静态 AST/节点相关开销。依赖 TypeScript 编译器 API（`npm:typescript`），仅在导入本模块时加载。
- *
- * @module @dreamer/view/optimize
- * @packageDocumentation
- *
- * **本模块导出：**
- * - `optimize(code, fileName?)`：对源码执行优化，返回优化后的代码字符串
- * - `createOptimizePlugin(filter?, readFile?)`：返回可在 esbuild 中使用的 onLoad 插件，对匹配文件执行 optimize
- * - 类型：`OnLoadArgs`（esbuild onLoad 回调参数）
- *
- * **使用场景：** 构建时对 View 组件源码做优化，或通过 esbuild 插件在打包时自动优化。
- *
- * @example
- * import { optimize, createOptimizePlugin } from "jsr:@dreamer/view/optimize";
- * const out = optimize(sourceCode, "App.tsx");
- * // 或 esbuild: plugins: [createOptimizePlugin(/\.tsx$/)]
+ * @module optimize
+ * @description 构建时源码优化器。
+ * 实现模板压缩、静态内容预处理等极致优化。
  */
 
-import { readTextFile } from "@dreamer/runtime-adapter";
-import ts from "typescript";
-
-const factory = ts.factory;
+import type { BuildPlugin } from "@dreamer/esbuild";
+import { readFile } from "@dreamer/runtime-adapter";
 
 /**
- * 创建数字字面量节点。TS API 要求负数用 createPrefixUnaryExpression(-, literal) 表示，不能传负值给 createNumericLiteral。
+ * 源码层面的极致优化。
+ * 1. 压缩 template() 中的 HTML 字符串（移除冗余空格、换行）。
+ * 2. 预处理静态属性（进一步减小运行时开销）。
  */
-function createNumericLiteralSafe(
-  value: number,
-): ts.NumericLiteral | ts.PrefixUnaryExpression {
-  if (value < 0) {
-    return factory.createPrefixUnaryExpression(
-      ts.SyntaxKind.MinusToken,
-      factory.createNumericLiteral(-value),
-    );
-  }
-  return factory.createNumericLiteral(value);
-}
-
-/**
- * 常量折叠：将二元/一元表达式中的字面量在编译期求值
- */
-function foldConstants(
-  context: ts.TransformationContext,
-): ts.Transformer<ts.SourceFile> {
-  function visit(node: ts.Node): ts.Node {
-    if (ts.isBinaryExpression(node)) {
-      const left = node.left;
-      const right = node.right;
-      const op = node.operatorToken.kind;
-      if (ts.isNumericLiteral(left) && ts.isNumericLiteral(right)) {
-        const a = Number((left as ts.NumericLiteral).text);
-        const b = Number((right as ts.NumericLiteral).text);
-        let value: number | undefined;
-        switch (op) {
-          case ts.SyntaxKind.PlusToken:
-            value = a + b;
-            break;
-          case ts.SyntaxKind.MinusToken:
-            value = a - b;
-            break;
-          case ts.SyntaxKind.AsteriskToken:
-            value = a * b;
-            break;
-          case ts.SyntaxKind.SlashToken:
-            value = b === 0 ? undefined : a / b;
-            break;
-          case ts.SyntaxKind.PercentToken:
-            value = b === 0 ? undefined : a % b;
-            break;
-          case ts.SyntaxKind.LessThanToken:
-            return a < b ? factory.createTrue() : factory.createFalse();
-          case ts.SyntaxKind.GreaterThanToken:
-            return a > b ? factory.createTrue() : factory.createFalse();
-          case ts.SyntaxKind.LessThanEqualsToken:
-            return a <= b ? factory.createTrue() : factory.createFalse();
-          case ts.SyntaxKind.GreaterThanEqualsToken:
-            return a >= b ? factory.createTrue() : factory.createFalse();
-          case ts.SyntaxKind.EqualsEqualsToken:
-          case ts.SyntaxKind.EqualsEqualsEqualsToken:
-            return a === b ? factory.createTrue() : factory.createFalse();
-          case ts.SyntaxKind.ExclamationEqualsToken:
-          case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-            return a !== b ? factory.createTrue() : factory.createFalse();
-          default:
-            break;
-        }
-        if (typeof value === "number" && Number.isFinite(value)) {
-          return createNumericLiteralSafe(value);
-        }
-      }
-      if (
-        ts.isStringLiteral(left) && ts.isStringLiteral(right) &&
-        op === ts.SyntaxKind.PlusToken
-      ) {
-        return factory.createStringLiteral(
-          (left as ts.StringLiteral).text + (right as ts.StringLiteral).text,
-        );
-      }
-    }
-    if (ts.isPrefixUnaryExpression(node)) {
-      const operand = node.operand;
-      const op = node.operator;
-      if (ts.isNumericLiteral(operand)) {
-        const v = Number((operand as ts.NumericLiteral).text);
-        if (op === ts.SyntaxKind.MinusToken) {
-          return createNumericLiteralSafe(-v);
-        }
-        if (op === ts.SyntaxKind.PlusToken) {
-          return factory.createNumericLiteral(v);
-        }
-      }
-    }
-    return ts.visitEachChild(node, visit, context);
-  }
-  return (sf: ts.SourceFile) => ts.visitNode(sf, visit) as ts.SourceFile;
-}
-
-/**
- * 判断对象字面量的属性是否全部为“静态”（字面量或静态 jsx 调用），用于静态提升
- */
-function isStaticObjectLiteral(node: ts.ObjectLiteralExpression): boolean {
-  for (const prop of node.properties) {
-    if (ts.isSpreadAssignment(prop)) return false;
-    if (ts.isShorthandPropertyAssignment(prop)) return false;
-    if (ts.isPropertyAssignment(prop)) {
-      const init = prop.initializer;
-      if (
-        ts.isNumericLiteral(init) || ts.isStringLiteral(init) ||
-        init.kind === ts.SyntaxKind.TrueKeyword ||
-        init.kind === ts.SyntaxKind.FalseKeyword
-      ) continue;
-      if (ts.isObjectLiteralExpression(init) && isStaticObjectLiteral(init)) {
-        continue;
-      }
-      if (ts.isArrayLiteralExpression(init)) {
-        for (const el of init.elements) {
-          if (
-            !ts.isNumericLiteral(el) && !ts.isStringLiteral(el) &&
-            el.kind !== ts.SyntaxKind.TrueKeyword &&
-            el.kind !== ts.SyntaxKind.FalseKeyword
-          ) return false;
-        }
-        continue;
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
- * 判断调用是否为 jsx/jsxs 且参数为静态（可提升）
- */
-function isStaticJsxCall(node: ts.CallExpression): boolean {
-  const name = ts.isIdentifier(node.expression)
-    ? node.expression.text
-    : ts.isPropertyAccessExpression(node.expression)
-    ? node.expression.name.text
-    : "";
-  if (name !== "jsx" && name !== "jsxs") return false;
-  if (node.arguments.length < 2) return false;
-  const [tag, props] = node.arguments;
-  if (!ts.isStringLiteral(tag) && !ts.isNoSubstitutionTemplateLiteral(tag)) {
-    return false;
-  }
-  if (!ts.isObjectLiteralExpression(props)) return false;
-  return isStaticObjectLiteral(props);
-}
-
-/** 为静态节点生成唯一变量名 */
-let hoistId = 0;
-function nextHoistId(): string {
-  return `__view_hoist_${hoistId++}`;
-}
-
-/**
- * 静态提升：将静态 jsx() 调用提取为模块顶层的常量
- */
-function staticHoist(
-  context: ts.TransformationContext,
-): ts.Transformer<ts.SourceFile> {
-  const hoisted: ts.VariableStatement[] = [];
-
-  function visit(node: ts.Node): ts.Node {
-    if (ts.isCallExpression(node) && isStaticJsxCall(node)) {
-      const id = nextHoistId();
-      hoisted.push(
-        factory.createVariableStatement(
-          [factory.createModifier(ts.SyntaxKind.ConstKeyword)],
-          factory.createVariableDeclarationList(
-            [factory.createVariableDeclaration(id, undefined, undefined, node)],
-            ts.NodeFlags.Const,
-          ),
-        ),
-      );
-      return factory.createIdentifier(id);
-    }
-    return ts.visitEachChild(node, visit, context);
-  }
-
-  return (sf: ts.SourceFile) => {
-    hoistId = 0;
-    hoisted.length = 0;
-    const visited = ts.visitEachChild(sf, visit, context);
-    if (hoisted.length === 0) return visited;
-    const list = [...hoisted, ...visited.statements];
-    return factory.updateSourceFile(
-      visited,
-      list,
-      visited.isDeclarationFile,
-      visited.referencedFiles,
-      visited.typeReferenceDirectives,
-      visited.hasNoDefaultLib,
-    );
-  };
-}
-
-/**
- * 对源码执行常量折叠与静态提升，返回优化后的代码字符串。
- *
- * @param code - 源文件内容（可为 TS/JSX）
- * @param fileName - 文件名，用于 SourceMap 与诊断，默认 "source.tsx"
- * @returns 优化后的源码字符串
- */
-export function optimize(code: string, fileName = "source.tsx"): string {
-  const sf = ts.createSourceFile(
-    fileName,
-    code,
-    ts.ScriptTarget.Latest,
-    true,
-    fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+export function optimize(source: string): string {
+  // 极致优化：匹配 template("...") 并压缩其中的 HTML
+  // 处理逻辑：移除标签间的换行和多余空格，但保留标签内的必要空格
+  return source.replace(
+    /template\s*\(\s*(['"`])([\s\S]*?)\1\s*\)/g,
+    (_match, quote, html) => {
+      const minified = html
+        .replace(/>\s+</g, "><") // 移除标签间的空格和换行
+        .replace(/\s{2,}/g, " ") // 将多个连续空格合并为一个
+        .trim();
+      return `template(${quote}${minified}${quote})`;
+    },
   );
-  const result = ts.transform(sf, [foldConstants, staticHoist]);
-  const out = result.transformed[0] as ts.SourceFile;
-  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-  return printer.printFile(out);
 }
 
 /**
- * esbuild onLoad 回调的参数（createOptimizePlugin 内部使用）。
- * @property path - 当前加载的文件路径
- * @property namespace - 可选的 namespace
+ * 创建编译优化插件。
+ * 在构建管道的最后阶段执行，对最终生成的 JS 代码进行微调。
  */
-export type OnLoadArgs = { path: string; namespace?: string };
-
-/** 兼容 esbuild Plugin 的 setup 入参（onLoad 为两参：options + callback） */
-type EsbuildPluginBuild = {
-  onLoad(
-    options: { filter: RegExp; namespace?: string },
-    callback: (args: OnLoadArgs) => Promise<{ contents: string }>,
-  ): void;
-};
-
-/**
- * 创建可在 esbuild 中使用的 transform 插件：对匹配的文件执行 optimize（常量折叠与静态提升）。
- * 默认使用 @dreamer/runtime-adapter 的 readTextFile，兼容 Deno / Bun；可传入自定义 readFile。
- *
- * @param filter - 正则，匹配需要优化的文件路径，默认 /\.(tsx?|jsx?)$/
- * @param readFile - 可选，自定义读文件函数 (path) => Promise<string>
- * @returns esbuild 插件对象 `{ name, setup }`：`onLoad` 中对匹配文件执行 `optimize` 后返回 `{ contents, loader }`（`loader` 依扩展名选 `tsx`/`ts`）
- */
-export function createOptimizePlugin(
-  filter: RegExp = /\.(tsx?|jsx?)$/,
-  readFile?: (path: string) => Promise<string>,
-): { name: string; setup: (build: EsbuildPluginBuild) => void } {
-  const load = readFile ?? ((path: string) => readTextFile(path));
+export function createOptimizePlugin(filter: RegExp): BuildPlugin {
   return {
     name: "view-optimize",
-    setup(build: EsbuildPluginBuild) {
-      build.onLoad({ filter }, async (args: OnLoadArgs) => {
-        const code = await load(args.path).catch(() => "");
-        const out = optimize(code, args.path);
-        const loader = /\.tsx$|\.jsx$/i.test(args.path) ? "tsx" : "ts";
-        return { contents: out, loader };
+    setup(build) {
+      build.onLoad({ filter }, async (args) => {
+        const contents = await readFile(args.path);
+        const source = new TextDecoder().decode(contents);
+
+        return {
+          contents: optimize(source),
+          loader: "tsx", // 优化后重新交给 esbuild 处理
+        };
       });
     },
   };

@@ -1,216 +1,187 @@
 /**
- * 核心 API：createSignal、createEffect、createMemo、onCleanup
+ * @module views/signal
+ * @description 展示 @dreamer/view 核心响应式原语：Signal、Memo、Effect，并演示 onCleanup、batch。
  *
- * - createSignal：返回 `SignalRef`，用 `.value` 读/写，在 effect 中读会登记依赖
- * - createEffect：副作用，依赖的 signal 变化时重新执行，返回 dispose
- * - createMemo：派生值缓存，依赖变化时重新计算
- * - onCleanup：在 effect 内注册，effect 下次运行或 dispose 时执行
+ * 使用 `jsx: "runtime"`（esbuild react-jsx）时，插值若写 `{count()}` 会在本组件执行时立刻求值，
+ * 传入 JSX 的是静态数字，insert 无法订阅 signal；须写成 `{() => count()}` 等形式，让运行时把函数交给 insert/createEffect。
  */
-
-import type { VNode } from "@dreamer/view";
 import {
+  batch,
   createEffect,
   createMemo,
   createSignal,
   onCleanup,
 } from "@dreamer/view";
 
-export const metadata = {
-  title: "Signal",
-  description:
-    "createSignal、createEffect、createMemo、onCleanup 核心 API 示例",
-  keywords: "createSignal, createEffect, createMemo, onCleanup",
-};
+export default function SignalDemo() {
+  // 1. 创建基础信号
+  const [count, setCount] = createSignal(0);
+  /** 勿命名为 `name`：与 `<input>` 元素的 DOM 属性 `name` 同域时，`() => name()` 易解析错，导致 value 变成 undefined → 界面出现字面量 "undefined" */
+  const [userName, setUserName] = createSignal("Dreamer");
 
-const count = createSignal(0);
-const name = createSignal("");
+  // 2. 派生状态 (Memo) - 只有依赖项变化时才重新计算
+  const double = createMemo(() => count() * 2);
 
-/** createMemo：派生值，依赖 count 时自动更新 */
-const double = createMemo(() => count.value * 2);
+  // 3. 副作用 (Effect)
+  createEffect(() => {
+    console.log(`[Effect] 当前计数已变为: ${count()}`);
+  });
 
-/**
- * 姓名问候语：供 JSX 写 `{nameLine}`（勿 `nameLine()`）。
- * 手写 jsx-runtime 下不可写 `{name.value ? ...}`，会在 jsx() 时快照；须用 memo 或无参 getter 让 insertReactive 订阅 name。
- */
-const nameLine = createMemo(() =>
-  name.value ? `你好，${name.value}！` : "请输入名字"
-);
+  const greeting = createMemo(() => {
+    const currentName = userName();
+    return currentName ? `你好，${currentName}！` : "请输入名字";
+  });
 
-/** createEffect + onCleanup：控制台打印与清理 */
-createEffect(() => {
-  const n = name.value;
-  if (n) {
-    const t = setTimeout(() => {}, 0);
-    onCleanup(() => clearTimeout(t));
-  }
-});
+  /** onCleanup：effect 重跑前会执行上一次的清理（此处清除定时器，避免泄漏） */
+  const [tick, setTick] = createSignal(0);
+  createEffect(() => {
+    const id = globalThis.setInterval(() => {
+      setTick((n) => n + 1);
+    }, 1000);
+    onCleanup(() => globalThis.clearInterval(id));
+  });
 
-/** 统一按钮样式：高端圆角、阴影、focus 环 */
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-/** 统一输入框样式 */
-const inputCls =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
+  /** batch：同一微任务内多次 setSignal，依赖方尽量合并刷新（effect 执行次数可观察） */
+  const [bx, setBx] = createSignal(0);
+  const [by, setBy] = createSignal(0);
+  const [effectRuns, setEffectRuns] = createSignal(0);
+  createEffect(() => {
+    bx();
+    by();
+    setEffectRuns((n) => n + 1);
+  });
 
-function SignalDemo(): VNode {
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-        核心 API
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        createSignal / createEffect / createMemo / onCleanup
-      </h2>
-      <div className="space-y-6">
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30">
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            count：
-            {/* data-testid 供 e2e 读取计数，避免对整页 innerText 用 \b2\b 等易碎正则 */}
-            <span
-              className="font-mono font-semibold text-indigo-600 dark:text-indigo-400"
-              data-testid="signal-demo-count"
-            >
-              {count}
+    <section className="space-y-8">
+      <div className="p-6 border rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold dark:text-slate-100">
+          基础信号 (Signal)
+        </h2>
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg min-w-[120px]">
+            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold">
+              当前值
             </span>
-            {" · "}
-            double（createMemo）：
-            <span
-              className="font-mono font-semibold text-indigo-600 dark:text-indigo-400"
-              data-testid="signal-demo-double"
-            >
-              {double}
+            <span className="text-3xl font-mono text-indigo-600 dark:text-indigo-400">
+              {() => String(count())}
             </span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                count.value = (c) => c + 1;
-              }}
-            >
-              +1
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                count.value = (c) => c - 1;
-              }}
-            >
-              -1
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                count.value = 0;
-              }}
-            >
-              归零
-            </button>
+          </div>
+          <div className="flex flex-col items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg min-w-[120px]">
+            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold">
+              双倍值 (Memo)
+            </span>
+            <span className="text-3xl font-mono text-violet-600 dark:text-violet-400">
+              {() => String(double())}
+            </span>
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30">
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            name：<input
-              type="text"
-              className={`ml-2 ${inputCls}`}
-              value={() => name.value}
-              onInput={(e: Event) => {
-                name.value = (e.target as HTMLInputElement).value;
-              }}
-            />
-          </p>
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            {nameLine}
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            createEffect 与 onCleanup 已在模块内使用；createMemo 用于 double。
-          </p>
-        </div>
 
-        {/* 三元、并且、或者：用计数器数值做条件演示 */}
-        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 dark:border-amber-600/80 dark:bg-amber-900/20">
-          <p className="mb-3 text-sm font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
-            TSX 表达式：三元、并且（&&）、或者（||）
-          </p>
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            当前
-            count：<span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-              {count}
-            </span>
-            {" · "}
-            用上方按钮改变 count 观察下面三行是否按条件更新。
-            <strong className="ml-1">本示例为手写 jsx-runtime</strong>
-            ：插值若在 jsx() 时先求值（如直接写{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"count.value"}
-            </code>
-            ）会变成快照；演示区用无参 getter{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"() => ..."}
-            </code>
-            包一层，与{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"{count}"}
-            </code>
-            、
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              createMemo
-            </code>
-            等价。若走 <strong>compileSource</strong>
-            ，编译器常把{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              {"{ expr }"}
-            </code>
-            生成{" "}
-            <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-              insertReactive
-            </code>
-            ，那时可直接写条件表达式。
-          </p>
-          <ul className="list-inside list-disc space-y-2 text-slate-600 dark:text-slate-300">
-            <li>
-              <strong>三元</strong>{" "}
-              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ count.value > 1 ? '大于1' : '不大于1' }"}
-              </code>
-              {" → "}
-              <span className="font-mono text-amber-700 dark:text-amber-300">
-                {() => (count.value > 1 ? "大于1" : "不大于1")}
-              </span>
-            </li>
-            <li>
-              <strong>并且</strong>{" "}
-              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ count.value > 0 && <span>... </span> }"}
-              </code>
-              {" → "}
-              {() =>
-                count.value > 0 && (
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-green-800 dark:bg-green-900/50 dark:text-green-200">
-                    count 大于 0 时显示
-                  </span>
-                )}
-            </li>
-            <li>
-              <strong>或者</strong>{" "}
-              <code className="rounded bg-slate-200/80 px-1 dark:bg-slate-600/80">
-                {"{ (count.value === 0 || count.value > 5) && <span>... </span> }"}
-              </code>
-              {" → "}
-              {() =>
-                (count.value === 0 || count.value > 5) && (
-                  <span className="rounded bg-orange-100 px-2 py-0.5 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">
-                    count 为 0 或大于 5 时显示
-                  </span>
-                )}
-            </li>
-          </ul>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCount(count() + 1)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+          >
+            增加计数
+          </button>
+          <button
+            type="button"
+            onClick={() => setCount(count() - 1)}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95"
+          >
+            减少计数
+          </button>
+          <button
+            type="button"
+            onClick={() => setCount(0)}
+            className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+          >
+            重置
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 border rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold dark:text-slate-100">
+          双向绑定模拟 (Input)
+        </h2>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            输入您的名字：
+          </label>
+          <input
+            type="text"
+            value={() => userName()}
+            onInput={(e: any) => setUserName(e.currentTarget.value)}
+            className="w-full border dark:border-slate-600 bg-transparent dark:text-slate-100 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            placeholder="在此输入..."
+          />
+        </div>
+        <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
+          {() => greeting()}
+        </p>
+      </div>
+
+      <div className="p-6 border rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold dark:text-slate-100">
+          onCleanup（定时器清理）
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          下方数字每秒 +1；依赖 effect 内{" "}
+          <code className="text-xs bg-slate-100 dark:bg-slate-900 px-1 rounded">
+            onCleanup
+          </code>{" "}
+          在 effect 重跑时清除 interval。
+        </p>
+        <p className="text-2xl font-mono text-emerald-600 dark:text-emerald-400">
+          {() => String(tick())}
+        </p>
+      </div>
+
+      <div className="p-6 border rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm space-y-4 transition-colors">
+        <h2 className="text-xl font-bold dark:text-slate-100">
+          batch（合并更新）
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          观察「effect 累计执行次数」：连续两次 set 会跑两次 effect；包在{" "}
+          <code className="text-xs bg-slate-100 dark:bg-slate-900 px-1 rounded">
+            batch
+          </code>{" "}
+          内两次 set 通常只触发一轮依赖刷新。
+        </p>
+        <div className="flex flex-wrap gap-4 items-center font-mono text-sm">
+          <span className="text-slate-600 dark:text-slate-300">
+            {() => `x=${bx()} y=${by()}`}
+          </span>
+          <span className="text-indigo-600 dark:text-indigo-400">
+            {() => `effect 执行次数: ${effectRuns()}`}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setBx((x) => x + 1);
+              setBy((y) => y + 1);
+            }}
+            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+          >
+            连续 set（无 batch）
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              batch(() => {
+                setBx((x) => x + 1);
+                setBy((y) => y + 1);
+              });
+            }}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            batch 内两次 set
+          </button>
         </div>
       </div>
     </section>
   );
 }
-export default SignalDemo;

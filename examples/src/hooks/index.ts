@@ -4,3 +4,10 @@
  */
 
 export { useRouter } from "../router/router.ts";
+export { theme, toggleTheme } from "./theme.ts";
+export {
+  incrementLoginCount,
+  loginUser,
+  logoutUser,
+  setUserName,
+} from "./user.ts";

@@ -7,9 +7,9 @@
 
 import {
   existsSync,
-  getEnv,
   join,
   pathToFileUrl,
+  readFile,
   resolve,
 } from "@dreamer/runtime-adapter";
 import { $tr } from "../../i18n.ts";
@@ -51,8 +51,6 @@ const DEFAULT_CONFIG: AppConfig = {
     outFile: "main.js",
     minify: true,
     sourcemap: true,
-    /** 默认走 compileSource，与既有 view 项目一致 */
-    jsx: "compiler",
     plugins: [],
     chunkNames: "[name]-[hash]",
   },
@@ -88,7 +86,6 @@ export async function loadViewConfig(root: string): Promise<AppConfig> {
   const configJsonPath = join(base, "view.config.json");
   if (existsSync(configJsonPath)) {
     try {
-      const { readFile } = await import("@dreamer/runtime-adapter");
       const raw = await readFile(configJsonPath);
       const text = typeof raw === "string"
         ? raw
@@ -185,13 +182,5 @@ export function getBuildConfigForMode(
     ...overrides,
     plugins: overrides?.plugins ?? base?.plugins ?? [],
   };
-  /**
-   * 供 E2E / CI 覆盖：examples 视图依赖 compileSource，`jsx: "runtime"` 会导致页面空白。
-   * 子进程可设 `VIEW_FORCE_BUILD_JSX=compiler` 或 `runtime` 强制链路（见 tests/e2e）。
-   */
-  const forced = getEnv("VIEW_FORCE_BUILD_JSX");
-  if (forced === "compiler" || forced === "runtime") {
-    return { ...merged, jsx: forced };
-  }
   return merged;
 }
