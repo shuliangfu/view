@@ -22,6 +22,8 @@
  * const scheduler = getInternal("scheduler", () => ({ ... }))
  */
 
+import type { Observer } from "./signal.ts";
+
 const g = globalThis as any;
 const KEY = "__VIEW_CORE__";
 
@@ -45,9 +47,17 @@ export function getInternal<T extends object>(
   return val;
 }
 
+/** 响应式内核单例（current 为当前正在运行的 Observer，测试/SSR 会置空） */
+export interface ViewCoreState {
+  current: Observer | null;
+  /** 各子系统单例（scheduler、ssrDomScopeDepth 等）；值为任意运行时对象 */
+  registry: Map<string, any>;
+  uid: number;
+}
+
 /** 核心状态 */
-export const core = getInternal("core", () => ({
-  current: null as any,
+export const core: ViewCoreState = getInternal("core", () => ({
+  current: null,
   registry: new Map<string, any>(),
   uid: 0,
 }));

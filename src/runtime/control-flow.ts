@@ -185,7 +185,7 @@ export function ErrorBoundary(props: {
    * 切换到会触发错误的新键时，因当时 `error()` 仍为假，不会误清除即将展示的错误。
    */
   resetKeys?: () => readonly unknown[];
-}) {
+}): DocumentFragment {
   const [error, setError] = createSignal<unknown>(null);
   const [resetCount, setResetCount] = createSignal(0);
 
@@ -278,7 +278,7 @@ export function Show<T>(props: {
   when: () => T | undefined | null | false;
   fallback?: JSXRenderable;
   children: ShowChildren<T>;
-}) {
+}): DocumentFragment {
   const marker = document.createTextNode("");
   const fragment = document.createDocumentFragment();
   fragment.appendChild(marker);
@@ -583,7 +583,7 @@ function normalizeSwitchChildren(
 export function Switch(props: {
   children: SwitchChild | readonly SwitchChild[];
   fallback?: InsertValue;
-}) {
+}): DocumentFragment {
   /** 插槽容器：marker 的 previousSibling 仅限 Switch 自己插入的内容，避免误删外层 section 里更靠前的按钮等节点 */
   const slot = document.createElement("span");
   slot.setAttribute("data-view-switch", "");
@@ -649,7 +649,7 @@ export function Match(props: {
 /**
  * Portal 组件：将内容渲染到目标 DOM 节点。
  */
-export function Portal(props: { mount?: Node; children: JSXRenderable }) {
+export function Portal(props: { mount?: Node; children: JSXRenderable }): DocumentFragment {
   const container = props.mount || document.body;
   const marker = document.createTextNode("");
   const fragment = document.createDocumentFragment();

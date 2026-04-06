@@ -23,7 +23,11 @@
 
 import { createSignal, untrack } from "../reactivity/signal.ts";
 import { createEffect } from "../reactivity/effect.ts";
-import { createContext, useContext } from "../reactivity/context.ts";
+import {
+  createContext,
+  useContext,
+  type Context,
+} from "../reactivity/context.ts";
 import { createRoot, onCleanup } from "../reactivity/owner.ts";
 import type { JSXRenderable } from "../types.ts";
 import { insert } from "./insert.ts";
@@ -71,7 +75,8 @@ export function getCurrentSuspenseContext(): SuspenseContextType | null {
 /**
  * 创建 Suspense Context
  */
-export const SuspenseContext = createContext<SuspenseContextType | null>(null);
+export const SuspenseContext: Context<SuspenseContextType | null> =
+  createContext<SuspenseContextType | null>(null);
 
 /**
  * 获取当前 Suspense 上下文
@@ -89,7 +94,7 @@ export function useSuspense(): SuspenseContextType | null {
 export function Suspense(props: {
   fallback: JSXRenderable;
   children: JSXRenderable;
-}) {
+}): DocumentFragment {
   const [isSuspended, setIsSuspended] = createSignal(false);
   /** 已注册的 loading 读取函数（每个 createResource 一条） */
   const loadingTrackers = new Set<() => boolean>();

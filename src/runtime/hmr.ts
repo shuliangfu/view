@@ -48,7 +48,7 @@ const COMPONENT_REGISTRY = new Map<string, {
 export function createHMRProxy(
   id: string,
   Component: ComponentFn,
-) {
+): ComponentFn {
   // 生产环境安全检测
   if (!(globalThis as any).VIEW_DEV) {
     return Component;

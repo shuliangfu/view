@@ -48,6 +48,28 @@ export interface CreateFormOptions<T extends Record<string, unknown>> {
 }
 
 /**
+ * createForm 返回的 API 形状（供 JSR slow-types 与调用方标注）。
+ */
+export interface CreateFormReturn<T extends Record<string, unknown>> {
+  data: Store<T>;
+  errors: Store<Record<keyof T, string | null>>;
+  field: (name: keyof T) => {
+    value: () => unknown;
+    onInput: (e: InputEvent) => void;
+    onBlur?: (e: FocusEvent) => void;
+  };
+  updateField: (name: keyof T, val: T[keyof T]) => void;
+  reset: () => void;
+  produce: (fn: (state: T) => void) => void;
+  validate: () => boolean;
+  validateField: (name: keyof T) => boolean;
+  handleSubmit: (
+    onValid: (data: T) => void | Promise<void>,
+    onInvalid?: () => void,
+  ) => (e: Event) => void;
+}
+
+/**
  * 将 validateOn 规范为集合；未传则仅 submit。
  */
 function toValidateOnSet(
@@ -66,7 +88,7 @@ function toValidateOnSet(
 export function createForm<T extends Record<string, unknown>>(
   initialValues: T,
   options?: CreateFormOptions<T>,
-) {
+): CreateFormReturn<T> {
   const validateOnSet = toValidateOnSet(options?.validateOn);
 
   /** 数据 Store */

@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "license": "Apache-2.0",
   "description": "High-performance reactive UI framework inspired by Solid.js. Features fine-grained reactivity, no virtual DOM, compiler-optimized DOM/SSR paths, and built-in HMR.",
   "repository": {
@@ -54,6 +54,8 @@
     "@dreamer/test": "jsr:@dreamer/test@^1.1.1",
     "@dreamer/plugins": "jsr:@dreamer/plugins@^1.0.9",
     "@dreamer/view": "./src/mod.ts",
+    "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
+    "@dreamer/view/jsx-dev-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/ssr": "./src/runtime/server.ts",
     "@dreamer/view/compiler": "./src/compiler/mod.ts",
     "typescript": "npm:typescript@5.9.3",

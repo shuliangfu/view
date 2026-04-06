@@ -38,6 +38,7 @@ import { getInternal } from "../reactivity/master.ts";
 import { invalidateViewLazyModules } from "../runtime/component.ts";
 import { mount } from "../runtime/browser.ts";
 import { jsx } from "../jsx-runtime.ts";
+import type { VNode } from "../types.ts";
 import { createResource } from "./resource.ts";
 
 // ———————————————————————————————————————————————————————————————————————————
@@ -974,7 +975,7 @@ export function createRouter(
 // ———————————————————————————————————————————————————————————————————————————
 
 /** 客户端导航链接；`href` 可为应用内路径，会自动拼接 `basePath` */
-export function Link(props: any) {
+export function Link(props: any): VNode {
   const {
     href,
     children,

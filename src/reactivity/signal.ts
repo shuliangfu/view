@@ -150,7 +150,7 @@ function notifyCheck(source: Source<any>) {
 }
 
 export const getCurrentObserver = () => core.current;
-export const setCurrentObserver = (o: Observer | null) => {
+export const setCurrentObserver = (o: Observer | null): Observer | null => {
   const p = core.current;
   core.current = o;
   return p;

@@ -25,6 +25,7 @@
 
 import { untrack } from "../reactivity/signal.ts";
 import { createResource, type Resource } from "../integrations/resource.ts";
+import type { InsertValue } from "../types.ts";
 import { spread } from "./props.ts";
 import { insert } from "./insert.ts";
 
@@ -53,7 +54,7 @@ export function invalidateViewLazyModules(): void {
  */
 export function lazy<T>(
   loader: () => Promise<{ default: (props: T) => any }>,
-) {
+): (props: T) => () => globalThis.Node {
   let Component: ((props: T) => any) | undefined;
   let resource: Resource<((props: T) => any)> | undefined;
 
@@ -95,7 +96,7 @@ export function Dynamic<T>(props: {
     | ((props: T) => any)
     | (() => string | ((props: T) => any));
   [key: string]: unknown;
-}) {
+}): () => InsertValue {
   return () => {
     let component = props.component;
     // 如果 component 是信号，先解包
