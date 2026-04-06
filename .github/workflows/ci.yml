@@ -189,12 +189,13 @@ jobs:
       - name: Warm examples build cache
         run: cd examples && bun run ../src/cli.ts build
 
-      # Windows 上浏览器测试由上方 test-windows (Deno) 覆盖。
-      # Bun 在 Windows 存在已知 bug（chromium.launch() 卡住不返回，见 oven-sh/bun#15679）
-      # 即使 PLAYWRIGHT_BROWSERS_PATH 与 Chromium 已正确安装也会 120s 超时，
-      # 故此处仅跑非 browser 用例；待 Bun 修复后可改为 bun test tests/
+      # 与 Linux/macOS Bun job 一致：安装与 lockfile 对齐的 Chromium（PLAYWRIGHT_BROWSERS_PATH 已指 workspace 缓存）
+      - name: Install Playwright Chromium
+        shell: pwsh
+        run: npx playwright install chromium
+
+      # 全量测试含 E2E；若 Bun 在 Windows 上仍出现 chromium.launch 卡住（oven-sh/bun#15679），可改回仅 tests/integration tests/unit
       - name: Test (Bun, Windows)
         shell: pwsh
-        run: |
-          bun test tests/integration tests/unit
-        timeout-minutes: 10
+        run: bun test --preload ./tests/unit/dom-setup.ts tests/
+        timeout-minutes: 25
