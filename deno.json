@@ -53,7 +53,6 @@
     "@dreamer/i18n": "jsr:@dreamer/i18n@^1.0.1",
     "@dreamer/test": "jsr:@dreamer/test@^1.1.1",
     "@dreamer/plugins": "jsr:@dreamer/plugins@^1.0.9",
-    "@dreamer/view": "./src/mod.ts",
     "@dreamer/view/jsx-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/jsx-dev-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/ssr": "./src/runtime/server.ts",
