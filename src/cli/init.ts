@@ -775,6 +775,20 @@ a {
   text-decoration: none;
 }
 
+/* button：与 Tailwind Preflight 对齐，去除原生边框/立体阴影/灰底（顶栏主题切换等图标按钮） */
+button {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  background-color: transparent;
+  background-image: none;
+  border: 0 solid transparent;
+}
+
 /* ${$tr("init.template.unoCssBodyComment")} */
 body {
   min-height: 100vh;
@@ -842,6 +856,11 @@ export function App() {
   // ---------------------------------------------------------------------------
   // src/views/_layout.tsx（约定布局，路由扫描自动屏蔽）
   // ---------------------------------------------------------------------------
+  /** 根壳渐变：Tailwind v4 用 bg-linear-to-b；UnoCSS 与无样式用 bg-gradient-to-b，与 index.html 一致 */
+  const layoutShellBgClass = style === "tailwind"
+    ? "min-h-screen bg-linear-to-b from-slate-100 to-slate-200/90 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80"
+    : "min-h-screen bg-gradient-to-b from-slate-100 to-slate-200/90 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80";
+
   const layoutTsx = `/**
  * ${$tr("init.template.layoutComment")}
  * 顶栏与 examples 对齐；主题前为「首页 / 关于」Link；主题图标为 SVG（深色太阳、浅色月亮）。
@@ -890,7 +909,7 @@ export function Layout(props: { children: any }) {
   const isDark = () => theme() === "dark";
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-100 to-slate-200/90 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80">
+    <div className="${layoutShellBgClass}">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
         <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
           <Link
@@ -919,7 +938,7 @@ export function Layout(props: { children: any }) {
             <button
               type="button"
               onClick={() => toggleTheme()}
-              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border-0 bg-transparent p-2 shadow-none text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
               title="切换主题"
             >
               {() => (isDark() ? <SunIcon /> : <MoonIcon />)}
@@ -1026,6 +1045,85 @@ export function ErrorView(props: { error?: any; onRetry?: () => void }) {
   // ---------------------------------------------------------------------------
   // src/views/home.tsx（首页：Hero + 简介；浅色：底栏渐变略深 + 卡片白底/描边/投影/ring 强化层级）
   // ---------------------------------------------------------------------------
+  /** 仅 style===unocss 时写入 home.tsx：− 钮补全浅色字色与 2px 描边；+ 钮改 shadow-md 与主按钮同系，两钮尺寸对称 */
+  const homeUnoCounterClasses =
+    `/** 计数器 − / + 共用：方形触控区、大号字重；focus ring 便于键盘聚焦 */
+const counterBtnBase =
+  "inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg " +
+  "text-lg font-semibold leading-none transition-all active:scale-95 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 " +
+  "focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-800";
+/** 减量：描边 + 浅底，浅色模式下「−」与背景对比足够 */
+const counterDecClass =
+  counterBtnBase +
+  " border-2 border-slate-300 bg-slate-100 text-slate-800 " +
+  "hover:border-slate-400 hover:bg-slate-200 " +
+  "dark:border-slate-500 dark:bg-slate-700 dark:text-slate-50 dark:hover:bg-slate-600";
+/** 增量：实心 indigo；轻阴影与 primaryButtonClass 同系，避免 shadow-lg 在暗色下显「黑块」 */
+const counterIncClass =
+  counterBtnBase +
+  " border-2 border-indigo-600 bg-indigo-600 text-white " +
+  "shadow-md shadow-indigo-500/30 hover:border-indigo-700 hover:bg-indigo-700 hover:shadow-lg " +
+  "dark:shadow-indigo-950/40";
+`;
+  const homeCounterRow = style === "unocss"
+    ? `        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setCount(count() - 1)}
+            className={counterDecClass}
+          >
+            −
+          </button>
+          <span
+            className={
+              "min-w-12 text-center text-2xl font-bold tabular-nums " +
+              "text-indigo-600 dark:text-indigo-400"
+            }
+          >
+            {() => String(count())}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCount(count() + 1)}
+            className={counterIncClass}
+          >
+            +
+          </button>
+        </div>`
+    : `        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCount(count() - 1)}
+            className={
+              "rounded-lg border border-slate-200 px-4 py-2 " +
+              "transition-colors hover:bg-slate-50 " +
+              "dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            }
+          >
+            −
+          </button>
+          <span
+            className={
+              "min-w-12 text-center text-2xl font-bold tabular-nums " +
+              "text-indigo-600 dark:text-indigo-400"
+            }
+          >
+            {() => String(count())}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCount(count() + 1)}
+            className={
+              "rounded-lg bg-indigo-600 px-4 py-2 text-white " +
+              "shadow-lg shadow-indigo-200 transition-all " +
+              "hover:bg-indigo-700 active:scale-95 dark:shadow-none"
+            }
+          >
+            +
+          </button>
+        </div>`;
+
   const homeTsx = `/**
  * ${$tr("init.template.homeComment")}
  * Signal 在 JSX 中勿写 {count()}（会静态化）；须 {() => String(count())}，与 examples/views/signal 一致。
@@ -1048,7 +1146,7 @@ const primaryButtonClass =
   "mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 " +
   "text-sm font-semibold text-white shadow-md shadow-indigo-500/30 " +
   "transition-colors hover:bg-indigo-700 hover:shadow-lg dark:shadow-indigo-950/40";
-
+${style === "unocss" ? "\n" + homeUnoCounterClasses : ""}
 export default function Home() {
   const [count, setCount] = createSignal(0);
 
@@ -1082,38 +1180,7 @@ export default function Home() {
         >
           ${$tr("init.template.counterDemo")}
         </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCount(count() - 1)}
-            className={
-              "rounded-lg border border-slate-200 px-4 py-2 " +
-              "transition-colors hover:bg-slate-50 " +
-              "dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
-            }
-          >
-            −
-          </button>
-          <span
-            className={
-              "min-w-12 text-center text-2xl font-bold tabular-nums " +
-              "text-indigo-600 dark:text-indigo-400"
-            }
-          >
-            {() => String(count())}
-          </span>
-          <button
-            type="button"
-            onClick={() => setCount(count() + 1)}
-            className={
-              "rounded-lg bg-indigo-600 px-4 py-2 text-white " +
-              "shadow-lg shadow-indigo-200 transition-all " +
-              "hover:bg-indigo-700 active:scale-95 dark:shadow-none"
-            }
-          >
-            +
-          </button>
-        </div>
+${homeCounterRow}
       </section>
     </div>
   );

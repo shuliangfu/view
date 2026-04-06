@@ -16,14 +16,14 @@ not a delta from prior versions.
 
 ### Reactivity and state
 
-- **Signals** with multiple ergonomic styles: `.value`, call form `s()` / `s(x)`,
-  and tuple destructuring `const [get, set] = createSignal(initial)` on the same
-  return type; optional named signals for debugging/HMR.
+- **Signals** with multiple ergonomic styles: `.value`, call form `s()` /
+  `s(x)`, and tuple destructuring `const [get, set] = createSignal(initial)` on
+  the same return type; optional named signals for debugging/HMR.
 - **Effects**: `createEffect`, `createRenderEffect` (sync-biased, used for
   reactive DOM props), dependency tracking and cleanup via Owner.
 - **Memoization**: `createMemo` and `memo` alias.
-- **Batching and scheduling**: `batch`, `untrack`, priority and microtask-friendly
-  flushing (`scheduler/batch`, `scheduler/priority`).
+- **Batching and scheduling**: `batch`, `untrack`, priority and
+  microtask-friendly flushing (`scheduler/batch`, `scheduler/priority`).
 - **Lifecycle and errors**: `onMount`, `onCleanup`, `onError`, `catchError`,
   integration with ErrorBoundary and Owner propagation.
 - **Deferred / transitions**: `createDeferred`, `useTransition`,
@@ -38,8 +38,9 @@ not a delta from prior versions.
 
 ### Runtime and DOM
 
-- **No virtual DOM**: JSX returns thunks; **`insert(parent, value, current?, before?)`**
-  drives fine-grained DOM updates and effect subscriptions.
+- **No virtual DOM**: JSX returns thunks;
+  **`insert(parent, value, current?, before?)`** drives fine-grained DOM updates
+  and effect subscriptions.
 - **`template` / `walk`**: static HTML cloning and path addressing for compiler
   output and advanced use.
 - **Props**: `setProperty`, `spread`, `setAttribute`; delegated events and
@@ -74,9 +75,17 @@ not a delta from prior versions.
 - **Server-side helpers**: `loadViewConfig`, layout chain resolution,
   `generateRoutersFile`, `createApp`, dev/prod server and build orchestration
   (see `server/core`).
-- **Global CLI**: `view-cli init | dev | build | start | upgrade | update |
-  version` after `deno run -A jsr:@dreamer/view/setup`; built-in **i18n**
-  strings for CLI and framework messages.
+- **Global CLI**:
+  `view-cli init | dev | build | start | upgrade | update |
+  version` after
+  `deno run -A jsr:@dreamer/view/setup`; built-in **i18n** strings for CLI and
+  framework messages.
+- **CSR client build mapping**: `toClientConfig` forwards `view.config`
+  **`build`** **`sourcemap`** (**`boolean` or object**) to
+  **`ClientConfig.sourcemap`** for `@dreamer/esbuild`; **`bundle.sourcemap`** is
+  set only for booleans or the default, so object-shaped map options are not
+  collapsed to **`true`** in production builds (dev still forces sourcemaps for
+  HMR).
 
 ### Forms
 
@@ -94,8 +103,8 @@ not a delta from prior versions.
   literals and `createOptimizePlugin` for esbuild pipelines.
 - **`@dreamer/view/ssr`**: `renderToString`, `renderToStringAsync`,
   `renderToStream`, `generateHydrationScript`, minimal SSR `document` install
-  with scoped enter/leave, `queueSsrAsyncTask` serialization, `registerSSRPromise`
-  for async flush, `isServer` and related helpers.
+  with scoped enter/leave, `queueSsrAsyncTask` serialization,
+  `registerSSRPromise` for async flush, `isServer` and related helpers.
 
 ### Developer experience
 

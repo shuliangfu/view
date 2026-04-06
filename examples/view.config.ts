@@ -63,8 +63,9 @@ const config: AppConfig = {
       sourcemap: true,
     },
     /**
-     * prod：`minify` / `splitting` 等与顶层一致时可省略；此处关闭 sourcemap 以减小 dist
-     * 体积并避免把 .map 一并部署。若需 Sentry 等线上映射，可改为 `true` 或 esbuild 支持的 map 配置。
+     * prod：仅影响 `view-cli build` 产物，不影响 `dev`（dev 在 prepareDevBuild 里会强制 sourcemap）。
+     * esbuild 默认 **external** sourcemap：`.js` 体积几乎不变，差别在是否生成 **`.js.map`** 及文件末尾
+     * 的 sourceMappingURL 注释；对比请数 dist 下 .map 文件或看部署总大小，不要只看单个 .js。
      */
     prod: {
       minify: true,

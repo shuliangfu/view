@@ -1,30 +1,42 @@
 # @dreamer/view (English)
 
-> **Fine-grained reactive view library**: no virtual DOM; **Signal / Effect** track dependencies, and **`insert`** applies minimal updates to real DOM. Supports **CSR, SSR, streaming output, and hydration**; includes **router, async Resource, Store, forms, Context, Suspense / ErrorBoundary**, and more.
-> **Chinese mirror** (same section structure): **[docs/zh-CN/README.md](../zh-CN/README.md)**; repo root **[README.md](../../README.md)** is a short index.
+> **Fine-grained reactive view library**: no virtual DOM; **Signal / Effect**
+> track dependencies, and **`insert`** applies minimal updates to real DOM.
+> Supports **CSR, SSR, streaming output, and hydration**; includes **router,
+> async Resource, Store, forms, Context, Suspense / ErrorBoundary**, and more.
+> **Chinese mirror** (same section structure):
+> **[docs/zh-CN/README.md](../zh-CN/README.md)**; repo root
+> **[README.md](../../README.md)** is a short index.
 
 [中文](../zh-CN/README.md) | English
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-290%20%2F%20229%20passed%20(Deno%2FBun)-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-290%20%2F%20229%20passed%20Deno%20Bun-brightgreen)](./TEST_REPORT.md)
 
 ---
 
 ## 1. Overall architecture (read before APIs)
 
-1. **No virtual DOM**
-   Updates do not go through a full-tree diff. `jsx` / `jsxs` return a **thunk**: `() => actual UI` (often typed as `VNode`), evaluated inside `insert` or an effect and subscribed to **Signals**.
+1. **No virtual DOM** Updates do not go through a full-tree diff. `jsx` / `jsxs`
+   return a **thunk**: `() => actual UI` (often typed as `VNode`), evaluated
+   inside `insert` or an effect and subscribed to **Signals**.
 
-2. **Owner tree**
-   Each component function runs under its **own Owner** (except transparent `Provider`). `createRoot`, `onCleanup`, `onError`, `useContext`, etc. attach to the Owner chain.
+2. **Owner tree** Each component function runs under its **own Owner** (except
+   transparent `Provider`). `createRoot`, `onCleanup`, `onError`, `useContext`,
+   etc. attach to the Owner chain.
 
 3. **Core render API: `insert(parent, value, current?, before?)`**
-   - If `value` is a function, it is wrapped in **`createEffect`**, re-evaluated, and the DOM is patched.
-   - On **native elements**, non-`on*` **function props** use **`createRenderEffect`** (e.g. `className={() => ...}`, `value={() => ...}`).
+   - If `value` is a function, it is wrapped in **`createEffect`**,
+     re-evaluated, and the DOM is patched.
+   - On **native elements**, non-`on*` **function props** use
+     **`createRenderEffect`** (e.g. `className={() => ...}`,
+     `value={() => ...}`).
 
-4. **Subpaths match `deno.json` exactly**
-   On JSR this package registers **only** the export keys listed under **Installation** below; there are **no** extra entry points such as `/store`, `/router`, or `/csr` — `createStore`, `createRouter`, etc. live on the **`jsr:@dreamer/view`** main entry.
+4. **Subpaths match `deno.json` exactly** On JSR this package registers **only**
+   the export keys listed under **Installation** below; there are **no** extra
+   entry points such as `/store`, `/router`, or `/csr` — `createStore`,
+   `createRouter`, etc. live on the **`jsr:@dreamer/view`** main entry.
 
 ---
 
@@ -36,16 +48,18 @@
 deno run -A jsr:@dreamer/view/setup
 ```
 
-After installation, `view-cli` is on your `PATH`. Root flags include **`--version` / `-v`**. Run **`view-cli --help`** or **`view-cli <command> --help`** for full parser output.
+After installation, `view-cli` is on your `PATH`. Root flags include
+**`--version` / `-v`**. Run **`view-cli --help`** or
+**`view-cli <command> --help`** for full parser output.
 
-| Command | Description | Options |
-| --- | --- | --- |
-| **`view-cli init`** `[dir]` | Scaffold a new app in `dir` (default: current directory). | **`--beta`** — use beta-oriented defaults where applicable. |
-| **`view-cli dev`** | Development server (HMR, regenerates routers, etc.). | **`-h` / `--host`** — bind host; **`-p` / `--port`** — listen port. |
-| **`view-cli start`** | Serve the **built** static output (run **`build`** first). | **`-h` / `--host`**, **`-p` / `--port`**. |
-| **`view-cli build`** | Production build to the output dir from `view.config.ts`. | — |
-| **`view-cli upgrade`** | Ask JSR for the newest **`@dreamer/view`**; if it is newer than this CLI, re-run **`jsr:@dreamer/view@<version>/setup`** so the **global** install / `view-cli` tracks that release. | **`--beta`** — resolve “latest” including beta / prerelease lines. |
-| **`view-cli update`** | In the **current project** directory, run **`deno update`** or **`bun update`** to refresh **project** dependencies and lockfiles. | **`--latest`** — forwarded to the runtime; you can append other updater flags (e.g. **`--interactive`**) as extra args. |
+| Command                     | Description                                                                                                                                                                          | Options                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| **`view-cli init`** `[dir]` | Scaffold a new app in `dir` (default: current directory).                                                                                                                            | **`--beta`** — use beta-oriented defaults where applicable.                                                             |
+| **`view-cli dev`**          | Development server (HMR, regenerates routers, etc.).                                                                                                                                 | **`-h` / `--host`** — bind host; **`-p` / `--port`** — listen port.                                                     |
+| **`view-cli start`**        | Serve the **built** static output (run **`build`** first).                                                                                                                           | **`-h` / `--host`**, **`-p` / `--port`**.                                                                               |
+| **`view-cli build`**        | Production build to the output dir from `view.config.ts`.                                                                                                                            | —                                                                                                                       |
+| **`view-cli upgrade`**      | Ask JSR for the newest **`@dreamer/view`**; if it is newer than this CLI, re-run **`jsr:@dreamer/view@<version>/setup`** so the **global** install / `view-cli` tracks that release. | **`--beta`** — resolve “latest” including beta / prerelease lines.                                                      |
+| **`view-cli update`**       | In the **current project** directory, run **`deno update`** or **`bun update`** to refresh **project** dependencies and lockfiles.                                                   | **`--latest`** — forwarded to the runtime; you can append other updater flags (e.g. **`--interactive`**) as extra args. |
 
 ### 2.2 Add as a project dependency
 
@@ -63,18 +77,18 @@ bunx jsr add @dreamer/view
 
 ### 2.3 `exports` map (same as `view/deno.json`)
 
-| Subpath | Purpose |
-| --- | --- |
-| `jsr:@dreamer/view` | **Main**: reactivity, runtime, `insert`, `mount` / `hydrate`, router, Resource, Store, control flow, forms, Suspense, HMR, etc. |
-| `jsr:@dreamer/view/types` | Shared types: `VNode`, `JSXRenderable`, etc. |
-| `jsr:@dreamer/view/cli` | CLI implementation (toolchain) |
-| `jsr:@dreamer/view/setup` | Global install script entry |
-| `jsr:@dreamer/view/jsx-runtime` | Automatic JSX runtime (`jsx` / `jsxs` / `Fragment`) |
-| `jsr:@dreamer/view/jsx-dev-runtime` | Dev JSX entry (same source as jsx-runtime; satisfies bundlers that resolve `jsxDEV`) |
-| `jsr:@dreamer/view/portal` | **`createPortal` only** (optional split import) |
-| `jsr:@dreamer/view/compiler` | **`compileSource` / `transformJSX`**, etc. |
-| `jsr:@dreamer/view/optimize` | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.) |
-| `jsr:@dreamer/view/ssr` | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers |
+| Subpath                             | Purpose                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `jsr:@dreamer/view`                 | **Main**: reactivity, runtime, `insert`, `mount` / `hydrate`, router, Resource, Store, control flow, forms, Suspense, HMR, etc. |
+| `jsr:@dreamer/view/types`           | Shared types: `VNode`, `JSXRenderable`, etc.                                                                                    |
+| `jsr:@dreamer/view/cli`             | CLI implementation (toolchain)                                                                                                  |
+| `jsr:@dreamer/view/setup`           | Global install script entry                                                                                                     |
+| `jsr:@dreamer/view/jsx-runtime`     | Automatic JSX runtime (`jsx` / `jsxs` / `Fragment`)                                                                             |
+| `jsr:@dreamer/view/jsx-dev-runtime` | Dev JSX entry (same source as jsx-runtime; satisfies bundlers that resolve `jsxDEV`)                                            |
+| `jsr:@dreamer/view/portal`          | **`createPortal` only** (optional split import)                                                                                 |
+| `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`**, etc.                                                                                      |
+| `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                   |
+| `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                     |
 
 Example optional subpaths:
 
@@ -91,7 +105,8 @@ deno add jsr:@dreamer/view/types
 
 ## 3. TypeScript and JSX config
 
-In **`deno.json`** (or equivalent), enable automatic JSX and set **`jsxImportSource`** so the compiler loads this package’s runtime:
+In **`deno.json`** (or equivalent), enable automatic JSX and set
+**`jsxImportSource`** so the compiler loads this package’s runtime:
 
 ```json
 {
@@ -102,14 +117,19 @@ In **`deno.json`** (or equivalent), enable automatic JSX and set **`jsxImportSou
 }
 ```
 
-- In development you may set `jsxImportSource` to `"@dreamer/view"` as long as `imports` maps it to the same module.
-- Types: use the package’s `JSX` namespace; if you maintain a separate **`jsx.d.ts`**, use `/// <reference types="..." />` or `compilerOptions.types` correctly.
+- In development you may set `jsxImportSource` to `"@dreamer/view"` as long as
+  `imports` maps it to the same module.
+- Types: use the package’s `JSX` namespace; if you maintain a separate
+  **`jsx.d.ts`**, use `/// <reference types="..." />` or `compilerOptions.types`
+  correctly.
 
 ---
 
 ## 4. Minimal runnable example (client)
 
-Below uses **`mount`**: the first argument is a **function that returns UI**, the second is the **DOM node** to mount into. `mount` clears the container first (good for pure CSR).
+Below uses **`mount`**: the first argument is a **function that returns UI**,
+the second is the **DOM node** to mount into. `mount` clears the container first
+(good for pure CSR).
 
 ```tsx
 import { createSignal, mount } from "jsr:@dreamer/view";
@@ -144,15 +164,19 @@ if (root) {
 
 **Notes:**
 
-- **`{count}`** in text: the runtime treats **`SignalRef`** as a reactive interpolation subscription.
-- In **`onClick` / `createEffect`**, prefer **`count.value`** for reads/writes vs JSX interpolation.
+- **`{count}`** in text: the runtime treats **`SignalRef`** as a reactive
+  interpolation subscription.
+- In **`onClick` / `createEffect`**, prefer **`count.value`** for reads/writes
+  vs JSX interpolation.
 
 ---
 
 ## 5. `createRoot` and manual `insert` (fine-grained control)
 
-**`createRoot`** signature: `createRoot(<T>(fn: (dispose: () => void) => T) => T)`.
-Use when you need an explicit **`dispose()`** to tear down a subtree, or you pass the **parent node** and **`insert`** yourself.
+**`createRoot`** signature:
+`createRoot(<T>(fn: (dispose: () => void) => T) => T)`. Use when you need an
+explicit **`dispose()`** to tear down a subtree, or you pass the **parent node**
+and **`insert`** yourself.
 
 ```tsx
 import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
@@ -186,16 +210,22 @@ const stop = createRoot((dispose) => {
 
 ### 6.1 `mount(fn, container)`
 
-- **`fn`**: `() => InsertValue`; the return value is passed to **`insert(container, …)`**.
-- **Removes all child nodes** of the container and clears **`data-view-cloak`** if present.
-- Teardown: the current implementation wires cleanup through **`createRoot`** internally; if you only use `mount` and need unload, prefer **`createRoot` + `insert`** so you can hold **`dispose`**.
+- **`fn`**: `() => InsertValue`; the return value is passed to
+  **`insert(container, …)`**.
+- **Removes all child nodes** of the container and clears **`data-view-cloak`**
+  if present.
+- Teardown: the current implementation wires cleanup through **`createRoot`**
+  internally; if you only use `mount` and need unload, prefer **`createRoot` +
+  `insert`** so you can hold **`dispose`**.
 
 ### 6.2 `hydrate(fn, container, bindings?)`
 
 - **`fn`**: same UI factory as on the client when activating.
 - **`container`**: node that already contains server HTML.
-- **`bindings`**: optional **`[number[], string][]`** hydration binding table from compiled output; omit for hand-written CSR.
-- Calls **`stopHydration()`**, then **`internalHydrate(container, bindings)`**, then **`insert`**.
+- **`bindings`**: optional **`[number[], string][]`** hydration binding table
+  from compiled output; omit for hand-written CSR.
+- Calls **`stopHydration()`**, then **`internalHydrate(container, bindings)`**,
+  then **`insert`**.
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view";
@@ -214,23 +244,27 @@ hydrate(() => <RootView />, container /* , bindingMap */);
 
 ### 7.1 `createSignal(initial, name?)`
 
-**Yes: `createSignal` supports two common styles** (same return value; mix freely).
+**Yes: `createSignal` supports two common styles** (same return value; mix
+freely).
 
-| Style | Read | Write | Notes |
-| --- | --- | --- | --- |
-| **`.value` / call** | `s.value` or `s()` | `s.value = x`, `s(x)`, `s(prev => next)` | **`{s}`** in JSX subscribes as reactive interpolation; events often use **`.value`** |
-| **Tuple (Solid-style)** | `get()` | `set(x)`, `set(prev => next)` | `const [get, set] = createSignal(0)`; same as **`signal[0]` / `signal[1]`** and **`signal.set`** |
+| Style                   | Read               | Write                                    | Notes                                                                                            |
+| ----------------------- | ------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **`.value` / call**     | `s.value` or `s()` | `s.value = x`, `s(x)`, `s(prev => next)` | **`{s}`** in JSX subscribes as reactive interpolation; events often use **`.value`**             |
+| **Tuple (Solid-style)** | `get()`            | `set(x)`, `set(prev => next)`            | `const [get, set] = createSignal(0)`; same as **`signal[0]` / `signal[1]`** and **`signal.set`** |
 
 Details:
 
 - **`signal.set`** is the same setter as the tuple’s **`set`**.
-- Second arg **`name`** (optional): **`createSignal(0, "counter")`** names the signal for HMR/debug alignment with the internal registry (see `signal.ts`).
+- Second arg **`name`** (optional): **`createSignal(0, "counter")`** names the
+  signal for HMR/debug alignment with the internal registry (see `signal.ts`).
 
 The **`Signal<T>`** return supports:
 
 - **`signal.value` / `signal.value = x`**
-- **`signal()`** read, **`signal(x)`** or **`signal(prev => …)`** write (Solid-like overloads)
-- **Tuple destructuring**: `const [get, set] = createSignal(0)`; `get()` / `set(1)` (also iterable for `for…of`)
+- **`signal()`** read, **`signal(x)`** or **`signal(prev => …)`** write
+  (Solid-like overloads)
+- **Tuple destructuring**: `const [get, set] = createSignal(0)`; `get()` /
+  `set(1)` (also iterable for `for…of`)
 
 ```tsx
 import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view";
@@ -247,8 +281,10 @@ setCount(1);
 
 ### 7.2 `createEffect(fn)` / `createRenderEffect(fn)`
 
-- **`createEffect`**: standard side effect; dependencies collected by reading signals/memos inside **`fn`**; async microtask batching.
-- **`createRenderEffect`**: more synchronous; used when DOM prop timing matters (also used internally for function props on native nodes).
+- **`createEffect`**: standard side effect; dependencies collected by reading
+  signals/memos inside **`fn`**; async microtask batching.
+- **`createRenderEffect`**: more synchronous; used when DOM prop timing matters
+  (also used internally for function props on native nodes).
 
 ```tsx
 import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view";
@@ -267,7 +303,7 @@ createEffect(() => {
 ### 7.3 `createMemo(fn)` and alias `memo`
 
 ```tsx
-import { createMemo, memo, createSignal } from "jsr:@dreamer/view";
+import { createMemo, createSignal, memo } from "jsr:@dreamer/view";
 
 const n = createSignal(2);
 const squared = createMemo(() => n() * n());
@@ -276,7 +312,8 @@ const same = memo(() => n() + 1); // same as createMemo
 
 ### 7.4 `batch(fn)`
 
-While **`fn`** runs, notifications are merged to reduce redundant effect flushes (works with the scheduler).
+While **`fn`** runs, notifications are merged to reduce redundant effect flushes
+(works with the scheduler).
 
 ```tsx
 import { batch, createSignal } from "jsr:@dreamer/view";
@@ -296,13 +333,16 @@ Reads inside **`fn`** do **not** track dependencies.
 
 ### 7.6 `onMount(fn)` / `onCleanup(fn)` / `onError(fn)` / `catchError(err)`
 
-- **`onMount`**: built on **`createEffect` + `untrack`**; runs your logic once after mount.
+- **`onMount`**: built on **`createEffect` + `untrack`**; runs your logic once
+  after mount.
 - **`onCleanup`**: registers cleanup on the current Owner.
-- **`onError` / `catchError`**: work with **ErrorBoundary** and Owner error propagation.
+- **`onError` / `catchError`**: work with **ErrorBoundary** and Owner error
+  propagation.
 
 ### 7.7 `createDeferred(signal)`, `useTransition`, `startTransition`
 
-Deferred commits and transition updates (integrate with **`createEffect`** scheduling).
+Deferred commits and transition updates (integrate with **`createEffect`**
+scheduling).
 
 ```tsx
 import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view";
@@ -319,8 +359,9 @@ console.log("pending?", isPending());
 
 ### 7.8 `createSelector(source, compare?)`
 
-For list selection etc.: keyed boolean signals to avoid recomputing the whole list.
-**Note**: read `source` under an appropriate effect scope; wrong nesting can subscribe the whole page to `source` (see source comments).
+For list selection etc.: keyed boolean signals to avoid recomputing the whole
+list. **Note**: read `source` under an appropriate effect scope; wrong nesting
+can subscribe the whole page to `source` (see source comments).
 
 ---
 
@@ -328,10 +369,10 @@ For list selection etc.: keyed boolean signals to avoid recomputing the whole li
 
 ```tsx
 import {
+  createOwner,
   createRoot,
   getOwner,
   runWithOwner,
-  createOwner,
 } from "jsr:@dreamer/view";
 
 createRoot((dispose) => {
@@ -347,20 +388,26 @@ createRoot((dispose) => {
 
 ### 9.1 `insert(parent, value, current?, before?)`
 
-- **Thunk**: if `value` is a function, unwrap until non-function or a Signal getter tagged with **`__VIEW_SIGNAL`**.
+- **Thunk**: if `value` is a function, unwrap until non-function or a Signal
+  getter tagged with **`__VIEW_SIGNAL`**.
 - **Text / number**: reuse text nodes when possible.
 - **Array / array-like**: written as a **`DocumentFragment`**.
 - **`null` / `undefined` / `boolean`**: clear the current placeholder.
 
 ### 9.2 `getDocument()` / `createRef()` / `setProperty` / `spread`
 
-- **`getDocument()`**: returns **`document`** in the browser; **`null`** without DOM or before SSR injects a shadow document — avoids throwing on global **`document`**.
-- **`createRef()`**: works with **`ref={refObj}`** so mount drives reactive updates.
-- **`setProperty` / `spread` / `setAttribute`**: low-level prop spreading; compiler output may use these.
+- **`getDocument()`**: returns **`document`** in the browser; **`null`** without
+  DOM or before SSR injects a shadow document — avoids throwing on global
+  **`document`**.
+- **`createRef()`**: works with **`ref={refObj}`** so mount drives reactive
+  updates.
+- **`setProperty` / `spread` / `setAttribute`**: low-level prop spreading;
+  compiler output may use these.
 
 ### 9.3 `template` / `walk` (compiler output / advanced)
 
-- **`template(htmlString)`** + **`walk(root, path)`**: parse static HTML and address nodes; pairs with **`compileSource`** output.
+- **`template(htmlString)`** + **`walk(root, path)`**: parse static HTML and
+  address nodes; pairs with **`compileSource`** output.
 
 ---
 
@@ -369,7 +416,7 @@ createRoot((dispose) => {
 ### 10.1 `Show`
 
 ```tsx
-import { Show, createSignal } from "jsr:@dreamer/view";
+import { createSignal, Show } from "jsr:@dreamer/view";
 
 const user = createSignal<{ name: string } | null>(null);
 
@@ -392,7 +439,7 @@ function Greeting() {
 ### 10.2 `For`
 
 ```tsx
-import { For, createSignal } from "jsr:@dreamer/view";
+import { createSignal, For } from "jsr:@dreamer/view";
 
 const items = createSignal([
   { id: "1", label: "A" },
@@ -415,17 +462,22 @@ function List() {
 }
 ```
 
-- **`each`** must be a **getter**: **`() => array`**. Do **not** use **`each={items.value}`** (one-shot snapshot, no subscription). You may write **`each={items}`** when **`items`** is a **Signal** whose **`items()`** returns an array.
+- **`each`** must be a **getter**: **`() => array`**. Do **not** use
+  **`each={items.value}`** (one-shot snapshot, no subscription). You may write
+  **`each={items}`** when **`items`** is a **Signal** whose **`items()`**
+  returns an array.
 - **`index`** is also a **getter**: **`() => number`**.
 
 ### 10.3 `Index`
 
-Like **`For`**, but tracks by **index** (reuse nodes per slot). **`each`** is still **`() => array`**; **`children(item, index)`** matches **`For`**; **no** `fallback` (see type definitions).
+Like **`For`**, but tracks by **index** (reuse nodes per slot). **`each`** is
+still **`() => array`**; **`children(item, index)`** matches **`For`**; **no**
+`fallback` (see type definitions).
 
 ### 10.4 `Switch` / `Match`
 
 ```tsx
-import { Match, Switch, createSignal } from "jsr:@dreamer/view";
+import { createSignal, Match, Switch } from "jsr:@dreamer/view";
 
 const status = createSignal<"idle" | "loading" | "error">("idle");
 
@@ -449,7 +501,7 @@ function StatusView() {
 ### 10.5 `Dynamic`
 
 ```tsx
-import { Dynamic, createSignal } from "jsr:@dreamer/view";
+import { createSignal, Dynamic } from "jsr:@dreamer/view";
 
 const Tag = createSignal<"h1" | "h2">("h1");
 
@@ -465,12 +517,14 @@ function Heading(props: { text: string }) {
 }
 ```
 
-- **`component`**: string tag **or** component function; when reactive use a **zero-arg function** or **Signal** (not **`tag.value`** as a one-shot snapshot).
+- **`component`**: string tag **or** component function; when reactive use a
+  **zero-arg function** or **Signal** (not **`tag.value`** as a one-shot
+  snapshot).
 
 ### 10.6 `lazy`
 
 ```tsx
-import { Suspense, lazy } from "jsr:@dreamer/view";
+import { lazy, Suspense } from "jsr:@dreamer/view";
 
 const Heavy = lazy(() => import("./Heavy.tsx"));
 
@@ -490,11 +544,7 @@ function Page() {
 ### 11.1 Basic usage
 
 ```tsx
-import {
-  Suspense,
-  createResource,
-  ErrorBoundary,
-} from "jsr:@dreamer/view";
+import { createResource, ErrorBoundary, Suspense } from "jsr:@dreamer/view";
 
 /**
  * Create the resource in module or parent scope so it is not recreated every render.
@@ -546,18 +596,21 @@ const user = createResource(
 
 ### 11.3 Fields on the resource object
 
-- **`resource()`**: read data; throws if there is an **error** (handled by **ErrorBoundary**).
+- **`resource()`**: read data; throws if there is an **error** (handled by
+  **ErrorBoundary**).
 - **`resource.loading()`** / **`resource.error()`**
 - **`resource.mutate(value)`** / **`resource.refetch()`**
 
-The framework ensures registration with the current **Suspense** when calling **`resource()` / `resource.loading()`**, including after **ErrorBoundary** reset.
+The framework ensures registration with the current **Suspense** when calling
+**`resource()` / `resource.loading()`**, including after **ErrorBoundary**
+reset.
 
 ---
 
 ## 12. `ErrorBoundary`
 
 ```tsx
-import { ErrorBoundary, createSignal } from "jsr:@dreamer/view";
+import { createSignal, ErrorBoundary } from "jsr:@dreamer/view";
 
 const key = createSignal(0);
 
@@ -591,7 +644,8 @@ export function Guarded() {
 }
 ```
 
-- **`resetKeys`**: after an error, clears and retries the subtree only when the return value differs from the last run by **Object.is** per item.
+- **`resetKeys`**: after an error, clears and retries the subtree only when the
+  return value differs from the last run by **Object.is** per item.
 
 ---
 
@@ -600,7 +654,7 @@ export function Guarded() {
 ### 13.1 Declarative `Portal`
 
 ```tsx
-import { Portal, createSignal } from "jsr:@dreamer/view";
+import { createSignal, Portal } from "jsr:@dreamer/view";
 
 const open = createSignal(false);
 
@@ -661,7 +715,8 @@ export function App() {
 }
 ```
 
-**`Provider`** is a **transparent** component: no new Owner; writes context on the current Owner.
+**`Provider`** is a **transparent** component: no new Owner; writes context on
+the current Owner.
 
 ---
 
@@ -669,25 +724,30 @@ export function App() {
 
 ### 15.0 How many shapes? How to use?
 
-**Yes: object-root `createStore` also has two main usage shapes**, plus several **overloads** (same deep proxy mechanism).
+**Yes: object-root `createStore` also has two main usage shapes**, plus several
+**overloads** (same deep proxy mechanism).
 
 **Shapes (object root only; array root below)**
 
-| Shape | Syntax | Read / write |
-| --- | --- | --- |
-| **Whole proxy** | `const store = createStore({ count: 0 })` | **`store.count`**; **`store.setState(...)`** |
-| **Tuple** | `const [getStore, setState] = createStore({ count: 0 })` | **`getStore()`** returns the **same** proxy; **`setState("count", 1)`** or **`setState(produce(...))`**, etc. |
+| Shape           | Syntax                                                   | Read / write                                                                                                  |
+| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Whole proxy** | `const store = createStore({ count: 0 })`                | **`store.count`**; **`store.setState(...)`**                                                                  |
+| **Tuple**       | `const [getStore, setState] = createStore({ count: 0 })` | **`getStore()`** returns the **same** proxy; **`setState("count", 1)`** or **`setState(produce(...))`**, etc. |
 
 **`createStore` overloads**
 
 1. **`createStore(initialState)`** — most common.
-2. **`createStore(initialState, { name?, persist? })`** — optional registry name and **localStorage**-style persistence.
-3. **`createStore(storeName, initialState, persist?)`** — **named singleton** (global registry key `storeName`) + optional persistence.
+2. **`createStore(initialState, { name?, persist? })`** — optional registry name
+   and **localStorage**-style persistence.
+3. **`createStore(storeName, initialState, persist?)`** — **named singleton**
+   (global registry key `storeName`) + optional persistence.
 
 **Array root (state root is an array)**
 
-- You get an **array proxy with `setState`**; types **do not** intersect with `[get, set]` (so `list[0]` is not mistaken for tuple items).
-- Use **`.setState`**, index assignment, etc.; **do not** destructure like the object tuple.
+- You get an **array proxy with `setState`**; types **do not** intersect with
+  `[get, set]` (so `list[0]` is not mistaken for tuple items).
+- Use **`.setState`**, index assignment, etc.; **do not** destructure like the
+  object tuple.
 
 Sections **15.1 / 15.2** expand proxy vs tuple examples.
 
@@ -731,12 +791,12 @@ console.log(getStore().count);
 
 See **`PersistOptions<T>`** in **`reactivity/store.ts`**:
 
-| Field | Required | Purpose |
-| --- | --- | --- |
-| **`key`** | yes | Storage key |
-| **`storage`** | optional | Must implement **`getItem` / `setItem`**; if omitted and **`globalThis.localStorage`** exists it defaults; otherwise persistence is inactive (no throw, but nothing persisted) |
-| **`serialize`** | optional | **`(state: T) => string`**, default **`JSON.stringify`** |
-| **`deserialize`** | optional | **`(str: string) => T`**, default **`JSON.parse`** (assert types yourself) |
+| Field             | Required | Purpose                                                                                                                                                                        |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`key`**         | yes      | Storage key                                                                                                                                                                    |
+| **`storage`**     | optional | Must implement **`getItem` / `setItem`**; if omitted and **`globalThis.localStorage`** exists it defaults; otherwise persistence is inactive (no throw, but nothing persisted) |
+| **`serialize`**   | optional | **`(state: T) => string`**, default **`JSON.stringify`**                                                                                                                       |
+| **`deserialize`** | optional | **`(str: string) => T`**, default **`JSON.parse`** (assert types yourself)                                                                                                     |
 
 **Full example aligned with `view/examples/src/stores/user.ts`:**
 
@@ -788,9 +848,11 @@ export const userStore = createStore(
 );
 ```
 
-For tests or SSR, swap **`storage`** for a mock/in-memory implementation without changing **`serialize`** unless you need a custom format.
+For tests or SSR, swap **`storage`** for a mock/in-memory implementation without
+changing **`serialize`** unless you need a custom format.
 
-**Form B: second argument is an options object (same capabilities; pick one style)**
+**Form B: second argument is an options object (same capabilities; pick one
+style)**
 
 ```tsx
 import { createStore } from "jsr:@dreamer/view";
@@ -814,17 +876,18 @@ Partial list/tree updates with stable references (use with **`setState`**).
 
 ### 16.1 Capabilities and limits
 
-| Item | Notes |
-| --- | --- |
-| **Signature** | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior |
-| **Two-way binding** | **`field(name)`** → **`value` + `onInput`** (text **`<input>`**, reads **`HTMLInputElement.value`**) |
-| **Rules** | **`options.rules`**: per field **`(value, data) => string | null`**, `null` means valid |
-| **When to validate** | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array |
-| **API** | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`** |
-| **No built-in schema** | Not wired to Zod; call external parsers inside **`rules`** or manage **`errors`** manually |
-| **Control types** | **`checkbox` / `select` / `textarea`** still need custom handlers or future extensions; **`produce` on `data` does not auto-trigger `validateOn: change`** |
+| Item                   | Notes                                                                                                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                  |
+| **Two-way binding**    | **`field(name)`** → **`value` + `onInput`** (text **`<input>`**, reads **`HTMLInputElement.value`**)                                                       |
+| **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                  |
+| **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                            |
+| **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                  |
+| **No built-in schema** | Not wired to Zod; call external parsers inside **`rules`** or manage **`errors`** manually                                                                 |
+| **Control types**      | **`checkbox` / `select` / `textarea`** still need custom handlers or future extensions; **`produce` on `data` does not auto-trigger `validateOn: change`** |
 
-Types exported from the main entry: **`CreateFormOptions`**, **`FormValidateOn`**, **`FormFieldRule`**.
+Types exported from the main entry: **`CreateFormOptions`**,
+**`FormValidateOn`**, **`FormFieldRule`**.
 
 ### 16.2 No rules (minimal, same as older docs)
 
@@ -852,8 +915,10 @@ export function LoginForm() {
 }
 ```
 
-- **`form.validate()`** with no **`rules`**: clears all **`errors`** and returns **`true`**.
-- **`form.data` / `form.errors`** are **Store**; **`form.produce`** updates **`data`**.
+- **`form.validate()`** with no **`rules`**: clears all **`errors`** and returns
+  **`true`**.
+- **`form.data` / `form.errors`** are **Store**; **`form.produce`** updates
+  **`data`**.
 
 ### 16.3 Recommended: `rules` + validate on submit by default
 
@@ -866,7 +931,9 @@ export function LoginForm() {
     {
       rules: {
         username: (v) => (String(v).trim() ? null : "Username required"),
-        password: (v) => (String(v).length >= 6 ? null : "At least 6 characters"),
+        password: (
+          v,
+        ) => (String(v).length >= 6 ? null : "At least 6 characters"),
       },
       // omitting validateOn is like ["submit"]
     },
@@ -884,13 +951,18 @@ export function LoginForm() {
 }
 ```
 
-- **`handleSubmit(onValid, onInvalid?)`**: **`preventDefault`** → **`validate()`** → on success **`onValid(getDataSnapshot())`** (**shallow** plain object copy, not a Proxy).
-- Or hand-roll: **`onSubmit={(e) => { e.preventDefault(); if (!form.validate()) return; … }}`**.
+- **`handleSubmit(onValid, onInvalid?)`**: **`preventDefault`** →
+  **`validate()`** → on success **`onValid(getDataSnapshot())`** (**shallow**
+  plain object copy, not a Proxy).
+- Or hand-roll:
+  **`onSubmit={(e) => { e.preventDefault(); if (!form.validate()) return; … }}`**.
 
 ### 16.4 `validateOn: "change"` / `"blur"` / arrays
 
-- **`change`**: after **`onInput`** (or **`updateField`**) on a field, if that field has a **`rule`**, run **`validateField(name)`**.
-- **`blur`**: if the field has a **`rule`**, **`field()`** includes **`onBlur`** to validate on blur.
+- **`change`**: after **`onInput`** (or **`updateField`**) on a field, if that
+  field has a **`rule`**, run **`validateField(name)`**.
+- **`blur`**: if the field has a **`rule`**, **`field()`** includes **`onBlur`**
+  to validate on blur.
 - Example: **`validateOn: ["change", "blur", "submit"]`**.
 
 ```tsx
@@ -920,13 +992,15 @@ const form = createForm(
 );
 ```
 
-**`validate()`** runs rules in **`initialValues` key order**; put dependencies earlier in the object literal if order matters.
+**`validate()`** runs rules in **`initialValues` key order**; put dependencies
+earlier in the object literal if order matters.
 
 ### 16.6 Possible extensions
 
 - **`field` branches by control type** (`checkbox` / `number` / `textarea`).
 - Thin **Zod** wrapper inside **`rules`** (**`.safeParse`**).
-- Array fields / nested error paths (today **`errors` aligns with top-level keys).
+- Array fields / nested error paths (today **`errors` aligns with top-level
+  keys).
 
 ---
 
@@ -937,8 +1011,8 @@ const form = createForm(
 ```tsx
 import {
   createRouter,
-  mountWithRouter,
   Link,
+  mountWithRouter,
   useRouter,
 } from "jsr:@dreamer/view";
 import type { VNode } from "jsr:@dreamer/view";
@@ -974,16 +1048,23 @@ mountWithRouter("#root", router);
 ```
 
 - **`createRouter`** also supports **`createRouter(routes[])`** shorthand.
-- **Dynamic segment**: **`:id`**; **suffix capture**: **`/files/*`** → **`params["*"]`**.
-- **`router.navigate` / `replace`**: return **`Promise<void>`**, resolve after **`beforeEach`** and **history** commit.
-- **`Link`**: **`href`** goes through **`resolveHref`** with **`basePath`**; **`replace`** prop uses **`replace`**.
+- **Dynamic segment**: **`:id`**; **suffix capture**: **`/files/*`** →
+  **`params["*"]`**.
+- **`router.navigate` / `replace`**: return **`Promise<void>`**, resolve after
+  **`beforeEach`** and **history** commit.
+- **`Link`**: **`href`** goes through **`resolveHref`** with **`basePath`**;
+  **`replace`** prop uses **`replace`**.
 - **`useRouter()`**: current singleton (after **`createRouter`**, same app).
-- **Current match**: **`router.match()`** (**`params` / `query` / `pattern` / `route`**).
-- On creation the router registers **`popstate`** and, when **`interceptLinks !== false`**, document **click capture** for same-origin **`a`**; **`Link`** sets **`data-view-link`** for delegation.
+- **Current match**: **`router.match()`** (**`params` / `query` / `pattern` /
+  `route`**).
+- On creation the router registers **`popstate`** and, when
+  **`interceptLinks !== false`**, document **click capture** for same-origin
+  **`a`**; **`Link`** sets **`data-view-link`** for delegation.
 
 ### 17.2 Rendering the active page inside a layout
 
-Common pattern: root shell calls **`router.render()`** for the current route (nested **layouts**, lazy routes, etc.).
+Common pattern: root shell calls **`router.render()`** for the current route
+(nested **layouts**, lazy routes, etc.).
 
 ```tsx
 import { useRouter } from "jsr:@dreamer/view";
@@ -1015,15 +1096,20 @@ const html = renderToString(() =>
 
 ### 18.2 `renderToStringAsync` / `renderToStream`
 
-Work with **`registerSSRPromise`** and internal queues so async data can flush before output (see **`server.ts`**).
+Work with **`registerSSRPromise`** and internal queues so async data can flush
+before output (see **`server.ts`**).
 
 ### 18.3 `generateHydrationScript(id, bindingMap)`
 
-Emits a **`<script type="module">`** snippet; **whether it matches client `hydrate` and your bundle** depends on your pipeline — verify against **`hydrate(fn, container, bindings?)`** when integrating.
+Emits a **`<script type="module">`** snippet; **whether it matches client
+`hydrate` and your bundle** depends on your pipeline — verify against
+**`hydrate(fn, container, bindings?)`** when integrating.
 
 ### 18.4 Other exports
 
-- **`isServer`**, **`enterSSRDomScope` / `leaveSSRDomScope`**, **`queueSsrAsyncTask`**, **`registerSSRPromise`**, etc.: advanced SSR pipelines and tests.
+- **`isServer`**, **`enterSSRDomScope` / `leaveSSRDomScope`**,
+  **`queueSsrAsyncTask`**, **`registerSSRPromise`**, etc.: advanced SSR
+  pipelines and tests.
 
 ---
 
@@ -1040,7 +1126,8 @@ const out = compileSource(sourceTsx, "App.tsx", {
 });
 ```
 
-- Prepends imports for **`template` / `insert` / `walk` / `setProperty` / `spread`** (and **`memo`**, **`createHMRProxy`** when needed).
+- Prepends imports for **`template` / `insert` / `walk` / `setProperty` /
+  `spread`** (and **`memo`**, **`createHMRProxy`** when needed).
 - For toolchains turning TSX into **`insert`**-aligned code at build time.
 
 ---
@@ -1048,7 +1135,7 @@ const out = compileSource(sourceTsx, "App.tsx", {
 ## 20. Optimize subpath (`jsr:@dreamer/view/optimize`)
 
 ```ts
-import { optimize, createOptimizePlugin } from "jsr:@dreamer/view/optimize";
+import { createOptimizePlugin, optimize } from "jsr:@dreamer/view/optimize";
 
 const code = optimize(bundleSource);
 // createOptimizePlugin(/\.js$/) for @dreamer/esbuild plugin chains
@@ -1058,14 +1145,18 @@ const code = optimize(bundleSource);
 
 ## 21. HMR (`createHMRProxy`)
 
-When **`VIEW_DEV`** is set globally in development, **`createHMRProxy(id, Component)`** registers a hot-swappable wrapper; usually injected by **CLI / compiler**, rarely handwritten.
+When **`VIEW_DEV`** is set globally in development,
+**`createHMRProxy(id, Component)`** registers a hot-swappable wrapper; usually
+injected by **CLI / compiler**, rarely handwritten.
 
 ---
 
 ## 22. Performance: render thunk (avoid root effect over-subscription)
 
-If **`Show`**, function props, or local **Signals** live directly in a parent’s returned JSX, the **parent `insert` effect** may subscribe to child state and **re-run the whole parent**.
-Fix: **`return () => ( … JSX … )`** so the dynamic subtree runs in an **inner effect**.
+If **`Show`**, function props, or local **Signals** live directly in a parent’s
+returned JSX, the **parent `insert` effect** may subscribe to child state and
+**re-run the whole parent**. Fix: **`return () => ( … JSX … )`** so the dynamic
+subtree runs in an **inner effect**.
 
 ```tsx
 import { createSignal } from "jsr:@dreamer/view";
@@ -1087,12 +1178,12 @@ function ModalHost() {
 
 ## 23. `view-cli init` layout (summary)
 
-| Path | Role |
-| --- | --- |
-| `view.config.ts` | Dev server, build, HMR, CSS, etc. |
-| `src/main.tsx` | Entry: `createRouter` + `mountWithRouter` |
-| `src/views/` | File-based routes; **`_app.tsx` / `_layout.tsx` / `_loading.tsx` / `_404.tsx` / `_error.tsx`** are conventional |
-| `src/router/routers.tsx` | **Generated** (do not edit by hand) from **`src/views`** scan |
+| Path                     | Role                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `view.config.ts`         | Dev server, build, HMR, CSS, etc.                                                                               |
+| `src/main.tsx`           | Entry: `createRouter` + `mountWithRouter`                                                                       |
+| `src/views/`             | File-based routes; **`_app.tsx` / `_layout.tsx` / `_loading.tsx` / `_404.tsx` / `_error.tsx`** are conventional |
+| `src/router/routers.tsx` | **Generated** (do not edit by hand) from **`src/views`** scan                                                   |
 
 ---
 
@@ -1105,8 +1196,17 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on Deno, **229** on Bun, **62** test files, **0** failures; runners count cases differently — details inside the report).
-- Version history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)** (English; Chinese: [docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)).
+- **Latest [2.0.0] — 2026-04-06**: Documented release baseline (full capability
+  list in the changelog). **Changed**: CSR `toClientConfig` forwards
+  `view.config` `build.sourcemap` (boolean or object) to `@dreamer/esbuild`
+  `ClientConfig.sourcemap` without collapsing object options. **Breaking** (npm
+  `package.json` exports only): removed `./csr` and `./hybrid`; use the main
+  package export; `./portal` added to align with JSR. Full history:
+  **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
+- See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on
+  Deno, **229** on Bun, **62** test files, **0** failures; runners count cases
+  differently — details inside the report).
+- Chinese changelog: **[docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)**.
 
 ---
 
