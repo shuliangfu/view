@@ -574,7 +574,6 @@ export default config;
         jsx: "react-jsx",
         jsxImportSource: "@dreamer/view",
         lib: ["deno.window", "dom"],
-        types: ["./jsx.d.ts"],
       },
     };
     await writeTextFile(
@@ -632,7 +631,7 @@ export default config;
         isolatedModules: true,
         allowImportingTsExtensions: true,
       },
-      include: ["src/**/*", "jsx.d.ts"],
+      include: ["src/**/*"],
       exclude: ["node_modules", "dist"],
     };
     await writeTextFile(
@@ -656,25 +655,6 @@ export default config;
     getI18nAllyCustomFrameworkYml(),
   );
   addFile(".vscode/i18n-ally-custom-framework.yml");
-
-  // ---------------------------------------------------------------------------
-  // jsx.d.ts（JSX 固有元素类型，供 TSX 类型检查；deno.json compilerOptions.types 或 tsconfig include 引用）
-  // ---------------------------------------------------------------------------
-  const jsxDts = `/**
- * ${$tr("init.template.jsxDtsComment")}
- */
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [tag: string]: Record<string, unknown>;
-    }
-  }
-}
-
-export {};
-`;
-  await writeTextFile(join(targetDir, "jsx.d.ts"), jsxDts);
-  addFile("jsx.d.ts");
 
   // ---------------------------------------------------------------------------
   // src/assets/index.html（模板：dark 首屏、data-view-cloak、/main.js；由 static 插件从 assets 提供）
@@ -910,7 +890,7 @@ export function Layout(props: { children: any }) {
   const isDark = () => theme() === "dark";
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100/80 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80">
+    <div className="min-h-screen bg-linear-to-b from-slate-100 to-slate-200/90 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80">
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
         <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
           <Link
@@ -970,7 +950,7 @@ export default Layout;
  */
 export default function RouteLoading() {
   return (
-    <section className="flex min-h-[200px] items-center justify-center">
+    <section className="flex min-h-50 items-center justify-center">
       <p>${$tr("init.template.loading")}</p>
     </section>
   );
@@ -1044,7 +1024,7 @@ export function ErrorView(props: { error?: any; onRetry?: () => void }) {
   addFile("src/views/_error.tsx");
 
   // ---------------------------------------------------------------------------
-  // src/views/home.tsx（首页：Hero + 简介，美化）
+  // src/views/home.tsx（首页：Hero + 简介；浅色：底栏渐变略深 + 卡片白底/描边/投影/ring 强化层级）
   // ---------------------------------------------------------------------------
   const homeTsx = `/**
  * ${$tr("init.template.homeComment")}
@@ -1061,23 +1041,25 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
-      <section className="p-8 shadow-xl dark:bg-slate-800/95 sm:p-12">
-        <h1 className="mb-4 text-4xl font-bold">${
+      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
+        <h1 className="mb-4 text-4xl font-bold text-slate-900 dark:text-slate-100">${
     $tr("init.template.welcomeTitle")
   }</h1>
-        <p>${$tr("init.template.homeIntro")}</p>
-        <a href="/about" className="mt-6 inline-block bg-indigo-600 px-4 py-2 text-white">
+        <p className="text-slate-600 leading-relaxed dark:text-slate-300">${
+    $tr("init.template.homeIntro")
+  }</p>
+        <a href="/about" className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/30 transition-colors hover:bg-indigo-700 hover:shadow-lg dark:shadow-indigo-950/40">
           ${$tr("init.template.goToAbout")}
         </a>
       </section>
 
-      <section className="p-8 shadow-xl dark:bg-slate-800/95 sm:p-12">
-        <h2 className="mb-4 text-xl font-bold">${
+      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
+        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">${
     $tr("init.template.counterDemo")
   }</h2>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setCount(count() - 1)} className="rounded-lg border border-slate-200 px-4 py-2 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">−</button>
-          <span className="min-w-[3rem] text-center text-2xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{() => String(count())}</span>
+          <span className="min-w-12 text-center text-2xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{() => String(count())}</span>
           <button type="button" onClick={() => setCount(count() + 1)} className="rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-none">+</button>
         </div>
       </section>
@@ -1100,7 +1082,7 @@ import { Link } from "@dreamer/view";
 export default function About() {
   return (
     <div className="space-y-10">
-      <section className="p-8 shadow-xl dark:bg-slate-800/95 sm:p-12">
+      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
         <h1 className="mb-4 text-3xl font-bold text-slate-900 dark:text-slate-100">${
     $tr("init.template.aboutTitle")
   }</h1>
@@ -1109,7 +1091,7 @@ export default function About() {
   }</p>
         <Link
           href="/"
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:shadow-indigo-950/40 dark:focus-visible:ring-offset-slate-900"
+          className="mt-6 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:shadow-indigo-950/40 dark:focus-visible:ring-offset-slate-900"
         >
           ${$tr("init.template.backToHome")}
         </Link>

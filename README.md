@@ -36,7 +36,16 @@
 deno run -A jsr:@dreamer/view/setup
 ```
 
-After installation you can use `view-cli init`, `view-cli dev`, `view-cli build`, etc. (see `view-cli --help`).
+After installation, `view-cli` is on your `PATH`. Root flags include **`--version` / `-v`**. Run **`view-cli --help`** or **`view-cli <command> --help`** for full parser output.
+
+| Command | Description | Options |
+| --- | --- | --- |
+| **`view-cli init`** `[dir]` | Scaffold a new app in `dir` (default: current directory). | **`--beta`** — use beta-oriented defaults where applicable. |
+| **`view-cli dev`** | Development server (HMR, regenerates routers, etc.). | **`-h` / `--host`** — bind host; **`-p` / `--port`** — listen port. |
+| **`view-cli start`** | Serve the **built** static output (run **`build`** first). | **`-h` / `--host`**, **`-p` / `--port`**. |
+| **`view-cli build`** | Production build to the output dir from `view.config.ts`. | — |
+| **`view-cli upgrade`** | Ask JSR for the newest **`@dreamer/view`**; if it is newer than this CLI, re-run **`jsr:@dreamer/view@<version>/setup`** so the **global** install / `view-cli` tracks that release. | **`--beta`** — resolve “latest” including beta / prerelease lines. |
+| **`view-cli update`** | In the **current project** directory, run **`deno update`** or **`bun update`** to refresh **project** dependencies and lockfiles. | **`--latest`** — forwarded to the runtime; you can append other updater flags (e.g. **`--interactive`**) as extra args. |
 
 ### 2.2 Add as a project dependency
 

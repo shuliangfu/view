@@ -27,7 +27,7 @@
  *
  * **4. Integrations (集成)**
  * - ✅ resource.ts - 异步数据获取
- * - ✅ router.ts - 路由系统
+ * - ✅ router.ts - 路由系统（页面 `export const metadata` 经路由表由框架写入 `document.title` / meta，业务侧无需手动调 head API）
  * - ✅ form.ts - 表单处理
  *
  * **5. Compiler (编译器)**
