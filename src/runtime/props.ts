@@ -143,14 +143,19 @@ function delegateHandler(e: Event) {
 const delegatedEvents = new Set<string>();
 
 /**
- * SSR 使用独立自研 `document` 时须清空委托注册表，避免沿用上一次的已注册事件名集合。
+ * 清空事件委托表（SSR 每次安装临时 `document` 前调用，避免跨请求污染）。
+ * @returns `void`
  */
 export function resetEventDelegationForSSR(): void {
   delegatedEvents.clear();
 }
 
 /**
- * 设置 DOM 属性。
+ * 为元素设置属性、事件或样式；函数值会包一层 `createRenderEffect` 做响应式绑定（`on*` 除外）。
+ * @param el 目标元素（含 SVG）
+ * @param name 属性名；`children`/`ref` 忽略；`innerHTML`/`outerHTML` 拒绝写入
+ * @param value 标量、对象 style、或 getter 函数
+ * @returns `void`
  */
 export function setProperty(el: any, name: string, value: any) {
   // 0. 忽略特殊属性 (children, ref 等由编译器或特定逻辑处理)
@@ -237,8 +242,10 @@ export function setProperty(el: any, name: string, value: any) {
 }
 
 /**
- * 展开属性 (Spread)。
- * 使用 `batch` 包裹：一次 spread 内多个响应式属性注册的 effect 在同一调度轮次刷新，降低碎片化更新。
+ * 将 `props` 键值对依次交给 {@link setProperty}；整体包在 {@link batch} 内减少调度碎片。
+ * @param el 目标元素
+ * @param props 属性字典（可含 `children` 等由 `setProperty` 规则处理）
+ * @returns `void`
  */
 export function spread(el: Element, props: any) {
   batch(() => {
@@ -248,4 +255,7 @@ export function spread(el: Element, props: any) {
   });
 }
 
+/**
+ * {@link setProperty} 的别名，与编译器产出的 `setAttribute` 导入名对齐。
+ */
 export { setProperty as setAttribute };

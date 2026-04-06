@@ -39,7 +39,8 @@ function isServerLikeEnvironment(): boolean {
 const clientTemplateByHtml = new Map<string, () => Node>();
 
 /**
- * 无 DOM（SSR 等）时 template() 返回的桩对象，供编译产物 walk/序列化。
+ * 无 DOM 环境下 `template()` 返回的桩：保留 HTML 字符串并模拟 `cloneNode`。
+ * @property _html 原始模板字符串
  */
 export interface ServerTemplateStub {
   readonly _html: string;
@@ -48,7 +49,9 @@ export interface ServerTemplateStub {
 }
 
 /**
- * 编译器生成的组件模板。
+ * 由静态 HTML 字符串生成「克隆工厂」：浏览器下缓存并 `cloneNode`；SSR 下返回桩对象。
+ * @param html 单根 HTML 片段（可含 SVG 外层包装逻辑）
+ * @returns 无参函数，每次调用得到新克隆或新桩
  */
 export function template(html: string): () => Node | ServerTemplateStub {
   const server = isServerLikeEnvironment();
@@ -91,8 +94,11 @@ export function template(html: string): () => Node | ServerTemplateStub {
 }
 
 /**
- * 节点寻址。
- * 路径下标越界时抛出明确错误，避免静默得到 `undefined` 后在后续逻辑里难排查。
+ * 自 `root` 起按子节点下标路径向下定位节点（客户端）；SSR 环境下直接返回 `root`。
+ * @param root 模板根节点
+ * @param path 每层 `childNodes` 的下标序列
+ * @returns 目标节点
+ * @throws 下标越界时抛出带路径信息的 `Error`
  */
 export function walk(root: Node, path: number[]): Node {
   if (isServerLikeEnvironment()) return root;

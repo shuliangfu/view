@@ -34,8 +34,8 @@ type LazyHmrEntry = { reset: () => void };
 const viewLazyHmrRegistry = new Set<LazyHmrEntry>();
 
 /**
- * 开发模式 HMR：清空所有 `lazy()` 包装器的内部缓存，下次渲染会重新执行 `loader()`。
- * 与 `__VIEW_HMR_APPLY__`（路由侧）配合，compiler / jsx-runtime 两条构建路径共用。
+ * 开发模式 HMR：遍历并调用各 `lazy()` 实例的 reset，使下次渲染重新 `import()`。
+ * @returns `void`
  */
 export function invalidateViewLazyModules(): void {
   for (const entry of viewLazyHmrRegistry) {
@@ -48,9 +48,10 @@ export function invalidateViewLazyModules(): void {
 }
 
 /**
- * 懒加载组件。
- * 配合 Suspense 使用，实现代码分割。
- * @param loader 返回 Promise<{ default: Component }> 的函数
+ * 返回组件工厂：`loader` 解析前由 `Suspense` 展示 fallback；解析后在渲染路径上 `untrack` 调用实际组件。
+ * @template T 组件 props 类型
+ * @param loader 动态 `import()`，需 `default` 导出组件函数
+ * @returns `(props: T) => () => Node` 形态的懒加载组件
  */
 export function lazy<T>(
   loader: () => Promise<{ default: (props: T) => any }>,
@@ -87,8 +88,10 @@ export function lazy<T>(
 }
 
 /**
- * 动态组件。
- * 根据 component 属性的值切换渲染不同的组件或标签。
+ * 按 `component` 渲染：可为标签名字符串、组件函数，或返回前两者的零参函数。
+ * @template T 其余 props 传给子组件时的类型
+ * @param props 必须含 `component`，其余 spread 到元素或传入子组件
+ * @returns 返回可插入内容的 thunk
  */
 export function Dynamic<T>(props: {
   component:
@@ -122,7 +125,12 @@ export function Dynamic<T>(props: {
 }
 
 /**
- * 辅助工具：拆分 Props。
+ * 将 `props` 按键名分为「选中键」与「其余键」两组（浅拷贝）。
+ * @template T props 对象类型
+ * @template K 要拆出的键联合
+ * @param props 完整 props
+ * @param keys 要放入元组第一项的键列表
+ * @returns `[picked, rest]`
  */
 export function splitProps<
   T extends Record<string, unknown>,

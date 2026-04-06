@@ -1,6 +1,11 @@
 /**
  * @module cli
- * @description View CLI 入口。
+ * @description Dreamer View 命令行入口：`view init|dev|build|start`。
+ *
+ * - **init**：初始化项目（`-d` 目标目录、`--beta` 使用 beta 依赖）
+ * - **dev**：开发服务器与 HMR（`-p` 端口、`-h` 主机）
+ * - **build**：生产构建
+ * - **start**：生产预览服务（`-p`、`-h`）
  */
 
 import { Command } from "@dreamer/console";

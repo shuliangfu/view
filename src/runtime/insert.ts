@@ -64,8 +64,12 @@ function insertNonNullChildrenIntoFragment(
 }
 
 /**
- * 核心插入函数。
- * 支持递归解包 Thunk 并创建 Effect 监听 Signal 变化。
+ * 将 `value` 渲染进 `parent`：解包函数/thunk、追踪 signal，并返回当前占位节点引用供后续更新。
+ * @param parent 父 DOM 节点
+ * @param value 可插入内容（节点、字符串、数组、VNode thunk 等）
+ * @param current 上一轮插入的当前节点/锚点，用于最小更新
+ * @param before 可选锚点兄弟节点，`insertBefore` 语义
+ * @returns 更新后的当前占位（类型见 {@link InsertCurrent}）
  */
 export function insert(
   parent: Node,

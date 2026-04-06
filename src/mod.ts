@@ -44,6 +44,7 @@ export * from "./reactivity/context.ts";
 export * from "./reactivity/effect.ts";
 export * from "./reactivity/lifecycle.ts";
 export * from "./reactivity/memo.ts";
+/** {@link createMemo} 的别名，与编译器 SSR 模式 `memo` 导入一致。 */
 export { createMemo as memo } from "./reactivity/memo.ts";
 export * from "./reactivity/owner.ts";
 export * from "./reactivity/selector.ts";

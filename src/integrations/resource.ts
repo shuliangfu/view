@@ -62,16 +62,21 @@ export interface Resource<T> {
 }
 
 /**
- * 创建一个异步资源。
- * @param fetcher 异步请求函数
+ * 创建无显式依赖的异步资源（内部依赖常量 `true`）；须放在 `Suspense` 边界内使用。
+ * @template T 成功解析的数据类型
+ * @param fetcher 返回 Promise 的加载函数
+ * @returns 可调用的 {@link Resource}
  */
 export function createResource<T>(
   fetcher: () => Promise<T>,
 ): Resource<T>;
 /**
- * 创建一个带依赖的异步资源。
- * @param source 依赖源（可以是信号 getter）
- * @param fetcher 异步请求函数，接收依赖源的值
+ * 当 `source`（值或 getter）变化时重新执行 `fetcher`；`source` 为 `null`/`false` 时不请求。
+ * @template T 数据类型
+ * @template S 依赖类型
+ * @param source 依赖或 getter
+ * @param fetcher 接收当前依赖值的请求函数
+ * @returns {@link Resource}
  */
 export function createResource<T, S>(
   source: S | (() => S),

@@ -34,6 +34,10 @@ const core = getInternal("core", () => ({
   uid: 0,
 }));
 
+/**
+ * Store 上的 `setState`：支持对象合并、路径更新、函数式更新等重载形式。
+ * @template T 根状态对象类型
+ */
 export type StoreSetter<T> = (a: any, b?: any, c?: any) => void;
 
 /** 持久化配置项 */
@@ -92,7 +96,12 @@ export type CreateStoreResult<T extends object> = T extends unknown[]
   : Store<T> & [StoreGetter<T>, StoreSetter<T>];
 
 /**
- * 具名单例：registry 使用 `storeName`；第三参为持久化（可只传 `{ key }`）。
+ * 创建具名 Store：同名复用底层源；可选 `persist` 读写 `localStorage`（或自定义 storage）。
+ * @template T 根状态类型（对象或数组）
+ * @param storeName 注册表中的唯一名称
+ * @param initialState 初始状态
+ * @param persist 可选持久化配置
+ * @returns 代理根对象（及与 `createSignal` 一致的解构形态，见 {@link CreateStoreResult}）
  */
 export function createStore<T extends object>(
   storeName: string,
@@ -101,7 +110,11 @@ export function createStore<T extends object>(
 ): CreateStoreResult<T>;
 
 /**
- * 经典写法：初始状态 + 可选 `{ name, persist }`。
+ * 创建匿名或具名 Store：`options.name` / `options.persist` 控制单例与持久化。
+ * @template T 根状态类型
+ * @param initialState 初始状态
+ * @param options 可选名称与持久化
+ * @returns 代理根对象（见 {@link CreateStoreResult}）
  */
 export function createStore<T extends object>(
   initialState: T,
@@ -335,15 +348,20 @@ export function createStore<T extends object>(
 }
 
 /**
- * produce：支持在函数内直接修改代理对象。
+ * 返回一个在传入的 `state` 上执行 `fn` 的更新函数，便于与 `setState` 组合做可变风格草稿。
+ * @template T 状态类型
+ * @param fn 接收同一引用的 `state`，可原地修改
+ * @returns `(state) => void`，供 `setState` 等调用
  */
 export function produce<T>(fn: (state: T) => void): (state: T) => void {
   return (state: T) => fn(state);
 }
 
 /**
- * reconcile：深度 Diff 并更新对象/数组。
- * 对象：会删除 state 上「新快照」中不存在的自有键，再合并/递归子对象；数组按下标对齐并截断多余长度。
+ * 用快照 `value` 对齐更新现有 `state`：对象删键、合并子对象；数组按索引对齐并截断。
+ * @template T 状态类型
+ * @param value 目标快照（不可变语义上的「下一状态」）
+ * @returns `(state) => void`，在可变 `state` 上应用 diff
  */
 export function reconcile<T>(value: T): (state: T) => void {
   return (state: any) => {

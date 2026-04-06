@@ -27,7 +27,13 @@
 
 import { getOwner } from "./owner.ts";
 
-/** Context 对象接口 */
+/**
+ * 跨组件树传递数据的上下文：含 `Provider` 与可选 `defaultValue`。
+ * @template T 上下文值的类型
+ * @property Provider 在子树中写入上下文值的组件
+ * @property id 内部用于在 Owner 链上查找的唯一符号
+ * @property defaultValue 无 Provider 时的回退值
+ */
 export interface Context<T> {
   Provider: (
     props: { value: T | (() => T) | [() => T, any]; children: any },
@@ -37,7 +43,10 @@ export interface Context<T> {
 }
 
 /**
- * 创建一个上下文对象。
+ * 创建可在子树中通过 `useContext` 读取的上下文对象。
+ * @template T 上下文值类型
+ * @param defaultValue 无匹配 Provider 时返回的值
+ * @returns 带 `Provider` 的 `Context` 对象
  */
 export function createContext<T>(defaultValue?: T): Context<T> {
   const id = Symbol("context");
@@ -77,7 +86,10 @@ export function createContext<T>(defaultValue?: T): Context<T> {
 }
 
 /**
- * 在当前作用域获取上下文。
+ * 从当前 Owner 链向上查找最近一层 `Provider` 写入的值；找不到则用 `defaultValue`。
+ * @template T 上下文类型
+ * @param context 由 `createContext` 创建的对象
+ * @returns 解析后的上下文值（对象访问可能经 Proxy 以参与细粒度追踪）
  */
 export function useContext<T>(context: Context<T>): T {
   const id = context.id;

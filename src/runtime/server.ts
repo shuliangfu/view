@@ -17,7 +17,7 @@ import { ssrPromises } from "./ssr-promises.ts";
 export { registerSSRPromise, ssrPromises } from "./ssr-promises.ts";
 
 /**
- * 判断是否在服务端环境 (动态检查以支持 Deno 测试环境)
+ * 是否为服务端语义环境：无 `window` 或显式 `VIEW_SSR`。
  */
 export const isServer = typeof globalThis.window === "undefined" ||
   (globalThis as any).VIEW_SSR === true;
@@ -33,7 +33,8 @@ function globalHasDocument(): boolean {
 }
 
 /**
- * 在无 `document` 时安装自研 SSR DOM；已由测试或外层 SSR 提供 `document` 时仅增加引用计数。
+ * 进入 SSR DOM 作用域：必要时安装极简 `document`/`window` 并递增引用计数。
+ * @returns `void`
  */
 export function enterSSRDomScope(): void {
   ssrDomRefCount++;
@@ -50,7 +51,8 @@ export function enterSSRDomScope(): void {
 }
 
 /**
- * 与 {@link enterSSRDomScope} 配对；最后一层离开时卸载自研 DOM 并恢复全局。
+ * 与 {@link enterSSRDomScope} 配对；引用计数归零时拆除临时全局。
+ * @returns `void`
  */
 export function leaveSSRDomScope(): void {
   ssrDomRefCount = Math.max(0, ssrDomRefCount - 1);
@@ -68,7 +70,10 @@ export function leaveSSRDomScope(): void {
 let ssrAsyncChain: Promise<unknown> = Promise.resolve();
 
 /**
- * 将异步 SSR 任务串入全局队列（同一 isolate 内顺序执行）。
+ * 将异步任务串入单链，避免并发 SSR 互相覆盖全局 `document`。
+ * @template T Promise 结果类型
+ * @param task 异步任务
+ * @returns 排队执行后的 Promise
  */
 export function queueSsrAsyncTask<T>(task: () => Promise<T>): Promise<T> {
   const run = ssrAsyncChain.then(() => task());
@@ -85,6 +90,9 @@ export function queueSsrAsyncTask<T>(task: () => Promise<T>): Promise<T> {
  * 生命周期：`enterSSRDomScope` → 在 `rootOwner` 下执行 `fn` → `finally` 内先同步排空调度队列，
  * 再对 `rootOwner` 调用 `cleanNode`（释放 `insert`/`createEffect` 等订阅），再次同步排空队列，
  * 最后 `leaveSSRDomScope` 拆除临时 `document`，避免后续 `notify` 在无 DOM 环境下跑 Effect。
+ *
+ * @param fn 根组件或返回可序列化 UI 的函数
+ * @returns HTML 字符串
  */
 export function renderToString(fn: () => unknown): string {
   enterSSRDomScope();
@@ -207,6 +215,11 @@ function stringify(v: unknown, owner: Owner | null): string {
   return String(v);
 }
 
+/**
+ * 在 {@link queueSsrAsyncTask} 中执行 SSR，排空 {@link ssrPromises} 后再输出最终 HTML。
+ * @param fn 根组件
+ * @returns 解析完成的 HTML
+ */
 export function renderToStringAsync(fn: () => unknown): Promise<string> {
   return queueSsrAsyncTask(async () => {
     ssrPromises.length = 0;
@@ -222,6 +235,11 @@ export function renderToStringAsync(fn: () => unknown): Promise<string> {
   });
 }
 
+/**
+ * 先推送首屏 HTML，再在异步 Promise 批次完成后推送增量片段（当前实现含占位脚本分隔）。
+ * @param fn 根组件
+ * @returns UTF-8 字节流
+ */
 export function renderToStream(fn: () => unknown): ReadableStream {
   const encoder = new TextEncoder();
   return new ReadableStream({
@@ -250,6 +268,12 @@ export function renderToStream(fn: () => unknown): ReadableStream {
   });
 }
 
+/**
+ * 生成在浏览器中 `hydrate` 根节点的内联模块脚本片段（需与构建产物路径一致）。
+ * @param id 根元素 `id`
+ * @param bindingMap 与客户端一致的绑定表
+ * @returns 含 `<script type="module">` 的 HTML 片段
+ */
 export function generateHydrationScript(
   id: string,
   bindingMap: [number[], string][],

@@ -8,9 +8,9 @@ import type { BuildPlugin } from "@dreamer/esbuild";
 import { readFile } from "@dreamer/runtime-adapter";
 
 /**
- * 源码层面的极致优化。
- * 1. 压缩 template() 中的 HTML 字符串（移除冗余空格、换行）。
- * 2. 预处理静态属性（进一步减小运行时开销）。
+ * 对源码做轻量字符串级优化：压缩 `template("...")` 内 HTML 空白。
+ * @param source 构建产物或源文件文本
+ * @returns 替换后的源码
  */
 export function optimize(source: string): string {
   // 极致优化：匹配 template("...") 并压缩其中的 HTML
@@ -28,8 +28,9 @@ export function optimize(source: string): string {
 }
 
 /**
- * 创建编译优化插件。
- * 在构建管道的最后阶段执行，对最终生成的 JS 代码进行微调。
+ * 返回可在 esbuild 等流水线中注册的插件：对匹配 `filter` 的文件读入后执行 {@link optimize}。
+ * @param filter 文件路径正则（如 `/\.tsx?$/`）
+ * @returns {@link BuildPlugin}
  */
 export function createOptimizePlugin(filter: RegExp): BuildPlugin {
   return {

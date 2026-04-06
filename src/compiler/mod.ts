@@ -36,8 +36,11 @@ export interface CompileOptions {
 }
 
 /**
- * 编译源码。
- * 将 JSX 转换为高效的运行时代码。
+ * 使用 TypeScript Transformer 将 TSX 中的 JSX 转为运行时调用，并注入所需 `import`。
+ * @param source 源码文本
+ * @param fileName 虚拟文件名（影响 TS 解析）
+ * @param options `hydration` / `generate` / `hmr` / `insertImportPath` 等
+ * @returns 转换后的完整源字符串
  */
 export function compileSource(
   source: string,

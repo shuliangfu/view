@@ -22,8 +22,11 @@ import type {
 } from "./types.ts";
 
 /**
- * 核心 JSX 转换函数。
- * @returns 延迟求值的 Thunk，即 {@link VNode}
+ * 将 JSX 元素编译为延迟求值的 {@link VNode}（Thunk）：执行时才创建 Owner、插入 DOM。
+ * @param type 标签名字符串或组件函数
+ * @param props 元素/组件属性（含 `children`、`ref` 等）
+ * @param _key React 风格 key（当前运行时未用，保留签名兼容）
+ * @returns `() => ...` 形态的虚拟节点
  */
 export function jsx(
   type: JSXElementType,
@@ -119,10 +122,17 @@ export function jsx(
   };
 }
 
+/** 与 {@link jsx} 相同，满足 TS/打包器对 `jsxs`（多子）入口的解析。 */
 export const jsxs = jsx;
+
+/** 开发构建使用的 JSX 入口，行为同 {@link jsx}。 */
 export const jsxDEV = jsx;
 
-/** Fragment：透传子节点 */
+/**
+ * 片段：直接返回 `children`，供编译器生成 `<></>` 或 `Fragment`。
+ * @param props 仅使用 `children`
+ * @returns 子节点原样（可为数组等）
+ */
 export function Fragment(props: {
   children?: JSXRenderable;
 }): JSXRenderable {

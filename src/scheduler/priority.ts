@@ -60,7 +60,10 @@ function runWhenIdle(fn: () => void): void {
 }
 
 /**
- * 按优先级调度任务。
+ * 按优先级将 `fn` 入队：`Immediate` 同步执行，其余在微任务或空闲回调中刷新。
+ * @param fn 要运行的回调
+ * @param priority 队列优先级，默认 {@link Priority.Normal}
+ * @returns `void`
  */
 export function scheduleTask(
   fn: () => void,

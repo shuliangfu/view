@@ -42,8 +42,10 @@ const COMPONENT_REGISTRY = new Map<string, {
 }>();
 
 /**
- * 创建 HMR 代理包装器。
- * 此函数仅在开发环境下被编译器注入。
+ * 开发态下用信号包裹组件实现热替换；生产环境或未开 `VIEW_DEV` 时原样返回 `Component`。
+ * @param id 稳定组件 id（与编译器注入一致）
+ * @param Component 原始组件函数
+ * @returns 可替换实现的代理组件
  */
 export function createHMRProxy(
   id: string,

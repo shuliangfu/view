@@ -176,6 +176,11 @@ function createKeyedListRow<T>(
  * 当处于错误展示态时，effect 默认只订阅 `error` / `resetCount`，不会感知外部路由或查询参数变化；
  * 若子树依赖的数据已切换但仍显示旧 fallback，请传入 `resetKeys`（例如 `() => [userId()]`），
  * 在键变化时自动清除错误并重新挂载子树。
+ *
+ * @param props.fallback 错误时渲染的 UI，签名为 `(err, reset) => ...`
+ * @param props.children 正常子树
+ * @param props.resetKeys 可选：错误态下依赖变化时自动 `reset`
+ * @returns 带锚点的 `DocumentFragment`
  */
 export function ErrorBoundary(props: {
   fallback: (err: unknown, reset: () => void) => InsertValue;
@@ -271,8 +276,12 @@ export function ErrorBoundary(props: {
 }
 
 /**
- * Show 组件：条件渲染。
- * 增强版：当 when() 抛出错误时，视为条件不成立，显示 fallback。
+ * 条件渲染：`when()` 为真时渲染 `children`（可为函数接收真值），否则 `fallback`；`when` 抛错等同假分支。
+ * @template T `when()` 真值分支类型
+ * @param props.when 条件 getter
+ * @param props.fallback 假分支或错误时内容
+ * @param props.children 静态子或 `(item: T) => ...`
+ * @returns `DocumentFragment`
  */
 export function Show<T>(props: {
   when: () => T | undefined | null | false;
@@ -338,6 +347,13 @@ export function Show<T>(props: {
  * For 组件：列表渲染。
  * - 未传 **`key`**：每次 `each` 变化整表销毁重建（与历史行为一致）。
  * - 传入 **`key`**：按稳定键复用行节点，仅重排/增删，适合大列表与重排场景。
+ *
+ * @template T 列表项类型
+ * @param props.each 列表 getter
+ * @param props.children `(item, index) => ...`，`index` 为响应式 getter
+ * @param props.fallback 空列表时可选内容
+ * @param props.key 可选稳定键函数，启用键控复用
+ * @returns `DocumentFragment`
  */
 export function For<T>(props: {
   each: () => T[] | null | undefined;
@@ -503,6 +519,12 @@ function forKeyedList<T>(props: {
 /**
  * Index 组件：基于索引的列表渲染。
  * 可选 **`key`** 时与 For 相同，按键复用行（适合元素会重排但需保留 DOM 的场景）。
+ *
+ * @template T 列表项类型
+ * @param props.each 列表 getter
+ * @param props.children 行渲染函数
+ * @param props.key 可选稳定键
+ * @returns `DocumentFragment`
  */
 export function Index<T>(props: {
   each: () => T[] | null | undefined;
@@ -579,6 +601,10 @@ function normalizeSwitchChildren(
 /**
  * Switch：仅渲染第一个 `when()` 为真的 Match 的 children；若无匹配且提供 fallback 则渲染 fallback。
  * Match 返回描述对象而非 DOM，由 Switch 统一 insert，避免多分支同时挂载。
+ *
+ * @param props.children `Match` 描述符或数组
+ * @param props.fallback 无匹配分支时的内容
+ * @returns `DocumentFragment`
  */
 export function Switch(props: {
   children: SwitchChild | readonly SwitchChild[];
@@ -631,6 +657,10 @@ export function Switch(props: {
 
 /**
  * Match：仅作为 Switch 的子项使用；返回描述符（类型见 `../types.ts` 的 `ViewMatchDescriptor`），由 Switch 按顺序求值 when 并择一插入。
+ *
+ * @param props.when 条件值或零参 getter
+ * @param props.children 命中时插入的内容
+ * @returns {@link ViewMatchDescriptor}
  */
 export function Match(props: {
   when: unknown | (() => unknown);
@@ -647,9 +677,14 @@ export function Match(props: {
 }
 
 /**
- * Portal 组件：将内容渲染到目标 DOM 节点。
+ * 声明式 Portal：把 `children` 插入到 `mount`（默认 `document.body`），随依赖更新。
+ * @param props.mount 目标容器节点
+ * @param props.children 要传送的内容
+ * @returns 空 `DocumentFragment`（实际内容挂在 `mount` 上）
  */
-export function Portal(props: { mount?: Node; children: JSXRenderable }): DocumentFragment {
+export function Portal(
+  props: { mount?: Node; children: JSXRenderable },
+): DocumentFragment {
   const container = props.mount || document.body;
   const marker = document.createTextNode("");
   const fragment = document.createDocumentFragment();

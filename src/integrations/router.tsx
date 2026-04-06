@@ -130,7 +130,11 @@ const routerCore = getInternal("router", () => ({
   active: null as Router | null,
 }));
 
-/** 取当前路由器实例 */
+/**
+ * 返回由 {@link createRouter} 注册到单例槽位的当前路由器。
+ * @returns {@link Router}
+ * @throws 尚未创建路由器时抛出
+ */
 export function useRouter(): Router {
   if (!routerCore.active) {
     throw new Error("[@dreamer/view] No router instance found.");
@@ -305,10 +309,18 @@ function findCompiledMatch(
 // 工厂
 // ———————————————————————————————————————————————————————————————————————————
 
-/** 从路由表创建路由器（简写） */
+/**
+ * 使用路由表创建路由器并注册为当前实例（简写形式）。
+ * @param routes 路由配置数组
+ * @returns {@link Router}
+ */
 export function createRouter(routes: RouteConfig[]): Router;
 
-/** 从选项创建路由器（完整能力） */
+/**
+ * 使用完整选项创建路由器：`basePath`、`beforeEach`、`notFound`、`interceptLinks` 等。
+ * @param options 路由器选项
+ * @returns {@link Router}
+ */
 export function createRouter(options: CreateRouterOptions): Router;
 
 export function createRouter(
@@ -974,7 +986,11 @@ export function createRouter(
 // Link
 // ———————————————————————————————————————————————————————————————————————————
 
-/** 客户端导航链接；`href` 可为应用内路径，会自动拼接 `basePath` */
+/**
+ * 客户端路由链接：`href` 经 `resolveHref` 解析，`click` 默认 `preventDefault` 并 `navigate`/`replace`。
+ * @param props 与 `a` 类似，支持 `href`、`replace`、`class`/`className` 等
+ * @returns {@link VNode}
+ */
 export function Link(props: any): VNode {
   const {
     href,
@@ -1011,7 +1027,12 @@ export function Link(props: any): VNode {
   });
 }
 
-/** 挂载路由器 */
+/**
+ * 在 DOM Ready 后把 `router.render()` 挂到指定容器（CSS 选择器或元素）。
+ * @param selector 容器选择器或元素节点
+ * @param router 已创建的 {@link Router}
+ * @returns `void`
+ */
 export function mountWithRouter(
   selector: string | HTMLElement,
   router: Router,
