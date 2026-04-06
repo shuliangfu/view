@@ -15,7 +15,7 @@
  * - 开发环境的 HMR 支持
  *
  * **范围说明：**
- * - 浏览器挂载/水合为主；SSR 完整链路见 `runtime/server` 等；路由见 `integrations/router.tsx`。
+ * - 浏览器挂载/水合为主；SSR 完整链路见 `runtime/server` 等；路由见 `integrations/router.ts`。
  *
  * @usage
  * mount(() => <App/>, document.getElementById("root"))
