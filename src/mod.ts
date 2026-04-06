@@ -27,7 +27,7 @@
  *
  * **4. Integrations (集成)**
  * - ✅ resource.ts - 异步数据获取
- * - ✅ router.tsx - 路由系统
+ * - ✅ router.ts - 路由系统
  * - ✅ form.ts - 表单处理
  *
  * **5. Compiler (编译器)**
@@ -107,4 +107,4 @@ export {
   type RouteMatch,
   type Router,
   useRouter,
-} from "./integrations/router.tsx";
+} from "./integrations/router.ts";
