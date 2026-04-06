@@ -1,228 +1,142 @@
 /**
- * Router 示例：路由说明、编程式导航、动态参数、href、守卫
- *
- * - 使用 @dreamer/view/router，history 模式，链接写 href="/path" 即无刷新跳转
- * - navigate(path, replace?)、replace(path)、back()、forward()、go(delta)
- * - 动态路由：path 配置为 /user/:id 时，component(match) 可拿到 params、fullPath、query
- * - href(path) 生成完整 href；beforeRoute / afterRoute 在 main 中配置
+ * @module views/router
+ * @description 展示 @dreamer/view 路由：Link、navigate/replace、动态段、query、全局 beforeEach 与 /route-guard 演示入口。
  */
+import { Link, useRouter } from "@dreamer/view";
 
-import type { VNode } from "@dreamer/view";
-import type { RouteMatchWithRouter } from "../../router/router.ts";
+export default function RouterDemo() {
+  const router = useRouter();
 
-export const metadata = {
-  title: "Router",
-  description: "路由说明、编程式导航、动态参数、href、守卫",
-  keywords: "Router, navigate, beforeRoute, afterRoute",
-};
-
-/** 输入框 DOM 引用，非受控避免输入时整树重渲染失焦 */
-let pathInputEl: HTMLInputElement | null = null;
-
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-const subTitle =
-  "mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
-
-/** 由 App 通过 match.router 注入，不依赖 context，避免打包多实例导致「Router 未注入」 */
-export function RouterDemo(match: RouteMatchWithRouter): VNode {
-  const router = match.router;
-
-  const current = router.getCurrentRoute();
-  const currentPath = current?.fullPath ?? "";
-  const currentHref = router.href("/signal");
+  /** 当前完整路径（响应式） */
+  const currentPath = router.path;
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-teal-600 dark:text-teal-400">
-        Router
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        navigate / replace / back / forward / href / 守卫
-      </h2>
-      <p className="mb-6 text-slate-600 dark:text-slate-300 leading-relaxed">
-        本示例使用{" "}
-        <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-          @dreamer/view/router
-        </code>，支持 history 模式、path 匹配、动态参数（如{" "}
-        <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-          /user/:id
-        </code>）、编程式导航与守卫。链接直接写{" "}
-        <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-          href="/path"
-        </code>{" "}
-        即可无刷新跳转。
-      </p>
-      <div className="space-y-6">
-        <div className={block}>
-          <h3 className={subTitle}>当前路由</h3>
-          <p className="font-mono text-sm text-slate-600 dark:text-slate-300">
-            当前路径：<span className="font-semibold text-indigo-600 dark:text-indigo-400">
-              {currentPath || "(空)"}
-            </span>
-          </p>
-          <p className="mt-1 font-mono text-sm text-slate-600 dark:text-slate-300">
-            router.href("/signal") →{" "}
-            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-              {currentHref}
-            </span>
-          </p>
-        </div>
-        <div className={block}>
-          <h3 className={subTitle}>编程式导航</h3>
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            navigate(path)、replace(path)、back()、forward()、go(delta)
-          </p>
-          <div className="mb-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => router.navigate("/signal")}
+    <section className="space-y-10">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          响应式路由 (Reactive Router)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium max-w-3xl">
+          基于 History API；<code className="font-mono text-sm">Link</code>{" "}
+          与同源 <code className="font-mono text-sm">&lt;a href&gt;</code>{" "}
+          委托拦截（默认开启）。导航前执行全局{" "}
+          <code className="font-mono text-sm">beforeEach</code>，详见{" "}
+          <Link
+            href="/route-guard"
+            className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            路由卫士演示
+          </Link>
+          ；打开 DevTools Console 可看到每次放行的{" "}
+          <code className="font-mono text-sm">to / from</code> 快照。
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-sm space-y-6 transition-colors">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-50 dark:border-slate-700/50 pb-4">
+            声明式导航（Link）
+          </h3>
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/"
+              className="group flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold hover:translate-x-1 transition-transform"
             >
-              去 Signal
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => router.navigate("/store")}
+              <span className="text-lg">←</span> 返回首页
+            </Link>
+            <Link
+              href="/performance"
+              className="group flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold hover:translate-x-1 transition-transform"
             >
-              去 Store
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => router.replace("/context")}
+              性能演示 <span className="text-lg">→</span>
+            </Link>
+            <Link
+              href="/store?from=router-demo"
+              className="group flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold hover:translate-x-1 transition-transform"
             >
-              replace 到 Context
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={btn} onClick={() => router.back()}>
-              后退
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => router.forward()}
-            >
-              前进
-            </button>
-            <button type="button" className={btn} onClick={() => router.go(-2)}>
-              go(-2)
-            </button>
+              Store + query（?from=router-demo）→
+            </Link>
           </div>
         </div>
-        <div className={block}>
-          <h3 className={subTitle}>输入路径并 navigate</h3>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-              ref={(el: unknown) => {
-                pathInputEl = el as HTMLInputElement | null;
-              }}
-              placeholder="/signal"
-            />
+
+        <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-sm space-y-6 transition-colors">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-50 dark:border-slate-700/50 pb-4">
+            编程式导航（navigate / replace）
+          </h3>
+          <div className="flex flex-col gap-3">
             <button
               type="button"
-              className={btn}
-              onClick={() => router.navigate(pathInputEl?.value?.trim() || "/")}
+              onClick={() => void router.navigate("/store")}
+              className="text-left text-indigo-600 dark:text-indigo-400 font-bold hover:translate-x-1 transition-transform"
             >
-              导航
+              navigate(&quot;/store&quot;) →
             </button>
+            <button
+              type="button"
+              onClick={() => void router.replace("/resource?replaced=1")}
+              className="text-left text-amber-700 dark:text-amber-300 font-bold hover:translate-x-1 transition-transform"
+            >
+              replace(&quot;/resource?replaced=1&quot;)（无历史堆积）
+            </button>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium dark:border-slate-600"
+              >
+                back()
+              </button>
+              <button
+                type="button"
+                onClick={() => router.forward()}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium dark:border-slate-600"
+              >
+                forward()
+              </button>
+            </div>
           </div>
         </div>
-        <div className={block}>
-          <h3 className={subTitle}>动态路由</h3>
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            路由配置中若 path 带动态参数（如{" "}
-            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              /user/:id
-            </code>），匹配后{" "}
-            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              component(match)
-            </code>{" "}
-            会收到{" "}
-            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              match
-            </code>{" "}
-            对象，包含：
-          </p>
-          <ul className="mb-3 list-inside list-disc space-y-1 font-mono text-sm text-slate-600 dark:text-slate-300">
-            <li>
-              <code>path</code>：路由模式（如 /user/:id）
-            </li>
-            <li>
-              <code>fullPath</code>：当前完整路径（如 /user/123）
-            </li>
-            <li>
-              <code>params</code>：动态参数（如 {`{ id: "123" }`}）
-            </li>
-            <li>
-              <code>query</code>：查询串解析结果（如 ?a=1 → {`{ a: "1" }`}）
-            </li>
-          </ul>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            示例：当用户访问{" "}
-            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              /user/42?tab=profile
-            </code>{" "}
-            时，match 内容如下。
-          </p>
-          <ul className="mt-2 list-inside list-disc space-y-1 font-mono text-sm text-slate-600 dark:text-slate-300">
-            <li>path（模式）：/user/:id</li>
-            <li>fullPath：/user/42?tab=profile</li>
-            <li>
-              params.id：<span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                42
-              </span>
-            </li>
-            <li>query：{`{ "tab": "profile" }`}</li>
-          </ul>
+      </div>
+
+      <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-slate-50 dark:bg-slate-900/50 space-y-6 transition-colors">
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-4">
+          动态段（:userId）与路由卫士
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/router/user/alice"
+            className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-bold text-white hover:bg-teal-500"
+          >
+            /router/user/alice
+          </Link>
+          <Link
+            href="/route-guard"
+            className="rounded-xl border-2 border-amber-500 px-4 py-2 text-sm font-bold text-amber-800 dark:text-amber-300"
+          >
+            路由卫士 + 拦截 /form 演示 →
+          </Link>
         </div>
-        <div className={block}>
-          <h3 className={subTitle}>scroll 选项</h3>
-          <p className="mb-3 text-slate-600 dark:text-slate-300">
-            createRouter 的{" "}
-            <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              scroll
-            </code>{" "}
-            控制导航后的滚动行为：
-          </p>
-          <ul className="mb-3 list-inside list-disc space-y-1 font-mono text-sm text-slate-600 dark:text-slate-300">
-            <li>
-              <code>scroll: &quot;top&quot;</code>：导航完成后 scrollTo(0, 0)
-            </li>
-            <li>
-              <code>scroll: &quot;restore&quot;</code>：恢复该路由上次的滚动位置
-            </li>
-            <li>
-              <code>scroll: false</code>（默认）：不处理滚动
-            </li>
-          </ul>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            与 afterRoute 配合：先执行 afterRoute，再根据 scroll 执行滚动。
-          </p>
+      </div>
+
+      <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-slate-50 dark:bg-slate-900/50 space-y-6 transition-colors">
+        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-4">
+          路由状态（实时）
+        </h3>
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">
+            当前 path
+          </span>
+          <code className="px-4 py-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 font-mono text-indigo-600 dark:text-indigo-400 font-black shadow-inner">
+            {currentPath()}
+          </code>
         </div>
-        <div className="rounded-lg border-l-4 border-teal-500/50 bg-teal-500/5 px-4 py-3 dark:bg-teal-500/10">
-          <h3 className={subTitle}>守卫说明</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            beforeRoute：访问{" "}
-            <a
-              href="/router-redirect"
-              className="font-mono text-xs text-teal-600 underline dark:text-teal-400"
-            >
-              /router-redirect
-            </a>{" "}
-            会被重定向到本页。 afterRoute：每次导航完成后会同步当前路由的 meta
-            到 &lt;head&gt;（title、description、keywords、og:* 等，在 router
-            中配置）。
-          </p>
-        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+          提示：<code className="font-mono">Link</code> 使用{" "}
+          <code className="font-mono">data-view-link</code>；全页{" "}
+          <code className="font-mono">scroll: &quot;top&quot;</code>{" "}
+          在 main 中配置，导航后滚回顶部。
+        </p>
       </div>
     </section>
   );
 }
-export default RouterDemo;

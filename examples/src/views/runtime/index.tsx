@@ -1,139 +1,77 @@
 /**
- * Runtime：createRoot、render、renderToString、generateHydrationScript、renderToStream
- *
- * - createRoot(fn, container)：创建响应式根，fn 内读到的 signal 变化会重新执行并更新 DOM
- * - render(fn, container)：等同于 createRoot
- * - renderToString(fn)：SSR/SSG 输出 HTML 字符串
- * - generateHydrationScript(options)：Hybrid 时注入脚本 HTML
- * - renderToStream(fn)（view/stream）：流式 SSR，服务端逐块输出
+ * @module views/runtime
+ * @description 展示 @dreamer/view 核心运行时 API：SSR、插入与动态 DOM。
  */
-
-import {
-  createMemo,
-  createSignal,
-  generateHydrationScript,
-  insert,
-} from "@dreamer/view";
+import { createSignal } from "@dreamer/view";
+/** 客户端 bundle 不经过 `@dreamer/view/ssr`，避免打入 happy-dom / `node:perf_hooks` */
 import { renderToString } from "@dreamer/view/ssr";
-import type { VNode } from "@dreamer/view";
 
-export const metadata = {
-  title: "Runtime",
-  description:
-    "createRoot、render、renderToString、generateHydrationScript、renderToStream 示例",
-  keywords: "createRoot, render, renderToString, SSR, 流式",
-};
+export default function RuntimeDemo() {
+  const [ssrSample, setSsrSample] = createSignal("梦幻框架演示");
+  const [html, setHtml] = createSignal("");
 
-const ssrSample = createSignal("Hello SSR");
+  const getSsrHtml = () => {
+    // 现代架构下 renderToString 直接接收一个返回 Node 的函数
+    return renderToString(() => (
+      <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+        <h3 className="font-bold text-indigo-700">SSR 渲染结果</h3>
+        <p className="text-sm">内容: {ssrSample()}</p>
+      </div>
+    ));
+  };
 
-/** renderToString 使用编译路径 (el) => void，内部用 insert(el, getter) */
-function getSsrHtml(): string {
-  return renderToString((el) => {
-    insert(el, () => "renderToString 输出：" + ssrSample.value);
-  });
-}
+  const handleGenerate = () => {
+    setHtml(getSsrHtml());
+  };
 
-/** 当前 renderToString 结果（用 signal 存，点击「生成 HTML」时写入） */
-const html = createSignal("");
-
-/**
- * pre 展示文案：手写 jsx-runtime 下不可写 `{html.value || "…"}`（会快照）；
- * 用 createMemo 供 JSX 写 `{ssrHtmlPreview}`，随 html 变化更新。
- */
-const ssrHtmlPreview = createMemo(() =>
-  html.value || "点击「生成 HTML」查看 renderToString 结果"
-);
-
-/** 统一按钮样式 */
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-/** 统一输入框样式 */
-const inputCls =
-  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
-const codeRootStr = 'mount("#root", (el) => insert(el, () => <App />))';
-const codeRenderStr = "render(fn, container)";
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-const subTitle =
-  "mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
-
-export function RuntimeDemo(): VNode {
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-sky-600 dark:text-sky-400">
-        Runtime
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        createRoot / render / renderToString / generateHydrationScript
-      </h2>
-      <div className="space-y-6">
-        <p className="text-slate-600 dark:text-slate-300">
-          本示例入口使用{" "}
-          <code className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-            {codeRootStr}
-          </code>{" "}
-          挂载。{" "}
-          <code className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-800 dark:bg-slate-700 dark:text-slate-200">
-            {codeRenderStr}
-          </code>{" "}
-          与 createRoot 等价。
+    <section className="space-y-8">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          运行时 API (Runtime API)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
+          展示核心渲染逻辑。renderToString 在服务器或客户端均可运行，生成静态
+          HTML 字符串。
         </p>
-        <div className={block}>
-          <h3 className={subTitle}>renderToString（SSR 输出）</h3>
-          <p className="mb-3 flex flex-wrap items-center gap-2">
+      </header>
+
+      <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-sm space-y-8 transition-colors">
+        <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-50 dark:border-slate-700/50 pb-4">
+          SSR 生成模拟 (renderToString)
+        </h2>
+        <div className="space-y-6 max-w-md">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 px-1">
+              输入源码
+            </label>
+            {/* value 须为函数，jsx-runtime 才会对受控属性订阅 signal（与 views/signal 示例一致） */}
             <input
               type="text"
-              className={inputCls}
-              value={() => ssrSample.value}
-              onInput={(
-                e: Event,
-              ) => (ssrSample.value = (e.target as HTMLInputElement).value)}
+              value={() => ssrSample()}
+              onInput={(e: any) => setSsrSample(e.currentTarget.value)}
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              placeholder="输入要 SSR 的内容..."
             />
-            <button
-              type="button"
-              className={btn}
-              onClick={() => (html.value = getSsrHtml())}
-            >
-              生成 HTML
-            </button>
-          </p>
-          <pre className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800 overflow-auto dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
-            {ssrHtmlPreview}
-          </pre>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            className="w-full bg-indigo-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 shadow-xl shadow-indigo-100 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-3"
+          >
+            <span>🚀</span> 立即生成 HTML 字符串
+          </button>
         </div>
-        <div className={block}>
-          <h3 className={subTitle}>
-            generateHydrationScript（可注入的脚本 HTML）
+
+        <div className="bg-slate-50 dark:bg-slate-900/50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-700 transition-colors">
+          <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6">
+            生成的 HTML 源码 (Static Output)
           </h3>
-          <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-            用于 Hybrid：服务端将 data 与客户端脚本注入 HTML，客户端通过
-            <code className="mx-1 rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-              window.__VIEW_DATA__
-            </code>
-            读取并执行 hydrate(fn, container)。
-          </p>
-          <pre className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-xs text-slate-800 overflow-auto dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 whitespace-pre-wrap break-all">
-            {generateHydrationScript({
-              data: { userId: 1, preload: true },
-              dataKey: "__VIEW_DATA__",
-              scriptSrc: "/client.js",
-            })}
-          </pre>
-        </div>
-        <div className="rounded-lg border-l-4 border-sky-500/50 bg-sky-500/5 px-4 py-3 dark:bg-sky-500/10">
-          <h3 className={subTitle}>renderToStream（view/stream）</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
-            流式 SSR：在 Node/Deno 服务端使用，边渲染边输出，适合首屏流式响应。
-          </p>
-          <pre className="rounded-lg bg-slate-100 dark:bg-slate-700 p-3 text-xs text-slate-700 dark:text-slate-300 overflow-x-auto">
-            {`import { renderToStream } from "@dreamer/view/stream";
-// for await (const chunk of renderToStream((el) => { insert(el, "A"); insert(el, "B"); })) {
-//   res.write(chunk);
-// }`}
+          <pre className="text-xs font-mono text-indigo-600 dark:text-indigo-400 whitespace-pre-wrap break-all bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700">
+            {() => html() || "点击「生成 HTML」查看结果"}
           </pre>
         </div>
       </div>
     </section>
   );
 }
-export default RuntimeDemo;

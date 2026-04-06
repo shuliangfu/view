@@ -5,43 +5,56 @@
  * 通过动态 import 文件拿到导出值，被 routers.ts 调用。
  */
 
-import { existsSync, join, pathToFileUrl } from "@dreamer/runtime-adapter";
+import { existsSync, join, readTextFile } from "@dreamer/runtime-adapter";
+
+async function extractBooleanExport(
+  filePath: string,
+  exportName: string,
+): Promise<boolean | undefined> {
+  try {
+    const text = await readTextFile(filePath);
+    // 简化正则匹配 export const name = true/false
+    const regex = new RegExp(
+      `export\\s+(?:const|let|var)\\s+${exportName}\\s*=\\s*(true|false)`,
+    );
+    const match = text.match(regex);
+    if (match) {
+      return match[1] === "true";
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
- * 从 _layout 文件路径动态 import，读取 inheritLayout 导出（未导出或非 false 视为继承）
+ * 从 _layout 文件读取 inheritLayout 导出（未导出或非 false 视为继承）
  */
 export async function readInheritLayoutFromLayoutFile(
   layoutPath: string,
 ): Promise<boolean> {
-  const mod = await import(pathToFileUrl(layoutPath));
-  return (mod as { inheritLayout?: boolean }).inheritLayout !== false;
+  const v = await extractBooleanExport(layoutPath, "inheritLayout");
+  return v !== false;
 }
 
 /**
- * 从页面文件路径动态 import，读取 inheritLayout 导出；未导出则返回 undefined，由 layout 链决定
+ * 从页面文件读取 inheritLayout 导出；未导出则返回 undefined，由 layout 链决定
  */
-export async function readInheritLayoutFromPageFile(
+export function readInheritLayoutFromPageFile(
   pagePath: string,
 ): Promise<boolean | undefined> {
-  const mod = await import(pathToFileUrl(pagePath));
-  const v = (mod as { inheritLayout?: boolean }).inheritLayout;
-  return typeof v === "boolean" ? v : undefined;
+  return extractBooleanExport(pagePath, "inheritLayout");
 }
 
 /**
- * 从页面文件路径动态 import，读取 loading 导出；
+ * 从页面文件读取 loading 导出；
  * 当页面 export const loading = false 时返回 false（当前页不显示 loading），未导出或为 true 时返回 true。
  */
 export async function readLoadingFromPageFile(
   pagePath: string,
 ): Promise<boolean> {
-  try {
-    const mod = await import(pathToFileUrl(pagePath));
-    const v = (mod as { loading?: boolean }).loading;
-    return v !== false;
-  } catch {
-    return true;
-  }
+  const v = await extractBooleanExport(pagePath, "loading");
+  return v !== false;
 }
 
 export interface LayoutChainResult {

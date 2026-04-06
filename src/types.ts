@@ -1,97 +1,122 @@
 /**
- * View 模板引擎 — 公共类型定义。
+ * @module types
+ * @description 框架级公共类型：`VNode`、`JSXRenderable`、`InsertValue`、`Switch`/`Match`、`ViewSignalTagged`、`JSXElementType` 等，供运行时与 `jsx` 收窄 `any`。
  *
- * @module @dreamer/view/types
- * @packageDocumentation
+ * **为何叫 VNode 而不是 Node**
+ * - 浏览器全局已有 **`Node`**（DOM 节点接口），若再定义同名「虚拟树」类型会造成混淆与类型冲突。
+ * - 本框架中 **`jsx`/`jsxs` 的返回值**是延迟求值的 **Thunk**（`() => …`），文档与适配器（如 `@dreamer/render`）统一用 **`VNode`** 指代该形态。
+ */
+
+/**
+ * Match 描述符上的标记字段名，供 `Switch` 在子树中识别（非 DOM，不直接插入文档）。
+ */
+export const VIEW_MATCH_KEY = "__VIEW_MATCH__" as const;
+
+/**
+ * 虚拟节点：`jsx` / `jsxs` 返回的延迟求值函数（Thunk）。
  *
- * 定义 Signal、Effect、VNode、Root、MountOptions 等核心类型，供 signal、effect、jsx-runtime、runtime 等模块使用。
+ * 求值后可得到 DOM 节点、文本、数组、嵌套 Thunk 等，与 `insert()` 第二参数 `value` 的语义一致。
+ * 组件可声明为 `function App(): VNode`，与 README 中的类型示例对齐。
  *
- * **导出类型：** SignalRef、SignalGetter、SignalSetter、SignalTuple、EffectDispose、VNode、MountOptions、Root、ElementWithViewData
- *
- * **导出函数：** isDOMEnvironment
+ * 注意：勿与 DOM 的 `globalThis.Node` 混淆。
  */
+export type VNode = () => unknown;
 
 /**
- * Signal 的 getter 函数：无参，返回当前值；在 effect 或模板中调用时会参与依赖收集。
+ * `Match` 组件的返回值：`Switch` 按顺序求值 `when` 并择一插入 `children`。
  */
-export type SignalGetter<T> = () => T;
-
-/**
- * Signal 的 setter 函数：可传入新值或 updater 函数 (prev => next)。
- */
-export type SignalSetter<T> = (value: T | ((prev: T) => T)) => void;
-
-/** `createSignal` 返回的 `.value` 容器类型（定义在 signal 模块，此处再导出便于从 `@dreamer/view/types` 引用） */
-export type { SignalRef } from "./signal.ts";
-
-/**
- * `[getter, setter]` 元组：`createStore(..., { asObject: false })` 与 **`const [g, s] = createSignal(initial)`** 解构形态一致。
- */
-export type SignalTuple<T> = [getter: SignalGetter<T>, setter: SignalSetter<T>];
-
-/**
- * Effect 的 dispose 函数：调用后取消该 effect 的订阅并执行已登记的 cleanup。
- */
-export type EffectDispose = () => void;
-
-/**
- * 虚拟节点描述符：JSX 编译后的节点描述，供 render / renderToString / hydrate 消费。
- */
-export type VNode = {
-  /**
-   * 节点类型：字符串为原生标签名；函数为组件 (props) => VNode | VNode[] | null；Symbol（如 Fragment）为占位/片段
-   */
-  type:
-    | string
-    | symbol
-    | ((props: Record<string, unknown>) => VNode | VNode[] | null);
-  /** 属性与子节点（children 可能在此或单独在 children 字段） */
-  props: Record<string, unknown>;
-  /** 可选 key，用于列表 diff 时的稳定性 */
-  key?: string | number | null;
-  /** 子节点列表（部分场景由 type 与 props 推导，此处可显式提供） */
-  children?: VNode[];
-};
-
-/**
- * mount(container, fn, options?) 的可选配置。
- * - hydrate: true 强制 hydrate，false 强制 render，undefined 时「有子节点则 hydrate 否则 render」
- * - noopIfNotFound: 为 true 且 container 为选择器且查不到元素时不抛错，返回空 Root；默认 false 抛错
- */
-export type MountOptions = {
-  hydrate?: boolean;
-  noopIfNotFound?: boolean;
-};
-
-/**
- * 根实例：createRoot / render / hydrate 返回的句柄。
- * 调用 unmount() 可卸载该根并回收其下所有 effect。
- * forceRender() 可强制根 effect 重新执行一次，用于外部路由等非响应式来源驱动整树重算。
- */
-export type Root = {
-  /** 卸载根并清理所有 effect 与指令 */
-  unmount: () => void;
-  /** 挂载的 DOM 容器（仅浏览器环境有值） */
-  container?: Element | null;
-  /** 强制根 effect 重新执行一次（外部路由等场景触发整树重算） */
-  forceRender?: () => void;
-};
-
-/**
- * 扩展 Element：挂载 View 指令的 unmount 回调等扩展属性，供 dom 层内部使用。
- */
-export interface ElementWithViewData extends Element {
-  __viewDirectiveUnmount?: (() => void)[];
-  [key: string]: unknown;
+export interface ViewMatchDescriptor {
+  [VIEW_MATCH_KEY]: true;
+  /** 为真时本 Match 被选中 */
+  when: () => unknown;
+  /** 要插入的子内容 */
+  children: JSXRenderable;
 }
 
 /**
- * 判断当前是否处于浏览器 DOM 环境（存在 document 等）。
- * 用于在 SSR 与 CSR 之间做分支（如 createRoot 在非 DOM 环境直接返回空 Root）。
+ * 组件函数体 **`return` 可出现的 UI 值**：与 `JSX.Element` 对齐，比 `any` 更严、比单用 `VNode` 更全。
  *
- * @returns 若 globalThis.document 存在则为 true，否则为 false
+ * - **`VNode`**：`jsx` 对原生标签/函数组件外包一层 Thunk 的常见形态。
+ * - **`DocumentFragment`**：`Show` / `For` / `Suspense` / `ErrorBoundary` / `Switch` / `Portal` 等控制流组件的返回值。
+ * - **`Node`**：`Dynamic`、部分路径下的真实 DOM 节点（如 `HTMLElement`、`Text`）。
+ * - **`ViewMatchDescriptor`**：仅 **`Match`** 组件，供父级 **`Switch`** 消费。
+ * - **数组**：`Provider` 直接 `return props.children`、或手写多根时的列表。
+ * - **原语**：`insert` 可接受的文本等。
  */
-export function isDOMEnvironment(): boolean {
-  return typeof globalThis !== "undefined" &&
-    typeof (globalThis as { document?: unknown }).document !== "undefined";
-}
+export type JSXRenderable =
+  | VNode
+  | DocumentFragment
+  | Node
+  | ViewMatchDescriptor
+  | string
+  | number
+  | bigint
+  | false
+  | null
+  | undefined
+  | readonly JSXRenderable[]
+  | JSXRenderable[];
+
+/**
+ * 函数上的可选标记：`createSignal` 返回的 getter/setter 等，供 `insert` 与 thunk 解包区分「响应式 getter」与「普通 VNode Thunk」。
+ */
+export type ViewSignalTagged = {
+  __VIEW_SIGNAL?: true;
+};
+
+/**
+ * 组件等可通过静态字段声明「透明 Provider」，运行时由 `jsx` 识别。
+ */
+export type ViewTransparentProviderMeta = {
+  __IS_TRANSPARENT_PROVIDER?: true;
+};
+
+/**
+ * `insert()` 第二参数 `value`：在 {@link JSXRenderable} 之外，兼容 `boolean`（与 `null` 同类清空）、`bigint`、
+ * 以及子树数组/类数组；其余值在实现中会 `String(value)` 化为文本节点。
+ */
+export type InsertValue =
+  | JSXRenderable
+  | boolean
+  | bigint
+  | readonly (InsertValue | null | undefined)[]
+  | ArrayLike<InsertValue | null | undefined>;
+
+/**
+ * `insert()` 第三参数 `current` / 返回值：当前占位 DOM 节点或「尚未插入」。
+ */
+export type InsertCurrent = Node | null | undefined;
+
+/**
+ * `Switch` 子槽：普通可渲染子、`Match` 描述符、或它们的数组（含 Fragment 展开结果）。
+ */
+export type SwitchChild = JSXRenderable | ViewMatchDescriptor;
+
+/**
+ * `Show` / `ErrorBoundary` 等：子节点为静态树或「无参渲染函数」。
+ */
+export type ViewSlot = JSXRenderable | (() => JSXRenderable);
+
+/**
+ * `Show`：条件成立时子节点可为「单参渲染函数」，参数为 `when()` 的真值分支类型。
+ */
+export type ShowChildren<T> = JSXRenderable | ((item: T) => JSXRenderable);
+
+/**
+ * `jsx(type, props)` 的 `type`：宿主标签名，或组件函数。
+ *
+ * 组件形参不能用单一的 `Record<string, unknown>` 描述：在 `strictFunctionTypes` 下，
+ * `(props: { foo: 1 }) => …` 不能赋给 `(props: Record<string, unknown>) => …`（逆变）。
+ * 因此此处对 **props 使用 `any`**，具体形状仍由各组件自己的函数类型声明。
+ */
+export type JSXElementType =
+  | string
+  // deno-lint-ignore no-explicit-any
+  | ((props: any) => JSXRenderable);
+
+/**
+ * 对象形式的 `ref`：`{ current: ... }` 由运行时填入 DOM。
+ */
+export type ViewRefObject<T = unknown> = {
+  current?: T | null;
+};

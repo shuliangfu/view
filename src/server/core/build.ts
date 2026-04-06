@@ -9,31 +9,21 @@ import {
   AssetsProcessor,
   BuilderClient,
   type ClientConfig,
-  type PluginBuild,
 } from "@dreamer/esbuild";
 import { createLogger } from "@dreamer/logger";
 import {
   basename,
   dirname,
   existsSync,
-  fromFileUrl,
   join,
   mkdir,
   readFile,
-  readTextFile,
   relative,
   resolve,
   setEnv,
   writeFile,
 } from "@dreamer/runtime-adapter";
 import { createOptimizePlugin } from "../../optimize.ts";
-import {
-  KEY_HMR_BUMP,
-  KEY_HMR_CHUNK_FOR_PATH,
-  KEY_HMR_CLEAR_ROUTE_CACHE,
-  KEY_VIEW_ROOT,
-} from "../../constants.ts";
-import { compileSource } from "../../jsx-compiler/transform.ts";
 import { $tr } from "../../i18n.ts";
 import { logger } from "../utils/logger.ts";
 import type { AppConfig } from "./config.ts";
@@ -41,91 +31,39 @@ import { getBuildConfigForMode } from "./config.ts";
 import { generateRoutersFile } from "./routers.ts";
 
 /**
- * 开发模式在 main.js 开头注入的 __HMR_REFRESH__（无感刷新）
+ * 开发模式在入口 JS 最前面注入：`VIEW_DEV`、`__HMR_REFRESH__`（拉取 `chunk?t=` 后调用 `__VIEW_HMR_APPLY__`）。
+ * compiler / jsx-runtime 在 dev 下共用该契约：路由侧合并新模块，lazy 缓存由 {@link invalidateViewLazyModules} 清空。
  */
-function getHmrBanner(msgs: {
+function getHmrBanner(_msgs: {
   rootNotFound: string;
   containerEmpty: string;
   refreshFailed: string;
 }): string {
-  const msgRoot = JSON.stringify(msgs.rootNotFound);
-  const msgContainer = JSON.stringify(msgs.containerEmpty);
-  const msgRefresh = JSON.stringify(msgs.refreshFailed);
   return `
 (function(){
   var g = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : (typeof self !== "undefined" ? self : {}));
-  var getMainUrl = function(){
-    try {
-      var s = (typeof document !== "undefined" && document.currentScript) ? document.currentScript : null;
-      var src = s && (s.src || (s.getAttribute && s.getAttribute("src")));
-      var path = src ? src.split("?")[0] : "/dist/main.js";
-      if (typeof g.location !== "undefined" && g.location.origin && path.indexOf("http") !== 0) {
-        return g.location.origin + (path.indexOf("/") === 0 ? path : "/" + path);
-      }
-      return path;
-    } catch (e) { return "/dist/main.js"; }
-  };
+  g.VIEW_DEV = true;
   g.__HMR_REFRESH__ = function(hmrOpts){
-    var reload = function(){
-      if (typeof g.location !== "undefined") g.location.reload();
-    };
     var chunkUrl = hmrOpts && hmrOpts.chunkUrl;
-    var r = g["${KEY_VIEW_ROOT}"];
-    var mainUrl = getMainUrl();
-    mainUrl = mainUrl + (mainUrl.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
-    var runMain = function(){
-      g["${KEY_HMR_CLEAR_ROUTE_CACHE}"] = true;
-      if (r && typeof r.unmount === "function") r.unmount();
-      var clearRoot = function(){
-        var rootEl = typeof g.document !== "undefined" && g.document.getElementById ? g.document.getElementById("root") : null;
-        if (rootEl) { while (rootEl.firstChild) rootEl.removeChild(rootEl.firstChild); }
-      };
-      clearRoot();
-      import(/* @vite-ignore */ mainUrl)
-        .then(function(){
-          var el = typeof g.document !== "undefined" && g.document.getElementById ? g.document.getElementById("root") : null;
-          var check = function(){
-            if (!el){
-              console.warn(${msgRoot});
-              reload();
-              return;
-            }
-            if (el.childNodes.length === 0){
-              console.warn(${msgContainer});
-              reload();
-            }
-          };
-          var raf = typeof g.requestAnimationFrame !== "undefined" ? g.requestAnimationFrame : function(f){ setTimeout(f, 16); };
-          raf(function(){ raf(check); });
-          setTimeout(check, 500);
-        })
-        .catch(function(err){
-          console.warn(${msgRefresh}, err?.message || err);
-          reload();
-        });
-    };
-    if (chunkUrl && typeof chunkUrl === "string" && g["${KEY_HMR_BUMP}"]) {
-      var routePath = hmrOpts && hmrOpts.routePath;
-      if (typeof routePath !== "string") {
-        var name = chunkUrl.split("/").pop() || "";
-        var base = name.replace(/\\.js$/i, "");
-        var seg = base;
-        var lastDash = base.lastIndexOf("-");
-        if (lastDash > 0) {
-          var after = base.slice(lastDash + 1);
-          if (/^[a-f0-9]{6,12}$/i.test(after)) seg = base.slice(0, lastDash);
+    var routePath = hmrOpts && hmrOpts.routePath;
+    if (chunkUrl && typeof chunkUrl === "string") {
+      // 带 ?t= 绕过浏览器对同一 URL 的 ESM 实例缓存；成功后交给 __VIEW_HMR_APPLY__
+      // 写回路由 Resource（jsx-runtime）或与 createHMRProxy（compiler）协同。
+      import(/* @vite-ignore */ chunkUrl + "?t=" + Date.now()).then(function(mod) {
+        var apply = g.__VIEW_HMR_APPLY__;
+        if (typeof apply === "function") {
+          try {
+            apply({ chunkUrl: chunkUrl, routePath: routePath, mod: mod });
+          } catch (e) {
+            console.warn("[HMR] apply failed:", e);
+            if (typeof g.location !== "undefined") g.location.reload();
+          }
         }
-        routePath = (seg === "home" || seg === "index") ? "/" : "/" + seg;
-      }
-      if (typeof routePath === "string") {
-        if (!g["${KEY_HMR_CHUNK_FOR_PATH}"]) g["${KEY_HMR_CHUNK_FOR_PATH}"] = {};
-        g["${KEY_HMR_CHUNK_FOR_PATH}"][routePath] = chunkUrl;
-      }
-      g["${KEY_HMR_CLEAR_ROUTE_CACHE}"] = true;
-      import(/* @vite-ignore */ chunkUrl).then(function(){ g["${KEY_HMR_BUMP}"](); }).catch(runMain);
-      return;
+      }).catch(function(err) {
+        console.warn("[HMR] Refresh failed:", err);
+        if (typeof g.location !== "undefined") g.location.reload();
+      });
     }
-    runMain();
   };
 })();
 `;
@@ -144,7 +82,8 @@ function injectHmrBannerIntoEntry(
       containerEmpty: $tr("cli.hmr.containerEmpty"),
       refreshFailed: $tr("cli.hmr.refreshFailed"),
     });
-    entry.content = entry.content + "\n" + banner;
+    // 前置注入，保证 VIEW_DEV 在同 chunk 内任意 createHMRProxy 执行前已为 true
+    entry.content = banner + "\n" + entry.content;
   }
 }
 
@@ -269,74 +208,17 @@ export function getRoutePathForChangedPath(
 }
 
 /**
- * 对所有 .tsx 执行 JSX 编译（compileSource），将文件中所有 return <jsx> 替换为 return (parent) => { insert(parent, ...) }，
- * insert 从主包 @dreamer/view 拉取；编译后子组件返回 (parent) => void，由 insert 直接调用挂载，无需 expandVNode。
- * 同时处理 namespace "file"（相对路径解析出的 .tsx，如 ./views/_layout.tsx）。
+ * 解析 esbuild 插件列表。
  */
-function createRootCompilePlugin(): NonNullable<ClientConfig["plugins"]>[0] {
-  const handleTsxLoad = async (args: { path: string }) => {
-    // 兼容 esbuild 传入的 file:// URL（动态 import 的 chunk 可能为此形式）
-    const pathToRead =
-      typeof args.path === "string" && args.path.startsWith("file://")
-        ? fromFileUrl(args.path)
-        : args.path;
-    let source = await readTextFile(pathToRead).catch(() => "");
-    if (!source && pathToRead !== args.path) {
-      source = await readTextFile(args.path).catch(() => "");
-    }
-    if (!source) {
-      /** 构建期告警：走 i18n，与 CLI/server 语言一致 */
-      logger.warn(
-        $tr("cli.build.compileSourceReadFailed", { path: args.path }),
-      );
-      return undefined;
-    }
-    const pathAbs = resolve(pathToRead);
-    const out = compileSource(source, pathAbs, {
-      insertImportPath: "@dreamer/view",
-    });
-    return {
-      contents: out,
-      loader: "tsx" as const,
-      resolveDir: dirname(pathAbs),
-    };
-  };
-
-  return {
-    name: "view-root-compile",
-    setup(build: PluginBuild) {
-      // 默认 namespace（空）：入口等直接 file 路径
-      build.onLoad({ filter: /\.tsx$/ }, handleTsxLoad);
-      // namespace "file"：相对路径/别名解析出的 .tsx（如 ./views/_layout.tsx），否则走默认 file 加载器不会编译
-      build.onLoad({ filter: /\.tsx$/, namespace: "file" }, handleTsxLoad);
-    },
-  };
-}
-
-/**
- * 是否对 `.tsx` 启用 compileSource（view-root-compile 插件）。
- * `jsx: "runtime"` 时关闭，改由 esbuild automatic JSX + `@dreamer/view` 处理。
- *
- * @param buildConfig - 已按 dev/prod 合并后的 build 配置
- */
-function useCompilerJsxPipeline(
-  buildConfig: AppConfig["build"] | undefined,
-): boolean {
-  return (buildConfig?.jsx ?? "compiler") === "compiler";
-}
-
 function resolvePlugins(
   buildConfig: AppConfig["build"],
   forProduction: boolean,
 ): ClientConfig["plugins"] {
   const userPlugins = buildConfig?.plugins ?? [];
-  const withCompiler = useCompilerJsxPipeline(buildConfig);
-  const rootCompile = withCompiler ? createRootCompilePlugin() : null;
-  const prefix = rootCompile ? [rootCompile] : [];
-  if (!forProduction) return [...prefix, ...userPlugins];
+  if (!forProduction) return [...userPlugins];
   const optimize = buildConfig?.optimize !== false;
-  if (!optimize) return [...prefix, ...userPlugins];
-  return [...prefix, createOptimizePlugin(/\.tsx$/), ...userPlugins];
+  if (!optimize) return [...userPlugins];
+  return [createOptimizePlugin(/\.tsx$/), ...userPlugins];
 }
 
 /**
@@ -529,7 +411,14 @@ export async function runBuildWithConfig(
 
   const outputDir = resolve(root, outDir);
   await mkdir(outputDir, { recursive: true });
-  const indexHtmlPath = join(root, "index.html");
+  // 优先根目录 index.html；无则回退到 src/assets/index.html（与 init 模板、examples 一致）
+  const rootIndex = join(root, "index.html");
+  const assetsIndex = join(root, "src", "assets", "index.html");
+  const indexHtmlPath = existsSync(rootIndex)
+    ? rootIndex
+    : existsSync(assetsIndex)
+    ? assetsIndex
+    : rootIndex;
   if (existsSync(indexHtmlPath)) {
     const indexHtmlContent = await readFile(indexHtmlPath);
     await writeFile(join(outputDir, "index.html"), indexHtmlContent);

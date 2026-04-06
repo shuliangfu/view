@@ -124,11 +124,15 @@ export class ViewServer {
           if (content === undefined) return null;
           const isMap = pathname.endsWith(".map");
           const isCss = pathname.endsWith(".css");
-          const contentType = isMap
-            ? "application/json; charset=utf-8"
-            : isCss
-            ? "text/css; charset=utf-8"
-            : "application/javascript; charset=utf-8";
+          const isJson = pathname.endsWith(".json");
+          const isWasm = pathname.endsWith(".wasm");
+
+          let contentType = "application/javascript; charset=utf-8";
+          if (isMap) contentType = "application/json; charset=utf-8";
+          else if (isCss) contentType = "text/css; charset=utf-8";
+          else if (isJson) contentType = "application/json; charset=utf-8";
+          else if (isWasm) contentType = "application/wasm";
+
           return new Response(content, {
             status: 200,
             headers: {
@@ -178,6 +182,12 @@ export class ViewServer {
     });
 
     await this.httpServer.start();
-    return 0;
+
+    // 极致保活：无论 dev 还是 prod 模式，启动服务后都必须保持进程活跃
+    // 返回一个永不 resolve 的 Promise，除非未来增加了手动 stop 的逻辑
+    return new Promise<number>((_resolve) => {
+      // 这里的阻塞确保了 CLI 的 await app.start() 永远不会完成
+      // 从而防止 Deno 进程退出
+    });
   }
 }

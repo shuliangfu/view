@@ -1,83 +1,101 @@
 /**
- * Context：createContext、Provider、useContext
- *
- * 跨层注入数据，子组件通过 useContext() 读取。
+ * @module views/context
+ * @description 展示上下文提供者/消费者模式。
  */
+import { createContext, createSignal, useContext } from "@dreamer/view";
 
-import type { VNode } from "@dreamer/view";
-import { createSignal } from "@dreamer/view";
-import { createContext } from "@dreamer/view/context";
+// 1. 创建 Context 实例
+const UserContext = createContext({ name: "Guest", role: "none" });
 
-type Theme = "light" | "dark";
+// 2. 实现消费者组件
+function UserProfile() {
+  // 现在的 user 是一个智能代理，直接 user.name 访问即可，且具备响应式
+  const user = useContext(UserContext);
 
-const ThemeContext = createContext<Theme>("light");
-
-export const metadata = {
-  title: "Context",
-  description: "createContext、Provider、useContext 跨层注入示例",
-  keywords: "Context, Provider, useContext",
-};
-
-/** 统一按钮样式 */
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-
-/** 子组件：通过 useContext 读取 theme */
-function ThemedBox(): VNode {
-  const theme = ThemeContext.useContext();
   return (
-    <div
-      className={theme === "dark"
-        ? "rounded-xl border border-slate-600 bg-slate-800 px-5 py-4 text-slate-200 shadow-inner"
-        : "rounded-xl border border-slate-200 bg-slate-100 px-5 py-4 text-slate-800 shadow-inner dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"}
-    >
-      当前主题：<span className="font-semibold text-indigo-600 dark:text-indigo-400">
-        {theme}
-      </span>
+    <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl shadow-inner transition-colors">
+      <h3 className="font-black text-indigo-700 dark:text-indigo-400 mb-2 uppercase tracking-widest text-xs">
+        当前用户信息 (Consumer)
+      </h3>
+      <div className="space-y-1">
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+          用户名:{" "}
+          <span className="font-mono text-indigo-600 dark:text-indigo-400">
+            {user.name}
+          </span>
+        </p>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+          角色:{" "}
+          <span className="font-mono text-indigo-600 dark:text-indigo-400">
+            {user.role}
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
 
-/** Provider 的响应式值：传 SignalRef，消费者内 useContext 读当前主题字符串 */
-const theme = createSignal<Theme>("light");
-
-export function ContextDemo(): VNode {
+// 3. 中间层组件
+function MiddleLayer() {
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-rose-600 dark:text-rose-400">
-        Context
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        createContext / Provider / useContext
-      </h2>
-      <div className="space-y-6">
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            切换 Provider 值
-          </p>
-          <p className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => (theme.value = "light")}
-            >
-              light
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => (theme.value = "dark")}
-            >
-              dark
-            </button>
-          </p>
-          {/* 传 SignalRef 而非 theme.value，使 useContext() 在消费者内读值，细粒度渲染下能正确建立订阅，点击切换后 ThemedBox 会更新 */}
-          <ThemeContext.Provider value={theme}>
-            <ThemedBox />
-          </ThemeContext.Provider>
+    <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm bg-white dark:bg-slate-800 space-y-6 transition-colors">
+      <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+        中间层组件 (不传递 Props)
+      </h4>
+      <UserProfile />
+    </div>
+  );
+}
+
+export default function ContextDemo() {
+  const [user, setUser] = createSignal({ name: "Guest", role: "none" });
+
+  return (
+    <section className="space-y-12">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          上下文集成 (Context API)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
+          通过根级 Provider 注入状态，任意深度的子组件均可获取其响应式数据。
+        </p>
+      </header>
+
+      <section className="space-y-6">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setUser({ name: "Admin", role: "superuser" })}
+            className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
+          >
+            登录为管理员
+          </button>
+          <button
+            type="button"
+            onClick={() => setUser({ name: "Guest", role: "none" })}
+            className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-all active:scale-95"
+          >
+            注销
+          </button>
         </div>
-      </div>
+
+        <UserContext.Provider value={user}>
+          <MiddleLayer />
+        </UserContext.Provider>
+      </section>
+
+      <section className="p-8 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-3xl">
+        <h4 className="text-amber-900 dark:text-amber-300 font-bold mb-2">
+          架构原理
+        </h4>
+        <p className="text-amber-700/70 dark:text-amber-400 text-sm font-medium leading-relaxed">
+          <b>智能 Context 代理</b>：我们现在支持自动解包。 当您通过 `useContext`
+          获取一个存储了信号（Signal）的上下文时，框架会自动为您创建一个 Proxy。
+          您只需直接访问 `user.name`，Proxy
+          内部会自动执行信号函数并触发响应式追踪。
+          这使得代码在保持极致性能的同时，拥有了最自然的对象访问语法。
+        </p>
+      </section>
     </section>
   );
 }
-export default ContextDemo;

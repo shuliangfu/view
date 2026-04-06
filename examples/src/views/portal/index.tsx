@@ -1,126 +1,80 @@
 /**
- * Portal 示例：createPortal 将子树挂载到指定容器（默认 document.body）
- *
- * 适用于弹窗、抽屉、toast 等需要脱离父级 DOM 层级与 overflow/z-index 的 UI。
- * 关闭时调用 root.unmount() 卸载并回收。
+ * @module views/portal
+ * @description 展示传送门 (Portal) 技术，用于实现 Modal/Tooltip 等全局层。
  */
+import { createSignal, Portal, Show } from "@dreamer/view";
 
-import type { VNode } from "@dreamer/view";
-import { createSignal } from "@dreamer/view";
-import { createPortal } from "@dreamer/view/portal";
-import type { Root } from "@dreamer/view";
-
-export const metadata = {
-  title: "Portal",
-  description:
-    "createPortal 将内容挂载到 body 或指定容器，弹窗/抽屉/toast 示例",
-  keywords: "createPortal, Portal, modal, overlay, body",
-};
-
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-const subTitle =
-  "mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
-
-/** 通过 Portal 挂载的模态框根句柄，关闭时 unmount */
-let modalRoot: Root | null = null;
-
-/** 模态框内容：遮罩 + 居中卡片，点击遮罩或关闭按钮可关闭 */
-function ModalContent(props: { onClose: () => void }): VNode {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e: Event) => {
-        if (
-          (e.target as Element).getAttribute?.("data-modal-backdrop") === "true"
-        ) {
-          props.onClose();
-        }
-      }}
-      data-modal-backdrop="true"
-    >
-      <div
-        className="max-h-[90vh] w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-600 dark:bg-slate-800"
-        onClick={(e: Event) => e.stopPropagation()}
-      >
-        <h3 className="mb-2 text-lg font-bold text-slate-800 dark:text-slate-100">
-          Portal 弹窗
-        </h3>
-        <p className="mb-4 text-slate-600 dark:text-slate-300">
-          此内容通过 createPortal 挂载到 document.body，不受父级 overflow 或
-          z-index 影响。
-        </p>
-        <button type="button" className={btn} onClick={props.onClose}>
-          关闭
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Portal 示例页 */
-export function PortalDemo(): VNode {
-  const open = createSignal(false);
-
-  const openModal = () => {
-    if (modalRoot) return;
-    modalRoot = createPortal(() => (
-      <ModalContent
-        onClose={() => {
-          if (modalRoot) {
-            modalRoot.unmount();
-            modalRoot = null;
-          }
-          open.value = false;
-        }}
-      />
-    ));
-    open.value = true;
-  };
-
-  const closeModal = () => {
-    if (modalRoot) {
-      modalRoot.unmount();
-      modalRoot = null;
-    }
-    open.value = false;
-  };
+export default function PortalDemo() {
+  const [isOpen, setIsOpen] = createSignal(false);
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
-        Portal
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        createPortal
-      </h2>
-      <p className="mb-6 text-slate-600 dark:text-slate-300 leading-relaxed">
-        使用{" "}
-        <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-          createPortal(children, container?)
-        </code>{" "}
-        将子树挂载到指定 DOM（默认 document.body），适用于弹窗、抽屉、toast
-        等浮层。关闭时调用返回的 Root 的 unmount()。
-      </p>
-      <div className={block}>
-        <h3 className={subTitle}>打开弹窗</h3>
-        <p className="mb-3 text-slate-600 dark:text-slate-300">
-          弹窗通过 Portal 挂载到 body，当前状态：{open.value
-            ? "已打开"
-            : "已关闭"}
+    <section className="space-y-8">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          传送门 (Portal)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
+          将组件渲染到文档的任何位置（通常是
+          document.body），同时保持其父子关系和状态通信。
         </p>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={btn} onClick={openModal}>
-            打开 Modal
-          </button>
-          <button type="button" className={btn} onClick={closeModal}>
-            关闭 Modal
+      </header>
+
+      <div className="relative p-16 border border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50 dark:bg-slate-900/50 overflow-hidden transition-colors">
+        <div className="text-center space-y-6">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+            这是一个 overflow: hidden 的受限容器
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="mx-auto block bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 shadow-xl shadow-indigo-100 dark:shadow-none transition-all active:scale-95"
+          >
+            打开全局模态框
           </button>
         </div>
+
+        <Show when={isOpen}>
+          <Portal>
+            {/* 这里的 DOM 将渲染在 body 根级，但仍受本组件状态控制 */}
+            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 px-4">
+              <div className="bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 shadow-2xl max-w-sm w-full space-y-6 animate-in zoom-in-95 duration-500">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    Portal Modal
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    我渲染在 body
+                    根级，因此完全不受父容器限制。我支持正常的响应式更新和主题切换。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:opacity-90 transition-all active:scale-95"
+                >
+                  我知道了
+                </button>
+              </div>
+            </div>
+          </Portal>
+        </Show>
       </div>
     </section>
   );
 }
-export default PortalDemo;

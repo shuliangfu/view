@@ -346,3 +346,34 @@
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-fadeIn2: fadeIn 0.2s ease-in-out forwards;
 }
+
+/**
+ * Resource 示例等：三点竖直弹跳（仅 translateY，肉眼明显；不依赖 rotate / animate-spin）
+ */
+@keyframes view-resource-dot-jump {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-15px);
+  }
+}
+
+.view-resource-dot {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  will-change: transform;
+  animation: view-resource-dot-jump 0.9s ease-in-out infinite;
+}
+
+.view-resource-dot--delay2 {
+  animation-delay: 0.15s;
+}
+
+.view-resource-dot--delay3 {
+  animation-delay: 0.3s;
+}

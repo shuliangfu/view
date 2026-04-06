@@ -1,19 +1,18 @@
 /**
- * 路由懒加载时的占位（约定 _loading.tsx，路由扫描自动屏蔽）：显示加载中。
- * RoutePage 使用 default 导出并调用 (match) => VNode。
+ * @dreamer/view 加载占位符示例
  */
-import type { VNode } from "@dreamer/view";
-
-export default function RouteLoading(): VNode {
+export default function Loading() {
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center rounded-2xl border border-slate-200/80 bg-white/90 p-12 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90">
-      <div
-        className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent dark:border-indigo-400 dark:border-t-transparent"
-        aria-hidden="true"
-      />
-      <p className="mt-4 text-sm font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        加载中…
+    <div className="flex flex-col items-center justify-center p-20 space-y-4 text-indigo-600">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 border-4 border-indigo-100 rounded-full">
+        </div>
+        <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin">
+        </div>
+      </div>
+      <p className="text-sm font-bold uppercase tracking-[0.2em] animate-pulse">
+        正在构建精彩内容...
       </p>
-    </section>
+    </div>
   );
 }

@@ -3,9 +3,9 @@
 本示例使用 **内置 router**（`@dreamer/view/router`）实现多页面无刷新切换，覆盖
 view 包主要 API。
 
-- **路由**：首页
-  `/`、`/signal`、`/store`、`/boundary`、`/directive`、`/resource`、`/context`、`/runtime`、`/control-flow`（**For
-  / Show / Dynamic** 等控制流）、`/list-insert` 等，未匹配走 404 兜底。
+- **路由**：由 `src/views` 扫描生成（见 `router/routers.tsx`），含
+  `/`、`/signal`、`/store`、`/control-flow`、`/boundary`、`/resource`、`/context`、`/form`、`/portal`、`/router`、`/route-guard`、`/runtime`、`/transition`、`/performance`、`/gallery`、`/layout-nested/*`
+  等；未匹配走 404 兜底。
 - **模式**：**history**（路径如 `/signal`、`/runtime`），链接为
   `<a href="/path">`，由 router 拦截实现 SPA 跳转。
 - **刷新与直链**：本地使用 `deno task serve` 会启动带 **SPA fallback**
@@ -29,14 +29,15 @@ serve）。切换页面使用顶部导航或首页链接；在任意路由下刷
 
 | 序号 | 模块     | 说明                                                                                                                                               |
 | ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | 核心     | createSignal、createEffect、createMemo、onCleanup                                                                                                  |
+| 1    | 核心     | createSignal、createEffect、createMemo、onCleanup、`batch`（`/signal`）                                                                            |
 | 2    | Store    | createStore（getters、actions、persist）                                                                                                           |
 | 3    | Boundary | ErrorBoundary、Suspense                                                                                                                            |
-| 4    | 指令     | vIf、vElse、vElseIf、vOnce、vCloak、自定义（v-focus）                                                                                              |
+| 4    | 表单     | createForm（`/form`）；`createSelector`+createForm 见 `/performance`                                                                               |
 | 5    | Resource | createResource（无/有 source）、Suspense                                                                                                           |
 | 6    | Context  | createContext、Provider、useContext                                                                                                                |
 | 7    | Runtime  | createRoot、render、renderToString、generateHydrationScript                                                                                        |
 | 8    | 控制流   | `For` / `Index` / `Show` / `Switch` / `Dynamic`；手写 JSX 传 **`SignalRef`**（如 `each={items}`）或 **`() => ref.value`**，勿 `each={items.value}` |
+| —    | 其它页面 | `Portal`、`/router` 与动态段、`/route-guard`、`/transition`、`/gallery`、布局嵌套 `/layout-nested/*` 等见**顶部导航**与**首页模块卡片**            |
 
 ## 依赖说明
 

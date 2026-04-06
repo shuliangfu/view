@@ -1,98 +1,114 @@
 /**
- * Transition 示例：根据 show 控制挂载/卸载，并用 enter/leave class 配合 CSS 做进入离开动画
- *
- * 不内置动画，由 CSS transition 或 keyframes 配合 enter、leave、duration 实现。
+ * @module views/transition
+ * @description 展示过场动画与加载转换逻辑。
  */
+import { createSignal, Show, useTransition } from "@dreamer/view";
 
-import type { VNode } from "@dreamer/view";
-import { createSignal } from "@dreamer/view";
-import type { RoutePageMatch } from "@dreamer/view/router";
-import { Transition } from "@dreamer/view/transition";
+export default function TransitionDemo() {
+  const [isPending, startTransition] = useTransition();
+  const [tab, setTab] = createSignal("home");
 
-export const metadata = {
-  title: "Transition",
-  description: "Transition 组件 enter/leave class 与 duration 实现显隐过渡",
-  keywords: "Transition, enter, leave, duration, 过渡, 动画",
-};
-
-const btn =
-  "rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600";
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-const subTitle =
-  "mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400";
-
-/** Transition 示例页：用 match.getState 时可在组件体内写 state，点击仍生效；无 match 时回退 createSignal */
-export function TransitionDemo(match?: RoutePageMatch): VNode {
-  /** 显隐状态：路由持久化时为 SignalRef，否则为本地 createSignal */
-  const visible = match?.getState?.("visible", true) ??
-    createSignal(true);
+  const switchTab = (next: string) => {
+    startTransition(() => {
+      // 模拟一个长延迟的异步切换
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          setTab(next);
+          resolve();
+        }, 1500);
+      });
+    });
+  };
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-sky-600 dark:text-sky-400">
-        Transition
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        Transition 组件
-      </h2>
-      <p className="mb-6 text-slate-600 dark:text-slate-300 leading-relaxed">
-        使用{" "}
-        <code className="rounded bg-slate-200/80 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-600/80">
-          Transition
-        </code>{" "}
-        根据 show 控制子节点挂载/卸载，挂载时添加 enter class，卸载前添加 leave
-        class 并等待 duration（毫秒）后移除。动画由 CSS 实现。
-      </p>
-
-      {/* 本页用到的 enter/leave 样式，仅作演示 */}
-      <style>
-        {`.transition-enter { opacity: 0; transform: scale(0.95); }
-          .transition-enter-active { opacity: 1; transform: scale(1); transition: opacity 0.2s ease, transform 0.2s ease; }
-          .transition-leave { opacity: 1; transform: scale(1); }
-          .transition-leave-active { opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease, transform 0.2s ease; }`}
-      </style>
-
-      <div className={block}>
-        <h3 className={subTitle}>显隐切换</h3>
-        <p className="mb-3 text-slate-600 dark:text-slate-300">
-          点击按钮切换显示/隐藏，下方内容会以淡入淡出 + 缩放过渡。
+    <section className="space-y-8">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          渲染转换 (useTransition)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
+          通过 startTransition 进行低优先级更新。在异步任务完成前保持当前
+          UI，并显示加载指示器，避免白屏。
         </p>
+      </header>
+
+      <div className="flex gap-3 p-2 bg-slate-100 dark:bg-slate-900 rounded-2xl w-fit transition-colors">
         <button
           type="button"
-          className={btn}
-          onClick={() => (visible.value = (v) => !v)}
+          onClick={() => switchTab("home")}
+          className={() =>
+            `px-8 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 ${
+              tab() === "home"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-lg dark:shadow-none"
+                : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+            }`}
         >
-          {
-            /*
-             * 须用函数子节点：根 insert 的 effect 只追踪 getter()（到 App 为止），
-             * TransitionDemo 在 createElement 阶段才执行；若写 visible() 则首屏即固定字符串，
-             * 无 insert 订阅，按钮文案不随 signal 更新。
-             */
-          }
-          {visible.value ? "隐藏" : "显示"}
+          常规内容
         </button>
-        <div className="mt-4">
-          <Transition
-            show={visible}
-            enter="transition-enter transition-enter-active"
-            leave="transition-leave transition-leave-active"
-            duration={200}
-            tag="div"
-          >
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-700/50">
-              <p className="font-medium text-slate-800 dark:text-slate-100">
-                这是 Transition 包裹的内容
-              </p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                show 为 false 时会先加上 leave class，等待 200ms 后再从 DOM
-                移除。
+        <button
+          type="button"
+          onClick={() => switchTab("slow")}
+          className={() =>
+            `px-8 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 ${
+              tab() === "slow"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-lg dark:shadow-none"
+                : "text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+            }`}
+        >
+          慢速加载
+        </button>
+      </div>
+
+      <div className="relative p-16 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2.5rem] min-h-[240px] flex items-center justify-center bg-white dark:bg-slate-800/30 transition-colors">
+        {/* 与本卡片绑定的过渡状态：放在内容区顶部居中，表示「当前这一块」在后台更新，而非全局角落提示 */}
+        <Show when={isPending}>
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/40 px-4 py-2 rounded-full border border-indigo-100 dark:border-indigo-800 animate-pulse shadow-sm dark:shadow-none z-10">
+            <span className="w-2 h-2 bg-indigo-600 dark:bg-indigo-400 rounded-full">
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
+              正在后台加载...
+            </span>
+          </div>
+        </Show>
+
+        <Show
+          when={() => tab() === "home"}
+          fallback={
+            <div className="text-center animate-in slide-in-from-bottom-4 duration-700">
+              <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto mb-6">
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-2">
+                异步内容已就绪
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium">
+                这段内容经过了并发模式的平滑转换。
               </p>
             </div>
-          </Transition>
-        </div>
+          }
+        >
+          <div className="text-center animate-in fade-in duration-500">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-2">
+              常规首页展示
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
+              点击上方切换标签，体验过渡效果。
+            </p>
+          </div>
+        </Show>
       </div>
     </section>
   );
 }
-export default TransitionDemo;

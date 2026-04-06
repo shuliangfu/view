@@ -1,141 +1,140 @@
 /**
- * Form 示例：Form + FormItem + 密码框，验证「value 传 signal getter 时 patch 写回 .value、输入时光标不丢」。
- * 编译器对自定义组件的子节点统一生成 `(parent)=>void` 挂载函数（不再用会「移空」的 DocumentFragment），
- * Form 内 `{props.children}` 在 effect 重跑时会再次执行该函数复挂子树；焦点保留由 PasswordInput 受控 value 路径保证。
- * 注意：同父级若并列 `{signal.value && <p/>}` 或 `{signal && <p/>}`，运行时 insertReactive 不得 replaceChildren 父节点（已由主包 runtime 修复）。
- *
- * **jsx: "runtime"**：`{submitted.value && <p>…{password.value}…</p>}` 会在首次 `jsx()` 时求成快照，提交后不更新。
- * 免在 JSX 里写 `() =>` 的做法：**`vIf={submitted}`**（本征标签支持 SignalRef）+ **`createMemo`** 派生整段文案，子节点传 **`{submittedLine}`**（memo 为 signal getter，走 insertReactive）。
+ * @module views/form
+ * @description 展示 @dreamer/view 高级表单集成 (createForm) 与校验。
  */
+import { createForm, createSignal, Show } from "@dreamer/view";
 
-import type { SignalRef, VNode } from "@dreamer/view";
-import { createMemo, createSignal } from "@dreamer/view";
-import "../../assets/index.css";
+export default function FormDemo() {
+  const [submitted, setSubmitted] = createSignal(false);
 
-export const metadata = {
-  title: "Form",
-  description: "Form + FormItem + 密码框焦点保留验证",
-  keywords: "Form, FormItem, 密码, 焦点, getter",
-};
-
-const block =
-  "rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-600/80 dark:bg-slate-700/30";
-const inputCls =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100";
-const labelCls =
-  "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
-
-/** 表单容器：子节点由编译器作为 `(parent)=>void` 传入，在 `<form>` 内通过 insertReactive 挂入 */
-function Form(
-  props: { children?: unknown; onSubmit?: (e: Event) => void },
-): VNode {
-  return (
-    <form
-      className="flex flex-col gap-4"
-      onSubmit={(e: Event) => {
-        e.preventDefault();
-        props.onSubmit?.(e);
-      }}
-    >
-      {props.children}
-    </form>
-  );
-}
-
-/** 表单项：常规组件 */
-function FormItem(props: {
-  label: string;
-  id?: string;
-  children?: unknown;
-}): VNode {
-  return (
-    <div className="flex flex-col">
-      <label htmlFor={props.id} className={labelCls}>
-        {props.label}
-      </label>
-      <div className="form-item-input">{props.children}</div>
-    </div>
-  );
-}
-
-/** 密码输入：value 传 getter 或 SignalRef，由 applyProps 的 effect 写回 DOM，输入时光标不丢 */
-function PasswordInput(props: {
-  value: string | (() => string) | SignalRef<string>;
-  onInput?: (e: Event) => void;
-  placeholder?: string;
-  id?: string;
-  "data-testid"?: string;
-}): VNode {
-  return (
-    <input
-      type="password"
-      id={props.id}
-      className={inputCls}
-      value={props.value}
-      onInput={props.onInput}
-      placeholder={props.placeholder}
-      data-testid={props["data-testid"] ?? "password-input"}
-      autoComplete="off"
-    />
-  );
-}
-
-export function FormDemo(): VNode {
-  const password = createSignal("");
-  const submitted = createSignal(false);
-  /** 提交后提示：runtime 下用 memo 绑定 password，避免 `{password.value}` 文本快照 */
-  const submittedLine = createMemo(() => {
-    if (!submitted.value) return "";
-    return `已提交（密码长度：${password.value.length}）`;
+  // 1. 使用 createForm 管理表单状态
+  const form = createForm({
+    username: "dreamer",
+    password: "",
+    email: "",
+    bio: "致力于构建极致性能的前端框架",
   });
 
-  return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-lg backdrop-blur dark:border-slate-600/80 dark:bg-slate-800/90 sm:p-10">
-      <p className="mb-2 text-sm font-medium uppercase tracking-wider text-violet-600 dark:text-violet-400">
-        Form
-      </p>
-      <h2 className="mb-6 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">
-        密码框焦点保留验证
-      </h2>
-      <p className="mb-6 text-slate-600 dark:text-slate-300">
-        下方为 Form + FormItem + 密码框。value 使用 signal
-        getter，输入时由运行时 patch 更新控件而非整节点
-        replace，光标应保持不丢。e2e 会聚焦输入、键入后断言焦点仍在输入框。
-      </p>
+  const handleSubmit = (e: Event) => {
+    e.preventDefault();
+    console.log("提交数据:", form.data);
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 3000);
+  };
 
-      <div className={block}>
-        <Form
-          onSubmit={() => {
-            submitted.value = true;
-          }}
-        >
-          <FormItem label="密码" id="form-password">
-            <PasswordInput
-              value={password}
-              onInput={(
-                e,
-              ) => (password.value = (e.target as HTMLInputElement).value)}
-              placeholder="请输入密码"
-              id="form-password"
-              data-testid="form-password-input"
+  return (
+    <section className="space-y-12">
+      <header>
+        <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          高级表单 (Form Integration)
+        </h2>
+        <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
+          演示 createForm 带来的极致简洁与响应式追踪。
+        </p>
+      </header>
+
+      <form
+        onSubmit={handleSubmit}
+        className="p-10 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-xl dark:shadow-none max-w-lg mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-700 transition-colors"
+      >
+        <h3 className="text-xl font-black border-b border-slate-100 dark:border-slate-700 pb-6 dark:text-slate-100">
+          用户注册
+        </h3>
+
+        <div className="space-y-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              用户名
+            </label>
+            <input
+              {...form.field("username")}
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              placeholder="请输入用户名..."
             />
-          </FormItem>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              密码
+            </label>
+            <input
+              {...form.field("password")}
+              type="password"
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              placeholder="请输入密码..."
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              电子邮箱
+            </label>
+            <input
+              {...form.field("email")}
+              type="email"
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              placeholder="example@dreamer.com"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              个人简介
+            </label>
+            <textarea
+              {...form.field("bio")}
+              rows={3}
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              placeholder="写点什么..."
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-indigo-700 shadow-xl shadow-indigo-100 dark:shadow-none transition-all active:scale-95"
           >
-            提交
+            立即提交
           </button>
-        </Form>
-        <p
-          vIf={submitted}
-          className="mt-3 text-sm text-emerald-600 dark:text-emerald-400"
-          data-testid="form-submitted"
-        >
-          {submittedLine}
-        </p>
-      </div>
+          <button
+            type="button"
+            onClick={() => form.reset()}
+            className="px-8 py-3.5 border border-slate-200 dark:border-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+          >
+            重置
+          </button>
+        </div>
+      </form>
+
+      {/* 实时状态展示 */}
+      <Show when={submitted}>
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 p-8 bg-emerald-600 text-white rounded-3xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500 z-100">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h4 className="font-black uppercase tracking-widest text-sm">
+              提交成功
+            </h4>
+          </div>
+          <div className="bg-black/10 p-4 rounded-xl backdrop-blur-md">
+            <pre className="text-xs font-mono opacity-90">{() => JSON.stringify(form.data, null, 2)}</pre>
+          </div>
+        </div>
+      </Show>
     </section>
   );
 }
-export default FormDemo;
