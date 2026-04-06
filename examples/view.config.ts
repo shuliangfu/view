@@ -6,7 +6,7 @@
  * - server.prod：start 命令使用的 port、host
  * - build：对齐 @dreamer/esbuild 客户端编译选项，由 BuilderBundle.build() 使用
  * - build.dev：仅 dev 模式生效，覆盖顶层 build（如不压缩、保留 sourcemap）
- * - build.prod：仅 prod 模式生效，覆盖顶层 build
+ * - build.prod：仅 prod 模式生效，覆盖顶层 build（常用：关闭 sourcemap 减小产物）
  */
 
 import { staticPlugin } from "@dreamer/plugins/static";
@@ -62,10 +62,13 @@ const config: AppConfig = {
       minify: false,
       sourcemap: true,
     },
-    /** prod 模式下的覆盖：压缩、可关闭 sourcemap 减小体积 */
+    /**
+     * prod：`minify` / `splitting` 等与顶层一致时可省略；此处关闭 sourcemap 以减小 dist
+     * 体积并避免把 .map 一并部署。若需 Sentry 等线上映射，可改为 `true` 或 esbuild 支持的 map 配置。
+     */
     prod: {
       minify: true,
-      sourcemap: true,
+      sourcemap: false,
     },
   },
   /**

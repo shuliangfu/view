@@ -1036,31 +1036,83 @@ export const metadata = {
   title: ${JSON.stringify($tr("init.template.homeNavTitle"))},
 };
 
+/** 首页两块主内容区共用：浅色卡片层级 + 深色对应样式 */
+const cardSectionClass =
+  "rounded-2xl border border-slate-200 bg-white p-8 " +
+  "shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 " +
+  "dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl " +
+  "dark:shadow-black/40 dark:ring-white/10";
+
+/** 主按钮（与关于页返回首页 Link 视觉一致时可复用同类 class） */
+const primaryButtonClass =
+  "mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 " +
+  "text-sm font-semibold text-white shadow-md shadow-indigo-500/30 " +
+  "transition-colors hover:bg-indigo-700 hover:shadow-lg dark:shadow-indigo-950/40";
+
 export default function Home() {
   const [count, setCount] = createSignal(0);
 
   return (
     <div className="space-y-10">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
-        <h1 className="mb-4 text-4xl font-bold text-slate-900 dark:text-slate-100">${
-    $tr("init.template.welcomeTitle")
-  }</h1>
-        <p className="text-slate-600 leading-relaxed dark:text-slate-300">${
-    $tr("init.template.homeIntro")
-  }</p>
-        <a href="/about" className="mt-6 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-500/30 transition-colors hover:bg-indigo-700 hover:shadow-lg dark:shadow-indigo-950/40">
+      <section className={cardSectionClass}>
+        <h1
+          className={
+            "mb-4 text-4xl font-bold " + "text-slate-900 dark:text-slate-100"
+          }
+        >
+          ${$tr("init.template.welcomeTitle")}
+        </h1>
+        <p
+          className={
+            "text-slate-600 leading-relaxed " + "dark:text-slate-300"
+          }
+        >
+          ${$tr("init.template.homeIntro")}
+        </p>
+        <a href="/about" className={primaryButtonClass}>
           ${$tr("init.template.goToAbout")}
         </a>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
-        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">${
-    $tr("init.template.counterDemo")
-  }</h2>
+      <section className={cardSectionClass}>
+        <h2
+          className={
+            "mb-4 text-xl font-bold " + "text-slate-900 dark:text-slate-100"
+          }
+        >
+          ${$tr("init.template.counterDemo")}
+        </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setCount(count() - 1)} className="rounded-lg border border-slate-200 px-4 py-2 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">−</button>
-          <span className="min-w-12 text-center text-2xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{() => String(count())}</span>
-          <button type="button" onClick={() => setCount(count() + 1)} className="rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-none">+</button>
+          <button
+            type="button"
+            onClick={() => setCount(count() - 1)}
+            className={
+              "rounded-lg border border-slate-200 px-4 py-2 " +
+              "transition-colors hover:bg-slate-50 " +
+              "dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            }
+          >
+            −
+          </button>
+          <span
+            className={
+              "min-w-12 text-center text-2xl font-bold tabular-nums " +
+              "text-indigo-600 dark:text-indigo-400"
+            }
+          >
+            {() => String(count())}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCount(count() + 1)}
+            className={
+              "rounded-lg bg-indigo-600 px-4 py-2 text-white " +
+              "shadow-lg shadow-indigo-200 transition-all " +
+              "hover:bg-indigo-700 active:scale-95 dark:shadow-none"
+            }
+          >
+            +
+          </button>
         </div>
       </section>
     </div>
@@ -1079,20 +1131,43 @@ export default function Home() {
  */
 import { Link } from "@dreamer/view";
 
+/** 与首页 section 卡片样式一致 */
+const cardSectionClass =
+  "rounded-2xl border border-slate-200 bg-white p-8 " +
+  "shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 " +
+  "dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl " +
+  "dark:shadow-black/40 dark:ring-white/10";
+
+/** 主操作 Link：inline-flex + focus ring，内边距略大于首页「前往关于」按钮 */
+const backLinkClass =
+  "mt-6 inline-flex items-center justify-center " +
+  "rounded-lg bg-indigo-600 px-5 py-2.5 " +
+  "text-sm font-semibold text-white shadow-md shadow-indigo-500/25 " +
+  "transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 " +
+  "outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 " +
+  "focus-visible:ring-offset-2 dark:shadow-indigo-950/40 " +
+  "dark:focus-visible:ring-offset-slate-900";
+
 export default function About() {
   return (
     <div className="space-y-10">
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-400/35 ring-1 ring-slate-900/5 sm:p-12 dark:border-slate-700/70 dark:bg-slate-800/95 dark:shadow-xl dark:shadow-black/40 dark:ring-white/10">
-        <h1 className="mb-4 text-3xl font-bold text-slate-900 dark:text-slate-100">${
-    $tr("init.template.aboutTitle")
-  }</h1>
-        <p className="max-w-2xl text-slate-600 leading-relaxed dark:text-slate-300">${
-    $tr("init.template.aboutIntro")
-  }</p>
-        <Link
-          href="/"
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:shadow-indigo-950/40 dark:focus-visible:ring-offset-slate-900"
+      <section className={cardSectionClass}>
+        <h1
+          className={
+            "mb-4 text-3xl font-bold " + "text-slate-900 dark:text-slate-100"
+          }
         >
+          ${$tr("init.template.aboutTitle")}
+        </h1>
+        <p
+          className={
+            "max-w-2xl text-slate-600 leading-relaxed " +
+            "dark:text-slate-300"
+          }
+        >
+          ${$tr("init.template.aboutIntro")}
+        </p>
+        <Link href="/" className={backLinkClass}>
           ${$tr("init.template.backToHome")}
         </Link>
       </section>
