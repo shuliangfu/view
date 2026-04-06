@@ -235,6 +235,21 @@ export function toClientConfig(
   const entryPath = resolve(join(root, entry));
   const outputDir = resolve(join(root, outDir));
   const forProduction = options?.forProduction ?? false;
+  /** 与 view.config 一致；BuilderClient 优先读顶层 `ClientConfig.sourcemap`（支持对象），bundle 内仅放 boolean */
+  const sm = buildConfig?.sourcemap;
+  const bundle: NonNullable<ClientConfig["bundle"]> = {
+    minify: buildConfig?.minify ?? true,
+    splitting: buildConfig?.splitting ?? true,
+    chunkNames: buildConfig?.chunkNames ?? "[name]-[hash]",
+  };
+  if (typeof sm === "boolean") {
+    bundle.sourcemap = sm;
+  } else if (sm === undefined) {
+    /** 未配置时与历史行为一致：默认生成 sourcemap（多为 external .map，几乎不增大 .js） */
+    bundle.sourcemap = true;
+  }
+  /** `sm` 为对象时不在 bundle 上写 sourcemap，交给 BuilderClient 顶层分支解析 */
+
   return {
     entry: entryPath,
     output: outputDir,
@@ -242,14 +257,8 @@ export function toClientConfig(
     cssImport: buildConfig?.cssImport ?? { enabled: true, extract: false },
     plugins: resolvePlugins(buildConfig, forProduction),
     debug: buildConfig?.debug,
-    bundle: {
-      minify: buildConfig?.minify ?? true,
-      sourcemap: typeof buildConfig?.sourcemap === "object"
-        ? true
-        : (buildConfig?.sourcemap ?? true),
-      splitting: buildConfig?.splitting ?? true,
-      chunkNames: buildConfig?.chunkNames ?? "[name]-[hash]",
-    },
+    sourcemap: sm === undefined ? undefined : sm,
+    bundle,
   };
 }
 
@@ -278,6 +287,7 @@ export async function prepareDevBuild(
   );
   if (clientConfig.bundle) {
     clientConfig.bundle.minify = false;
+    /** dev 固定开 sourcemap（栈映射 / HMR）；与 `build.prod.sourcemap` 无关 */
     clientConfig.bundle.sourcemap = true;
   }
   if (buildConfig.debug !== undefined) {

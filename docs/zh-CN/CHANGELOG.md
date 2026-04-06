@@ -15,7 +15,8 @@
 ### 响应式与状态
 
 - **Signal**：同一返回值支持 **`.value`**、调用式 **`s()` / `s(x)`**、元组解构
-  **`const [get, set] = createSignal(initial)`**；可选**具名信号**便于 HMR/调试。
+  **`const [get, set] = createSignal(initial)`**；可选**具名信号**便于
+  HMR/调试。
 - **Effect**：**`createEffect`**、偏同步的 **`createRenderEffect`**（响应式 DOM
   属性等）；依赖收集与 Owner 上的清理。
 - **Memo**：**`createMemo`** 与别名 **`memo`**。
@@ -40,7 +41,7 @@
 - **属性与事件**：**`setProperty`**、**`spread`**、**`setAttribute`**，委托事件与
   受控输入；**`getDocument`**、**`createRef`** 安全访问文档与 ref。
 - **挂载**：**`mount`**（清空容器、处理 **`data-view-cloak`**）、**`hydrate`**
- （可选编译器 **binding map**）；**`createRoot` + `insert`** 拿 **`dispose`**
+  （可选编译器 **binding map**）；**`createRoot` + `insert`** 拿 **`dispose`**
   做整树卸载。
 
 ### 控制流与异步 UI
@@ -57,26 +58,32 @@
 ### 路由、配置与 CLI
 
 - **SPA 路由**：**`createRouter`**、**`mountWithRouter`**、**`Link`**、
-  **`useRouter`**、**`navigate` / `replace`**，动态段、尾缀捕获、**`beforeEach`**、
+  **`useRouter`**、**`navigate` /
+  `replace`**，动态段、尾缀捕获、**`beforeEach`**、
   **`basePath`**、滚动行为、可选同源 **`a`** 委托、**`router.render()`** 做布局
   嵌套。
 - **文件式工程**（**`view-cli init`**）：**`view.config.ts`**、**`src/views/`**
   约定（**`_app`**、**`_layout`**、**`_loading`**、**`_404`**、**`_error`**），由
-  扫描生成的 **`src/router/routers.tsx`**，支持 **`routePath`**、**`metadata`**、
-  **`inheritLayout`**、**`loading`** 等静态解析（扫描器不依赖 JSX 环境的动态
-  **`import()`**）。
+  扫描生成的 **`src/router/routers.tsx`**，支持
+  **`routePath`**、**`metadata`**、 **`inheritLayout`**、**`loading`**
+  等静态解析（扫描器不依赖 JSX 环境的动态 **`import()`**）。
 - **服务端辅助**：**`loadViewConfig`**、布局链、**`generateRoutersFile`**、
   **`createApp`**，dev/prod 服务与构建编排（见 **`server/core`**）。
 - **全局 CLI**：安装 **`deno run -A jsr:@dreamer/view/setup`** 后使用
   **`view-cli init | dev | build | start | upgrade | update | version`**；CLI
   与框架文案内置 **i18n**。
+- **CSR 客户端构建映射**：**`toClientConfig`** 将 **`view.config` 的
+  `build.sourcemap`** （**`boolean` 或对象**）传入 **`@dreamer/esbuild` 的
+  `ClientConfig.sourcemap`**； 仅在布尔或未配置时写入
+  **`bundle.sourcemap`**，避免对象形式的 map 配置被压成 **`true`**，保证生产构建
+  source map 选项生效（**`dev`** 仍为 HMR 强制 sourcemap）。
 
 ### 表单
 
-- **`createForm`**：**`field(name)`**（**`value` + `onInput`**），可选 **`rules`**、
-  **`validate` / `validateField`**、**`validateOn`**（**`submit` / `change` /
-  `blur`**）、**`handleSubmit`**、**`reset`**，Store 型 **`data` / `errors`**，**`produce`**
-  更新。
+- **`createForm`**：**`field(name)`**（**`value` + `onInput`**），可选
+  **`rules`**、 **`validate` / `validateField`**、**`validateOn`**（**`submit` /
+  `change` / `blur`**）、**`handleSubmit`**、**`reset`**，Store 型 **`data` /
+  `errors`**，**`produce`** 更新。
 
 ### 编译器、优化与 SSR
 
@@ -92,9 +99,10 @@
 ### 开发体验
 
 - **HMR**：**`createHMRProxy`**（**`VIEW_DEV`** 下由 CLI/编译注入为主）。
-- **JSX 运行时**：**`jsx` / `jsxs` / `Fragment`** 与 dev 入口，兼容 Deno/Bun
-  对 **`jsxDEV`** 的解析需求。
-- **类型**：**`@dreamer/view/types`** 导出 **`VNode`**、**`JSXRenderable`** 等公共类型。
+- **JSX 运行时**：**`jsx` / `jsxs` / `Fragment`** 与 dev 入口，兼容 Deno/Bun 对
+  **`jsxDEV`** 的解析需求。
+- **类型**：**`@dreamer/view/types`** 导出 **`VNode`**、**`JSXRenderable`**
+  等公共类型。
 
 ### 已发布的子路径（与 JSR `deno.json` 一致）
 
@@ -104,5 +112,6 @@
 
 ### 破坏性变更
 
-- **npm `package.json` 的 `exports`**：移除 **`./csr`**、**`./hybrid`**（仅指向主
-  入口的别名），请改用主包导出；新增 **`./portal`** 与 JSR 对齐。
+- **npm `package.json` 的 `exports`**：移除
+  **`./csr`**、**`./hybrid`**（仅指向主 入口的别名），请改用主包导出；新增
+  **`./portal`** 与 JSR 对齐。
