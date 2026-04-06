@@ -2,7 +2,7 @@
  * @fileoverview `version.ts` 中可单测的纯函数与包根解析。
  */
 import { describe, expect, it } from "@dreamer/test";
-import { join } from "@dreamer/runtime-adapter";
+import { join, readFileSync } from "@dreamer/runtime-adapter";
 import {
   compareVersions,
   FALLBACK_PLUGINS_VERSION,
@@ -27,10 +27,20 @@ describe("server/utils/version", () => {
     expect(denoJson.length).toBeGreaterThan(10);
   });
 
-  it("VIEW_VERSION：应为非空 semver 风格字符串", () => {
+  /**
+   * VIEW_VERSION 来自包根 deno.json；若文件中 version 恰好等于 FALLBACK_VIEW_VERSION（1.0.0），
+   * 与「未读到文件时的回退」同号，不能用「不等于 FALLBACK」区分，故与 deno.json 逐项对齐并校验 semver。
+   */
+  it("VIEW_VERSION：应与包根 deno.json 的 version 一致且为 semver 形态", () => {
     expect(typeof VIEW_VERSION).toBe("string");
     expect(VIEW_VERSION.length).toBeGreaterThan(0);
-    expect(VIEW_VERSION).not.toBe(FALLBACK_VIEW_VERSION);
+    expect(VIEW_VERSION).toMatch(/^\d+\.\d+\.\d+(?:-[\w.]+)?$/);
+    const root = getPackageRoot();
+    const raw = readFileSync(join(root, "deno.json"));
+    const text = new TextDecoder().decode(raw);
+    const json = JSON.parse(text) as { version?: string };
+    const expected = json.version?.trim() || FALLBACK_VIEW_VERSION;
+    expect(VIEW_VERSION).toBe(expected);
   });
 
   it("compareVersions：应按 major.minor.patch 比较", () => {

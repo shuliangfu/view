@@ -269,7 +269,7 @@ function getVscodeSettingsJson(runtime: Runtime): string {
 
 /**
  * CLI 入口：由 @dreamer/console 的 action 调用
- * @param options options.dir 为可选目标目录（默认当前目录），options.beta 为 true 时允许使用最新 beta（若稳定版更高则仍用稳定版）
+ * @param options options.dir 为可选目标目录（CLI：`view init [dir]` 第一个位置参数；未传则当前目录）；options.beta 为 true 时允许使用最新 beta（若稳定版更高则仍用稳定版）
  */
 export async function main(
   options?: Record<string, unknown>,
@@ -371,7 +371,7 @@ import { staticPlugin } from "@dreamer/plugins/static";`
     assets: {
       publicDir: "src/assets",
       assetsDir: "assets",
-      exclude: ["tailwind.css", "global.css", "index.css"],
+      exclude: ["tailwind.css", "index.css"],
       images: {
         compress: true,
         quality: 80,
@@ -473,8 +473,7 @@ const config = {
     outFile: "main.js",
     minify: true,
     sourcemap: true,
-    splitting: true,
-    hydration: true,${buildAssetsBlock}
+    splitting: true,${buildAssetsBlock}
     /** ${$tr("init.template.viewConfigDevComment")} */
     dev: {
       minify: false,
@@ -747,7 +746,7 @@ export {};
   );
   addFile("src/assets/favicon.svg");
 
-  // 占位全局样式与页面样式（main.tsx / 页面中已注释 import，取消注释即可使用）
+  // 占位全局样式；入口 main.tsx 已 import，与 examples 一致以拉通构建侧 CSS 处理
   await writeTextFile(
     join(targetDir, "src", "assets", "global.css"),
     `/** ${$tr("init.template.globalCssComment")} */\n`,
@@ -826,6 +825,7 @@ body {
  */
 import { createRouter, mountWithRouter } from "@dreamer/view";
 import { notFoundRoute, routes } from "./router/routers.tsx";
+import "./assets/global.css";
 
 const router = createRouter({
   routes: [...routes],
@@ -864,20 +864,87 @@ export function App() {
   // ---------------------------------------------------------------------------
   const layoutTsx = `/**
  * ${$tr("init.template.layoutComment")}
+ * 顶栏与 examples 对齐；主题前为「首页 / 关于」Link；主题图标为 SVG（深色太阳、浅色月亮）。
  */
+import { Link, useRouter } from "@dreamer/view";
 import { theme, toggleTheme } from "../stores/theme.ts";
 
+/** 顶栏导航链接样式（当前路由高亮） */
+function navLinkClass(active: boolean): string {
+  return active
+    ? "rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 shadow-sm dark:text-indigo-300 dark:bg-indigo-900/50"
+    : "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100";
+}
+
+/** 太阳图标（与 examples/_layout 一致） */
+const SunIcon = () => (
+  <svg
+    className="h-5 w-5 text-slate-600 dark:text-slate-400"
+    fill="currentColor"
+    viewBox="0 0 20 20"
+    aria-hidden="true"
+  >
+    <path
+      fillRule="evenodd"
+      d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+/** 月亮图标（与 examples/_layout 一致） */
+const MoonIcon = () => (
+  <svg
+    className="h-5 w-5 shrink-0 fill-slate-600 dark:fill-slate-400"
+    width={20}
+    height={20}
+    viewBox="0 0 20 20"
+    aria-hidden="true"
+  >
+    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+  </svg>
+);
+
 export function Layout(props: { children: any }) {
+  const router = useRouter();
   const isDark = () => theme() === "dark";
-  
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b bg-white/80 backdrop-blur-md dark:bg-slate-800/80">
-        <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-          <a href="/" className="text-lg font-bold">${headerTitle}</a>
-          <button type="button" onClick={() => toggleTheme()} className="p-2">
-            {isDark() ? "🌙" : "☀️"}
-          </button>
+    <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100/80 transition-colors duration-300 dark:from-slate-900 dark:to-slate-800/80">
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-800/80">
+        <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
+          <Link
+            href="/"
+            className="text-lg font-semibold tracking-tight text-slate-800 transition-colors hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+          >
+            ${headerTitle}
+          </Link>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link
+              href="/"
+              className={() =>
+                navLinkClass(router.path() === "/") +
+                " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+            >
+              ${$tr("init.template.homeNavTitle")}
+            </Link>
+            <Link
+              href="/about"
+              className={() =>
+                navLinkClass(router.path() === "/about") +
+                " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+            >
+              ${$tr("init.template.aboutTitle")}
+            </Link>
+            <button
+              type="button"
+              onClick={() => toggleTheme()}
+              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
+              title="切换主题"
+            >
+              {() => (isDark() ? <SunIcon /> : <MoonIcon />)}
+            </button>
+          </div>
         </nav>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-8">
@@ -981,6 +1048,7 @@ export function ErrorView(props: { error?: any; onRetry?: () => void }) {
   // ---------------------------------------------------------------------------
   const homeTsx = `/**
  * ${$tr("init.template.homeComment")}
+ * Signal 在 JSX 中勿写 {count()}（会静态化）；须 {() => String(count())}，与 examples/views/signal 一致。
  */
 import { createSignal } from "@dreamer/view";
 
@@ -1007,10 +1075,10 @@ export default function Home() {
         <h2 className="mb-4 text-xl font-bold">${
     $tr("init.template.counterDemo")
   }</h2>
-        <div className="flex items-center gap-4">
-          <button type="button" onClick={() => setCount(count() - 1)} className="px-4 py-2 border">−</button>
-          <span className="text-2xl font-bold">{count()}</span>
-          <button type="button" onClick={() => setCount(count() + 1)} className="px-4 py-2 border">+</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setCount(count() - 1)} className="rounded-lg border border-slate-200 px-4 py-2 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">−</button>
+          <span className="min-w-[3rem] text-center text-2xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{() => String(count())}</span>
+          <button type="button" onClick={() => setCount(count() + 1)} className="rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 dark:shadow-none">+</button>
         </div>
       </section>
     </div>
@@ -1025,18 +1093,26 @@ export default function Home() {
   // ---------------------------------------------------------------------------
   const aboutTsx = `/**
  * ${$tr("init.template.aboutComment")}
+ * 返回首页使用 Link，与顶栏一致走客户端路由；样式与首页「前往关于」主按钮统一。
  */
+import { Link } from "@dreamer/view";
+
 export default function About() {
   return (
     <div className="space-y-10">
       <section className="p-8 shadow-xl dark:bg-slate-800/95 sm:p-12">
-        <h1 className="mb-4 text-3xl font-bold">${
+        <h1 className="mb-4 text-3xl font-bold text-slate-900 dark:text-slate-100">${
     $tr("init.template.aboutTitle")
   }</h1>
-        <p>${$tr("init.template.aboutIntro")}</p>
-        <a href="/" className="mt-6 inline-block border px-4 py-2">
+        <p className="max-w-2xl text-slate-600 leading-relaxed dark:text-slate-300">${
+    $tr("init.template.aboutIntro")
+  }</p>
+        <Link
+          href="/"
+          className="mt-6 inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98] outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:shadow-indigo-950/40 dark:focus-visible:ring-offset-slate-900"
+        >
           ${$tr("init.template.backToHome")}
-        </a>
+        </Link>
       </section>
     </div>
   );
