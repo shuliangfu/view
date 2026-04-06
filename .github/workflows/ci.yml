@@ -11,6 +11,8 @@ on:
 # 便于在官方强制升级前做性能/稳定性验证。参见 GitHub 文档中的 FORCE_JAVASCRIPT_ACTIONS_TO_NODE24。
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # 与 @dreamer/test 自带的 playwright 版本一致（见该包 package.json）。勿用 @latest，否则会安装 chromium-1217 等目录，而运行时期望 chromium_headless_shell-1208，导致 E2E 报 Executable doesn't exist。
+  PLAYWRIGHT_CLI_VERSION: "1.58.2"
 
 jobs:
   test-linux:
@@ -36,7 +38,7 @@ jobs:
         run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
+        run: npx -y playwright@${{ env.PLAYWRIGHT_CLI_VERSION }} install chromium
 
       - name: Check
         run: deno check src/ tests/
@@ -66,7 +68,7 @@ jobs:
         run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
+        run: npx -y playwright@${{ env.PLAYWRIGHT_CLI_VERSION }} install chromium
 
       - name: Check
         run: deno check src/ tests/
@@ -97,7 +99,7 @@ jobs:
         run: cd examples && deno run -A ../src/cli.ts build
 
       - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
+        run: npx -y playwright@${{ env.PLAYWRIGHT_CLI_VERSION }} install chromium
 
       - name: Check
         run: deno check src/ tests/
@@ -129,8 +131,9 @@ jobs:
       - name: Warm examples build cache
         run: cd examples && bun run ../src/cli.ts build
 
+      # bun install 后使用依赖树里的 playwright CLI（与 @dreamer/test 同源），不用 bunx；勿用 npx @latest 以免浏览器修订号错位
       - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
+        run: ./node_modules/.bin/playwright install chromium
 
       # dom-setup 与单测同目录在 tests/unit/（原 tests/dom-setup.ts 已迁移）
       - name: Test (Bun)
@@ -157,8 +160,9 @@ jobs:
       - name: Warm examples build cache
         run: cd examples && bun run ../src/cli.ts build
 
+      # 同上：依赖 bun install 后的 node_modules，非 Bun 专属命令
       - name: Install Playwright Chromium
-        run: npx -y playwright@latest install chromium
+        run: ./node_modules/.bin/playwright install chromium
 
       - name: Test (Bun, macOS)
         run: bun test --preload ./tests/unit/dom-setup.ts tests/
