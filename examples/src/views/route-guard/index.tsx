@@ -70,6 +70,7 @@ export default function RouteGuardDemo() {
               type="checkbox"
               checked={blockForm()}
               onChange={() => toggleBlockForm()}
+              aria-label="开启后拦截进入 /form"
               className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
