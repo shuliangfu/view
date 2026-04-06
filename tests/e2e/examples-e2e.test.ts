@@ -17,6 +17,7 @@ import {
   dirname,
   execPath,
   fromFileUrl,
+  getEnv,
   getEnvAll,
   platform,
   resolve,
@@ -91,6 +92,12 @@ let examplesDevPort = EXAMPLES_DEV_PREFERRED_PORT;
 
 /** 单用例超时：首测含 dev 冷编译 + 起服 + 冷启动 Chromium */
 const E2E_TIMEOUT_MS = 360_000;
+
+/**
+ * Playwright 定位器默认 30s，Windows CI 在连续跑完长篇 router 用例后，下一测偶发卡在 check/click；
+ * CI 下放宽可操作超时（waitForFunction 仍由各调用处单独传参）。
+ */
+const E2E_ACTION_TIMEOUT_MS = getEnv("CI") === "true" ? 60_000 : 30_000;
 
 /** 开发服 base URL（无尾斜杠，`beforeAll` 赋值） */
 let examplesBaseUrl = "";
@@ -853,28 +860,49 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
   it("[route-guard] Link 与 navigate 拦截、对比区 Link", async (t) => {
     assertBrowserE2E(t);
     await gotoExamplesPath(t, "/route-guard");
-    await pw(t).getByRole("checkbox").check();
-    await pw(t).getByRole("link", { name: /Link → \/form/ }).click();
+    // Windows CI：紧接长篇 router 用例后壳层/可访问树偶发晚于 waitExamplesShell 就绪，先锚定标题再操作 checkbox（避免默认可操作 30s 超时）
+    await pw(t).getByRole("heading", {
+      name: "路由卫士（beforeEach）",
+      exact: true,
+    }).waitFor({ state: "visible", timeout: E2E_ACTION_TIMEOUT_MS });
+    const blockFormCheckbox = pw(t).getByRole("checkbox", {
+      name: "开启后拦截进入 /form",
+      exact: true,
+    });
+    await blockFormCheckbox.check({ timeout: E2E_ACTION_TIMEOUT_MS });
+    await pw(t).getByRole("link", { name: /Link → \/form/ }).click({
+      timeout: E2E_ACTION_TIMEOUT_MS,
+    });
     await new Promise((r) => setTimeout(r, 400));
     expect(await t.browser.evaluate(() => globalThis.location.pathname)).toBe(
       "/route-guard",
     );
-    await pw(t).getByRole("button", { name: /navigate\("\/form"\)/ }).click();
+    await pw(t).getByRole("button", { name: /navigate\("\/form"\)/ }).click({
+      timeout: E2E_ACTION_TIMEOUT_MS,
+    });
     await new Promise((r) => setTimeout(r, 400));
     expect(await t.browser.evaluate(() => globalThis.location.pathname)).toBe(
       "/route-guard",
     );
-    await pw(t).getByRole("checkbox").uncheck();
-    await pw(t).getByRole("link", { name: "→ 路由总览" }).click();
+    await blockFormCheckbox.uncheck({ timeout: E2E_ACTION_TIMEOUT_MS });
+    await pw(t).getByRole("link", { name: "→ 路由总览" }).click({
+      timeout: E2E_ACTION_TIMEOUT_MS,
+    });
     await t.browser.waitFor(
       () => globalThis.location.pathname === "/router",
-      { timeout: 20_000 },
+      { timeout: E2E_ACTION_TIMEOUT_MS },
     );
     await gotoExamplesPath(t, "/route-guard");
-    await pw(t).getByRole("link", { name: "→ Store 演示" }).click();
+    await pw(t).getByRole("heading", {
+      name: "路由卫士（beforeEach）",
+      exact: true,
+    }).waitFor({ state: "visible", timeout: E2E_ACTION_TIMEOUT_MS });
+    await pw(t).getByRole("link", { name: "→ Store 演示" }).click({
+      timeout: E2E_ACTION_TIMEOUT_MS,
+    });
     await t.browser.waitFor(
       () => globalThis.location.pathname === "/store",
-      { timeout: 20_000 },
+      { timeout: E2E_ACTION_TIMEOUT_MS },
     );
   }, { timeout: E2E_TIMEOUT_MS });
 
