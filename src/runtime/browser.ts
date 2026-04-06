@@ -29,7 +29,7 @@ import { internalHydrate, stopHydration } from "./hydration.ts";
  * 挂载应用到 DOM 容器。
  * 会自动清理容器内容和 loading 状态。
  */
-export function mount(fn: () => any, container: Node) {
+export function mount(fn: () => any, container: Node): () => void {
   return createRoot((dispose) => {
     // 1. 物理清空容器 (移除 Loading 骨架屏)
     while (container.firstChild) {
@@ -69,7 +69,7 @@ export function hydrate(
   fn: () => any,
   container: Node,
   bindings: [number[], string][] = [],
-) {
+): () => void {
   return createRoot((dispose) => {
     // 停止之前的水合状态
     stopHydration();

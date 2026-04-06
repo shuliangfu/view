@@ -39,17 +39,29 @@ function isServerLikeEnvironment(): boolean {
 const clientTemplateByHtml = new Map<string, () => Node>();
 
 /**
+ * 无 DOM（SSR 等）时 template() 返回的桩对象，供编译产物 walk/序列化。
+ */
+export interface ServerTemplateStub {
+  readonly _html: string;
+  cloneNode: () => ServerTemplateStub;
+  toString: () => string;
+}
+
+/**
  * 编译器生成的组件模板。
  */
-export function template(html: string) {
+export function template(html: string): () => Node | ServerTemplateStub {
   const server = isServerLikeEnvironment();
 
   if (server) {
-    return () => ({
-      _html: html,
-      cloneNode: () => ({ _html: html }),
-      toString: () => html,
-    } as any);
+    return (): ServerTemplateStub => {
+      const mk = (): ServerTemplateStub => ({
+        _html: html,
+        cloneNode: () => mk(),
+        toString: () => html,
+      });
+      return mk();
+    };
   }
 
   const cached = clientTemplateByHtml.get(html);

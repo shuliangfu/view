@@ -198,7 +198,7 @@ function rewriteToSSR(
 export function transformJSX(
   context: ts.TransformationContext,
   options: TransformOptions = {},
-) {
+): (sourceFile: ts.SourceFile) => ts.SourceFile {
   const { factory } = context;
   const hoistedTemplates: ts.VariableDeclaration[] = [];
   const bindingMap: [number[], string][] = [];

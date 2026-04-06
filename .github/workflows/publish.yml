@@ -28,6 +28,5 @@ jobs:
       - name: Lint
         run: deno lint src
 
-      # 包内部分公开 API 尚未满足 JSR slow-types；否则 dry-run/publish 失败
       - name: Publish to JSR
-        run: deno publish --allow-slow-types
+        run: deno publish
