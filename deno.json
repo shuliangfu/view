@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "2.0.0",
+  "version": "2.0.0-beta.1",
   "license": "Apache-2.0",
   "description": "High-performance reactive UI framework inspired by Solid.js. Features fine-grained reactivity, no virtual DOM, compiler-optimized DOM/SSR paths, and built-in HMR.",
   "repository": {
