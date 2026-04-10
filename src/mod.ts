@@ -20,6 +20,7 @@
  * - ✅ control-flow.ts - Show/For/ErrorBoundary 等控制流
  * - ✅ component.ts - lazy/Dynamic 等高级组件
  * - ✅ hydration.ts - SSR 水合
+ * - ✅ dom.ts - `getDocument`、`createRef`（与 JSX `ref={refObj}`）
  *
  * **3. Scheduler (调度器)**
  * - ✅ batch.ts - 批量更新优化
@@ -34,7 +35,7 @@
  * - ⚠️  compiler/ 目录 - JSX 转换和优化 (开发中)
  *
  * **使用方式：**
- * import { createSignal, mount, For, Suspense, createPortal } from "@dreamer/view"
+ * import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"
  * SSR：`renderToString` / `renderToStream` 等从 `@dreamer/view/ssr` 导入（主入口不打包 happy-dom，避免浏览器构建解析 `node:*`）。
  *
  * **当前状态：** 核心功能完整，测试覆盖较好，但部分高级特性还在优化中。
@@ -56,6 +57,8 @@ export type {
   InsertValue,
   JSXElementType,
   JSXRenderable,
+  MaybeAccessor,
+  RefObject,
   ShowChildren,
   SwitchChild,
   ViewMatchDescriptor,
@@ -70,6 +73,8 @@ export type {
 export * from "./runtime/browser.ts";
 export * from "./runtime/component.ts";
 export { createRef, getDocument } from "./runtime/dom.ts";
+/** 判别 Signal、解包多层 Signal；供组件库使用，与 `insert` 对函数/Signal 的判定一致 */
+export { isSignal, readAccessor, unwrap } from "./runtime/utils.ts";
 export * from "./runtime/control-flow.ts";
 export {
   ErrorBoundary,

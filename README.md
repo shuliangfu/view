@@ -1196,13 +1196,15 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.0] — 2026-04-06**: Documented release baseline (full capability
-  list in the changelog). **Changed**: CSR `toClientConfig` forwards
-  `view.config` `build.sourcemap` (boolean or object) to `@dreamer/esbuild`
-  `ClientConfig.sourcemap` without collapsing object options. **Breaking** (npm
-  `package.json` exports only): removed `./csr` and `./hybrid`; use the main
-  package export; `./portal` added to align with JSR. Full history:
-  **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
+- **Latest [2.0.1] — 2026-04-10**: **Added** `RefObject`, `MaybeAccessor`,
+  `readAccessor`; `Show` / `For` / `Index` / `Match` / `ErrorBoundary.resetKeys`
+  accept static values or signal/getter accessors; `createRef` / `getDocument`
+  re-exported from `jsx-runtime`; main entry exports `isSignal`, `readAccessor`,
+  `unwrap`. **Fixed** array `insert` no longer uses a detached fragment;
+  `<!--view:array-end-->` array segments; `<details>` / `summary` content model;
+  non-bubbling pointer/mouse enter/leave use direct listeners; `id`/`name`/`for`
+  `undefined` removes attributes. **Tests**: expanded runtime unit coverage.
+  Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on
   Deno, **229** on Bun, **62** test files, **0** failures; runners count cases
   differently — details inside the report).

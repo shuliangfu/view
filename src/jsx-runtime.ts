@@ -16,6 +16,7 @@ import { setProperty } from "./runtime/props.ts";
 import type {
   JSXElementType,
   JSXRenderable,
+  RefObject,
   ViewRefObject,
   ViewTransparentProviderMeta,
   VNode,
@@ -96,7 +97,7 @@ export function jsx(
         if (name === "ref") {
           if (typeof value === "function") value(el);
           else if (value && typeof value === "object") {
-            (value as ViewRefObject).current = el;
+            (value as ViewRefObject | RefObject<unknown>).current = el;
           }
           continue;
         }
@@ -138,6 +139,9 @@ export function Fragment(props: {
 }): JSXRenderable {
   return props.children as JSXRenderable;
 }
+
+/** 与 `@dreamer/view` 主入口一致，便于仅从 `jsx-runtime` 拉 JSX 的项目直接使用 `createRef`。 */
+export { createRef, getDocument } from "./runtime/dom.ts";
 
 // --- JSX 类型定义 ---
 // deno-lint-ignore no-namespace

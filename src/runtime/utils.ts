@@ -49,3 +49,20 @@ export function unwrap(v: any): any {
   }
   return v;
 }
+
+/**
+ * 解析控制流 props：**静态值**、**零参 getter**，或 **`createSignal` 返回的可调用 getter**（`__VIEW_SIGNAL`）。
+ * 须先识别 Signal 再识别「任意函数」，以便与「普通 `() => T` 回调」一致地调用一次读出当前值。
+ *
+ * @param source - 非函数则原样返回；Signal 与 getter 则调用无参得到 `T`
+ * @returns 当前应采用的值
+ */
+export function readAccessor<T>(source: T | (() => T)): T {
+  if (isSignal(source)) {
+    return (source as () => T)();
+  }
+  if (typeof source === "function") {
+    return (source as () => T)();
+  }
+  return source as T;
+}

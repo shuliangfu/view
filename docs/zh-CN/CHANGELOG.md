@@ -7,6 +7,50 @@
 
 ---
 
+## [2.0.1] - 2026-04-10
+
+### 新增
+
+- **`RefObject<T>`**：**`current`** 必存在（初始可为 `null`）；**`createRef`**
+  现返回 **`RefObject<T>`**，便于类型收窄。
+- **`MaybeAccessor<T>`** 与 **`readAccessor`**：控制流入参可为**静态值**、**零参
+  getter** 或 **`createSignal` 元组 getter**；用于
+  **`Show`**、**`For`**、**`Index`**、**`Match`**、
+  **`ErrorBoundary.resetKeys`**。
+- 主包再导出 **`isSignal`**、**`readAccessor`**、**`unwrap`**，供组件库与
+  `insert` 对 Signal/函数的判定保持一致。
+- **`@dreamer/view/jsx-runtime`** 与 **`jsx` 一并再导出 **`createRef`**、**
+  `getDocument`**， 仅打 JSX 子路径时也可使用 ref 容器。
+- **`createRef` / `getDocument` JSDoc** 与 **`mod.ts`** 架构说明补充。
+
+### 修复
+
+- **`insert`（数组）**：子项**依次插入真实父节点**，不再经
+  **`DocumentFragment`** 中转（fragment 进文档后会被搬空，Effect
+  仍指向已脱离文档的 fragment，导致多节点场景 如密码多行不可见等问题）。
+- **数组段**：尾锚注释 **`<!--view:array-end-->`** + **`WeakMap`**
+  记录首节点，响应式重跑时 整段摘除/替换；文档说明勿再套 **`display:contents`
+  壳**（会破坏 Tailwind **`space-y-*`**、 **`:first-child`**
+  等）；**`<details>`** 多子路径保证 **`summary`** 为首个**元素**子节点，
+  满足内容模型。
+- **事件委托**：**`onMouseEnter` / `onMouseLeave` / `onPointerEnter` /
+  `onPointerLeave`** 改为元素上 **直连 `addEventListener`**（上述事件不冒泡到
+  `document`**）。
+- **DOM 属性**：**`id`**、**`name`**、**`for`** 等在值为 **`undefined` /
+  `null`** 时 **移除特性**，避免浏览器写成字面量 **`"undefined"`**（破坏 label
+  与表单语义）。
+
+### 变更
+
+- **`ViewRefObject`**：标明为宽松形态（**`current`** 可选）；**`RefObject`** 为
+  **`createRef`** 的严格返回类型。
+
+### 测试
+
+- 补充
+  **`insert`**（数组、**`<details>`**）、**`props`**（非冒泡事件、移除属性）、
+  **`dom`/ref**、**控制流 `MaybeAccessor`** 等单元测试。
+
 ## [2.0.0] - 2026-04-06
 
 本版本将 **2.0.0** 作为文档与发布基线。下文按能力维度**汇总框架提供的功能**（与

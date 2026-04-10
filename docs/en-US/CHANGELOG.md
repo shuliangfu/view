@@ -8,6 +8,54 @@ and this project adheres to
 
 ---
 
+## [2.0.1] - 2026-04-10
+
+### Added
+
+- **`RefObject<T>`** type: ref object with required **`current`** (initial
+  `null`); **`createRef`** now returns **`RefObject<T>`** (narrowing-friendly).
+- **`MaybeAccessor<T>`** and **`readAccessor`**: control-flow props can be a
+  plain value, a zero-arg getter, or a **`createSignal`** tuple getter; used by
+  **`Show`**, **`For`**, **`Index`**, **`Match`**, and
+  **`ErrorBoundary.resetKeys`**.
+- **`isSignal`**, **`readAccessor`**, **`unwrap`** exported from the main
+  package (alongside existing runtime use) for libraries that mirror `insert`’s
+  signal/function rules.
+- **`createRef`** and **`getDocument`** re-exported from
+  **`@dreamer/view/jsx-runtime`** next to **`jsx`**, so JSX-only bundles can use
+  ref objects without importing the full barrel.
+- **`createRef` / `getDocument` JSDoc** and **`mod.ts`** architecture notes
+  updated.
+
+### Fixed
+
+- **`insert` (arrays)**: insert array children **directly under the parent**
+  instead of staging in a **DocumentFragment** that becomes empty once moved to
+  the document—effects no longer target a detached fragment (fixes multi-line /
+  multi-node cases such as password fields).
+- **Array blocks**: trailing **`<!--view:array-end-->`** comment anchor plus
+  **`WeakMap`** bookkeeping so reactive re-runs remove/replace the whole
+  segment; documents **`display:contents` shell** anti-pattern for Tailwind
+  **`space-y-*`** / **`:first-child`**; special path for **`<details>`** so
+  **`summary`** stays the first element child (valid content model).
+- **Delegated events**: **`onMouseEnter`**, **`onMouseLeave`**,
+  **`onPointerEnter`**, **`onPointerLeave`** use **direct `addEventListener`**
+  on the element (these events do not bubble to `document`).
+- **DOM props**: **`id`**, **`name`**, **`for`**, etc.—when the prop is
+  **`undefined`** or **`null`**, remove the attribute instead of coercing to the
+  literal string **`"undefined"`** (label association and form semantics).
+
+### Changed
+
+- **`ViewRefObject`**: documented as the loose shape (`current` optional);
+  **`RefObject`** is the strict **`createRef`** return type.
+
+### Tests
+
+- More **unit coverage** for **`insert`** (arrays, **`<details>`**), **`props`**
+  (non-bubbling handlers, attribute removal), **`dom` / refs**, and
+  **control-flow** **`MaybeAccessor`** behaviour.
+
 ## [2.0.0] - 2026-04-06
 
 This release establishes **2.0.0** as the documented baseline. The sections

@@ -41,6 +41,27 @@ describe("runtime/control-flow", () => {
     expect(parent.textContent).toBe("Visible");
   }, { sanitizeOps: false, sanitizeResources: false });
 
+  it("Show: when 可直接传 Signal getter（MaybeAccessor）", async () => {
+    const [visible, setVisible] = createSignal(true);
+    const parent = document.createElement("div");
+    const content = document.createElement("span");
+    content.textContent = "On";
+    const fallback = document.createTextNode("Off");
+
+    const fragment = Show({
+      when: visible,
+      children: content,
+      fallback: fallback as any,
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    expect(parent.textContent).toBe("On");
+
+    setVisible(false);
+    await Promise.resolve();
+    expect(parent.textContent).toBe("Off");
+  }, { sanitizeOps: false, sanitizeResources: false });
+
   it("For: 应当渲染列表并支持物理复用", async () => {
     const [list, setList] = createSignal([{ id: 1, text: "A" }, {
       id: 2,
@@ -78,6 +99,26 @@ describe("runtime/control-flow", () => {
     await Promise.resolve();
     expect(parent.textContent).toBe("B");
     expect(parent.querySelectorAll("span").length).toBe(1);
+  });
+
+  it("For: each 可直接传 Signal getter（MaybeAccessor）", async () => {
+    const [list, setList] = createSignal([{ id: 1, text: "X" }]);
+    const parent = document.createElement("div");
+    const fragment = For({
+      each: list,
+      children: (item: { text: string }) => {
+        const span = document.createElement("span");
+        span.textContent = item.text;
+        return span;
+      },
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    expect(parent.textContent).toBe("X");
+
+    setList([{ id: 2, text: "Y" }]);
+    await Promise.resolve();
+    expect(parent.textContent).toBe("Y");
   });
 
   it("Switch/Match: 只应显示第一个 when 为真的分支", async () => {
@@ -125,6 +166,26 @@ describe("runtime/control-flow", () => {
     expect(parent.querySelector(".sw-a")).toBeNull();
     expect(parent.querySelector(".sw-b")).toBeNull();
     expect(parent.textContent).toContain("fallback");
+  });
+
+  it("Match: when 可为静态真值（MaybeAccessor）", async () => {
+    const parent = document.createElement("div");
+    const fragment = Switch({
+      fallback: document.createTextNode("fb"),
+      children: [
+        jsx(Match, {
+          when: true,
+          children: document.createTextNode("static-true"),
+        }),
+        jsx(Match, {
+          when: false,
+          children: document.createTextNode("static-false"),
+        }),
+      ],
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    expect(parent.textContent).toBe("static-true");
   });
 
   it("For + key：重排后应复用同一 DOM 节点", async () => {

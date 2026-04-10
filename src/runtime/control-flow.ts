@@ -19,11 +19,13 @@
  * **范围说明：**
  * - 传入 **`key`**（`For` / `Index`）时按稳定键 **复用 DOM、重排节点**；不传则保持「整表重建」语义（与旧版一致）。
  * - 虚拟滚动等仍建议业务层或专用组件实现。
+ * - **`Show`/`For`/`Index`/`Match`/`ErrorBoundary.resetKeys`** 的 `when`/`each`/`resetKeys` 支持 {@link MaybeAccessor}：
+ *   静态值、`() => 值`，或 `createSignal` 解构出的 **getter**（与 `readAccessor` 一致）。
  *
  * @usage
  * <ErrorBoundary fallback={...}>
- *   <Show when={condition}>{...}</Show>
- *   <For each={list}>{item => <div>{item}</div>}</For>
+ *   <Show when={open}>{...}</Show>
+ *   <For each={items}>{item => <div>{item}</div>}</For>
  * </ErrorBoundary>
  */
 
@@ -45,6 +47,7 @@ import {
   type InsertCurrent,
   type InsertValue,
   type JSXRenderable,
+  type MaybeAccessor,
   type ShowChildren,
   type SwitchChild,
   VIEW_MATCH_KEY,
@@ -53,6 +56,7 @@ import {
   type ViewSlot,
 } from "../types.ts";
 import { insert } from "./insert.ts";
+import { readAccessor } from "./utils.ts";
 
 /**
  * 比较两组 resetKeys 是否逐项相同（Object.is），用于判断依赖是否相对上次 effect 运行发生变化。
@@ -179,17 +183,17 @@ function createKeyedListRow<T>(
  *
  * @param props.fallback 错误时渲染的 UI，签名为 `(err, reset) => ...`
  * @param props.children 正常子树
- * @param props.resetKeys 可选：错误态下依赖变化时自动 `reset`
+ * @param props.resetKeys 可选：错误态下依赖变化时自动 `reset`；可为静态数组、getter 或 Signal getter
  * @returns 带锚点的 `DocumentFragment`
  */
 export function ErrorBoundary(props: {
   fallback: (err: unknown, reset: () => void) => InsertValue;
   children: ViewSlot;
   /**
-   * 返回依赖数组；仅在**当前已处于错误态**且数组与上次 effect 运行时的结果不同时清除错误并重试子树。
+   * 依赖数组；仅在**当前已处于错误态**且数组与上次 effect 运行时的结果不同时清除错误并重试子树。
    * 切换到会触发错误的新键时，因当时 `error()` 仍为假，不会误清除即将展示的错误。
    */
-  resetKeys?: () => readonly unknown[];
+  resetKeys?: MaybeAccessor<readonly unknown[]>;
 }): DocumentFragment {
   const [error, setError] = createSignal<unknown>(null);
   const [resetCount, setResetCount] = createSignal(0);
@@ -215,7 +219,7 @@ export function ErrorBoundary(props: {
    */
   if (props.resetKeys) {
     createEffect(() => {
-      const rk = props.resetKeys!();
+      const rk = readAccessor(props.resetKeys!);
       if (
         prevResetKeys !== undefined && error() &&
         !resetKeysEqual(rk, prevResetKeys)
@@ -276,15 +280,15 @@ export function ErrorBoundary(props: {
 }
 
 /**
- * 条件渲染：`when()` 为真时渲染 `children`（可为函数接收真值），否则 `fallback`；`when` 抛错等同假分支。
- * @template T `when()` 真值分支类型
- * @param props.when 条件 getter
+ * 条件渲染：条件为真时渲染 `children`（可为函数接收真值），否则 `fallback`；求值抛错等同假分支。
+ * @template T 真值分支类型
+ * @param props.when {@link MaybeAccessor}：静态值、`() => 值` 或 Signal getter
  * @param props.fallback 假分支或错误时内容
  * @param props.children 静态子或 `(item: T) => ...`
  * @returns `DocumentFragment`
  */
 export function Show<T>(props: {
-  when: () => T | undefined | null | false;
+  when: MaybeAccessor<T | undefined | null | false>;
   fallback?: JSXRenderable;
   children: ShowChildren<T>;
 }): DocumentFragment {
@@ -300,9 +304,9 @@ export function Show<T>(props: {
     let condition: T | undefined | null | false = false;
     let hasError = false;
 
-    // 安全地执行 when() 函数，捕获可能的错误
+    // 安全地读取 when（静态 / getter / Signal），捕获可能的错误
     try {
-      condition = props.when();
+      condition = readAccessor(props.when);
     } catch (_err) {
       hasError = true;
       condition = false;
@@ -349,14 +353,14 @@ export function Show<T>(props: {
  * - 传入 **`key`**：按稳定键复用行节点，仅重排/增删，适合大列表与重排场景。
  *
  * @template T 列表项类型
- * @param props.each 列表 getter
+ * @param props.each {@link MaybeAccessor}：静态列表、`() => 列表` 或 Signal getter
  * @param props.children `(item, index) => ...`，`index` 为响应式 getter
  * @param props.fallback 空列表时可选内容
  * @param props.key 可选稳定键函数，启用键控复用
  * @returns `DocumentFragment`
  */
 export function For<T>(props: {
-  each: () => T[] | null | undefined;
+  each: MaybeAccessor<T[] | null | undefined>;
   /** 第二项始终由运行时传入，为当前下标的 getter */
   children: (item: T, index: () => number) => JSXRenderable;
   /** 列表为空时渲染的内容（可选） */
@@ -374,7 +378,7 @@ export function For<T>(props: {
  * 无 `key` 的 For：整表重建。
  */
 function forLegacyList<T>(props: {
-  each: () => T[] | null | undefined;
+  each: MaybeAccessor<T[] | null | undefined>;
   children: (item: T, index: () => number) => JSXRenderable;
   fallback?: JSXRenderable;
 }): DocumentFragment {
@@ -385,7 +389,7 @@ function forLegacyList<T>(props: {
   let currentDispose: (() => void) | null = null;
 
   createEffect(() => {
-    const items = normalizeEachList(props.each());
+    const items = normalizeEachList(readAccessor(props.each));
     const parent = marker.parentNode || fragment;
 
     if (currentDispose) {
@@ -420,7 +424,7 @@ function forLegacyList<T>(props: {
  * 带 `key` 的 For：增量更新与 DOM 重排。
  */
 function forKeyedList<T>(props: {
-  each: () => T[] | null | undefined;
+  each: MaybeAccessor<T[] | null | undefined>;
   children: (item: T, index: () => number) => JSXRenderable;
   fallback?: JSXRenderable;
   key: (item: T) => unknown;
@@ -442,7 +446,7 @@ function forKeyedList<T>(props: {
 
     createEffect(() => {
       const parent = marker.parentNode || fragment;
-      const items = normalizeEachList(props.each());
+      const items = normalizeEachList(readAccessor(props.each));
       const keys = stableRowKeys(items, props.key);
 
       if (items.length === 0) {
@@ -521,13 +525,13 @@ function forKeyedList<T>(props: {
  * 可选 **`key`** 时与 For 相同，按键复用行（适合元素会重排但需保留 DOM 的场景）。
  *
  * @template T 列表项类型
- * @param props.each 列表 getter
+ * @param props.each {@link MaybeAccessor}：静态列表、getter 或 Signal getter
  * @param props.children 行渲染函数
  * @param props.key 可选稳定键
  * @returns `DocumentFragment`
  */
 export function Index<T>(props: {
-  each: () => T[] | null | undefined;
+  each: MaybeAccessor<T[] | null | undefined>;
   children: (item: T, index: () => number) => JSXRenderable;
   key?: (item: T) => unknown;
 }): DocumentFragment {
@@ -546,7 +550,7 @@ export function Index<T>(props: {
   let currentDispose: (() => void) | null = null;
 
   createEffect(() => {
-    const items = normalizeEachList(props.each());
+    const items = normalizeEachList(readAccessor(props.each));
     const parent = marker.parentNode || fragment;
 
     if (currentDispose) {
@@ -658,17 +662,21 @@ export function Switch(props: {
 /**
  * Match：仅作为 Switch 的子项使用；返回描述符（类型见 `../types.ts` 的 `ViewMatchDescriptor`），由 Switch 按顺序求值 when 并择一插入。
  *
- * @param props.when 条件值或零参 getter
+ * @param props.when {@link MaybeAccessor}：静态值、getter 或 Signal getter
  * @param props.children 命中时插入的内容
  * @returns {@link ViewMatchDescriptor}
  */
 export function Match(props: {
-  when: unknown | (() => unknown);
+  when: MaybeAccessor<unknown>;
   children: JSXRenderable;
 }): ViewMatchDescriptor {
-  const whenFn: () => unknown = typeof props.when === "function"
-    ? (props.when as () => unknown)
-    : () => props.when;
+  const whenFn: () => unknown = () => {
+    try {
+      return readAccessor(props.when);
+    } catch {
+      return false;
+    }
+  };
   return {
     [VIEW_MATCH_KEY]: true,
     when: whenFn,
