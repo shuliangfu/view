@@ -1178,15 +1178,16 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.0] —
-  2026-04-06**：正式发布基线，完整能力清单见变更日志。**变更**：CSR
-  **`toClientConfig`** 将 **`view.config` 的
-  `build.sourcemap`**（布尔或对象）正确传入 **`@dreamer/esbuild` 的
-  `ClientConfig.sourcemap`**，对象配置不再被压成布尔。**破坏性**（仅 npm
-  **`package.json` 的 `exports`**）：移除
-  **`./csr`**、**`./hybrid`**，请用主入口；新增 **`./portal`** 与 JSR
-  对齐。完整条目见 **[docs/zh-CN/CHANGELOG.md](./CHANGELOG.md)**；英文版
-  **[docs/en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
+- **当前版本 [2.0.1] — 2026-04-10**：**新增**
+  **`RefObject`**、**`MaybeAccessor`**、 **`readAccessor`**；**`Show` / `For` /
+  `Index` / `Match` / `ErrorBoundary.resetKeys`** 支持静态值或
+  Signal/getter；**`jsx-runtime`** 再导出 **`createRef`**、**`getDocument`**；
+  主包再导出 **`isSignal`**、**`readAccessor`**、**`unwrap`**。**修复** 数组
+  **`insert`** 不再依赖会脱离文档的 fragment；数组段尾锚注释与
+  **`<details>`/`summary`** 内容模型； **`mouseenter`/`mouseleave` 等**
+  直连监听；**`id`/`name`/`for`** 为 **`undefined`** 时移除 特性。**测试**
+  扩充运行时单测。完整条目见 **[CHANGELOG.md](./CHANGELOG.md)**；英文版
+  **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-04-06**：Deno
   **290** 通过、Bun **229** 通过，**62** 个测试文件，均为 **0**
   失败；两种运行器计数方式不同，详见报告正文）。

@@ -143,6 +143,21 @@ function delegateHandler(e: Event) {
 const delegatedEvents = new Set<string>();
 
 /**
+ * 不冒泡到 `document` 的事件：仅用 `document.addEventListener` + 路径查找无法命中子节点上的 `__on*`。
+ * 典型为 `mouseenter` / `mouseleave`（与 React 等框架需用 `mouseover` 或直连监听同理）。
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseenter_event#event_bubbling
+ */
+const NON_BUBBLING_DIRECT_EVENT_NAMES = new Set([
+  "mouseenter",
+  "mouseleave",
+  "pointerenter",
+  "pointerleave",
+]);
+
+/** 直连监听器的元素字段前缀（用于 `removeEventListener` 与更新时摘除旧监听） */
+const DIRECT_EVENT_WRAPPER_PREFIX = "__dreamerDirect_";
+
+/**
  * 清空事件委托表（SSR 每次安装临时 `document` 前调用，避免跨请求污染）。
  * @returns `void`
  */
@@ -173,6 +188,32 @@ export function setProperty(el: any, name: string, value: any) {
   // 1. 处理事件绑定 (必须在处理响应式函数之前)
   if (name.startsWith("on")) {
     const eventName = name.slice(2).toLowerCase();
+
+    if (NON_BUBBLING_DIRECT_EVENT_NAMES.has(eventName)) {
+      const wrapperKey = `${DIRECT_EVENT_WRAPPER_PREFIX}${eventName}`;
+      const prevWrapped = el[wrapperKey] as
+        | ((this: unknown, ev: Event) => void)
+        | undefined;
+      if (prevWrapped) {
+        el.removeEventListener(eventName, prevWrapped as EventListener);
+        delete el[wrapperKey];
+      }
+      delete el[`__on${eventName}`];
+
+      if (value == null || value === false) {
+        return;
+      }
+      if (typeof value !== "function") {
+        return;
+      }
+      const wrapped = function (this: unknown, e: Event) {
+        (value as (this: unknown, ev: Event) => void).call(el, e);
+      };
+      el[wrapperKey] = wrapped;
+      el.addEventListener(eventName, wrapped as EventListener);
+      return;
+    }
+
     el[`__on${eventName}`] = value;
     if (!delegatedEvents.has(eventName)) {
       document.addEventListener(eventName, delegateHandler);
@@ -233,7 +274,20 @@ export function setProperty(el: any, name: string, value: any) {
       const next = name === "value" ? (value == null ? "" : value) : value;
       if (el[name] !== next) (el as any)[name] = next;
     } else {
-      el[name] = value;
+      /**
+       * `id` / `name` / `for` 等未传 props 时常为 `undefined`；直接写 `el.id = undefined`
+       * 在浏览器里会变成**字面量** `"undefined"`，DevTools 里可见且破坏 label 关联与表单语义。
+       * 未传时应移除对应 HTML 特性（与下方 `setAttribute` 分支对 `null` 的行为一致）。
+       */
+      if (value === null || value === undefined) {
+        try {
+          (el as Element).removeAttribute(name);
+        } catch {
+          /* 部分属性在特定元素上不可 remove，忽略 */
+        }
+      } else {
+        el[name] = value;
+      }
     }
   } else {
     if (value == null) el.removeAttribute(name);

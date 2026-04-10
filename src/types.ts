@@ -104,6 +104,12 @@ export type ViewSlot = JSXRenderable | (() => JSXRenderable);
 export type ShowChildren<T> = JSXRenderable | ((item: T) => JSXRenderable);
 
 /**
+ * 控制流可读源：**当前值**、**零参 getter**，或 **`createSignal` 解构出的 getter**（可调用且带 `__VIEW_SIGNAL`）。
+ * 用于 `Show`/`For`/`Match`/`ErrorBoundary.resetKeys` 等，与 `readAccessor` 配套。
+ */
+export type MaybeAccessor<T> = T | (() => T);
+
+/**
  * `jsx(type, props)` 的 `type`：宿主标签名，或组件函数。
  *
  * 组件形参不能用单一的 `Record<string, unknown>` 描述：在 `strictFunctionTypes` 下，
@@ -116,8 +122,15 @@ export type JSXElementType =
   | ((props: any) => JSXRenderable);
 
 /**
- * 对象形式的 `ref`：`{ current: ... }` 由运行时填入 DOM。
+ * 对象形式的 `ref`：`{ current: ... }` 由 JSX 运行时填入 DOM；`current` 可选以兼容宽松对象。
  */
 export type ViewRefObject<T = unknown> = {
   current?: T | null;
+};
+
+/**
+ * 由 {@link createRef} 返回的 ref 容器，`current` 始终存在（初始可为 `null`），便于类型收窄。
+ */
+export type RefObject<T = unknown> = {
+  current: T | null;
 };

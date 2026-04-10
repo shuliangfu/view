@@ -39,4 +39,50 @@ describe("runtime/props", () => {
     await Promise.resolve();
     expect((el as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('可选 id/name：undefined 时不应写成字面量 "undefined"', () => {
+    const input = document.createElement("input");
+    const btn = document.createElement("button");
+    setProperty(input, "name", undefined);
+    setProperty(btn, "id", undefined);
+    expect(input.getAttribute("name")).toBeNull();
+    expect(btn.getAttribute("id")).toBeNull();
+    expect(input.name).toBe("");
+    expect(btn.id).toBe("");
+  });
+
+  /**
+   * `mouseenter` / `mouseleave` 不冒泡：`document` 委托收不到子树触发，必须在绑定节点上直连监听。
+   */
+  it("onMouseEnter：应在元素上直连监听并能触发", async () => {
+    const el = document.createElement("span");
+    document.body.appendChild(el);
+
+    let entered = 0;
+    setProperty(el, "onMouseEnter", () => {
+      entered++;
+    });
+
+    el.dispatchEvent(
+      new MouseEvent("mouseenter", { bubbles: false }),
+    );
+    await Promise.resolve();
+    expect(entered).toBe(1);
+
+    setProperty(el, "onMouseEnter", () => {
+      entered += 10;
+    });
+    el.dispatchEvent(
+      new MouseEvent("mouseenter", { bubbles: false }),
+    );
+    await Promise.resolve();
+    expect(entered).toBe(11);
+
+    setProperty(el, "onMouseEnter", null);
+    el.dispatchEvent(
+      new MouseEvent("mouseenter", { bubbles: false }),
+    );
+    await Promise.resolve();
+    expect(entered).toBe(11);
+  });
 }, { sanitizeOps: false, sanitizeResources: false });
