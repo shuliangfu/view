@@ -7,6 +7,16 @@
 
 ---
 
+## [2.0.2] - 2026-04-18
+
+### 变更
+
+- **依赖**：`deno.json` 中 JSR 版本区间上调 — `@dreamer/server` 至 `^1.1.2`、
+  `@dreamer/test` 至 `^1.1.3`、`@dreamer/plugins` 至 `^1.1.0`；`package.json` 中
+  npm 别名与之对齐。
+- **示例**：`examples/package.json` 与 `examples/deno.json` 中将
+  `@dreamer/plugins` 调至 `^1.1.0`、`@dreamer/esbuild` 调至 `^1.1.6`。
+
 ## [2.0.1] - 2026-04-10
 
 ### 新增

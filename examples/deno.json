@@ -17,7 +17,7 @@
     "@dreamer/view/compiler": "../src/compiler/mod.ts",
     "@dreamer/view/optimize": "../src/optimize.ts",
     "@dreamer/view/ssr": "../src/runtime/server.ts",
-    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.0.9",
+    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.1.0",
     "tailwindcss": "npm:tailwindcss@4.2.0"
   },
   "lint": {

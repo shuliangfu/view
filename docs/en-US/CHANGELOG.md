@@ -8,6 +8,16 @@ and this project adheres to
 
 ---
 
+## [2.0.2] - 2026-04-18
+
+### Changed
+
+- **Dependencies**: bump JSR ranges in `deno.json` — `@dreamer/server` to
+  `^1.1.2`, `@dreamer/test` to `^1.1.3`, `@dreamer/plugins` to `^1.1.0`; align
+  `package.json` npm aliases to the same.
+- **Examples**: bump `@dreamer/plugins` to `^1.1.0` and `@dreamer/esbuild` to
+  `^1.1.6` in `examples/package.json` and `examples/deno.json`.
+
 ## [2.0.1] - 2026-04-10
 
 ### Added
