@@ -1196,15 +1196,11 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.1] — 2026-04-10**: **Added** `RefObject`, `MaybeAccessor`,
-  `readAccessor`; `Show` / `For` / `Index` / `Match` / `ErrorBoundary.resetKeys`
-  accept static values or signal/getter accessors; `createRef` / `getDocument`
-  re-exported from `jsx-runtime`; main entry exports `isSignal`, `readAccessor`,
-  `unwrap`. **Fixed** array `insert` no longer uses a detached fragment;
-  `<!--view:array-end-->` array segments; `<details>` / `summary` content model;
-  non-bubbling pointer/mouse enter/leave use direct listeners; `id`/`name`/`for`
-  `undefined` removes attributes. **Tests**: expanded runtime unit coverage.
-  Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
+- **Latest [2.0.2] — 2026-04-18**: **Changed** JSR dependency ranges
+  (`@dreamer/server`, `@dreamer/test`, `@dreamer/plugins`) in `deno.json` and
+  npm aliases in `package.json`; examples aligned (`@dreamer/plugins`,
+  `@dreamer/esbuild`). Full history:
+  **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on
   Deno, **229** on Bun, **62** test files, **0** failures; runners count cases
   differently — details inside the report).
