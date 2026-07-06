@@ -1196,10 +1196,10 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.2] — 2026-04-18**: **Changed** JSR dependency ranges
-  (`@dreamer/server`, `@dreamer/test`, `@dreamer/plugins`) in `deno.json` and
-  npm aliases in `package.json`; examples aligned (`@dreamer/plugins`,
-  `@dreamer/esbuild`). Full history:
+- **Latest [2.0.3] — 2026-07-06**: **Changed** `@dreamer/esbuild` to `^1.2.0`;
+  **Added** `hasObservers` flag, GC-friendly `cleanupObserver`, O(1)
+  `adoptChild` Set, in-place `runPendingSlice`; **Fixed** Memo upstream
+  detection. Full history:
   **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on
   Deno, **229** on Bun, **62** test files, **0** failures; runners count cases

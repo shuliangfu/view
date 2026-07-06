@@ -45,9 +45,11 @@ interface SchedulerCore {
 
 /**
  * 取出一批待执行任务并清空队列（与 `pendingSet` 同步），逐个 `run`；错误仅记录不中断同批其它任务。
+ *
+ * 优化：先保存引用再原地重建空队列，避免 `[...core.pending]` 展开分配新数组。
  */
 function runPendingSlice(core: SchedulerCore): void {
-  const tasks = [...core.pending];
+  const tasks = core.pending;
   core.pending = [];
   core.pendingSet.clear();
   for (let i = 0; i < tasks.length; i++) {

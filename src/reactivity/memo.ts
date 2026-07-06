@@ -65,6 +65,7 @@ export function createMemo<T>(fn: () => T): () => T {
     value: undefined as unknown as T,
     observers: null,
     observersTail: null,
+    hasObservers: false,
 
     // Observer 接口 (作为订阅者)
     state: STATE_DIRTY, // 初始为脏
@@ -80,8 +81,9 @@ export function createMemo<T>(fn: () => T): () => T {
       if (this.state === STATE_CHECK) {
         let sub = this.sources;
         while (sub) {
-          if ("run" in sub.source) {
-            (sub.source as unknown as Observer).run();
+          const src = sub.source;
+          if (typeof (src as any).run === "function") {
+            (src as unknown as Observer).run();
             if ((this as any).state === STATE_DIRTY) break;
           }
           sub = sub.nextSource;

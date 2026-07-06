@@ -7,6 +7,33 @@
 
 ---
 
+## [2.0.3] - 2026-07-06
+
+### 变更
+
+- **依赖**：`@dreamer/esbuild` 由 `^1.1.9` 升至 `^1.2.0`（`deno.json` 与
+  `package.json` 同步），获得 jsr: 运行时回退与动态 `import()` 缓存覆盖。
+
+### 新增
+
+- **响应式（`signal.ts`）**：`Observer` 新增 `hasObservers` 标记，替代 `notify`
+  / `notifyCheck` 中的 `"observers" in` 运行时检查，避免原型链遍历 开销。
+- **响应式（`signal.ts`）**：`cleanupObserver` 断开订阅时清理 `Subscription`
+  节点的交叉引用（source/observer/prev/next 指针），辅助 GC 回收。
+- **响应式（`owner.ts`）**：`adoptChild` 用 `Set` 做 O(1) 包含检查替代
+  `Array.includes` O(n)；`cleanNode` 移除时同步清理 Set。
+- **调度器（`batch.ts`）**：`runPendingSlice` 原地交换 pending 数组，不再
+  `[...core.pending]` 展开，避免每次 flush 分配新数组。
+- **测试**：新增 `cycle-detection`、`signal-optimization`、`insert-reactive`
+  单元测试。
+
+### 修复
+
+- **响应式（`effect.ts`、`memo.ts`）**：Memo 上游检测由 `"run" in sub.source`
+  改为 `typeof run === 'function'`，避免非 Memo 源恰好有 `run` 属性时的误判。
+
+---
+
 ## [2.0.2] - 2026-04-18
 
 ### 变更

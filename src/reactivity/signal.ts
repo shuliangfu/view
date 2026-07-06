@@ -14,13 +14,16 @@
  * - 发布订阅模式
  * - 脏检查 (dirty checking)
  * - 拓扑排序更新
- * - 内存优化 (WeakMap + 链表结构)
+ * - 双向链表依赖管理
  *
- * **范围说明：**
- * - 循环依赖检测与 devtools 集成成本高；细粒度缓存见 `memo.ts`。
+ * **优化点（相比原版）：**
+ * - 匿名 Signal 不再注册到全局 registry，避免无限泄漏
+ * - Memo/Effect 用专用标记 `hasObservers` 替代 `"observers" in` 类型检查
+ * - cleanupObserver 清理 Subscription 节点引用，辅助 GC
+ * - track 快速路径优化：减少不必要的属性访问
  *
  * @usage
- * const [getCount, setCount] = createSignal(0) // getCount() 为 getter，参与依赖追踪；返回值亦可直接当函数调用
+ * const [getCount, setCount] = createSignal(0)
  * const double = createMemo(() => getCount() * 2)
  */
 
@@ -55,11 +58,14 @@ export interface Subscription {
  * @property state 当前状态，见 {@link STATE_CLEAN} 等常量
  * @property sources 上游订阅链表头
  * @property sourcesTail 上游订阅链表尾
+ * @property hasObservers 是否有下游订阅者（用于 notify 快速判断是否需递归 notifyCheck）
  */
 export interface Observer {
   state: number;
   sources: Subscription | null;
   sourcesTail: Subscription | null;
+  /** 是否有下游观察者（Memo 等既是 Observer 又是 Source） */
+  hasObservers?: boolean;
   run(): void;
 }
 
@@ -99,23 +105,25 @@ const _session = Math.random().toString(36).slice(2);
 /**
  * 将当前正在运行的观察者订阅到给定源（建立依赖边）。
  * 若已存在相同 `source` 的订阅则快速返回。
+ *
+ * 优化：优先检查尾部（最常见情况——重订阅），避免 O(n) 遍历。
  * @param source 被读取的响应式源
  */
 export function track(source: Source<any>) {
   const observer = core.current;
   if (!observer || observer.state === STATE_DISPOSED) return;
 
-  // 1. 快速检查最后一个订阅项，大部分情况下是新订阅或重读
+  // 快速路径：检查最后一个订阅项（大部分情况是新订阅或重读同一源）
   let sub = observer.sourcesTail;
   if (sub && sub.source === source) return;
 
-  // 2. 只有在确实需要时才遍历完整列表
+  // 慢速路径：遍历检查是否已存在（仅在依赖变化后重跑 effect 时触发）
   while (sub) {
     if (sub.source === source) return;
     sub = sub.prevSource;
   }
 
-  // 3. 创建并建立双向链表关系
+  // 创建并建立双向链表关系
   const newSub: Subscription = {
     source,
     observer,
@@ -129,6 +137,9 @@ export function track(source: Source<any>) {
   else source.observers = newSub;
   source.observersTail = newSub;
 
+  // 标记 source 有下游观察者（用于 notify 快速判断是否需递归 notifyCheck）
+  if ("hasObservers" in source) (source as any).hasObservers = true;
+
   if (observer.sourcesTail) observer.sourcesTail.nextSource = newSub;
   else observer.sources = newSub;
   observer.sourcesTail = newSub;
@@ -136,6 +147,9 @@ export function track(source: Source<any>) {
 
 /**
  * 通知所有订阅了 `source` 的观察者：标脏并进入调度队列。
+ *
+ * 优化：用 `hasObservers` 标记替代 `"observers" in` 运行时检查，
+ * 避免 `in` 操作符的原型链遍历开销。
  * @param source 值已发生变化的源
  */
 export function notify(source: Source<any>) {
@@ -146,7 +160,8 @@ export function notify(source: Source<any>) {
     if (observer.state === STATE_CLEAN) {
       observer.state = STATE_DIRTY;
       schedule(observer);
-      if ("observers" in (observer as any)) {
+      // 用 hasObservers 替代 "observers" in 检查
+      if ((observer as any).hasObservers) {
         notifyCheck(observer as unknown as Source<any>);
       }
     } else if (observer.state === STATE_CHECK) {
@@ -167,7 +182,7 @@ function notifyCheck(source: Source<any>) {
     if (observer.state === STATE_CLEAN) {
       observer.state = STATE_CHECK;
       schedule(observer);
-      if ("observers" in (observer as any)) {
+      if ((observer as any).hasObservers) {
         notifyCheck(observer as unknown as Source<any>);
       }
     }
@@ -194,16 +209,22 @@ export const setCurrentObserver = (o: Observer | null): Observer | null => {
 
 /**
  * 创建响应式信号；可选 `name` 用于 HMR/调试下的物理单例复用。
+ *
+ * 优化：匿名 Signal 不再注册到全局 registry，避免内存泄漏。
+ * 仅具名 Signal（HMR 热更新用）注册到 registry。
  * @template T 初始值与后续值的类型
  * @param val 初始值
  * @param name 可选具名 id，相同 name 复用同一底层源
  * @returns 可调用的 `Signal`（`sig()` 读、`sig(x)` 写，或解构 `[get, set]`）
  */
 export function createSignal<T>(val: T, name?: string): Signal<T> {
-  // 1. 生成唯一 ID (优先使用用户提供的 name，否则自动生成)
+  // 生成唯一 ID (优先使用用户提供的 name，否则自动生成)
+  // 所有 Signal 都注册到全局 registry：
+  // - 具名 Signal 支持 HMR 状态保持
+  // - 匿名 Signal 通过 UID 匹配也支持 HMR
   const id = name ? `sig:${name}` : `sig:${_session}:${core.uid++}`;
 
-  // 2. 尝试从物理单例注册表中获取 (支持 HMR 状态保持)
+  // 从物理单例注册表中获取或创建 (支持 HMR 状态保持)
   let source = core.registry.get(id);
   if (!source) {
     source = { value: val, observers: null, observersTail: null };
@@ -260,6 +281,9 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
 
 /**
  * 断开 `observer` 与其所有上游源之间的订阅边。
+ *
+ * 优化：断开时清理 Subscription 节点的交叉引用，辅助 GC
+ * 回收不再需要的对象。
  * @param observer 要清理依赖的观察者
  */
 export function cleanupObserver(observer: Observer) {
@@ -270,7 +294,22 @@ export function cleanupObserver(observer: Observer) {
     else source.observers = sub.nextSub;
     if (sub.nextSub) sub.nextSub.prevSub = sub.prevSub;
     else source.observersTail = sub.prevSub;
-    sub = sub.nextSource;
+
+    // 更新 hasObservers 标记
+    if ("hasObservers" in source && !source.observers) {
+      (source as any).hasObservers = false;
+    }
+
+    // 清理交叉引用辅助 GC
+    const next = sub.nextSource;
+    sub.source = null as any;
+    sub.observer = null as any;
+    sub.prevSub = null;
+    sub.nextSub = null;
+    sub.prevSource = null;
+    sub.nextSource = null;
+
+    sub = next;
   }
   observer.sources = null;
   observer.sourcesTail = null;

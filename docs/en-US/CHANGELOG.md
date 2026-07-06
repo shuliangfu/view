@@ -8,6 +8,38 @@ and this project adheres to
 
 ---
 
+## [2.0.3] - 2026-07-06
+
+### Changed
+
+- **Dependencies**: bump `@dreamer/esbuild` from `^1.1.9` to `^1.2.0` in
+  `deno.json` and `package.json` (jsr: runtime fallback + dynamic `import()`
+  cache coverage).
+
+### Added
+
+- **Reactivity (`signal.ts`)**: `hasObservers` flag on `Observer` replaces
+  runtime `"observers" in` checks in `notify` / `notifyCheck`, avoiding
+  prototype-chain traversal overhead.
+- **Reactivity (`signal.ts`)**: `cleanupObserver` now clears cross-references on
+  `Subscription` nodes (source/observer/prev/next pointers) to aid GC.
+- **Reactivity (`owner.ts`)**: `adoptChild` uses a backing `Set` for O(1)
+  contains-check instead of `Array.includes` O(n); `cleanNode` syncs the Set on
+  removal.
+- **Scheduler (`batch.ts`)**: `runPendingSlice` swaps the pending array in place
+  instead of `[...core.pending]` spread, avoiding a new array allocation per
+  flush.
+- **Tests**: `cycle-detection`, `signal-optimization`, `insert-reactive` unit
+  tests added.
+
+### Fixed
+
+- **Reactivity (`effect.ts`, `memo.ts`)**: Memo upstream detection changed from
+  `"run" in sub.source` to `typeof run === 'function'`, avoiding false positives
+  when non-Memo sources happen to have a `run` property.
+
+---
+
 ## [2.0.2] - 2026-04-18
 
 ### Changed

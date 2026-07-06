@@ -1178,10 +1178,9 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.2] — 2026-04-18**：**变更** `deno.json` / `package.json` 中
-  **`@dreamer/server`**、**`@dreamer/test`**、**`@dreamer/plugins`** 等 JSR 与
-  npm 别名区间；示例工程同步
-  **`@dreamer/plugins`**、**`@dreamer/esbuild`**。完整条目见
+- **当前版本 [2.0.3] — 2026-07-06**：**变更** `@dreamer/esbuild` 至 `^1.2.0`；
+  **新增** `hasObservers` 标记、GC 友好的 `cleanupObserver`、O(1) `adoptChild`
+  Set、原地 `runPendingSlice`；**修复** Memo 上游检测。完整条目见
   **[CHANGELOG.md](./CHANGELOG.md)**；英文版
   **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-04-06**：Deno

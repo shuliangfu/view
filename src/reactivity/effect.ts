@@ -75,8 +75,11 @@ export function createEffect(fn: () => void): void {
       if (this.state === STATE_CHECK) {
         let sub = this.sources;
         while (sub) {
-          if ("run" in sub.source) {
-            (sub.source as unknown as Observer).run();
+          const src = sub.source;
+          // 判断上游是否为 Memo（同时是 Observer 和 Source）
+          // 只有 Memo 需要先 run 再检查；普通 Source 不是 Observer
+          if (typeof (src as any).run === "function") {
+            (src as unknown as Observer).run();
             if ((this as any).state === STATE_DIRTY) break;
           }
           sub = sub.nextSource;

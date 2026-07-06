@@ -139,22 +139,39 @@ export function cleanNode(owner: Owner, selfDispose = false): void {
     if ("sources" in (owner as any)) {
       cleanupObserver(owner as any);
     }
-    // 核心修复：从父节点中移除自身引用，彻底斩断泄露路径
-    if (owner.owner && owner.owner.children) {
-      const idx = owner.owner.children.indexOf(owner);
-      if (idx > -1) owner.owner.children.splice(idx, 1);
+    // 从父节点中移除自身引用，彻底斩断泄露路径
+    if (owner.owner) {
+      const parentChildren = owner.owner.children;
+      if (parentChildren) {
+        const idx = parentChildren.indexOf(owner);
+        if (idx > -1) parentChildren.splice(idx, 1);
+        const set = (owner.owner as any)._childrenSet as Set<Owner> | undefined;
+        set?.delete(owner);
+      }
     }
   }
 }
 
 /**
  * 建立父子关系：`child.owner` 应由调用方另行维护为 `parent` 时与树一致。
+ *
+ * 优化：用 Set 做 O(1) 包含检查替代 Array.includes O(n)。
+ * children 内部存储保持 Array（保证顺序与迭代性能），同时维护 Set 做快速查找。
  * @param parent 父节点
  * @param child 子节点
  */
 export function adoptChild(parent: Owner, child: Owner): void {
-  if (parent.children === null) parent.children = [child];
-  else if (!parent.children.includes(child)) parent.children.push(child);
+  if (parent.children === null) {
+    parent.children = [child];
+    (parent as any)._childrenSet = new Set([child]);
+  } else {
+    const set = (parent as any)._childrenSet as Set<Owner> | undefined;
+    if (set ? !set.has(child) : !parent.children.includes(child)) {
+      parent.children.push(child);
+      set?.add(child);
+      if (!set) (parent as any)._childrenSet = new Set(parent.children);
+    }
+  }
 }
 
 /**

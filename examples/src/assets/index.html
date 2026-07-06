@@ -7,19 +7,19 @@
     <title>@dreamer/view 完整示例</title>
     <!-- 尽早应用 dark 类，避免首屏闪烁（兼容 store 持久化 JSON 与旧字符串格式） -->
     <script>
-      try {
-        var v = localStorage.getItem("view-theme");
-        var isDark = v === "dark" ||
-          (v && JSON.parse(v).theme === "dark");
-        if (isDark) document.documentElement.classList.add("dark");
-        else document.documentElement.classList.remove("dark");
-      } catch (_) {}
+    try {
+      var v = localStorage.getItem("view-theme");
+      var isDark = v === "dark" ||
+        (v && JSON.parse(v).theme === "dark");
+      if (isDark) document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+    } catch (_) {}
     </script>
 
     <style>
-      [data-view-cloak] {
-        display: none;
-      }
+    [data-view-cloak] {
+      display: none;
+    }
     </style>
   </head>
   <body
