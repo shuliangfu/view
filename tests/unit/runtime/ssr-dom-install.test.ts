@@ -13,6 +13,7 @@ describe("runtime/ssr-dom (installMinimalSsrGlobals)", () => {
     const div = ssrDoc.createElement("div");
     div.setAttribute("id", "ssr-el");
     expect(div.outerHTML).toContain("ssr-el");
+    expect(div.hasAttribute("id")).toBe(true);
     teardown();
     expect(globalThis.document).toBe(before);
   });

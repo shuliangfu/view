@@ -68,7 +68,11 @@ function isDomNode(v: unknown): v is Node {
  * 浏览器不满足 content model，会显示本地化默认文案（如中文「详情」），而真正的 `summary` 会落到展开区内。
  */
 function isHtmlDetailsElement(parent: Node): boolean {
-  return parent.nodeName === "DETAILS";
+  // SSR 伪 DOM 同时有 nodeName/tagName；缺一则回退
+  const name = (parent as { nodeName?: string; tagName?: string }).nodeName ??
+    (parent as { tagName?: string }).tagName ??
+    "";
+  return String(name).toUpperCase() === "DETAILS";
 }
 
 /**

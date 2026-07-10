@@ -8,6 +8,34 @@ and this project adheres to
 
 ---
 
+## [2.0.5] - 2026-07-10
+
+### Fixed
+
+- **SSR pseudo-DOM (no browser `document` on Deno/Bun)**: `SsrElement` now
+  implements **`hasAttribute`** / **`toggleAttribute`**; `style` supports
+  **`removeProperty` / `setProperty` / `getPropertyValue`**; **`id`**
+  getter/setter. Fixes dweb hybrid SSR crashing with
+  `TypeError: el.hasAttribute is not a function` when props are `null` /
+  `undefined`.
+- **`setProperty`**: attribute branch falls back to `getAttribute` when
+  `hasAttribute` is missing.
+
+### Changed (SSR DOM completeness)
+
+- Node: `nodeName`, `parentElement`, `isConnected`, `contains`, `lastChild`, …
+- Element: `classList`, `dataset`, `matches`/`closest`, `querySelector(All)`,
+  `append`/`prepend`/`before`/`after`/`replaceWith`, common reflected props.
+- Document: lazy `head`/`body`, `querySelector(All)`, `importNode`.
+- Simple selectors: tag/`#id`/`.class`/`[attr]`/descendant/comma.
+
+### Tests
+
+- `tests/unit/runtime/ssr-dom-element-api.test.ts` (Element API +
+  `renderToString` + classList/matches/query/meta).
+
+---
+
 ## [2.0.4] - 2026-07-10
 
 ### Added

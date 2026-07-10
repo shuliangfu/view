@@ -3,7 +3,13 @@
  * @description 无浏览器 DOM 时的极简 document/window，供 SSR 同步路径使用（替代 happy-dom）。
  *
  * 覆盖：`jsx-runtime` 的 `createElement` / `createElementNS`，`insert` 的节点操作，`template` 的 `innerHTML` + `cloneNode`，
- * `setProperty` 的 `className` / `style` / `setAttribute` / 部分 property、`document.addEventListener`（空操作）。
+ * `setProperty` 的 `className` / `style` / `setAttribute` / `getAttribute` / `hasAttribute` /
+ * `removeAttribute` / 部分 property、`document.addEventListener`（空操作）。
+ *
+ * **与真实 Element 对齐（dweb hybrid 在 Deno/Bun 无 document 时）：**
+ * 属性/`classList`/`dataset`/`matches`/`closest`/`querySelector`、
+ * `append`/`children`/`nodeName`/`parentElement`、`style.*` 等（见类实现）。
+ * **非目标：** 完整 CSS 选择器引擎、布局几何、真实事件派发。
  *
  * **序列化热路径：** `escapeHtmlText` / `escapeHtmlAttr` 无特殊字符时快速返回；`innerHTML`/`outerHTML`/`textContent` 用 `joinChildOuterHtml` 等聚合，减少重复 `map` 与 `Object.entries`。
  */
@@ -278,6 +284,8 @@ export abstract class SsrNode {
   /** 供 `insert` / `isObject` 识别 */
   readonly [SSR_VIEW_TREE_NODE] = true;
   abstract readonly nodeType: number;
+  /** `#text` / `#comment` / 元素 tagName；与浏览器 `nodeName` 一致 */
+  abstract readonly nodeName: string;
   parentNode: SsrElement | SsrDocumentFragment | null = null;
   /** 所属文档（`innerHTML` 解析、`createElement` 工厂） */
   ownerDocument: SsrDocument | null = null;
@@ -299,6 +307,11 @@ export abstract class SsrNode {
     return this.childNodes[0] ?? null;
   }
 
+  get lastChild(): SsrNode | null {
+    const kids = this.childNodes;
+    return kids.length ? kids[kids.length - 1]! : null;
+  }
+
   /** O(1)：由兄弟链读取，避免 `indexOf` */
   get nextSibling(): SsrNode | null {
     return this._nextSibling;
@@ -307,6 +320,52 @@ export abstract class SsrNode {
   /** O(1)：由兄弟链读取 */
   get previousSibling(): SsrNode | null {
     return this._previousSibling;
+  }
+
+  /** 仅元素父级；跳过 DocumentFragment */
+  get parentElement(): SsrElement | null {
+    let p: SsrNode | null = this.parentNode;
+    while (p) {
+      if (p.nodeType === NODE_ELEMENT) return p as SsrElement;
+      p = p.parentNode;
+    }
+    return null;
+  }
+
+  /** 是否挂在 documentElement 子树下（SSR 近似） */
+  get isConnected(): boolean {
+    const doc = this.ownerDocument;
+    if (!doc) return false;
+    const root = doc.documentElement as SsrNode;
+    if ((this as SsrNode) === root) return true;
+    let n: SsrNode | null = this.parentNode;
+    while (n) {
+      if (n === root) return true;
+      n = n.parentNode;
+    }
+    return false;
+  }
+
+  hasChildNodes(): boolean {
+    return this.childNodes.length > 0;
+  }
+
+  /** 自身或后代是否包含 other（含自身） */
+  contains(other: SsrNode | null): boolean {
+    if (other == null) return false;
+    let n: SsrNode | null = other;
+    while (n) {
+      if (n === this) return true;
+      n = n.parentNode;
+    }
+    return false;
+  }
+
+  getRootNode(): SsrNode {
+    if (!this.parentNode) return this;
+    let n: SsrNode = this.parentNode;
+    while (n.parentNode) n = n.parentNode;
+    return n;
   }
 
   /** 叶子节点默认空串；元素 / Fragment 在子类中聚合子节点文本 */
@@ -321,9 +380,20 @@ export abstract class SsrNode {
     if (p) p.removeChild(this);
   }
 
-  /** 占位：与 DOM 接口形状一致 */
-  addEventListener(): void {}
-  removeEventListener(): void {}
+  /** 占位：与 DOM 接口形状一致（SSR 不派发） */
+  addEventListener(
+    _type?: string,
+    _listener?: unknown,
+    _options?: unknown,
+  ): void {}
+  removeEventListener(
+    _type?: string,
+    _listener?: unknown,
+    _options?: unknown,
+  ): void {}
+  dispatchEvent(_event?: unknown): boolean {
+    return true;
+  }
 }
 
 /**
@@ -357,6 +427,7 @@ function ssrUnlinkRemoveChild(arr: SsrNode[], i: number): SsrNode {
 /** 注释节点（`nodeType === 8`） */
 export class SsrComment extends SsrNode {
   readonly nodeType = NODE_COMMENT;
+  readonly nodeName = "#comment";
   /** 注释内容 */
   data: string;
 
@@ -386,6 +457,7 @@ export class SsrComment extends SsrNode {
 /** 文本节点 */
 export class SsrText extends SsrNode {
   readonly nodeType = NODE_TEXT;
+  readonly nodeName = "#text";
   /** 文本数据 */
   data: string;
 
@@ -414,6 +486,7 @@ export class SsrText extends SsrNode {
 /** DocumentFragment */
 export class SsrDocumentFragment extends SsrNode {
   readonly nodeType = NODE_FRAGMENT;
+  readonly nodeName = "#document-fragment";
   /** 子节点 */
   readonly _children: SsrNode[] = [];
 
@@ -556,6 +629,141 @@ function styleBagToCssText(bag: Record<string, string>): string {
 }
 
 /**
+ * 简易 CSS 选择器匹配（无复杂组合器）：支持 `*`、tag、`#id`、`.class`、`[attr]`、`[attr=value]`
+ * 及它们的串联（如 `a[href]`、`meta[name="description"]`）。逗号选择器列表取 OR。
+ */
+function ssrMatchesSimple(el: SsrElement, selector: string): boolean {
+  const raw = selector.trim();
+  if (!raw) return false;
+  if (raw.includes(",")) {
+    return raw.split(",").some((part) => ssrMatchesSimple(el, part.trim()));
+  }
+  if (raw === "*") return true;
+  let i = 0;
+  const tag = /^[a-zA-Z][\w:-]*/.exec(raw);
+  if (tag && raw[0] !== "." && raw[0] !== "#" && raw[0] !== "[") {
+    if (el.localName !== tag[0]!.toLowerCase()) return false;
+    i = tag[0]!.length;
+  }
+  while (i < raw.length) {
+    const c = raw[i]!;
+    if (c === "#") {
+      const m = /^#([\w-]+)/.exec(raw.slice(i));
+      if (!m || el.id !== m[1]) return false;
+      i += m[0].length;
+      continue;
+    }
+    if (c === ".") {
+      const m = /^\.([\w-]+)/.exec(raw.slice(i));
+      if (!m || !el.classList.contains(m[1]!)) return false;
+      i += m[0].length;
+      continue;
+    }
+    if (c === "[") {
+      const m =
+        /^\[\s*([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s\]]+)))?\s*\]/
+          .exec(raw.slice(i));
+      if (!m) return false;
+      const name = m[1]!;
+      const val = m[2] ?? m[3] ?? m[4];
+      if (val === undefined) {
+        if (!el.hasAttribute(name)) return false;
+      } else if ((el.getAttribute(name) ?? "") !== val) {
+        return false;
+      }
+      i += m[0].length;
+      continue;
+    }
+    // 空白：后代组合器在 match 单节点时不处理
+    if (c === " " || c === ">" || c === "+" || c === "~") return false;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 在 root 子树中收集匹配节点。
+ * - 逗号：OR
+ * - 空格：简单后代组合（`meta[name] content` 形不支持；`div .x` / `a[href]` 支持）
+ */
+function ssrQueryAll(root: SsrNode, selector: string): SsrElement[] {
+  const out: SsrElement[] = [];
+  const seen = new Set<SsrElement>();
+  const add = (el: SsrElement) => {
+    if (!seen.has(el)) {
+      seen.add(el);
+      out.push(el);
+    }
+  };
+
+  const matchDesc = (
+    scope: SsrNode,
+    simpleSel: string,
+    includeSelf: boolean,
+  ) => {
+    const visit = (node: SsrNode, isRoot: boolean) => {
+      if (node.nodeType === NODE_ELEMENT) {
+        const el = node as SsrElement;
+        if ((!isRoot || includeSelf) && ssrMatchesSimple(el, simpleSel)) {
+          add(el);
+        }
+        for (const c of el.childNodes) visit(c, false);
+      } else if (node.nodeType === NODE_FRAGMENT) {
+        for (const c of node.childNodes) visit(c, false);
+      }
+    };
+    visit(scope, true);
+  };
+
+  for (const part of selector.split(",").map((s) => s.trim()).filter(Boolean)) {
+    const steps = part.split(/\s+/).filter(Boolean);
+    if (steps.length === 0) continue;
+    if (steps.length === 1) {
+      matchDesc(root, steps[0]!, true);
+      continue;
+    }
+    // 多段：先找匹配第一段的节点，再在其后代中找剩余
+    let scopes: SsrNode[] = [root];
+    for (let si = 0; si < steps.length; si++) {
+      const step = steps[si]!;
+      const next: SsrElement[] = [];
+      const nseen = new Set<SsrElement>();
+      for (const sc of scopes) {
+        const bucket: SsrElement[] = [];
+        const visit = (node: SsrNode, allowSelf: boolean) => {
+          if (node.nodeType === NODE_ELEMENT) {
+            const el = node as SsrElement;
+            if (allowSelf && ssrMatchesSimple(el, step)) {
+              if (!nseen.has(el)) {
+                nseen.add(el);
+                bucket.push(el);
+              }
+            }
+            for (const c of el.childNodes) visit(c, true);
+          } else if (node.nodeType === NODE_FRAGMENT) {
+            for (const c of node.childNodes) visit(c, true);
+          }
+        };
+        // 第一段可含 root；后续段只在子树（含当前 scope 的后代，不含把自己再匹配时从子开始）
+        if (si === 0) {
+          visit(sc, true);
+        } else {
+          if (sc.nodeType === NODE_ELEMENT || sc.nodeType === NODE_FRAGMENT) {
+            for (const c of sc.childNodes) visit(c, true);
+          }
+        }
+        next.push(...bucket);
+      }
+      scopes = next;
+    }
+    for (const el of scopes) {
+      if (el.nodeType === NODE_ELEMENT) add(el as SsrElement);
+    }
+  }
+  return out;
+}
+
+/**
  * 元素节点：属性、`innerHTML`、序列化 `outerHTML`。
  */
 export class SsrElement extends SsrNode {
@@ -565,6 +773,10 @@ export class SsrElement extends SsrNode {
   readonly localName: string;
   /** 与 DOM 一致的大写 tagName（HTML）；SVG 保留传入大小写 */
   readonly tagName: string;
+  /** 与浏览器一致；HTML 为大写 tagName */
+  get nodeName(): string {
+    return this.tagName;
+  }
   /** 特性表 */
   private readonly _attrs = new Map<string, string>();
   /** 供 `setProperty` 使用的 property 袋（`value` / `checked` 等） */
@@ -603,21 +815,29 @@ export class SsrElement extends SsrNode {
     else this.removeAttribute("class");
   }
 
-  /** 与 DOM CSSStyleDeclaration 足够兼容：Object.assign(el.style, obj) + cssText */
-  get style(): Record<string, string> & { cssText: string } {
+  /**
+   * 与 DOM CSSStyleDeclaration 足够兼容：
+   * `Object.assign(el.style, obj)`、`cssText`、`setProperty` / `removeProperty` / `getPropertyValue`。
+   */
+  get style(): Record<string, string> & {
+    cssText: string;
+    setProperty: (prop: string, value: string) => void;
+    removeProperty: (prop: string) => string;
+    getPropertyValue: (prop: string) => string;
+  } {
     const bag = this._style;
-    return new Proxy(bag as Record<string, string> & { cssText: string }, {
-      get(t, p: string | symbol) {
-        if (p === "cssText") {
-          return styleBagToCssText(bag);
-        }
-        return (t as any)[p];
+    const cssNameToCamel = (prop: string): string =>
+      prop.includes("-")
+        ? prop.replace(/-([a-z])/g, (_, x) => x.toUpperCase())
+        : prop;
+    const api = {
+      get cssText() {
+        return styleBagToCssText(bag);
       },
-      set(_t, p: string | symbol, v: unknown) {
-        if (p === "cssText") {
-          for (const k of Object.keys(bag)) delete (bag as any)[k];
-          const s = String(v ?? "");
-          if (!s) return true;
+      set cssText(v: string) {
+        for (const k of Object.keys(bag)) delete (bag as any)[k];
+        const s = String(v ?? "");
+        if (s.length > 0) {
           for (const part of s.split(";")) {
             const colon = part.indexOf(":");
             if (colon < 0) continue;
@@ -627,12 +847,54 @@ export class SsrElement extends SsrNode {
             );
             (bag as any)[key] = part.slice(colon + 1).trim();
           }
+        }
+      },
+      setProperty(prop: string, value: string) {
+        (bag as any)[cssNameToCamel(prop)] = String(value ?? "");
+      },
+      removeProperty(prop: string): string {
+        const key = cssNameToCamel(prop);
+        const prev = (bag as any)[key];
+        delete (bag as any)[key];
+        return prev == null ? "" : String(prev);
+      },
+      getPropertyValue(prop: string): string {
+        const v = (bag as any)[cssNameToCamel(prop)];
+        return v == null ? "" : String(v);
+      },
+    };
+    return new Proxy(bag as any, {
+      get(t, p: string | symbol) {
+        if (p === "cssText") return api.cssText;
+        if (p === "setProperty") return api.setProperty.bind(api);
+        if (p === "removeProperty") return api.removeProperty.bind(api);
+        if (p === "getPropertyValue") return api.getPropertyValue.bind(api);
+        return (t as any)[p as string];
+      },
+      set(_t, p: string | symbol, v: unknown) {
+        if (p === "cssText") {
+          api.cssText = String(v ?? "");
           return true;
+        }
+        if (
+          p === "setProperty" || p === "removeProperty" ||
+          p === "getPropertyValue"
+        ) {
+          return false;
         }
         (bag as any)[String(p)] = String(v);
         return true;
       },
     });
+  }
+
+  /** id ↔ id 特性（与浏览器一致，便于 `name in el` 与属性同步） */
+  get id(): string {
+    return this.getAttribute("id") ?? "";
+  }
+  set id(v: string) {
+    if (v) this.setAttribute("id", String(v));
+    else this.removeAttribute("id");
   }
 
   get value(): string {
@@ -667,6 +929,30 @@ export class SsrElement extends SsrNode {
 
   getAttribute(name: string): string | null {
     return this._attrs.get(name.toLowerCase()) ?? null;
+  }
+
+  /**
+   * 与 DOM Element.hasAttribute 对齐。
+   * `setProperty` 在 attribute 分支对 `value == null` 会调用此方法；缺失会导致
+   * dweb hybrid SSR（Deno/Bun 均无浏览器 document）抛 TypeError。
+   */
+  hasAttribute(name: string): boolean {
+    return this._attrs.has(name.toLowerCase());
+  }
+
+  /**
+   * 与 DOM Element.toggleAttribute 对齐（force 语义）。
+   */
+  toggleAttribute(name: string, force?: boolean): boolean {
+    const n = name.toLowerCase();
+    const has = this._attrs.has(n);
+    const shouldHave = force === undefined ? !has : !!force;
+    if (shouldHave) {
+      if (!has) this._attrs.set(n, "");
+      return true;
+    }
+    this._attrs.delete(n);
+    return false;
   }
 
   get innerHTML(): string {
@@ -771,6 +1057,271 @@ export class SsrElement extends SsrNode {
     }
     return oldChild;
   }
+
+  // --- 现代 DOM 插入 / 查询 / classList / dataset（防 dweb hybrid SSR 再踩洞） ---
+
+  get firstElementChild(): SsrElement | null {
+    for (const c of this._kids) {
+      if (c.nodeType === NODE_ELEMENT) return c as SsrElement;
+    }
+    return null;
+  }
+
+  get lastElementChild(): SsrElement | null {
+    for (let i = this._kids.length - 1; i >= 0; i--) {
+      const c = this._kids[i]!;
+      if (c.nodeType === NODE_ELEMENT) return c as SsrElement;
+    }
+    return null;
+  }
+
+  /** 仅元素子节点（类 HTMLCollection 的数组视图） */
+  get children(): SsrElement[] {
+    const out: SsrElement[] = [];
+    for (const c of this._kids) {
+      if (c.nodeType === NODE_ELEMENT) out.push(c as SsrElement);
+    }
+    return out;
+  }
+
+  get childElementCount(): number {
+    return this.children.length;
+  }
+
+  /** 与 textContent 同语义（SSR 无布局） */
+  get innerText(): string {
+    return this.textContent;
+  }
+  set innerText(v: string) {
+    this.textContent = v;
+  }
+
+  get classList(): {
+    readonly length: number;
+    contains: (token: string) => boolean;
+    add: (...tokens: string[]) => void;
+    remove: (...tokens: string[]) => void;
+    toggle: (token: string, force?: boolean) => boolean;
+    replace: (oldToken: string, newToken: string) => boolean;
+    toString: () => string;
+  } {
+    const tokens = (): string[] =>
+      this.className.split(/\s+/).filter((t) => t.length > 0);
+    const write = (list: string[]) => {
+      this.className = list.join(" ");
+    };
+    return {
+      get length() {
+        return tokens().length;
+      },
+      contains: (token: string) => tokens().includes(token),
+      add: (...toks: string[]) => {
+        const set = new Set(tokens());
+        for (const t of toks) if (t) set.add(t);
+        write([...set]);
+      },
+      remove: (...toks: string[]) => {
+        const set = new Set(tokens());
+        for (const t of toks) set.delete(t);
+        write([...set]);
+      },
+      toggle: (token: string, force?: boolean) => {
+        const set = new Set(tokens());
+        const has = set.has(token);
+        const should = force === undefined ? !has : !!force;
+        if (should) set.add(token);
+        else set.delete(token);
+        write([...set]);
+        return should;
+      },
+      replace: (oldToken: string, newToken: string) => {
+        const list = tokens();
+        const i = list.indexOf(oldToken);
+        if (i < 0) return false;
+        list[i] = newToken;
+        write(list);
+        return true;
+      },
+      toString: () => this.className,
+    };
+  }
+
+  /** data-* 特性视图 */
+  get dataset(): Record<string, string> {
+    const getAttr = (name: string) => this.getAttribute(name);
+    const setAttr = (name: string, value: string) =>
+      this.setAttribute(name, value);
+    const removeAttr = (name: string) => this.removeAttribute(name);
+    const toDataAttr = (p: string) =>
+      "data-" + p.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+    return new Proxy({} as Record<string, string>, {
+      get(_t, p: string | symbol) {
+        if (typeof p !== "string") return undefined;
+        return getAttr(toDataAttr(p)) ?? undefined;
+      },
+      set(_t, p: string | symbol, v: unknown) {
+        if (typeof p !== "string") return false;
+        const attr = toDataAttr(p);
+        if (v == null) removeAttr(attr);
+        else setAttr(attr, String(v));
+        return true;
+      },
+      deleteProperty(_t, p: string | symbol) {
+        if (typeof p !== "string") return false;
+        removeAttr(toDataAttr(p));
+        return true;
+      },
+    });
+  }
+
+  matches(selectors: string): boolean {
+    return ssrMatchesSimple(this, selectors);
+  }
+
+  closest(selectors: string): SsrElement | null {
+    if (ssrMatchesSimple(this, selectors)) return this;
+    let n: SsrNode | null = this.parentNode;
+    while (n) {
+      if (n.nodeType === NODE_ELEMENT) {
+        const el = n as SsrElement;
+        if (ssrMatchesSimple(el, selectors)) return el;
+      }
+      n = n.parentNode;
+    }
+    return null;
+  }
+
+  querySelector(selectors: string): SsrElement | null {
+    return this.querySelectorAll(selectors)[0] ?? null;
+  }
+
+  querySelectorAll(selectors: string): SsrElement[] {
+    // 不含自身（与 Element#querySelectorAll 一致）：在后代子树中匹配
+    return ssrQueryAll(this, selectors).filter((el) => el !== this);
+  }
+
+  getAttributeNS(_ns: string | null, localName: string): string | null {
+    return this.getAttribute(localName);
+  }
+  setAttributeNS(
+    _ns: string | null,
+    qualifiedName: string,
+    value: string,
+  ): void {
+    this.setAttribute(
+      qualifiedName.includes(":")
+        ? qualifiedName.split(":").pop()!
+        : qualifiedName,
+      value,
+    );
+  }
+  removeAttributeNS(_ns: string | null, localName: string): void {
+    this.removeAttribute(localName);
+  }
+  hasAttributeNS(_ns: string | null, localName: string): boolean {
+    return this.hasAttribute(localName);
+  }
+
+  append(...nodes: Array<SsrNode | string>): void {
+    const doc = this.ownerDocument!;
+    for (const n of nodes) {
+      this.appendChild(
+        typeof n === "string" ? doc.createTextNode(n) : n,
+      );
+    }
+  }
+
+  prepend(...nodes: Array<SsrNode | string>): void {
+    const doc = this.ownerDocument!;
+    const first = this.firstChild;
+    for (const n of nodes) {
+      const node = typeof n === "string" ? doc.createTextNode(n) : n;
+      this.insertBefore(node, first);
+    }
+  }
+
+  before(...nodes: Array<SsrNode | string>): void {
+    const p = this.parentNode;
+    if (!p) return;
+    const doc = this.ownerDocument!;
+    for (const n of nodes) {
+      const node = typeof n === "string" ? doc.createTextNode(n) : n;
+      p.insertBefore(node, this);
+    }
+  }
+
+  after(...nodes: Array<SsrNode | string>): void {
+    const p = this.parentNode;
+    if (!p) return;
+    const doc = this.ownerDocument!;
+    const ref = this.nextSibling;
+    for (const n of nodes) {
+      const node = typeof n === "string" ? doc.createTextNode(n) : n;
+      p.insertBefore(node, ref);
+    }
+  }
+
+  replaceWith(...nodes: Array<SsrNode | string>): void {
+    const p = this.parentNode;
+    if (!p) return;
+    const doc = this.ownerDocument!;
+    const ref = this.nextSibling;
+    p.removeChild(this);
+    for (const n of nodes) {
+      const node = typeof n === "string" ? doc.createTextNode(n) : n;
+      p.insertBefore(node, ref);
+    }
+  }
+
+  /** 常用反射属性：与 setProperty / 表单控件路径对齐 */
+  get name(): string {
+    return this.getAttribute("name") ?? "";
+  }
+  set name(v: string) {
+    if (v) this.setAttribute("name", String(v));
+    else this.removeAttribute("name");
+  }
+  get type(): string {
+    return this.getAttribute("type") ?? "";
+  }
+  set type(v: string) {
+    if (v) this.setAttribute("type", String(v));
+    else this.removeAttribute("type");
+  }
+  get href(): string {
+    return this.getAttribute("href") ?? "";
+  }
+  set href(v: string) {
+    if (v) this.setAttribute("href", String(v));
+    else this.removeAttribute("href");
+  }
+  get src(): string {
+    return this.getAttribute("src") ?? "";
+  }
+  set src(v: string) {
+    if (v) this.setAttribute("src", String(v));
+    else this.removeAttribute("src");
+  }
+  get disabled(): boolean {
+    return this.hasAttribute("disabled");
+  }
+  set disabled(v: unknown) {
+    if (v) this.setAttribute("disabled", "");
+    else this.removeAttribute("disabled");
+  }
+  get tabIndex(): number {
+    const t = this.getAttribute("tabindex");
+    return t == null ? -1 : Number(t) || 0;
+  }
+  set tabIndex(v: number) {
+    this.setAttribute("tabindex", String(v));
+  }
+
+  // 浏览器输入 API 在 SSR 为空操作
+  focus(): void {}
+  blur(): void {}
+  click(): void {}
+  setSelectionRange(_s?: number, _e?: number, _d?: string): void {}
 }
 
 /**
@@ -779,9 +1330,32 @@ export class SsrElement extends SsrNode {
 export class SsrDocument {
   /** 根占位（部分代码会读 `document.documentElement`） */
   documentElement: SsrElement;
+  /** 惰性 head/body，meta/router 可能用到 */
+  private _head: SsrElement | null = null;
+  private _body: SsrElement | null = null;
 
   constructor() {
     this.documentElement = new SsrElement(this, HTML_NS, "html");
+  }
+
+  get head(): SsrElement {
+    if (!this._head) {
+      this._head = this.createElement("head");
+      this.documentElement.appendChild(this._head);
+    }
+    return this._head;
+  }
+
+  get body(): SsrElement {
+    if (!this._body) {
+      this._body = this.createElement("body");
+      this.documentElement.appendChild(this._body);
+    }
+    return this._body;
+  }
+
+  get defaultView(): unknown {
+    return (globalThis as { window?: unknown }).window ?? null;
   }
 
   createElement(tagName: string): SsrElement {
@@ -804,9 +1378,24 @@ export class SsrDocument {
     return new SsrDocumentFragment(this);
   }
 
+  importNode(node: SsrNode, deep?: boolean): SsrNode {
+    return node.cloneNode(deep);
+  }
+
   /** SSR 不派发事件；与 `setProperty` 委托注册形状一致 */
-  addEventListener(): void {}
-  removeEventListener(): void {}
+  addEventListener(
+    _type?: string,
+    _listener?: unknown,
+    _options?: unknown,
+  ): void {}
+  removeEventListener(
+    _type?: string,
+    _listener?: unknown,
+    _options?: unknown,
+  ): void {}
+  dispatchEvent(_event?: unknown): boolean {
+    return true;
+  }
 
   getElementById(id: string): SsrElement | null {
     const walk = (n: SsrNode): SsrElement | null => {
@@ -821,6 +1410,14 @@ export class SsrDocument {
       return null;
     };
     return walk(this.documentElement);
+  }
+
+  querySelector(selectors: string): SsrElement | null {
+    return ssrQueryAll(this.documentElement, selectors)[0] ?? null;
+  }
+
+  querySelectorAll(selectors: string): SsrElement[] {
+    return ssrQueryAll(this.documentElement, selectors);
   }
 }
 

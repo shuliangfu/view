@@ -1196,17 +1196,18 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.4] — 2026-07-10**:
-  - **Added**: Router SSR (`url`/`ssr`/`matchRoute`/`renderRouterToString`);
-    wider compiler static lifting + `_path$N`; controlled-input IME guards;
-    `deno task bench`.
-  - **Changed**: keyed `For` without span shells; anonymous Signal registry
-    policy; Store/`pathToParts`/SSR stringify micro-opts; TEST_REPORT refresh.
-  - **Fixed**: focus loss when Signal `value` is number vs DOM string; no
-    `value` writeback during IME composition.
+- **Latest [2.0.5] — 2026-07-10**:
+  - **Fixed**: SSR pseudo-DOM `hasAttribute` / `toggleAttribute` (dweb hybrid on
+    Deno/Bun: no more `el.hasAttribute is not a function`); defensive
+    `setProperty` attribute branch.
+  - **Changed**: fuller SSR DOM surface (`classList`, `dataset`,
+    `matches`/`closest`/`querySelector`, modern insert APIs, `document.head` /
+    `body`, simple selectors); `docs/*/BUN_COMPAT.md`.
+  - **Tests**: `ssr-dom-element-api` (18 cases); TEST_REPORT refresh (Deno full
+    **398** / Bun full **331** / 0 failed).
   - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**
-  (**2026-07-10**: Deno unit+integration **359** passed / **0** failed);
+  (**2026-07-10**: Deno `tests/` **398** / Bun `tests/` **331**, 0 failed);
   Chinese: **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
 - Chinese changelog: **[docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)**.
 

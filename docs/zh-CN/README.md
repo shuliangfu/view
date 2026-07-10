@@ -1178,17 +1178,19 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.4] — 2026-07-10**：
-  - **新增**：路由 SSR 同构（`url`/`ssr`/`matchRoute`/`renderRouterToString`）；
-    编译器静态提升与 `_path$N`；受控输入 IME 保护；`deno task bench`。
-  - **变更**：键控 `For` 去 span 壳；匿名 Signal registry 策略；Store/路由/SSR
-    等微优化；测试报告更新。
-  - **修复**：number 与 DOM 字符串 `value` 比较导致的丢光标；IME 组合期不回写
-    `value`。
+- **当前版本 [2.0.5] — 2026-07-10**：
+  - **修复**：SSR 伪 DOM 补齐 `hasAttribute` / `toggleAttribute`（dweb hybrid 在
+    Deno/Bun 上不再 `el.hasAttribute is not a function`）；`setProperty`
+    属性分支 防御性回退。
+  - **变更**：SSR 伪 DOM 补全（`classList`、`dataset`、`matches`/`closest`/
+    `querySelector`、现代插入 API、`document.head`/`body`
+    等）；`BUN_COMPAT.md`。
+  - **测试**：`ssr-dom-element-api`（18 条）；测试报告更新（Deno 全量 **398** /
+    Bun 全量 **331** / 0 失败）。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-10**：Deno
-  单元+集成 **359** 通过 / **0** 失败；英文版
+  `tests/` **398** / Bun `tests/` **331**，0 失败；英文版
   **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**）。
 
 ---

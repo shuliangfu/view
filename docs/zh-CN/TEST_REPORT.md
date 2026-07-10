@@ -7,7 +7,7 @@
 | 项目     | 说明                                                            |
 | -------- | --------------------------------------------------------------- |
 | 包名     | `@dreamer/view`                                                 |
-| 版本     | **2.0.4**（与 `deno.json` / `package.json` 一致）               |
+| 版本     | **2.0.5**（与 `deno.json` / `package.json` 一致）               |
 | 测试框架 | `@dreamer/test` ^1.1.8                                          |
 | 报告日期 | **2026-07-10**                                                  |
 | DOM 环境 | 单元/集成：happy-dom **20.4.0**；E2E：Chromium（Playwright 等） |
@@ -15,13 +15,13 @@
 
 ### 1.1 测试树规模（当前仓库）
 
-| 层级             | 路径                       | 文件数（约）                                     |
-| ---------------- | -------------------------- | ------------------------------------------------ |
-| 单元             | `tests/unit/**`            | **~60** 个 `*.test.ts` / `*.test.tsx`            |
-| 集成             | `tests/integration/**`     | **6** 个测试模块                                 |
-| E2E              | `tests/e2e/**`             | **1** 个模块（examples 多场景）                  |
-| 基准             | `tests/bench/**`           | **1** 个 `*.bench.ts`（不计入「通过/失败」用例） |
-| **合计测试模块** | `tests/` 下 `*.test.ts(x)` | **67**                                           |
+| 层级             | 路径                       | 文件数                                       |
+| ---------------- | -------------------------- | -------------------------------------------- |
+| 单元             | `tests/unit/**`            | **61** 个 `*.test.ts` / `*.test.tsx`         |
+| 集成             | `tests/integration/**`     | **6** 个测试模块                             |
+| E2E              | `tests/e2e/**`             | **1** 个模块（examples 多场景）              |
+| 基准             | `tests/bench/**`           | **1** 个 `*.bench.ts`（不计入通过/失败用例） |
+| **合计测试模块** | `tests/` 下 `*.test.ts(x)` | **68**                                       |
 
 ---
 
@@ -43,43 +43,79 @@ deno task test:e2e
 # 性能基准（不计入 pass/fail）
 deno task bench
 
-# Bun（preload happy-dom）
-bun test --preload ./tests/unit/dom-setup.ts tests/
+# Bun（preload happy-dom；主路径）
+bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration
+
+# SSR 伪 DOM 专项（可不依赖 happy-dom 语义；仍建议 preload 以统一环境）
+bun test --preload ./tests/unit/dom-setup.ts tests/unit/runtime/ssr-dom-element-api.test.ts
 ```
 
 | 注意            | 说明                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------ |
 | DOM 注入顺序    | 部分套件依赖 `dom-setup`；**勿**在全局缓存 `typeof Node` 于模块顶层（happy-dom 可能晚于 import） |
 | Deno / Bun 条数 | 两运行器对 `it`/钩子的计数方式不同，**以 0 失败为准**，不必强行对齐数字                          |
-| SSR             | 无浏览器 `document` 时由框架安装极简 SSR DOM；相关用例见 `ssr-bootstrap`、`runtime/server`       |
+| SSR             | 无浏览器 `document` 时由框架安装极简 SSR DOM；见 `ssr-bootstrap`、`ssr-dom-element-api`          |
 
 ---
 
 ## 3. 最新结果（本报告统计）
 
-### 3.1 Deno：`tests/unit` + `tests/integration`
+> 本机重跑时间：**2026-07-10**（Apple Silicon 量级，视机器浮动）。\
+> **注意命令范围不同，条数会不同——不是漏测：**
 
-| 项         | 值                                                 |
-| ---------- | -------------------------------------------------- |
-| **通过**   | **359**                                            |
-| **失败**   | **0**                                              |
-| **通过率** | **100%**                                           |
-| **耗时**   | 约 **27s**（Apple Silicon 笔记本量级，视机器浮动） |
-| **命令**   | `deno test -A tests/unit tests/integration`        |
+| 命令范围                           | 说明                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| `tests/unit` + `tests/integration` | `deno task test` 默认；**不含** E2E                                        |
+| `tests/`                           | `package.json` 的 `bun test … tests/`；**含** unit + integration + **e2e** |
+
+### 3.1 Deno
+
+| 范围                                       | 通过    | 失败  | 耗时             | 命令                                        |
+| ------------------------------------------ | ------- | ----- | ---------------- | ------------------------------------------- |
+| **unit + integration**（`deno task test`） | **377** | **0** | ~**28–29s**      | `deno test -A tests/unit tests/integration` |
+| **全量 `tests/`**（含 e2e）                | **398** | **0** | ~**1m11s–1m13s** | `deno test -A tests/`                       |
+
+说明：全量比 unit+integration 多约 **21** 条，主要来自
+`tests/e2e/examples-e2e.test.ts`。
 
 ### 3.2 Bun
 
-- 历史基线（同结构树）：**0 失败**；用例条数通常 **低于 Deno**（报告方式差异）。
-- 建议在发版前再跑：`bun test --preload ./tests/unit/dom-setup.ts tests/`。
+| 范围                                     | 通过    | 失败  | 文件   | 耗时     | 命令                                                                        |
+| ---------------------------------------- | ------- | ----- | ------ | -------- | --------------------------------------------------------------------------- |
+| **unit + integration**                   | **311** | **0** | 67     | ~**5s**  | `bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration` |
+| **全量 `tests/`**（`npm/bun test` 默认） | **331** | **0** | **68** | ~**48s** | `bun test --preload ./tests/unit/dom-setup.ts tests/`                       |
 
-### 3.3 E2E
+说明：全量比 unit+integration 多约 **20** 条，主要来自 e2e 文件（+1 文件 → 68
+files）。
 
-- 模块：`tests/e2e/examples-e2e.test.ts`
-- 覆盖 examples 站点多页交互（Signal、Form、Store、Router、Boundary、布局、404
-  等，约 **20+** 场景）。
-- 需本机浏览器与 examples 服务；**默认 `deno task test` 不包含 E2E**。
+### 3.3 与「你本地数字」对齐
 
-### 3.4 Bench
+若你看到：
+
+```text
+331 pass / 0 fail / 68 files / ~48s   # Bun
+ok | 398 passed | 0 failed (~1m13s)   # Deno
+```
+
+这与上表 **全量 `tests/`** 一致，**是对的**。\
+此前报告若只写 377 / 311，对应的是 **不含 e2e 的 unit+integration**，不是全量。
+
+### 3.4 SSR 伪 DOM 专项（`ssr-dom-element-api`）
+
+| 项       | 值                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **用例** | **18**                                                                                                                          |
+| **Deno** | 18 passed / 0 failed                                                                                                            |
+| **Bun**  | 18 passed / 0 failed                                                                                                            |
+| **说明** | 覆盖 hasAttribute、classList、matches/query、节点关系、反射属性、document.head/body、renderToString null props 等（2.0.5 补全） |
+
+### 3.5 E2E
+
+- 模块：`tests/e2e/examples-e2e.test.ts`（全量 `tests/` 会带上）
+- 覆盖 examples 多页交互（Signal、Form、Store、Router、Boundary、布局、404 等）
+- **单独**：`deno task test:e2e`；**默认 `deno task test` 不含 e2e**
+
+### 3.6 Bench
 
 - `tests/bench/signal.bench.ts`：Signal 写、同值跳过、batch + 多 Effect。
 - `deno task bench` 仅作性能回归参考，**不**作为 CI 红绿门禁（除非另行配置）。
@@ -90,17 +126,18 @@ bun test --preload ./tests/unit/dom-setup.ts tests/
 
 ### 4.1 单元测试 `tests/unit/`
 
-| 目录 / 主题                      | 覆盖要点                                                                                                                                                                                                                         | 状态 |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| **reactivity/**                  | Signal（含 `.value`/元组/调用）、Effect、Memo、Owner/`cleanNode`、Store（含 `Object.is`）、Selector、Context、生命周期、错误冒泡、cycle、createDeferred / useTransition                                                          | ✅   |
-| **runtime/**                     | `insert`、数组锚点、details、props/setProperty、**受控 value 焦点稳定**、IME 组合期、事件委托、`Show`/`For`/`Index`/`Switch`、键控列表（无 span 壳）、Suspense、Portal、Hydration、HMR、template/walk、mount 细节、stress 大列表 | ✅   |
-| **compiler/**                    | analyzer 静态提升、transformer（template/walk 路径常量、少 Effect）、directive、path-gen、SSR 生成模式、HMR 注入                                                                                                                 | ✅   |
-| **integrations/**                | Form 校验/handleSubmit、Resource + Suspense/ErrorBoundary、**Router 全功能**、**Router SSR 同构**（`matchRoute` / `renderRouterToString`）                                                                                       | ✅   |
-| **scheduler/**                   | batch 微任务合并、priority 队列                                                                                                                                                                                                  | ✅   |
-| **server/**                      | view.config、layout 链、routers codegen、createApp 冒烟、semver 工具                                                                                                                                                             | ✅   |
-| **utils/**                       | `escapeForText` / Attr / AttrHtml 快路径与转义                                                                                                                                                                                   | ✅   |
-| **ssr-bootstrap / ssr-complete** | 无预置 document 的 SSR、SSR→hydrate 响应式                                                                                                                                                                                       | ✅   |
-| **optimize / i18n**              | optimize 插件形态、locale / `$tr`                                                                                                                                                                                                | ✅   |
+| 目录 / 主题                      | 覆盖要点                                                                                                                                                                                                                                 | 状态 |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **reactivity/**                  | Signal（含 `.value`/元组/调用）、Effect、Memo、Owner/`cleanNode`、Store（含 `Object.is`）、Selector、Context、生命周期、错误冒泡、cycle、createDeferred / useTransition                                                                  | ✅   |
+| **runtime/**                     | `insert`、数组锚点、details、props/setProperty、**受控 value 焦点稳定**、IME 组合期、事件委托、`Show`/`For`/`Index`/`Switch`、键控列表（无 span 壳）、Suspense、Portal、Hydration、HMR、template/walk、mount、stress、**SSR 伪 DOM API** | ✅   |
+| **compiler/**                    | analyzer 静态提升、transformer（template/walk 路径常量、少 Effect）、directive、path-gen、SSR 生成模式、HMR 注入                                                                                                                         | ✅   |
+| **integrations/**                | Form 校验/handleSubmit、Resource + Suspense/ErrorBoundary、**Router 全功能**、**Router SSR 同构**（`matchRoute` / `renderRouterToString`）                                                                                               | ✅   |
+| **scheduler/**                   | batch 微任务合并、priority 队列                                                                                                                                                                                                          | ✅   |
+| **server/**                      | view.config、layout 链、routers codegen、createApp 冒烟、semver 工具                                                                                                                                                                     | ✅   |
+| **utils/**                       | `escapeForText` / Attr / AttrHtml 快路径与转义                                                                                                                                                                                           | ✅   |
+| **ssr-bootstrap / ssr-complete** | 无预置 document 的 SSR、SSR→hydrate 响应式                                                                                                                                                                                               | ✅   |
+| **ssr-dom-element-api**          | **2.0.5**：hasAttribute/toggle、style、classList、dataset、matches/closest/query、节点关系、append 系、反射属性、document.head/body、Fragment、renderToString                                                                            | ✅   |
+| **optimize / i18n**              | optimize 插件形态、locale / `$tr`                                                                                                                                                                                                        | ✅   |
 
 ### 4.2 集成测试 `tests/integration/`
 
@@ -121,19 +158,18 @@ bun test --preload ./tests/unit/dom-setup.ts tests/
 
 ---
 
-## 5. 近期相对 2.0.0 报告的增补（与优化相关）
+## 5. 近期增补（相对 2.0.0 / 2.0.4 报告）
 
-下列能力在 **2.0.4** 周期内加强了自动化覆盖，便于对照 CHANGELOG / 源码：
-
-| 主题            | 代表测试                                           | 说明                                                                             |
-| --------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 受控表单焦点    | `runtime/props-advanced.test.ts`                   | 同值不写 `el.value`、**number 与 DOM 字符串**、**IME composition**、节点身份稳定 |
-| For 键控无壳    | `runtime/control-flow.test.ts`、`stress.test.ts`   | 注释锚点、同引用重排复用、直接子元素                                             |
-| Signal registry | `reactivity/signal-optimization.test.ts`           | 生产匿名不进 registry；`VIEW_DEV` 供 HMR                                         |
-| Router SSR      | `integrations/router-ssr.test.ts`                  | `parseRouterUrl`、`matchRoute`、`renderRouterToString`                           |
-| 编译少 Effect   | `compiler/transformer.test.ts`、`analyzer.test.ts` | 静态三元/模板串提升、walk `_path$N`                                              |
-| escape 快路径   | `utils/escape.test.ts`                             | 无特殊字符零分配                                                                 |
-| Bench           | `tests/bench/signal.bench.ts`                      | 可选性能基线                                                                     |
+| 主题                | 代表测试                                           | 说明                                                                                       |
+| ------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 受控表单焦点        | `runtime/props-advanced.test.ts`                   | 同值不写 `el.value`、**number 与 DOM 字符串**、**IME composition**、节点身份稳定           |
+| For 键控无壳        | `runtime/control-flow.test.ts`、`stress.test.ts`   | 注释锚点、同引用重排复用、直接子元素                                                       |
+| Signal registry     | `reactivity/signal-optimization.test.ts`           | 生产匿名不进 registry；`VIEW_DEV` 供 HMR                                                   |
+| Router SSR          | `integrations/router-ssr.test.ts`                  | `parseRouterUrl`、`matchRoute`、`renderRouterToString`                                     |
+| 编译少 Effect       | `compiler/transformer.test.ts`、`analyzer.test.ts` | 静态三元/模板串提升、walk `_path$N`                                                        |
+| escape 快路径       | `utils/escape.test.ts`                             | 无特殊字符零分配                                                                           |
+| **SSR 伪 DOM 补全** | `runtime/ssr-dom-element-api.test.ts`（**18** 条） | **2.0.5**：Element/Document API + `renderToString` null props（Deno/Bun dweb hybrid 相关） |
+| Bench               | `tests/bench/signal.bench.ts`                      | 可选性能基线                                                                               |
 
 ---
 
@@ -145,6 +181,8 @@ bun test --preload ./tests/unit/dom-setup.ts tests/
   Suspense、路由导航等中间态可断言。
 - 路由 codegen 对 **metadata / routePath / inheritLayout**
   等采用**源码静态解析**，降低 Bun 下动态 `import()` TSX 的依赖。
+- **Bun 兼容说明**见 `docs/zh-CN/BUN_COMPAT.md`（SSR 无 document、happy-dom
+  仅测试）。
 
 ### 6.2 响应式与 Resource / Suspense
 
@@ -156,12 +194,15 @@ bun test --preload ./tests/unit/dom-setup.ts tests/
 - 框架在 `setProperty("value")` 路径：字符串化比较、IME
   组合期禁止回写、必要时尝试恢复选区。
 - 业务侧若用 `Show`/`For` **整段拆掉** input
-  节点，焦点仍会丢——属结构重建，需稳定 key / 避免条件换根节点。
+  节点，焦点仍会丢——属结构重建，需稳定 key。
 
 ### 6.4 SSR
 
 - `renderToString` / `renderRouterToString` 在 SSR 作用域内安装临时 DOM；结束后
   `cleanNode` + 拆除，避免泄漏到后续请求。
+- 2.0.5 起极简 SSR DOM 对齐常用 Element/Document
+  API（`hasAttribute`、`classList`、 `querySelector` 等），防止 dweb hybrid 在
+  Deno/Bun 再踩洞。
 
 ---
 
@@ -176,17 +217,23 @@ bun test --preload ./tests/unit/dom-setup.ts tests/
 | 水合 Mismatch / 渐进水合 | 细粒度恢复策略覆盖有限                                 |
 | 覆盖率门槛               | 未强制 `deno coverage` CI 阈值                         |
 | Bench 门禁               | bench 可选，默认不 fail CI                             |
+| SSR 选择器               | 伪 DOM 仅简易 CSS（非完整浏览器选择器引擎）            |
 
 ---
 
 ## 8. 结论
 
-**@dreamer/view 2.0.4** 在当前主路径自动化套件下：
+**@dreamer/view 2.0.5** 在当前自动化套件下（**0 失败**）：
 
-- **Deno 单元 + 集成：359 通过 / 0 失败（100%）**
-- 覆盖核心响应式、运行时 DOM、**受控表单焦点**、编译器、SSR/水合、路由（含 **SSR
-  同构**）、表单、调度、工具链与集成场景
-- E2E 与 bench 作为补充：发版建议单独跑 E2E；bench 用于性能观察
+| 运行时 | 范围                                     | 结果                             |
+| ------ | ---------------------------------------- | -------------------------------- |
+| Deno   | unit + integration（`deno task test`）   | **377 通过 / 0 失败**            |
+| Deno   | **全量 `tests/`**（含 e2e）              | **398 通过 / 0 失败**            |
+| Bun    | unit + integration                       | **311 通过 / 0 失败**            |
+| Bun    | **全量 `tests/`**（`package.json` test） | **331 通过 / 0 失败 · 68 files** |
 
-本报告随 `tests/` 与发版节奏更新；数字以本机最新
-`deno test -A tests/unit tests/integration` 为准。
+- 覆盖核心响应式、运行时 DOM、**受控表单焦点**、编译器、SSR/水合、**SSR 伪 DOM
+  API**、路由（含 **SSR 同构**）、表单、调度、集成与 **examples e2e**
+- 对比数字时请先确认命令是 **unit+integration** 还是 **`tests/` 全量**
+
+本报告随 `tests/` 与发版节奏更新。

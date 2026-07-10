@@ -7,6 +7,41 @@
 
 ---
 
+## [2.0.5] - 2026-07-10
+
+### 修复
+
+- **SSR 伪 DOM（Deno/Bun 无 document）**：`SsrElement` 补齐 **`hasAttribute`** /
+  **`toggleAttribute`**；`style` 支持 **`removeProperty` / `setProperty` /
+  `getPropertyValue`**；同步 **`id`** getter/setter。修复 dweb hybrid 等在
+  `setProperty` 属性分支对 `null`/`undefined` props 时
+  `TypeError: el.hasAttribute is not a function`。
+- **`setProperty` 防御**：attribute 分支在宿主无 `hasAttribute` 时回退
+  `getAttribute`，避免非 Element 宿主再次硬崩。
+
+### 变更（SSR 伪 DOM 补全）
+
+- **节点基类**：`nodeName`、`parentElement`、`isConnected`、`contains`、
+  `hasChildNodes`、`lastChild`、`getRootNode`、`dispatchEvent`。
+- **元素**：`classList`、`dataset`、`matches` / `closest`、
+  `querySelector(All)`、`children` / `firstElementChild` / `lastElementChild`、
+  `append` / `prepend` / `before` / `after` / `replaceWith`、NS 属性、
+  `name`/`type`/`href`/`src`/`disabled`/`tabIndex`、`focus`/`blur` 空操作。
+- **document**：惰性 `head` / `body`、`querySelector(All)`、`importNode`、
+  `defaultView`。
+- **简易选择器**：`*`、tag、`#id`、`.class`、`[attr]`、`[attr=value]`、空格后代、逗号
+  OR。
+
+### 测试
+
+- 新增并扩展 `tests/unit/runtime/ssr-dom-element-api.test.ts`（**18** 条）：
+  属性/NS、style、setProperty null、classList 全套、dataset、matches/closest/
+  query（含后代与逗号）、节点关系、Text/Comment、append/before/after/replaceWith、
+  反射属性、innerHTML、document.head/body/importNode、Fragment、renderToString。
+- **Deno + Bun** 均通过。
+
+---
+
 ## [2.0.4] - 2026-07-10
 
 ### 新增

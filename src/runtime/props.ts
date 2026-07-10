@@ -372,10 +372,20 @@ export function setProperty(el: any, name: string, value: any) {
     }
   } else {
     if (value == null) {
-      if (el.hasAttribute(name)) el.removeAttribute(name);
-    } else {
+      // SSR 伪 DOM / 非 Element 宿主：优先 hasAttribute；缺失时用 getAttribute 兜底
+      const has = typeof el.hasAttribute === "function"
+        ? el.hasAttribute(name)
+        : typeof el.getAttribute === "function" &&
+          el.getAttribute(name) != null;
+      if (has && typeof el.removeAttribute === "function") {
+        el.removeAttribute(name);
+      }
+    } else if (typeof el.setAttribute === "function") {
       const s = String(value);
-      if (el.getAttribute(name) !== s) el.setAttribute(name, s);
+      const prev = typeof el.getAttribute === "function"
+        ? el.getAttribute(name)
+        : null;
+      if (prev !== s) el.setAttribute(name, s);
     }
   }
 }
