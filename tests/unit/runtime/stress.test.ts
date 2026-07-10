@@ -53,6 +53,7 @@ describe("runtime/stress", () => {
 
   it("大规模 For 渲染：应当高效处理列表重排 (Shuffle)", async () => {
     const itemCount = 100;
+    // 稳定对象引用：重排时 setItem 为 Object.is 命中，仅移动节点
     const initialData = Array.from(
       { length: itemCount },
       (_, i) => ({ id: i, text: `Item ${i}` }),
@@ -75,19 +76,20 @@ describe("runtime/stress", () => {
 
     const firstSpan = container.querySelector('[data-id="0"]');
     expect(firstSpan).not.toBeNull();
-    const shell0 = firstSpan!.parentElement;
 
-    // 确定性重排（反转），避免随机顺序导致断言不稳定
+    // 同引用反转，避免随机顺序导致断言不稳定
     const shuffled = [...list()].reverse();
     const shuffleStartTime = performance.now();
     setList(shuffled);
     await waitUntilComplete();
     const shuffleEndTime = performance.now();
 
-    // 验证键控行壳复用：id=0 的单元仍挂在同一 shell 下（内层节点可能因 effect 重跑而替换）
-    // 每行含壳 span + 内层 span，按文档序下标会与「逻辑位置」错位；用 data-id 精确定位 id=0 的行
+    // 键控行无元素壳：同引用重排应复用 id=0 的 Element
     const span0After = container.querySelector('[data-id="0"]');
-    expect(span0After?.parentElement).toBe(shell0);
+    expect(span0After).toBe(firstSpan);
+    expect(container.children[0]?.getAttribute("data-id")).toBe(
+      String(itemCount - 1),
+    );
     expect(shuffleEndTime - shuffleStartTime).toBeLessThan(100);
 
     await waitUntilComplete();

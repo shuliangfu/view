@@ -28,6 +28,26 @@ describe("runtime/insert", () => {
     expect(marker.textContent).toBe("1");
   });
 
+  it("同值文本更新应复用同一 Text 节点", async () => {
+    const parent = document.createElement("div");
+    const [label, setLabel] = createSignal("same");
+    insert(parent, () => label());
+    await Promise.resolve();
+    const textNode = parent.firstChild;
+    expect(textNode?.nodeType).toBe(Node.TEXT_NODE);
+    expect(parent.textContent).toBe("same");
+
+    setLabel("same");
+    await Promise.resolve();
+    expect(parent.firstChild).toBe(textNode);
+    expect(parent.textContent).toBe("same");
+
+    setLabel("changed");
+    await Promise.resolve();
+    expect(parent.firstChild).toBe(textNode);
+    expect(parent.textContent).toBe("changed");
+  });
+
   /**
    * 同步 Thunk 超过 insert 内 MAX_SYNC_THUNK_DEPTH 时由 insert 抛错；
    * createEffect 会 catch 并走 catchError，故用根 onError 断言。

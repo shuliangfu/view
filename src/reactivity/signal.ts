@@ -99,9 +99,6 @@ export type Signal<T> = [() => T, Setter<T>] & {
   set: Setter<T>;
 };
 
-/** 物理单例内核状态 */
-const _session = Math.random().toString(36).slice(2);
-
 /**
  * 将当前正在运行的观察者订阅到给定源（建立依赖边）。
  * 若已存在相同 `source` 的订阅则快速返回。
@@ -208,45 +205,69 @@ export const setCurrentObserver = (o: Observer | null): Observer | null => {
 };
 
 /**
+ * 开发会话 id：仅 `VIEW_DEV` 下匿名 Signal 写入 registry 时使用，
+ * 配合 HMR 的 `core.uid = 0` 重置，使组件内第 N 个 Signal 在热更后仍命中同一 Source。
+ */
+const _devSession = Math.random().toString(36).slice(2);
+
+/**
  * 创建响应式信号；可选 `name` 用于 HMR/调试下的物理单例复用。
  *
- * 优化：匿名 Signal 不再注册到全局 registry，避免内存泄漏。
- * 仅具名 Signal（HMR 热更新用）注册到 registry。
+ * **Registry 策略（性能与 HMR 兼顾）：**
+ * - **具名** `name`：始终写入 `core.registry`，供 HMR / 调试单例复用。
+ * - **匿名**：生产路径**不**注册，避免 SPA 长会话 Map 无限增长、便于 GC；
+ *   仅当 `globalThis.VIEW_DEV` 为真时按 `sig:<session>:<uid>` 注册，以支持
+ *   `createHMRProxy` 在热更时 `core.uid = 0` 后的状态对齐。
+ *
  * @template T 初始值与后续值的类型
  * @param val 初始值
  * @param name 可选具名 id，相同 name 复用同一底层源
  * @returns 可调用的 `Signal`（`sig()` 读、`sig(x)` 写，或解构 `[get, set]`）
  */
 export function createSignal<T>(val: T, name?: string): Signal<T> {
-  // 生成唯一 ID (优先使用用户提供的 name，否则自动生成)
-  // 所有 Signal 都注册到全局 registry：
-  // - 具名 Signal 支持 HMR 状态保持
-  // - 匿名 Signal 通过 UID 匹配也支持 HMR
-  const id = name ? `sig:${name}` : `sig:${_session}:${core.uid++}`;
+  let source: Source<T>;
 
-  // 从物理单例注册表中获取或创建 (支持 HMR 状态保持)
-  let source = core.registry.get(id);
-  if (!source) {
+  if (name) {
+    // 具名：物理单例，HMR / 跨热更边界复用同一 Source
+    const id = `sig:${name}`;
+    const existing = core.registry.get(id) as Source<T> | undefined;
+    if (!existing) {
+      source = { value: val, observers: null, observersTail: null };
+      core.registry.set(id, source);
+    } else {
+      // 具名已存在时同步初始值（物理单例语义）
+      existing.value = val;
+      source = existing;
+    }
+  } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
+    // 开发态匿名：按创建顺序进 registry，供 HMR 状态保持
+    const id = `sig:${_devSession}:${core.uid++}`;
+    const existing = core.registry.get(id) as Source<T> | undefined;
+    if (!existing) {
+      source = { value: val, observers: null, observersTail: null };
+      core.registry.set(id, source);
+    } else {
+      // 热更命中：保留已有 value，不覆盖用户运行中状态
+      source = existing;
+    }
+  } else {
+    // 生产匿名：独立 Source，不进 registry
     source = { value: val, observers: null, observersTail: null };
-    core.registry.set(id, source);
-  } else if (name) {
-    // 如果是具名信号且已存在，同步一次初始值 (物理单例模式)
-    source.value = val;
   }
 
   const getter = () => {
-    track(source!);
-    return source!.value;
+    track(source);
+    return source.value;
   };
   (getter as any).__VIEW_SIGNAL = true;
 
   const setter: Setter<T> = (v: any) => {
-    const next = typeof v === "function" ? (v as any)(source!.value) : v;
-    if (!Object.is(next, source!.value)) {
-      source!.value = next;
-      notify(source!);
+    const next = typeof v === "function" ? (v as any)(source.value) : v;
+    if (!Object.is(next, source.value)) {
+      source.value = next;
+      notify(source);
     }
-    return source!.value;
+    return source.value;
   };
   (setter as any).__VIEW_SIGNAL = true;
 

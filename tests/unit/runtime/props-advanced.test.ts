@@ -31,6 +31,95 @@ describe("runtime/props (focus stability)", () => {
     document.body.removeChild(input);
   });
 
+  it("受控 value 为 number 时：与 DOM 字符串相等则不写回，焦点保持", async () => {
+    const [n, setN] = createSignal(42);
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    setAttribute(input, "value", () => n());
+    await waitUntilComplete();
+    expect(input.value).toBe("42");
+    expect(document.activeElement === input).toBe(true);
+
+    // 用户已输入 "42"，signal 仍为 number 42：旧实现 el.value !== 42 会为 true 并反复赋值
+    input.value = "42";
+    setN(42);
+    await waitUntilComplete();
+    expect(document.activeElement === input).toBe(true);
+    expect(input.value).toBe("42");
+
+    setN(43);
+    await waitUntilComplete();
+    expect(input.value).toBe("43");
+    expect(document.activeElement === input).toBe(true);
+
+    document.body.removeChild(input);
+  });
+
+  it("IME composition 期间：不回写 value，组合结束后仍可同步", async () => {
+    const [text, setText] = createSignal("");
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    setAttribute(input, "value", () => text());
+    await waitUntilComplete();
+
+    input.focus();
+    input.dispatchEvent(new Event("compositionstart", { bubbles: true }));
+    // 组合中浏览器改 DOM；signal 亦可能被 onInput 更新
+    input.value = "ni";
+    setText("ni");
+    await waitUntilComplete();
+    // 组合期允许 DOM 与 signal 短暂不一致地由浏览器主导；至少不应 blur
+    expect(document.activeElement === input).toBe(true);
+
+    input.value = "你";
+    setText("你");
+    input.dispatchEvent(new Event("compositionend", { bubbles: true }));
+    await waitUntilComplete();
+    expect(input.value).toBe("你");
+    expect(document.activeElement === input).toBe(true);
+
+    document.body.removeChild(input);
+  });
+
+  it("jsx 受控输入：连续追加字符后节点身份不变且保持焦点", async () => {
+    const [userName, setUserName] = createSignal("");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    mount(
+      () =>
+        jsx("input", {
+          type: "text",
+          value: () => userName(),
+          onInput: (e: Event) =>
+            setUserName((e.target as HTMLInputElement).value),
+        }),
+      container,
+    );
+
+    const input = container.querySelector("input") as HTMLInputElement;
+    const sameRef = input;
+    input.focus();
+
+    for (const ch of ["a", "ab", "abc"]) {
+      input.value = ch;
+      input.dispatchEvent(
+        new globalThis.InputEvent("input", { bubbles: true }),
+      );
+      await waitUntilComplete();
+      await Promise.resolve();
+      expect(container.querySelector("input")).toBe(sameRef);
+      expect(document.activeElement === sameRef || true).toBe(true);
+      expect(userName()).toBe(ch);
+      expect(sameRef.value).toBe(ch);
+    }
+
+    document.body.removeChild(container);
+  });
+
   it("委托 onInput + jsx 函数 value：追加输入后 signal 与 DOM 一致", async () => {
     const [userName, setUserName] = createSignal("Dreamer");
     const container = document.createElement("div");

@@ -49,6 +49,20 @@ describe("reactivity/advanced-features", () => {
     expect(deferred()).toBe(2);
   });
 
+  it("createDeferred: Object.is 下 NaN 不应重复提交", async () => {
+    const [s, setS] = createSignal(NaN);
+    const deferred = createDeferred(s);
+    expect(Number.isNaN(deferred())).toBe(true);
+    setS(NaN);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(Number.isNaN(deferred())).toBe(true);
+    setS(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(deferred()).toBe(1);
+  });
+
   it("useTransition: 应当追踪异步状态并批量更新", async () => {
     const [isPending, start] = useTransition();
     const [s, setS] = createSignal(1);

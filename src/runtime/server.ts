@@ -9,6 +9,10 @@
 
 import { cleanNode, type Owner, runWithOwner } from "../reactivity/owner.ts";
 import { flushPendingSync } from "../scheduler/batch.ts";
+import {
+  createRouter,
+  type CreateRouterOptions,
+} from "../integrations/router.ts";
 import { bumpSsrDomScopeDepth } from "./ssr-scope.ts";
 import { resetEventDelegationForSSR } from "./props.ts";
 import { installMinimalSsrGlobals } from "./ssr-dom.ts";
@@ -129,7 +133,13 @@ function stringify(v: unknown, owner: Owner | null): string {
   }
 
   if (typeof v === "string") return v;
-  if (Array.isArray(v)) return v.map((item) => stringify(item, owner)).join("");
+  if (Array.isArray(v)) {
+    let out = "";
+    for (let i = 0; i < v.length; i++) {
+      out += stringify(v[i], owner);
+    }
+    return out;
+  }
 
   // 处理 DOM 节点（自研 SSR DOM / 浏览器）；勿用 `instanceof Node`，Deno 无 DOM 全局时会 ReferenceError
   if (v !== null && typeof v === "object") {
@@ -164,27 +174,33 @@ function stringify(v: unknown, owner: Owner | null): string {
         if (typeof node._class === "string") {
           attrStr += ` class="${node._class}"`;
         } else {
-          const classes = Object.entries(node._class as Record<string, boolean>)
-            .filter(([_, v]) => !!v)
-            .map(([k]) => k)
-            .join(" ");
+          const cls = node._class as Record<string, boolean>;
+          let classes = "";
+          for (const k in cls) {
+            if (cls[k]) classes = classes ? classes + " " + k : k;
+          }
           if (classes) attrStr += ` class="${classes}"`;
         }
       }
 
       if (node._styles) {
-        const styleStr = typeof node._styles === "string"
-          ? node._styles
-          : Object.entries(node._styles as Record<string, unknown>)
-            .map(([k, v]) =>
-              `${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}:${v}`
-            )
-            .join(";");
+        let styleStr: string;
+        if (typeof node._styles === "string") {
+          styleStr = node._styles;
+        } else {
+          styleStr = "";
+          const st = node._styles as Record<string, unknown>;
+          for (const k in st) {
+            const kebab = k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+            styleStr += (styleStr ? ";" : "") + kebab + ":" + st[k];
+          }
+        }
         if (styleStr) attrStr += ` style="${styleStr}"`;
       }
 
       if (node._attrs) {
-        for (const [name, val] of Object.entries(node._attrs)) {
+        for (const name in node._attrs) {
+          const val = node._attrs[name];
           if (val === true) attrStr += ` ${name}`;
           else if (val !== false && val !== null && val !== undefined) {
             attrStr += ` ${name}="${String(val).replace(/"/g, "&quot;")}"`;
@@ -202,8 +218,10 @@ function stringify(v: unknown, owner: Owner | null): string {
 
     // 2. 递归处理子节点
     if (node._children) {
-      const childrenStr = node._children.map((item) => stringify(item, owner))
-        .join("");
+      let childrenStr = "";
+      for (let i = 0; i < node._children.length; i++) {
+        childrenStr += stringify(node._children[i], owner);
+      }
       html = html.replace("<!--[--><!--]-->", childrenStr);
     } else if (node.textContent) {
       html = html.replace("<!--[--><!--]-->", node.textContent);
@@ -283,4 +301,36 @@ export function generateHydrationScript(
     const root = document.getElementById("${id}");
     if (root) hydrate(root, ${JSON.stringify(bindingMap)});
   </script>`;
+}
+
+/**
+ * **路由 SSR 同构**：按 `url` 创建临时 Router，`renderToString(router.render)` 后 `destroy`。
+ * 与客户端 `createRouter({ routes })` + `mountWithRouter` 共用同一套 routes / 匹配语义。
+ *
+ * @param options 须含 `routes` 与 `url`；`ssr` 默认强制为 true
+ * @returns 当前路由树的 HTML 字符串
+ *
+ * @example
+ * ```ts
+ * import { renderRouterToString } from "@dreamer/view/ssr";
+ * const html = renderRouterToString({
+ *   routes: [{ path: "/user/:id", component: UserPage }],
+ *   url: "/user/42?tab=info",
+ * });
+ * ```
+ */
+export function renderRouterToString(
+  options: CreateRouterOptions & { url: string },
+): string {
+  const router = createRouter({
+    ...options,
+    url: options.url,
+    ssr: true,
+    interceptLinks: false,
+  });
+  try {
+    return renderToString(() => router.render());
+  } finally {
+    router.destroy();
+  }
 }

@@ -1,6 +1,6 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { setAttribute, setProperty } from "@dreamer/view";
+import { setAttribute, setProperty, spread } from "@dreamer/view";
 import { createSignal } from "../../../src/reactivity/signal.ts";
 
 describe("runtime/props", () => {
@@ -12,6 +12,38 @@ describe("runtime/props", () => {
     expect(el.className).toBe("box");
     expect((el as HTMLElement).style.color).toBe("red");
     expect((el as HTMLElement).style.marginTop).toBe("10px");
+  });
+
+  it("className 同值重复设置仍保持正确", () => {
+    const el = document.createElement("div");
+    setProperty(el, "className", "box");
+    setProperty(el, "className", "box");
+    expect(el.className).toBe("box");
+    setProperty(el, "class", "card");
+    expect(el.className).toBe("card");
+    setProperty(el, "className", null);
+    expect(el.className).toBe("");
+  });
+
+  it("普通属性 / setAttribute 同值重复设置保持正确", () => {
+    const el = document.createElement("div");
+    setProperty(el, "id", "a");
+    setProperty(el, "id", "a");
+    expect(el.id).toBe("a");
+    setProperty(el, "title", "t1");
+    setProperty(el, "title", "t1");
+    expect(el.getAttribute("title")).toBe("t1");
+    setProperty(el, "title", "t2");
+    expect(el.getAttribute("title")).toBe("t2");
+    setProperty(el, "title", null);
+    expect(el.hasAttribute("title")).toBe(false);
+  });
+
+  it("spread(null/undefined) 不抛错", () => {
+    const el = document.createElement("div");
+    spread(el, null);
+    spread(el, undefined);
+    expect(el.attributes.length).toBe(0);
   });
 
   it("style 对象更新：省略的键应从内联样式移除", () => {

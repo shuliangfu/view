@@ -14,7 +14,13 @@
  *
  * **metadata：** 路由表中的 `metadata`（来自页面 `export const metadata` 与 codegen）在命中变化时由框架同步到 `document.title` 与对应 `<meta>`（与 v1.3.9 行为一致）。
  *
- * **仍未覆盖：** 与 SSR 同构、路由级动画、`popstate` 上的异步守卫、嵌套路由树配置。
+ * **SSR 同构：**
+ * - `createRouter({ routes, url, ssr: true })` — 用 `url` 作初始位置，不挂 popstate/链接委托
+ * - 在 `renderToString` 作用域内创建时自动 `ssr` 行为（`isSsrDomScopeActive`）
+ * - 纯函数 {@link matchRoute} / {@link parseRouterUrl} 供无 Router 实例时匹配
+ * - `@dreamer/view/ssr` 的 {@link renderRouterToString} 一站式串行渲染并 `destroy`
+ *
+ * **仍未覆盖：** 路由级动画、`popstate` 上的异步守卫、嵌套路由树配置 API。
  *
  * @usage
  * ```ts
@@ -30,6 +36,10 @@
  *   beforeEach: (to) => to.params.id !== "0",
  * });
  * mountWithRouter("#root", router);
+ *
+ * // SSR：
+ * // import { renderRouterToString } from "@dreamer/view/ssr";
+ * // const html = renderRouterToString({ routes, url: req.url });
  * ```
  */
 
@@ -39,6 +49,7 @@ import { runWithOwner } from "../reactivity/owner.ts";
 import { getInternal } from "../reactivity/master.ts";
 import { invalidateViewLazyModules } from "../runtime/component.ts";
 import { mount } from "../runtime/browser.ts";
+import { isSsrDomScopeActive } from "../runtime/ssr-scope.ts";
 import { jsx } from "../jsx-runtime.ts";
 import type { VNode } from "../types.ts";
 import { createResource } from "./resource.ts";
@@ -89,6 +100,7 @@ export interface CreateRouterOptions {
   /**
    * 是否在 document 上委托点击（冒泡阶段），拦截同源 `<a>`（默认 `true`）。
    * `Link` 带 `data-view-link` 会跳过委托；设为 `false` 时仅 `Link` / `navigate` 生效。
+   * SSR 模式下强制不启用。
    */
   interceptLinks?: boolean;
   /**
@@ -102,6 +114,16 @@ export interface CreateRouterOptions {
    * 追加在 `document.title` 末尾的后缀（如 ` | 站点名`），与 v1.3.9 `documentTitleSuffix` 一致。
    */
   documentTitleSuffix?: string;
+  /**
+   * **SSR / 测试**：初始 URL（路径、可含 `?query` `#hash`，或绝对 `http(s)://…`）。
+   * 不传则读浏览器 `location`。
+   */
+  url?: string;
+  /**
+   * **SSR 模式**：不注册 `popstate` / 链接委托（默认可由 `renderToString` 作用域或 `VIEW_SSR` 自动开启）。
+   * 客户端 hydration 后请用 `ssr: false`（默认）再 `createRouter`，或 `router.start()`。
+   */
+  ssr?: boolean;
 }
 
 /** 路由实例 */
@@ -217,11 +239,88 @@ function normalizeInternalPath(p: string): string {
 function pathToParts(internalPath: string): string[] {
   const n = normalizeInternalPath(internalPath);
   if (n === "/") return [];
-  return n.slice(1).split("/").filter(Boolean);
+  // 原地压缩空段，避免 `.filter(Boolean)` 再分配新数组
+  const parts = n.slice(1).split("/");
+  let w = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]!;
+    if (p.length > 0) parts[w++] = p;
+  }
+  parts.length = w;
+  return parts;
+}
+
+/**
+ * 解析路由 URL 为 pathname / search / hash（SSR 与测试共用）。
+ * 支持绝对 URL、`/path?x=1#h`、无前导 `/` 的相对 path。
+ */
+export function parseRouterUrl(
+  url: string,
+): { pathname: string; search: string; hash: string } {
+  const raw = (url ?? "/").trim() || "/";
+  try {
+    if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) {
+      const abs = raw.startsWith("//") ? `http:${raw}` : raw;
+      const u = new URL(abs);
+      let pathname = u.pathname || "/";
+      if (pathname && !pathname.startsWith("/")) pathname = "/" + pathname;
+      return { pathname, search: u.search, hash: u.hash };
+    }
+    const pathOnly = raw.startsWith("/") ? raw : `/${raw}`;
+    const u = new URL(pathOnly, "http://view.local");
+    return {
+      pathname: u.pathname || "/",
+      search: u.search,
+      hash: u.hash,
+    };
+  } catch {
+    return { pathname: "/", search: "", hash: "" };
+  }
+}
+
+/**
+ * 纯函数路由匹配（无全局 Router 实例、无 history）。
+ * 与 `createRouter(...).match()` 在相同 routes/url 下结果一致，便于 SSR 预取数据。
+ *
+ * @param routesOrOpts 路由表或含 `basePath` / `notFound` 的选项
+ * @param url 请求路径（见 {@link parseRouterUrl}）
+ * @returns 命中 {@link RouteMatch}，未命中且无 notFound 时为 `null`
+ */
+export function matchRoute(
+  routesOrOpts:
+    | RouteConfig[]
+    | Pick<CreateRouterOptions, "routes" | "basePath" | "notFound">,
+  url: string,
+): RouteMatch | null {
+  const opts = Array.isArray(routesOrOpts)
+    ? { routes: routesOrOpts }
+    : routesOrOpts;
+  const basePath = normalizeBasePath(opts.basePath);
+  const compiled = compileRouteList(opts.routes, opts.notFound);
+  const loc = parseRouterUrl(url);
+  const internal = normalizeInternalPath(
+    stripBasePath(loc.pathname, basePath),
+  );
+  const parts = pathToParts(internal);
+  const found = findCompiledMatch(compiled, parts);
+  if (!found) return null;
+  return {
+    pathname: loc.pathname,
+    path: internal,
+    search: loc.search,
+    hash: loc.hash,
+    query: searchToRecord(loc.search),
+    params: found.params,
+    pattern: found.config.path,
+    route: found.config,
+  };
 }
 
 function searchToRecord(search: string): Record<string, string> {
+  // 空 query 快路径：避免每次导航都 new URLSearchParams
+  if (!search || search === "?") return {};
   const q = search.startsWith("?") ? search.slice(1) : search;
+  if (!q) return {};
   const u = new URLSearchParams(q);
   const o: Record<string, string> = {};
   u.forEach((v, k) => {
@@ -231,35 +330,45 @@ function searchToRecord(search: string): Record<string, string> {
 }
 
 /**
- * 将 path 模式与路径分段匹配；支持 `:id`、末尾 `/*` 捕获剩余到 `*` 键。
- * 单独 `*` 或 `/*` 匹配任意路径。
+ * 预编译路由：创建时切分 path 段，匹配时不再 `split` 模式串。
+ * 支持 `:id`、末尾 `/*`（`*` 捕获）、整路径 `*` / `/*`。
  */
-function matchPattern(
-  pattern: string,
-  pathParts: string[],
-): Record<string, string> | null {
-  const pat = pattern.trim();
+interface CompiledRoute {
+  config: RouteConfig;
+  /** 原始 path 模式（与 RouteConfig.path 一致，供 match 元数据） */
+  pattern: string;
+  /** 预切分段（不含末尾 splat `*`） */
+  segments: string[];
+  /** 末尾 `/*` 捕获剩余路径 */
+  isSplat: boolean;
+  /** 整路径通配 `*` / `/*` */
+  isCatchAll: boolean;
+}
+
+function compileOneRoute(config: RouteConfig): CompiledRoute {
+  const pat = config.path.trim();
   if (pat === "*" || pat === "/*") {
-    return { "*": pathParts.length ? pathParts.join("/") : "" };
+    return {
+      config,
+      pattern: config.path,
+      segments: [],
+      isSplat: false,
+      isCatchAll: true,
+    };
   }
-
-  let patParts = pat.split("/").filter(Boolean);
-  const params: Record<string, string> = {};
-
-  if (patParts.length > 0 && patParts[patParts.length - 1] === "*") {
-    patParts = patParts.slice(0, -1);
-    if (pathParts.length < patParts.length) return null;
-    const fixedPath = pathParts.slice(0, patParts.length);
-    const splat = pathParts.slice(patParts.length).join("/");
-    const sub = matchStaticAndParams(patParts, fixedPath);
-    if (sub === null) return null;
-    Object.assign(params, sub);
-    params["*"] = splat;
-    return params;
+  let segments = pat.split("/").filter(Boolean);
+  let isSplat = false;
+  if (segments.length > 0 && segments[segments.length - 1] === "*") {
+    isSplat = true;
+    segments = segments.slice(0, -1);
   }
-
-  if (patParts.length !== pathParts.length) return null;
-  return matchStaticAndParams(patParts, pathParts);
+  return {
+    config,
+    pattern: config.path,
+    segments,
+    isSplat,
+    isCatchAll: false,
+  };
 }
 
 function matchStaticAndParams(
@@ -268,8 +377,8 @@ function matchStaticAndParams(
 ): Record<string, string> | null {
   const params: Record<string, string> = {};
   for (let i = 0; i < patParts.length; i++) {
-    const p = patParts[i];
-    const s = pathParts[i];
+    const p = patParts[i]!;
+    const s = pathParts[i]!;
     if (p.startsWith(":")) {
       params[p.slice(1)] = s;
     } else if (p !== s) {
@@ -279,24 +388,39 @@ function matchStaticAndParams(
   return params;
 }
 
-interface CompiledRoute {
-  config: RouteConfig;
-  pattern: string;
+/**
+ * 用预编译结构匹配路径分段。
+ */
+function matchCompiledRoute(
+  c: CompiledRoute,
+  pathParts: string[],
+): Record<string, string> | null {
+  if (c.isCatchAll) {
+    return { "*": pathParts.length ? pathParts.join("/") : "" };
+  }
+  if (c.isSplat) {
+    if (pathParts.length < c.segments.length) return null;
+    const fixedPath = pathParts.slice(0, c.segments.length);
+    const splat = pathParts.slice(c.segments.length).join("/");
+    const sub = matchStaticAndParams(c.segments, fixedPath);
+    if (sub === null) return null;
+    sub["*"] = splat;
+    return sub;
+  }
+  if (c.segments.length !== pathParts.length) return null;
+  return matchStaticAndParams(c.segments, pathParts);
 }
 
 function compileRouteList(
   routes: RouteConfig[],
   notFound?: RouteConfig,
 ): CompiledRoute[] {
-  const list: CompiledRoute[] = routes.map((config) => ({
-    config,
-    pattern: config.path,
-  }));
+  const list: CompiledRoute[] = routes.map(compileOneRoute);
   if (
     notFound &&
     !routes.some((r) => r.path === "*" || r.path === "/*")
   ) {
-    list.push({ config: notFound, pattern: notFound.path });
+    list.push(compileOneRoute(notFound));
   }
   return list;
 }
@@ -305,8 +429,9 @@ function findCompiledMatch(
   compiled: CompiledRoute[],
   pathParts: string[],
 ): { config: RouteConfig; params: Record<string, string> } | null {
-  for (const c of compiled) {
-    const params = matchPattern(c.pattern, pathParts);
+  for (let i = 0; i < compiled.length; i++) {
+    const c = compiled[i]!;
+    const params = matchCompiledRoute(c, pathParts);
     if (params !== null) return { config: c.config, params };
   }
   return null;
@@ -339,11 +464,21 @@ export function createRouter(
 
   const basePath = normalizeBasePath(opts.basePath);
   const scrollMode = opts.scroll === undefined ? false : opts.scroll;
-  const interceptLinks = opts.interceptLinks !== false;
   const beforeEach = opts.beforeEach;
   /** 与 v1.3.9 一致：拼接到 metadata.title 之后 */
   const documentTitleSuffix = opts.documentTitleSuffix ?? "";
   const compiled = compileRouteList(opts.routes, opts.notFound);
+
+  /**
+   * SSR / 无浏览器绑定：不注册 popstate 与 a 委托。
+   * - 显式 `ssr: true`
+   * - 处于 `renderToString` 的 SSR DOM 作用域
+   * - 或 `VIEW_SSR === true`
+   */
+  const ssrMode = opts.ssr === true ||
+    isSsrDomScopeActive() ||
+    (globalThis as { VIEW_SSR?: boolean }).VIEW_SSR === true;
+  const interceptLinks = !ssrMode && opts.interceptLinks !== false;
 
   const scrollMemory = new Map<string, number>();
   const subscribers = new Set<() => void>();
@@ -360,9 +495,11 @@ export function createRouter(
   const prev = routerCore.active as (Router & { destroy?: () => void }) | null;
   prev?.destroy?.();
 
-  const [locationSig, setLocationSig] = createSignal(
-    readBrowserLocation(),
-  );
+  const initialLocation = opts.url != null
+    ? parseRouterUrl(opts.url)
+    : readBrowserLocation();
+
+  const [locationSig, setLocationSig] = createSignal(initialLocation);
 
   const strippedPath = createMemo(() => {
     const { pathname } = locationSig();
@@ -922,11 +1059,16 @@ export function createRouter(
         query: m.query,
       };
 
-      if (
-        !hasLayouts && isFunction && (route.component as any).length === 0
-      ) {
+      /**
+       * 同步页面（含需要 params 的组件）：直接调用并传入 pageProps。
+       * 旧逻辑仅对 `length === 0` 同步调用，导致 `User(props)` 在 SSR 落到 Resource
+       * 异步路径、首屏 HTML 为空。layout / lazy 仍走下方 createResource。
+       */
+      if (!hasLayouts && isFunction) {
         try {
-          const result = untrack(() => (route.component as any)());
+          const result = untrack(() =>
+            (route.component as (...args: any[]) => any)(pageProps)
+          );
           if (!(result instanceof Promise)) return result;
         } catch { /* 进入 Resource */ }
       }
@@ -989,8 +1131,11 @@ export function createRouter(
     },
   };
 
-  startPopState();
-  if (interceptLinks) startIntercept();
+  // SSR：不挂浏览器监听；客户端 `router.start()` 可在 hydrate 后显式开启
+  if (!ssrMode) {
+    startPopState();
+    if (interceptLinks) startIntercept();
+  }
 
   routerCore.active = router;
   lastMatchKey = "";

@@ -7,6 +7,39 @@
 
 ---
 
+## [2.0.4] - 2026-07-10
+
+### 新增
+
+- **路由 SSR 同构**：`CreateRouterOptions.url` / `ssr`、`parseRouterUrl`、
+  `matchRoute`；`@dreamer/view/ssr` 的 `renderRouterToString` 一站式渲染。
+- **路由 render**：带 `params`/`query` 的同步页面组件不再误走异步 Resource
+  （避免 SSR 空 HTML）。
+- **编译器**：扩大静态表达式提升（三元、模板串、`as`/非空断言）；模块级 `walk`
+  路径常量 `_path$N`；明显静态属性更少 Effect。
+- **受控输入**：IME 组合期禁止回写 `value`；与 DOM 按字符串比较；必要时尽量
+  恢复选区。
+- **Bench**：`tests/bench/signal.bench.ts` 与 `deno task bench`。
+- **测试**：Router SSR、焦点/IME、escape、For 键控无壳、编译器静态用例等。
+
+### 变更
+
+- **For + key**：注释锚点替代 `span` 壳；顺序正确时跳过重排；仅追踪 item 以便
+  纯重排复用节点。
+- **Signal**：生产环境匿名信号不进全局 registry；`VIEW_DEV` 下仍注册以支持 HMR。
+- **Store**：匿名 id 不再使用 `Error().stack`；代理 set 使用 `Object.is`。
+- **运行时微优化**：mount 清空、template 有界缓存、className/cssText 同值跳过、
+  priority drain 缓冲、path 分段、form errors 初值、SSR stringify、cleanNode
+  等热路径分配收敛。
+- **文档**：中英文 `TEST_REPORT.md` 更新（Deno 单元+集成 359 通过）。
+
+### 修复
+
+- **失焦/丢光标**：number Signal 与 DOM 字符串 `value` 不再每键强制赋值；IME
+  组合期间不冲刷输入框。
+
+---
+
 ## [2.0.3] - 2026-07-06
 
 ### 变更

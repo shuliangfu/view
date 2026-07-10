@@ -4,7 +4,7 @@
  * 覆盖：
  * - cleanupObserver 交叉引用清理
  * - hasObservers 标记在 track/notify/cleanup 中的正确维护
- * - createSignal 匿名 vs 具名注册
+ * - createSignal 匿名 vs 具名注册（生产匿名不进 registry；VIEW_DEV 匿名进 registry 供 HMR）
  * - notify 递归传播（diamond problem）
  */
 
@@ -18,6 +18,7 @@ import {
   onCleanup,
   untrack,
 } from "@dreamer/view";
+import { core } from "../../../src/reactivity/master.ts";
 
 describe("signal/核心优化补充", () => {
   it("cleanupObserver 应断开所有订阅并清空引用", () => {
@@ -111,11 +112,45 @@ describe("signal/核心优化补充", () => {
     expect(runs2).toBe(1);
   });
 
-  it("匿名 Signal 应在全局 registry 中注册（HMR 需要）", () => {
+  it("匿名 Signal 互不共享 Source", () => {
     const a = createSignal(42);
+    const b = createSignal(42);
     expect(a()).toBe(42);
     a(100);
+    // 匿名各自独立，修改 a 不影响 b
     expect(a()).toBe(100);
+    expect(b()).toBe(42);
+  });
+
+  it("生产路径：匿名 Signal 不增长 core.registry", () => {
+    const g = globalThis as { VIEW_DEV?: boolean };
+    const prev = g.VIEW_DEV;
+    g.VIEW_DEV = false;
+    try {
+      const sizeBefore = core.registry.size;
+      for (let i = 0; i < 50; i++) {
+        createSignal(i);
+      }
+      expect(core.registry.size).toBe(sizeBefore);
+    } finally {
+      if (prev === undefined) delete g.VIEW_DEV;
+      else g.VIEW_DEV = prev;
+    }
+  });
+
+  it("VIEW_DEV：匿名 Signal 写入 registry（HMR 状态保持）", () => {
+    const g = globalThis as { VIEW_DEV?: boolean };
+    const prev = g.VIEW_DEV;
+    g.VIEW_DEV = true;
+    try {
+      const sizeBefore = core.registry.size;
+      createSignal(1);
+      createSignal(2);
+      expect(core.registry.size).toBe(sizeBefore + 2);
+    } finally {
+      if (prev === undefined) delete g.VIEW_DEV;
+      else g.VIEW_DEV = prev;
+    }
   });
 
   it("具名 Signal 应复用同一 Source（HMR 单例）", () => {
@@ -126,6 +161,14 @@ describe("signal/核心优化补充", () => {
     expect(b()).toBe(99);
     b(200);
     expect(a()).toBe(200);
+  });
+
+  it("具名 Signal 始终写入 registry", () => {
+    const name = `test-named-reg-${Date.now()}`;
+    const sizeBefore = core.registry.size;
+    createSignal(1, name);
+    expect(core.registry.has(`sig:${name}`)).toBe(true);
+    expect(core.registry.size).toBe(sizeBefore + 1);
   });
 
   it("Diamond Problem: 依赖同一个 Source 的多个 Effect 应独立更新", async () => {

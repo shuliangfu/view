@@ -31,12 +31,21 @@ import { internalHydrate, stopHydration } from "./hydration.ts";
  * @param container 挂载目标 DOM 节点
  * @returns 卸载函数：释放 Owner 并移除子节点
  */
+/** 清空容器子节点：Element 用 `textContent` 更快；其它 Node 回退逐子 remove */
+function clearContainerChildren(container: Node): void {
+  if (container.nodeType === 1 /* ELEMENT_NODE */) {
+    (container as Element).textContent = "";
+    return;
+  }
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
+  }
+}
+
 export function mount(fn: () => any, container: Node): () => void {
   return createRoot((dispose) => {
     // 1. 物理清空容器 (移除 Loading 骨架屏)
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
+    clearContainerChildren(container);
 
     // 2. 强行移除 cloak 隐藏属性
     if (container instanceof HTMLElement) {
@@ -55,9 +64,7 @@ export function mount(fn: () => any, container: Node): () => void {
      */
     return () => {
       dispose();
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
+      clearContainerChildren(container);
     };
   });
 }

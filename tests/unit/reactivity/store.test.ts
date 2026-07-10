@@ -20,6 +20,29 @@ describe("reactivity/store", () => {
     expect(result).toBe(2);
   });
 
+  it("Object.is：同值重复赋值不应额外触发 effect；NaN 不重复通知", async () => {
+    const store = createStore({ n: 1 as number, nan: NaN as number });
+    let runs = 0;
+    createEffect(() => {
+      store.n;
+      store.nan;
+      runs++;
+    });
+    expect(runs).toBe(1);
+
+    store.n = 1;
+    await Promise.resolve();
+    expect(runs).toBe(1);
+
+    store.nan = NaN;
+    await Promise.resolve();
+    expect(runs).toBe(1);
+
+    store.n = 2;
+    await Promise.resolve();
+    expect(runs).toBe(2);
+  });
+
   it("具名简写：首参为 store 名称、次参为初始状态（第三参 persist 可选）", async () => {
     /** 不传 persist，避免单测环境 IndexedDB 只读报错 */
     const store = createStore("store-test-named", { count: 0 });

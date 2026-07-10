@@ -82,6 +82,22 @@ export function scheduleTask(
   }
 }
 
+/** 复用 drain 缓冲，减少 flush 时 `Array.from` 的临时分配（单线程调度器安全） */
+const drainBuf: (() => void)[] = [];
+
+/**
+ * 将 `queue` 内容拷入 {@link drainBuf} 并清空；返回本次任务数。
+ */
+function drainQueueToBuf(queue: Set<() => void>): number {
+  let n = 0;
+  for (const t of queue) {
+    drainBuf[n++] = t;
+  }
+  queue.clear();
+  drainBuf.length = n;
+  return n;
+}
+
 /**
  * 微任务内先排空 `UserBlocking` 与 `Normal`；`Idle` 延后到空闲回调，避免阻塞输入与绘制。
  */
@@ -90,22 +106,22 @@ function flushTasks() {
 
   for (let p = Priority.UserBlocking; p <= Priority.Normal; p++) {
     const queue = queues[p];
-    if (queue.size > 0) {
-      const tasks = Array.from(queue);
-      queue.clear();
-      for (let i = 0; i < tasks.length; i++) {
-        tasks[i]();
-      }
+    if (queue.size === 0) continue;
+    const n = drainQueueToBuf(queue);
+    for (let i = 0; i < n; i++) {
+      drainBuf[i]!();
     }
   }
 
   const idleQueue = queues[Priority.Idle];
   if (idleQueue.size === 0) return;
-  const idleTasks = Array.from(idleQueue);
+  // Idle 须在空闲回调前固定快照：不能与后续 flush 共用 drainBuf 内容
+  const idleTasks: (() => void)[] = [];
+  for (const t of idleQueue) idleTasks.push(t);
   idleQueue.clear();
   runWhenIdle(() => {
     for (let i = 0; i < idleTasks.length; i++) {
-      idleTasks[i]();
+      idleTasks[i]!();
     }
   });
 }

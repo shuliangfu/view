@@ -97,13 +97,12 @@ export function createForm<T extends Record<string, unknown>>(
   const data = createStore(initialValues) as Store<T>;
   const setData = data.setState;
   type ErrMap = Record<keyof T, string | null>;
-  /** 与 initialValues 同键的错误文案 */
-  const errors = createStore(
-    Object.keys(initialValues).reduce(
-      (acc, key) => ({ ...acc, [key]: null }),
-      {} as ErrMap,
-    ),
-  ) as Store<ErrMap>;
+  /** 与 initialValues 同键的错误文案（单次遍历建表，避免 reduce 中间对象） */
+  const errInit = {} as ErrMap;
+  for (const key of Object.keys(initialValues) as (keyof T)[]) {
+    errInit[key] = null;
+  }
+  const errors = createStore(errInit) as Store<ErrMap>;
   const setErrors = errors.setState;
 
   /**

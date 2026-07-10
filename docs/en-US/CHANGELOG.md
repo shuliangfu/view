@@ -8,6 +8,47 @@ and this project adheres to
 
 ---
 
+## [2.0.4] - 2026-07-10
+
+### Added
+
+- **Router SSR**: `CreateRouterOptions.url` / `ssr`, `parseRouterUrl`,
+  `matchRoute`; `renderRouterToString` on `@dreamer/view/ssr` for isomorphic
+  route HTML.
+- **Router render**: synchronous page components with `params`/`query` props no
+  longer fall through to async Resource (empty SSR HTML).
+- **Compiler**: wider static expression lifting (ternary, template literals,
+  `as` / non-null); module-level `walk` path constants (`_path$N`); fewer
+  unnecessary Effects for clearly static props.
+- **Controlled inputs**: IME composition guards; string-normalized `value`
+  compare; best-effort selection restore when a write is required.
+- **Bench**: `tests/bench/signal.bench.ts` and `deno task bench`.
+- **Tests**: router SSR suite, focus/IME cases, escape utils, For keyed no-shell
+  cases, static compiler cases.
+
+### Changed
+
+- **For + key**: comment range anchors instead of `span[data-view-for-keyed]`
+  shells; skip DOM reorder when order already correct; track item only so pure
+  reorders reuse nodes.
+- **Signal**: anonymous signals skip global registry in production; register
+  under `VIEW_DEV` for HMR state continuity.
+- **Store**: anonymous ids without `Error().stack`; `Object.is` on proxy set.
+- **Runtime micro-opts**: mount clear via `textContent` where safe; template
+  SSR/client caches (bounded LRU); className/cssText same-value skip; priority
+  drain buffer; `pathToParts` without extra filter; form error-map init; SSR
+  `stringify` fewer allocations; `cleanNode` / list loops without forEach
+  spreads where safe.
+- **Docs**: zh-CN / en-US `TEST_REPORT.md` refreshed (Deno unit+integration 359
+  passed).
+
+### Fixed
+
+- **Focus loss**: number Signal vs DOM string `value` no longer forces
+  reassignment every keystroke; composition periods do not clobber input value.
+
+---
+
 ## [2.0.3] - 2026-07-06
 
 ### Changed

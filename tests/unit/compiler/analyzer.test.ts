@@ -45,4 +45,36 @@ describe("compiler/analyzer", () => {
     expect(isFullyStatic(staticExpr)).toBe(true);
     expect(isFullyStatic(dynamicExpr)).toBe(false);
   });
+
+  it("serializeStatic: 静态字符串拼接属性应并入 HTML", () => {
+    const code = `<div class={"x" + "y"} />`;
+    const sourceFile = ts.createSourceFile(
+      "test.tsx",
+      code,
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const jsxElement =
+      (sourceFile.statements[0] as ts.ExpressionStatement).expression;
+    const html = serializeStatic(jsxElement);
+    expect(html).toContain('class="xy"');
+    expect(html).not.toContain("<!--");
+  });
+
+  it("serializeStatic: 静态三元与模板字符串应并入 HTML", () => {
+    const code = `<span class={false ? "a" : "b"} title={\`t-\${"x"}\`} />`;
+    const sourceFile = ts.createSourceFile(
+      "t.tsx",
+      code,
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const jsxElement =
+      (sourceFile.statements[0] as ts.ExpressionStatement).expression;
+    const html = serializeStatic(jsxElement);
+    expect(html).toContain('class="b"');
+    expect(html).toContain('title="t-x"');
+  });
 });

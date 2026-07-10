@@ -137,9 +137,12 @@ export function createStore<T extends object>(
     options = b as CreateStoreOptions<T> | undefined;
   }
 
-  const stack = new Error().stack || "";
-  const baseId = options?.name ||
-    `store:${stack.split("\n")[2]?.trim() || Math.random()}:${core.uid++}`;
+  /**
+   * 匿名 id 仅用递增 uid，**禁止** `new Error().stack`：
+   * 每次 createStore 抓栈在 SPA 热路径上很贵，且调用行号作 key 也不可靠。
+   * 需要跨 HMR/模块复用时请传 `name` / 三参具名重载。
+   */
+  const baseId = options?.name || `store:anon:${core.uid++}`;
 
   const persist = options?.persist;
   const storage = persist?.storage ??
@@ -263,7 +266,8 @@ export function createStore<T extends object>(
         return isObject(val) ? createProxy(val) : val;
       },
       set(target: any, prop: string | symbol, val: any) {
-        if (target[prop] !== val) {
+        // Object.is：与 Signal 一致，NaN 不重复通知、+0/-0 可区分
+        if (!Object.is(target[prop], val)) {
           target[prop] = val;
           const s = getSignal(target, prop);
           s[1](() => val);

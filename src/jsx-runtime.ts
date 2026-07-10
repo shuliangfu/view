@@ -22,6 +22,37 @@ import type {
   VNode,
 } from "./types.ts";
 
+/** 常见 SVG 元素标签（小写）；与 `createElementNS` 分支对齐 */
+const SVG_TAG_NAMES = new Set([
+  "path",
+  "circle",
+  "rect",
+  "line",
+  "polyline",
+  "polygon",
+  "ellipse",
+  "text",
+  "g",
+  "defs",
+  "use",
+  "stop",
+  "linearGradient",
+  "radialGradient",
+  "mask",
+  "filter",
+  "clipPath",
+  "marker",
+  "pattern",
+  "image",
+  "tspan",
+  "symbol",
+  "feGaussianBlur",
+  "feColorMatrix",
+  "feOffset",
+  "feBlend",
+  "feComposite",
+]);
+
 /**
  * 将 JSX 元素编译为延迟求值的 {@link VNode}（Thunk）：执行时才创建 Owner、插入 DOM。
  * @param type 标签名字符串或组件函数
@@ -55,35 +86,9 @@ export function jsx(
     }
 
     // 2. 处理原生元素 (Host Element)
-    const isSvg = type === "svg" || (typeof type === "string" && [
-      "path",
-      "circle",
-      "rect",
-      "line",
-      "polyline",
-      "polygon",
-      "ellipse",
-      "text",
-      "g",
-      "defs",
-      "use",
-      "stop",
-      "linearGradient",
-      "radialGradient",
-      "mask",
-      "filter",
-      "clipPath",
-      "marker",
-      "pattern",
-      "image",
-      "tspan",
-      "symbol",
-      "feGaussianBlur",
-      "feColorMatrix",
-      "feOffset",
-      "feBlend",
-      "feComposite",
-    ].includes(type));
+    // SVG 标签用 Set 做 O(1) 判断，避免热路径上数组 includes 线性扫描
+    const isSvg = typeof type === "string" &&
+      (type === "svg" || SVG_TAG_NAMES.has(type));
 
     const el = isSvg
       ? document.createElementNS("http://www.w3.org/2000/svg", type)

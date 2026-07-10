@@ -34,11 +34,21 @@ export interface TransformOptions {
 }
 
 /**
- * 判断表达式是否包含函数调用（认为其可能是响应式的）。
+ * 判断表达式是否可能依赖响应式读，从而需要包进 `() => …` / Effect。
+ *
+ * 含 **调用**、**属性访问**、**下标**（如 `count()`、`store.theme`、`arr[i]`），
+ * 以便编译产物对 Store 字段与 Signal 调用保持细粒度更新。
+ * 纯 Identifier / 已判定为静态的字面量组合返回 false（走一次性 `setProperty` 或模板提升）。
+ *
+ * **少 Effect 策略**：先快速排除「明显静态」的 AST（与 analyzer `isStaticExpression` 对齐的子集），
+ * 避免对 `true ? "a" : "b"`、`` `x${"y"}` `` 等再包 `setAttribute(() => …)`。
  */
 function isPotentiallyReactive(node: ts.Node): boolean {
+  if (ts.isExpression(node) && isClearlyStaticExpr(node)) return false;
+
   let reactive = false;
   function walk(n: ts.Node) {
+    if (reactive) return;
     if (
       ts.isCallExpression(n) || ts.isPropertyAccessExpression(n) ||
       ts.isElementAccessExpression(n)
@@ -50,6 +60,54 @@ function isPotentiallyReactive(node: ts.Node): boolean {
   }
   walk(node);
   return reactive;
+}
+
+/**
+ * 与 analyzer 静态规则对齐的轻量子集（避免 transformer 依赖未导出的 isStaticExpression）。
+ * 仅用于「可不包 Effect」判定，不负责写入模板 HTML。
+ */
+function isClearlyStaticExpr(expr: ts.Expression): boolean {
+  if (
+    ts.isStringLiteral(expr) || ts.isNumericLiteral(expr) ||
+    ts.isNoSubstitutionTemplateLiteral(expr)
+  ) return true;
+  if (
+    expr.kind === ts.SyntaxKind.TrueKeyword ||
+    expr.kind === ts.SyntaxKind.FalseKeyword ||
+    expr.kind === ts.SyntaxKind.NullKeyword ||
+    expr.kind === ts.SyntaxKind.UndefinedKeyword
+  ) return true;
+  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+    return isClearlyStaticExpr(expr.expression);
+  }
+  if (ts.isNonNullExpression(expr) || ts.isParenthesizedExpression(expr)) {
+    return isClearlyStaticExpr(expr.expression);
+  }
+  if (ts.isPrefixUnaryExpression(expr)) {
+    return isClearlyStaticExpr(expr.operand as ts.Expression);
+  }
+  if (ts.isBinaryExpression(expr)) {
+    return isClearlyStaticExpr(expr.left) && isClearlyStaticExpr(expr.right);
+  }
+  if (ts.isConditionalExpression(expr)) {
+    return isClearlyStaticExpr(expr.condition) &&
+      isClearlyStaticExpr(expr.whenTrue) &&
+      isClearlyStaticExpr(expr.whenFalse);
+  }
+  if (ts.isTemplateExpression(expr)) {
+    return expr.templateSpans.every((s) => isClearlyStaticExpr(s.expression));
+  }
+  if (ts.isObjectLiteralExpression(expr)) {
+    return expr.properties.every((p) =>
+      ts.isPropertyAssignment(p) && isClearlyStaticExpr(p.initializer)
+    );
+  }
+  if (ts.isArrayLiteralExpression(expr)) {
+    return expr.elements.every((el) =>
+      !ts.isSpreadElement(el) && isClearlyStaticExpr(el)
+    );
+  }
+  return false;
 }
 
 function isJsxLike(node: ts.Node): boolean {
@@ -201,8 +259,43 @@ export function transformJSX(
 ): (sourceFile: ts.SourceFile) => ts.SourceFile {
   const { factory } = context;
   const hoistedTemplates: ts.VariableDeclaration[] = [];
+  /** walk 路径数组：模块级提升，避免每次 clone 时分配新 `[1,2,…]` */
+  const hoistedPaths: ts.VariableDeclaration[] = [];
+  const pathKeyToName = new Map<string, string>();
   const bindingMap: [number[], string][] = [];
   let templateCount = 0;
+
+  /**
+   * 将 `walk(_el, [a,b,c])` 的路径数组提升为 `_path$N` 常量，返回 walk 调用或 `_el`。
+   */
+  function createWalkOrEl(path: number[]): ts.Expression {
+    if (path.length === 0) return factory.createIdentifier("_el");
+    const key = path.join(",");
+    let name = pathKeyToName.get(key);
+    if (!name) {
+      name = `_path$${pathKeyToName.size}`;
+      pathKeyToName.set(key, name);
+      hoistedPaths.push(
+        factory.createVariableDeclaration(
+          factory.createIdentifier(name),
+          undefined,
+          undefined,
+          factory.createArrayLiteralExpression(
+            path.map((p) => factory.createNumericLiteral(p)),
+            false,
+          ),
+        ),
+      );
+    }
+    return factory.createCallExpression(
+      factory.createIdentifier("walk"),
+      undefined,
+      [
+        factory.createIdentifier("_el"),
+        factory.createIdentifier(name),
+      ],
+    );
+  }
 
   return (sourceFile: ts.SourceFile) => {
     function visitor(node: ts.Node): ts.Node {
@@ -454,18 +547,7 @@ export function transformJSX(
           bindingMap.push([dyn.path, dyn.id]);
         }
 
-        const walkExpr = dyn.path.length === 0
-          ? factory.createIdentifier("_el")
-          : factory.createCallExpression(
-            factory.createIdentifier("walk"),
-            undefined,
-            [
-              factory.createIdentifier("_el"),
-              factory.createArrayLiteralExpression(
-                dyn.path.map((p) => factory.createNumericLiteral(p)),
-              ),
-            ],
-          );
+        const walkExpr = createWalkOrEl(dyn.path);
 
         const targetNodeExpr = options.hydration
           ? factory.createBinaryExpression(
@@ -734,6 +816,19 @@ export function transformJSX(
         hmrProcessed.push(stmt);
       }
       finalStatements = hmrProcessed;
+    }
+
+    // 先注入 path 常量，再注入 template，保证 clone 闭包可见模块级 `_path$N`
+    if (hoistedPaths.length > 0) {
+      finalStatements.unshift(
+        factory.createVariableStatement(
+          undefined,
+          factory.createVariableDeclarationList(
+            hoistedPaths,
+            ts.NodeFlags.Const,
+          ),
+        ),
+      );
     }
 
     if (hoistedTemplates.length > 0) {

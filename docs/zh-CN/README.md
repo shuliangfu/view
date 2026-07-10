@@ -11,7 +11,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-290%20%2F%20229%20passed%20Deno%20Bun-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-359%20passed%20Deno%20unit%2Bintegration-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -1178,14 +1178,18 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.3] — 2026-07-06**：**变更** `@dreamer/esbuild` 至 `^1.2.0`；
-  **新增** `hasObservers` 标记、GC 友好的 `cleanupObserver`、O(1) `adoptChild`
-  Set、原地 `runPendingSlice`；**修复** Memo 上游检测。完整条目见
-  **[CHANGELOG.md](./CHANGELOG.md)**；英文版
-  **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
-- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-04-06**：Deno
-  **290** 通过、Bun **229** 通过，**62** 个测试文件，均为 **0**
-  失败；两种运行器计数方式不同，详见报告正文）。
+- **当前版本 [2.0.4] — 2026-07-10**：
+  - **新增**：路由 SSR 同构（`url`/`ssr`/`matchRoute`/`renderRouterToString`）；
+    编译器静态提升与 `_path$N`；受控输入 IME 保护；`deno task bench`。
+  - **变更**：键控 `For` 去 span 壳；匿名 Signal registry 策略；Store/路由/SSR
+    等微优化；测试报告更新。
+  - **修复**：number 与 DOM 字符串 `value` 比较导致的丢光标；IME 组合期不回写
+    `value`。
+  - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
+    **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
+- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-10**：Deno
+  单元+集成 **359** 通过 / **0** 失败；英文版
+  **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**）。
 
 ---
 

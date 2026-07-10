@@ -18,6 +18,7 @@
  *
  * **范围说明：**
  * - 传入 **`key`**（`For` / `Index`）时按稳定键 **复用 DOM、重排节点**；不传则保持「整表重建」语义（与旧版一致）。
+ * - 键控行使用**注释起止锚点**（无 `span` 壳），行内容为父级直接子节点，兼容 `space-y-*` / `:first-child`。
  * - 虚拟滚动等仍建议业务层或专用组件实现。
  * - **`Show`/`For`/`Index`/`Match`/`ErrorBoundary.resetKeys`** 的 `when`/`each`/`resetKeys` 支持 {@link MaybeAccessor}：
  *   静态值、`() => 值`，或 `createSignal` 解构出的 **getter**（与 `readAccessor` 一致）。
@@ -114,26 +115,96 @@ function stableRowKeys<T>(items: T[], keyFn: (item: T) => unknown): string[] {
   return keys;
 }
 
-/** 键控列表行：可移动的壳 + 独立 Owner，避免挂在列表 `createEffect` 下被 `cleanNode(effect)` 每轮误杀 */
+/**
+ * 键控列表行：用注释起止锚点框住行内容（无元素壳），便于：
+ * - 列表项成为父级**直接**子元素（Tailwind `space-y-*` / `:first-child` 正确）
+ * - 整行以区间为单位移动 / 销毁
+ */
 interface KeyedListRow<T> {
-  shell: HTMLElement;
+  /** 行首注释锚点 */
+  start: Comment;
+  /** 行尾注释锚点；内容插在 start 与 end 之间 */
+  end: Comment;
   /** 行级 Owner（挂在列表 effect 的父 Owner 上，与 effect 兄弟） */
   rowOwner: Owner;
   dispose: () => void;
   setItem: (item: T) => void;
   setIndex: (n: number) => void;
+  /** 将 start..end（含内容）整段移到 `parent` 的 `before` 之前 */
+  moveBefore: (parent: Node, before: Node | null) => void;
+}
+
+/** 行首/尾注释 data，便于调试与测试定位 */
+const VIEW_FOR_START = "view:for";
+const VIEW_FOR_END = "/view:for";
+
+/**
+ * 将 `start` 到 `end`（含）的节点依次 `insertBefore(parent, before)`，保持相对顺序。
+ */
+function moveNodeRangeBefore(
+  start: Node,
+  end: Node,
+  parent: Node,
+  before: Node | null,
+): void {
+  let node: Node | null = start;
+  while (node) {
+    const next: Node | null = node.nextSibling;
+    parent.insertBefore(node, before);
+    if (node === end) break;
+    node = next;
+  }
 }
 
 /**
- * 创建键控行：壳内 `insert` 子树，响应 `item` / 下标变化。
+ * 移除 `start` 到 `end`（含）之间的全部节点。
+ */
+function removeNodeRange(start: Node, end: Node): void {
+  const p = start.parentNode;
+  if (!p) return;
+  let node: Node | null = start;
+  while (node) {
+    const next: Node | null = node.nextSibling;
+    p.removeChild(node);
+    if (node === end) break;
+    node = next;
+  }
+}
+
+/**
+ * 键控行是否已按 `keys` 顺序紧挨在 `marker` 之前（检查各行 `end.nextSibling`）。
+ * 为真时可跳过整表重排（仅数据更新时常见）。
+ */
+function isKeyedRowOrderCorrect<T>(
+  keys: string[],
+  rowMap: Map<string, KeyedListRow<T>>,
+  marker: Node,
+): boolean {
+  const n = keys.length;
+  if (n === 0) return true;
+  for (let i = 0; i < n; i++) {
+    const row = rowMap.get(keys[i]!)!;
+    if (row.start.parentNode == null) return false;
+    const expectedNext = i + 1 < n ? rowMap.get(keys[i + 1]!)!.start : marker;
+    if (row.end.nextSibling !== expectedNext) return false;
+  }
+  return true;
+}
+
+/**
+ * 创建键控行：注释锚点 + 其间的内容；响应 `item` / 下标变化。
  */
 function createKeyedListRow<T>(
   props: { children: (item: T, index: () => number) => JSXRenderable },
   initialItem: T,
   initialIndex: number,
 ): KeyedListRow<T> {
-  const shell = document.createElement("span");
-  shell.setAttribute("data-view-for-keyed", "");
+  const start = document.createComment(VIEW_FOR_START);
+  const end = document.createComment(VIEW_FOR_END);
+  // 离线装配：内容先插进 fragment，挂载时整段移入真实父节点
+  const holder = document.createDocumentFragment();
+  holder.appendChild(start);
+  holder.appendChild(end);
 
   const [getItem, setItem] = createSignal(initialItem);
   const [getIdx, setIdx] = createSignal(initialIndex);
@@ -150,27 +221,36 @@ function createKeyedListRow<T>(
   if (persistParent) adoptChild(persistParent, rowOwner);
 
   runWithOwner(rowOwner, () => {
+    /**
+     * 仅追踪 **item**：下标变化时不重跑 `children`，以便纯重排复用 DOM。
+     * `index` 以 getter（`getIdx`）传入；若子树用 JSX/`insert` 读取 `index()`，仍会细粒度更新。
+     */
     createEffect(() => {
-      getItem();
-      getIdx();
+      const item = getItem();
+      const parent = end.parentNode;
+      if (!parent) return;
       insertCurrent = insert(
-        shell,
-        props.children(getItem(), () => getIdx()),
+        parent,
+        props.children(item, getIdx),
         insertCurrent,
-        undefined,
+        end,
       );
     });
   });
 
   return {
-    shell,
+    start,
+    end,
     rowOwner,
     dispose: () => {
       cleanNode(rowOwner, true);
-      if (shell.parentNode) shell.parentNode.removeChild(shell);
+      removeNodeRange(start, end);
     },
     setItem: (it: T) => setItem(() => it),
     setIndex: (n: number) => setIdx(() => n),
+    moveBefore: (parent, before) => {
+      moveNodeRangeBefore(start, end, parent, before);
+    },
   };
 }
 
@@ -312,7 +392,10 @@ export function Show<T>(props: {
       condition = false;
     }
 
-    if (condition === lastCondition && current !== undefined && !hasError) {
+    // Object.is：NaN 条件不重复整树重建；与 Signal 相等语义一致
+    if (
+      Object.is(condition, lastCondition) && current !== undefined && !hasError
+    ) {
       return;
     }
     lastCondition = condition;
@@ -405,10 +488,12 @@ function forLegacyList<T>(props: {
       if (items.length === 0 && props.fallback !== undefined) {
         insert(parent, props.fallback, undefined, marker);
       } else {
-        items.forEach((item, index) => {
-          const content = props.children(item, () => index);
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i] as T;
+          const idx = i;
+          const content = props.children(item, () => idx);
           insert(parent, content, undefined, marker);
-        });
+        }
       }
     });
   });
@@ -491,18 +576,22 @@ function forKeyedList<T>(props: {
         if (!existing) {
           const created = createKeyedListRow(props, item, i);
           rowMap.set(k, created);
-          parent.insertBefore(created.shell, marker);
+          // 新行先挂到 marker 前；若最终顺序不同，下方重排会再移动
+          created.moveBefore(parent, marker);
         } else {
           existing.setItem(item);
           existing.setIndex(i);
         }
       }
 
-      let ref: Node = marker;
-      for (let i = items.length - 1; i >= 0; i--) {
-        const row = rowMap.get(keys[i]!)!;
-        parent.insertBefore(row.shell, ref);
-        ref = row.shell;
+      // 顺序已正确时跳过整段 move（列表仅改字段、追加末项等常见路径）
+      if (!isKeyedRowOrderCorrect(keys, rowMap, marker)) {
+        let ref: Node = marker;
+        for (let i = items.length - 1; i >= 0; i--) {
+          const row = rowMap.get(keys[i]!)!;
+          row.moveBefore(parent, ref);
+          ref = row.start;
+        }
       }
     });
 
@@ -563,10 +652,12 @@ export function Index<T>(props: {
 
       removeChildrenBeforeMarker(parent, marker);
 
-      items.forEach((item, index) => {
-        const content = props.children(item, () => index);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i] as T;
+        const idx = i;
+        const content = props.children(item, () => idx);
         insert(parent, content, undefined, marker);
-      });
+      }
     });
   });
 

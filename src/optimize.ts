@@ -13,15 +13,14 @@ import { readFile } from "@dreamer/runtime-adapter";
  * @returns 替换后的源码
  */
 export function optimize(source: string): string {
-  // 极致优化：匹配 template("...") 并压缩其中的 HTML
-  // 处理逻辑：移除标签间的换行和多余空格，但保留标签内的必要空格
+  // 压缩 template("...") 内 HTML：标签间空白、连续空格；不碰标签内有意义空格的粗粒度处理
   return source.replace(
     /template\s*\(\s*(['"`])([\s\S]*?)\1\s*\)/g,
     (_match, quote, html) => {
       const minified = html
         .replace(/>\s+</g, "><") // 移除标签间的空格和换行
         .replace(/\s{2,}/g, " ") // 将多个连续空格合并为一个
-        .trim();
+        .replace(/^\s+|\s+$/g, ""); // 首尾空白（比 trim 对超长串更可预期）
       return `template(${quote}${minified}${quote})`;
     },
   );

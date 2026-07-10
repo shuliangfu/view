@@ -52,6 +52,10 @@ const MAX_SYNC_THUNK_DEPTH = 4096;
 /**
  * 判断是否为 DOM 节点：浏览器 `Node` 或 SSR 自研树节点（无全局 `Node` 时 `instanceof` 不可用）。
  */
+/**
+ * 勿在模块顶层缓存 `typeof Node`：测试可能先 import 本模块、后注入 happy-dom，
+ * 顶层缓存会把真实 Element 误判为非 Node，进而被 `String(node)` 成文本插入。
+ */
 function isDomNode(v: unknown): v is Node {
   if (v === null || typeof v !== "object") return false;
   if (typeof Node !== "undefined" && v instanceof Node) return true;
@@ -323,7 +327,8 @@ export function insert(
     const cur = detachArrayInsertionHandle(current);
     if (cur) {
       if (cur.nodeType === 3) {
-        cur.textContent = s;
+        // 相同文本跳过写 DOM，避免无意义布局/重绘（effect 重跑同值时常见）
+        if (cur.textContent !== s) cur.textContent = s;
         return cur;
       }
       if (cur.parentNode) {

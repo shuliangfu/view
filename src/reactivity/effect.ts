@@ -34,6 +34,7 @@ import {
   STATE_CLEAN,
   STATE_DIRTY,
   STATE_DISPOSED,
+  untrack,
 } from "./signal.ts";
 import {
   adoptChild,
@@ -180,17 +181,16 @@ export function createDeferred<T>(
   options?: { equals?: (a: T, b: T) => boolean },
 ): () => T {
   const [get, set] = createSignal(source());
+  const equals = options?.equals;
 
   createEffect(() => {
     const value = source();
     // 使用微任务推迟，这是最简单的优先级调度
     queueMicrotask(() => {
-      const current = get();
-      if (
-        !options?.equals ? (current !== value) : !options.equals(current, value)
-      ) {
-        set(() => value);
-      }
+      // untrack：避免在偶然仍有 Observer 的上下文里把 deferred 自身订成依赖
+      const current = untrack(get);
+      const same = equals ? equals(current, value) : Object.is(current, value);
+      if (!same) set(() => value);
     });
   });
 

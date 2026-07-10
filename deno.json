@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "license": "Apache-2.0",
   "description": "High-performance reactive UI framework inspired by Solid.js. Features fine-grained reactivity, no virtual DOM, compiler-optimized DOM/SSR paths, and built-in HMR.",
   "repository": {
@@ -38,6 +38,7 @@
     "test": "deno test -A tests/unit tests/integration",
     "test:integration": "deno test -A tests/integration",
     "test:e2e": "deno test -A tests/e2e",
+    "bench": "deno bench -A tests/bench/",
     "check": "deno check src/mod.ts",
     "lint": "deno lint src/",
     "fmt": "deno fmt src/ tests/"

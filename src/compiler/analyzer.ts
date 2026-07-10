@@ -99,6 +99,7 @@ export function getTagName(node: ts.JsxTagNameExpression): string {
 
 /**
  * 判断一个表达式是否为静态（字面量或可序列化的常量）。
+ * 含括号、断言、模板串、三元、一元/二元纯字面量，便于更多属性直接进 HTML 模板、少挂 Effect。
  */
 function isStaticExpression(expr: ts.Expression): boolean {
   if (expr == null) return false;
@@ -109,8 +110,46 @@ function isStaticExpression(expr: ts.Expression): boolean {
   if (
     expr.kind === ts.SyntaxKind.TrueKeyword ||
     expr.kind === ts.SyntaxKind.FalseKeyword ||
-    expr.kind === ts.SyntaxKind.NullKeyword
+    expr.kind === ts.SyntaxKind.NullKeyword ||
+    expr.kind === ts.SyntaxKind.UndefinedKeyword
   ) return true;
+
+  // 类型断言 / 非空：`x as const`、`!foo`（对操作数递归）
+  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+    return isStaticExpression(expr.expression);
+  }
+  if (ts.isNonNullExpression(expr)) {
+    return isStaticExpression(expr.expression);
+  }
+
+  // 括号包一层：`({"a"})` / `(1 + 2)`
+  if (ts.isParenthesizedExpression(expr)) {
+    return isStaticExpression(expr.expression);
+  }
+
+  // 一元：`+1` / `-2` / `!true`（仅对静态操作数）
+  if (ts.isPrefixUnaryExpression(expr)) {
+    return isStaticExpression(expr.operand as ts.Expression);
+  }
+
+  // 二元：仅两侧皆静态时（字符串拼接、算术等）可折叠进模板
+  if (ts.isBinaryExpression(expr)) {
+    return isStaticExpression(expr.left) && isStaticExpression(expr.right);
+  }
+
+  // 三元：条件与两分支皆静态 → `true ? "a" : "b"`
+  if (ts.isConditionalExpression(expr)) {
+    return isStaticExpression(expr.condition) &&
+      isStaticExpression(expr.whenTrue) &&
+      isStaticExpression(expr.whenFalse);
+  }
+
+  // 模板字符串：所有插值皆静态 → `` `btn-${"primary"}` ``
+  if (ts.isTemplateExpression(expr)) {
+    return expr.templateSpans.every((span) =>
+      isStaticExpression(span.expression)
+    );
+  }
 
   // 优化：识别静态对象字面量 (如 style={{ color: 'red' }})
   if (ts.isObjectLiteralExpression(expr)) {
@@ -121,7 +160,9 @@ function isStaticExpression(expr: ts.Expression): boolean {
 
   // 优化：识别静态数组字面量
   if (ts.isArrayLiteralExpression(expr)) {
-    return expr.elements.every((el) => isStaticExpression(el));
+    return expr.elements.every((el) =>
+      !ts.isSpreadElement(el) && isStaticExpression(el)
+    );
   }
 
   return false;
@@ -131,7 +172,77 @@ function isStaticExpression(expr: ts.Expression): boolean {
  * 将静态表达式序列化为字符串（用于属性提升）。
  */
 function serializeStaticValue(expr: ts.Expression): string {
-  if (ts.isStringLiteral(expr)) return expr.text;
+  if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+    return expr.text;
+  }
+  if (ts.isNumericLiteral(expr)) return expr.text;
+  if (expr.kind === ts.SyntaxKind.TrueKeyword) return "true";
+  if (expr.kind === ts.SyntaxKind.FalseKeyword) return "false";
+  if (expr.kind === ts.SyntaxKind.NullKeyword) return "";
+  if (expr.kind === ts.SyntaxKind.UndefinedKeyword) return "";
+  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+    return serializeStaticValue(expr.expression);
+  }
+  if (ts.isNonNullExpression(expr)) {
+    return serializeStaticValue(expr.expression);
+  }
+  if (ts.isParenthesizedExpression(expr)) {
+    return serializeStaticValue(expr.expression);
+  }
+  if (ts.isConditionalExpression(expr)) {
+    const cond = serializeStaticValue(expr.condition);
+    if (cond === "true" || cond === "1") {
+      return serializeStaticValue(expr.whenTrue);
+    }
+    if (cond === "false" || cond === "0" || cond === "") {
+      return serializeStaticValue(expr.whenFalse);
+    }
+    // 无法求值时拼成占位（不应进入模板路径）
+    return serializeStaticValue(expr.whenTrue);
+  }
+  if (ts.isTemplateExpression(expr)) {
+    let out = expr.head.text;
+    for (const span of expr.templateSpans) {
+      out += serializeStaticValue(span.expression) + span.literal.text;
+    }
+    return out;
+  }
+  if (ts.isPrefixUnaryExpression(expr)) {
+    const op = expr.operator === ts.SyntaxKind.MinusToken
+      ? "-"
+      : expr.operator === ts.SyntaxKind.PlusToken
+      ? "+"
+      : expr.operator === ts.SyntaxKind.ExclamationToken
+      ? "!"
+      : "";
+    // 布尔取反仅作属性值时少见；保持可解析文本
+    if (op === "!") {
+      const inner = serializeStaticValue(expr.operand as ts.Expression);
+      return inner === "true"
+        ? "false"
+        : inner === "false"
+        ? "true"
+        : `!${inner}`;
+    }
+    return op + serializeStaticValue(expr.operand as ts.Expression);
+  }
+  if (ts.isBinaryExpression(expr)) {
+    // 字符串拼接：直接连接序列化结果
+    if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const l = serializeStaticValue(expr.left);
+      const r = serializeStaticValue(expr.right);
+      // 两侧皆为数字文本时做算术（避免 "1"+"2" 在 class 里变 "12" 以外的语义歧义：属性值本就是字符串）
+      const ln = Number(l);
+      const rn = Number(r);
+      if (
+        l !== "" && r !== "" && !Number.isNaN(ln) && !Number.isNaN(rn) &&
+        String(ln) === l && String(rn) === r
+      ) {
+        return String(ln + rn);
+      }
+      return l + r;
+    }
+  }
   if (ts.isObjectLiteralExpression(expr)) {
     // 处理 style 对象：{ color: 'red' } -> "color:red;"
     const styles: string[] = [];

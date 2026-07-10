@@ -188,11 +188,10 @@ describe("runtime/control-flow", () => {
     expect(parent.textContent).toBe("static-true");
   });
 
-  it("For + key：重排后应复用同一 DOM 节点", async () => {
-    const [list, setList] = createSignal([
-      { id: "a", text: "A" },
-      { id: "b", text: "B" },
-    ]);
+  it("For + key：重排后应复用同一 DOM 节点（同对象引用）", async () => {
+    const itemA = { id: "a", text: "A" };
+    const itemB = { id: "b", text: "B" };
+    const [list, setList] = createSignal([itemA, itemB]);
     const parent = document.createElement("div");
 
     const fragment = For<{ id: string; text: string }>({
@@ -200,6 +199,7 @@ describe("runtime/control-flow", () => {
       key: (item) => item.id,
       children: (item) => {
         const span = document.createElement("span");
+        span.dataset.id = item.id;
         span.textContent = item.text;
         return span;
       },
@@ -209,26 +209,118 @@ describe("runtime/control-flow", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    // 键控 For 每行有外层壳 span[data-view-for-keyed] + 内层 children，勿用 querySelectorAll("span") 按文档序当下标
-    const shellsBefore = parent.querySelectorAll("[data-view-for-keyed]");
-    const shellA = shellsBefore[0] as HTMLElement;
-    const shellB = shellsBefore[1] as HTMLElement;
-    expect(shellA?.firstElementChild?.textContent).toBe("A");
-    expect(shellB?.firstElementChild?.textContent).toBe("B");
+    // 键控行无元素壳：行内容为父级直接子元素
+    expect(parent.querySelector("[data-view-for-keyed]")).toBeNull();
+    const elA = parent.querySelector('[data-id="a"]') as HTMLElement;
+    const elB = parent.querySelector('[data-id="b"]') as HTMLElement;
+    expect(elA?.textContent).toBe("A");
+    expect(elB?.textContent).toBe("B");
+    expect(parent.children[0]).toBe(elA);
+    expect(parent.children[1]).toBe(elB);
+
+    // 同对象引用重排：仅改下标，不重跑 children → 节点身份保持
+    setList([itemB, itemA]);
+    flushPendingSync();
+    await Promise.resolve();
+
+    expect(parent.children[0]).toBe(elB);
+    expect(parent.children[1]).toBe(elA);
+    expect(parent.querySelector('[data-id="b"]')).toBe(elB);
+    expect(parent.querySelector('[data-id="a"]')).toBe(elA);
+    expect(parent.textContent).toBe("BA");
+  }, { sanitizeOps: false, sanitizeResources: false });
+
+  it("For + key：同序更新字段后文案正确且仍为直接子元素", async () => {
+    const [list, setList] = createSignal([
+      { id: "a", text: "A" },
+      { id: "b", text: "B" },
+    ]);
+    const parent = document.createElement("div");
+    const fragment = For<{ id: string; text: string }>({
+      each: () => list(),
+      key: (item) => item.id,
+      children: (item) => {
+        const span = document.createElement("span");
+        span.className = "row";
+        span.dataset.id = item.id;
+        span.textContent = item.text;
+        return span;
+      },
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    flushPendingSync();
+
+    expect(parent.children.length).toBe(2);
 
     setList([
-      { id: "b", text: "B" },
-      { id: "a", text: "A" },
+      { id: "a", text: "A2" },
+      { id: "b", text: "B2" },
     ]);
     flushPendingSync();
     await Promise.resolve();
 
-    const shellsAfter = parent.querySelectorAll("[data-view-for-keyed]");
-    expect(shellsAfter[0]).toBe(shellB);
-    expect(shellsAfter[1]).toBe(shellA);
-    expect(shellsAfter[0]?.firstElementChild?.textContent).toBe("B");
-    expect(shellsAfter[1]?.firstElementChild?.textContent).toBe("A");
-    expect(parent.textContent).toBe("BA");
+    expect(parent.querySelectorAll(":scope > .row").length).toBe(2);
+    expect(parent.querySelector('[data-id="a"]')?.textContent).toBe("A2");
+    expect(parent.querySelector('[data-id="b"]')?.textContent).toBe("B2");
+    expect(parent.textContent).toBe("A2B2");
+  }, { sanitizeOps: false, sanitizeResources: false });
+
+  it("For + key：末尾追加项时已有元素仍复用（同对象引用）", async () => {
+    const itemA = { id: "a", text: "A" };
+    const [list, setList] = createSignal([itemA]);
+    const parent = document.createElement("div");
+    const fragment = For<{ id: string; text: string }>({
+      each: () => list(),
+      key: (item) => item.id,
+      children: (item) => {
+        const span = document.createElement("span");
+        span.dataset.id = item.id;
+        span.textContent = item.text;
+        return span;
+      },
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    flushPendingSync();
+
+    const elA = parent.querySelector('[data-id="a"]') as HTMLElement;
+    setList([itemA, { id: "b", text: "B" }]);
+    flushPendingSync();
+    await Promise.resolve();
+
+    expect(parent.children.length).toBe(2);
+    expect(parent.querySelector('[data-id="a"]')).toBe(elA);
+    expect(parent.textContent).toBe("AB");
+  }, { sanitizeOps: false, sanitizeResources: false });
+
+  it("For + key：行内容为父级直接子元素（无 span 壳）", async () => {
+    const [list] = createSignal([
+      { id: "1", text: "x" },
+      { id: "2", text: "y" },
+    ]);
+    const parent = document.createElement("div");
+    const fragment = For<{ id: string; text: string }>({
+      each: () => list(),
+      key: (item) => item.id,
+      children: (item) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = item.text;
+        return div;
+      },
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    flushPendingSync();
+
+    expect(parent.querySelectorAll(":scope > .item").length).toBe(2);
+    expect(parent.querySelector("[data-view-for-keyed]")).toBeNull();
+    // 注释锚点存在于 childNodes，但不进入 .children
+    const comments = Array.from(parent.childNodes).filter(
+      (n) => n.nodeType === Node.COMMENT_NODE,
+    );
+    expect(comments.length).toBeGreaterThanOrEqual(2);
   }, { sanitizeOps: false, sanitizeResources: false });
 
   it("Switch: 切换分支时不应删除插槽外的兄弟节点（如上方按钮区）", async () => {

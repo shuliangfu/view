@@ -40,4 +40,10 @@ describe("runtime/template", () => {
     expect(() => walk(root, [99])).toThrow("@dreamer/view");
     expect(() => walk(root, [-1])).toThrow("@dreamer/view");
   });
+
+  it("walk: 空路径应返回 root 本身", () => {
+    const tmpl = template("<div data-x='1'></div>");
+    const root = tmpl() as Node;
+    expect(walk(root, [])).toBe(root);
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

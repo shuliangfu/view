@@ -34,9 +34,23 @@ function isServerLikeEnvironment(): boolean {
 
 /**
  * 客户端：按模板字符串复用「已解析的根节点」，避免相同 HTML 多次走 `innerHTML`。
- * 键为编译器传入的完整片段字符串；模板种类有限，Map 规模可接受。
+ * 键为编译器传入的完整片段字符串；有界缓存防止 HMR 长期堆积。
  */
 const clientTemplateByHtml = new Map<string, () => Node>();
+/** SSR：同一 html 复用工厂函数，避免每次 `template()` 分配新闭包 */
+const serverTemplateByHtml = new Map<string, () => ServerTemplateStub>();
+/** 模板缓存上限（超出时删最旧键） */
+const TEMPLATE_CACHE_MAX = 512;
+
+function touchCacheEntry<V>(map: Map<string, V>, key: string, value: V): void {
+  // 先删再设，使该键成为「最新」插入序（Map 保序）
+  if (map.has(key)) map.delete(key);
+  map.set(key, value);
+  if (map.size > TEMPLATE_CACHE_MAX) {
+    const oldest = map.keys().next().value as string | undefined;
+    if (oldest !== undefined) map.delete(oldest);
+  }
+}
 
 /**
  * 无 DOM 环境下 `template()` 返回的桩：保留 HTML 字符串并模拟 `cloneNode`。
@@ -57,7 +71,12 @@ export function template(html: string): () => Node | ServerTemplateStub {
   const server = isServerLikeEnvironment();
 
   if (server) {
-    return (): ServerTemplateStub => {
+    const cachedServer = serverTemplateByHtml.get(html);
+    if (cachedServer) {
+      touchCacheEntry(serverTemplateByHtml, html, cachedServer);
+      return cachedServer;
+    }
+    const factory = (): ServerTemplateStub => {
       const mk = (): ServerTemplateStub => ({
         _html: html,
         cloneNode: () => mk(),
@@ -65,10 +84,15 @@ export function template(html: string): () => Node | ServerTemplateStub {
       });
       return mk();
     };
+    touchCacheEntry(serverTemplateByHtml, html, factory);
+    return factory;
   }
 
   const cached = clientTemplateByHtml.get(html);
-  if (cached) return cached;
+  if (cached) {
+    touchCacheEntry(clientTemplateByHtml, html, cached);
+    return cached;
+  }
 
   const isSVG = html.startsWith("<svg") || html.startsWith("<g") ||
     html.startsWith("<path");
@@ -89,22 +113,24 @@ export function template(html: string): () => Node | ServerTemplateStub {
 
   const finalNode = node;
   const cloneFn = () => finalNode.cloneNode(true);
-  clientTemplateByHtml.set(html, cloneFn);
+  touchCacheEntry(clientTemplateByHtml, html, cloneFn);
   return cloneFn;
 }
 
 /**
  * 自 `root` 起按子节点下标路径向下定位节点（客户端）；SSR 环境下直接返回 `root`。
  * @param root 模板根节点
- * @param path 每层 `childNodes` 的下标序列
+ * @param path 每层 `childNodes` 的下标序列；空路径返回 `root`
  * @returns 目标节点
  * @throws 下标越界时抛出带路径信息的 `Error`
  */
 export function walk(root: Node, path: number[]): Node {
   if (isServerLikeEnvironment()) return root;
+  if (path.length === 0) return root;
 
   let current = root;
-  for (let i = 0; i < path.length; i++) {
+  const n = path.length;
+  for (let i = 0; i < n; i++) {
     const children = current.childNodes;
     const idx = path[i]!;
     if (idx < 0 || idx >= children.length) {

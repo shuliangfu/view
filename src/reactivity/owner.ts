@@ -118,17 +118,23 @@ export function onCleanup(fn: Disposable): void {
  */
 export function cleanNode(owner: Owner, selfDispose = false): void {
   // 1. 递归清理子节点（子节点必须彻底销毁）
+  // 先摘掉列表再遍历：避免 cleanNode(child) 改父 children 时跳项，且少一次 spread 拷贝
   if (owner.children) {
-    const children = [...owner.children];
-    children.forEach((child) => cleanNode(child, true));
+    const children = owner.children;
     owner.children = null;
+    (owner as { _childrenSet?: Set<Owner> | null })._childrenSet = null;
+    for (let i = 0; i < children.length; i++) {
+      cleanNode(children[i]!, true);
+    }
   }
 
   // 2. 运行当前节点的清理函数
   if (owner.disposables) {
-    const disposables = [...owner.disposables];
+    const disposables = owner.disposables;
     owner.disposables = null;
-    disposables.forEach((d) => d());
+    for (let i = 0; i < disposables.length; i++) {
+      disposables[i]!();
+    }
   }
 
   // 3. 如果标记了彻底销毁，则标记状态并断开依赖

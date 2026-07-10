@@ -22,8 +22,22 @@ describe("compiler/transformer", () => {
     const out = compileSource(code, "test.tsx");
 
     expect(out).toContain('template("<div><!--[--><!--]--></div>")');
-    expect(out).toContain("insert(walk(_el, [1])");
+    // walk 路径提升为模块级常量，避免每次 clone 分配数组
+    expect(out).toMatch(/const _path\$\d+ = \[1\]/);
+    expect(out).toMatch(/insert\(walk\(_el, _path\$\d+\)/);
     expect(out).toContain("return _el");
+  });
+
+  it("优化：walk 路径数组应模块级提升且多动态位点复用同路径常量", () => {
+    const code =
+      `export const App = () => <div title={a()} class={b()}>{c()}</div>;`;
+    const out = compileSource(code, "test.tsx");
+    // 属性在根上 path=[] 用 _el；子节点 path=[1] 提升一次
+    expect(out).toMatch(/_path\$/);
+    const pathDecls = out.match(/const _path\$\d+ = \[[^\]]*\]/g) ?? [];
+    expect(pathDecls.length).toBeGreaterThanOrEqual(1);
+    // 不应在 clone 闭包内再写字面量数组 walk(_el, [1])
+    expect(out).not.toMatch(/walk\(_el, \[\d/);
   });
 
   it("嵌套组件转换：应当转换为函数调用", () => {
@@ -72,7 +86,9 @@ describe("compiler/transformer", () => {
     const code = `export const App = () => <div>{count()}</div>;`;
     const out = compileSource(code, "test.tsx", { hydration: true });
 
-    expect(out).toContain('useHydratedNode("v-0") || walk(_el, [1])');
+    expect(out).toMatch(
+      /useHydratedNode\("v-0"\) \|\| walk\(_el, _path\$\d+\)/,
+    );
     expect(out).toContain("export const _bindingMap = [[");
     expect(out).toContain('[[1], "v-0"]');
   });
@@ -98,6 +114,24 @@ describe("compiler/transformer", () => {
     const code3 = `export const App = () => <div class={color()}></div>;`;
     const out3 = compileSource(code3, "test.tsx");
     expect(out3).toContain('setAttribute(_el, "class", () => color())');
+
+    // 4. 静态二元拼接提升进模板（少挂动态绑定）
+    const code4 =
+      `export const App = () => <div class={"btn-" + "primary"}></div>;`;
+    const out4 = compileSource(code4, "test.tsx");
+    expect(out4).toContain('class=\\"btn-primary\\"');
+    const codePart4 = out4.split("\n").slice(1).join("\n");
+    expect(codePart4).not.toContain("setAttribute(");
+    expect(codePart4).not.toContain("setProperty(");
+
+    // 5. 静态三元 / 模板串 / as 断言：提升进模板，无 setAttribute Effect
+    const code5 =
+      `export const App = () => <div class={true ? "on" : "off"} data-x={\`v-\${"1"}\` as any}></div>;`;
+    const out5 = compileSource(code5, "test.tsx");
+    expect(out5).toContain('class=\\"on\\"');
+    expect(out5).toContain('data-x=\\"v-1\\"');
+    const codePart5 = out5.split("\n").slice(1).join("\n");
+    expect(codePart5).not.toContain("setAttribute(");
   });
 
   it("极致优化：应当提升静态 style 对象", () => {

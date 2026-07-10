@@ -23,6 +23,9 @@
 /** 与 SSR 自研 DOM 节点区分，避免把节点当普通对象做 `Object.assign` */
 const SSR_VIEW_TREE_NODE = Symbol.for("@dreamer/view/ssrTreeNode");
 
+/**
+ * 须在每次调用时检查 `Node`：勿模块顶层缓存（happy-dom 可能晚于本模块加载）。
+ */
 export function isObject(v: any): v is object {
   return (
     v != null &&

@@ -12,7 +12,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-290%20%2F%20229%20passed%20Deno%20Bun-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-359%20passed%20Deno%20unit%2Bintegration-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -1196,14 +1196,18 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.3] — 2026-07-06**: **Changed** `@dreamer/esbuild` to `^1.2.0`;
-  **Added** `hasObservers` flag, GC-friendly `cleanupObserver`, O(1)
-  `adoptChild` Set, in-place `runPendingSlice`; **Fixed** Memo upstream
-  detection. Full history:
-  **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
-- See **[TEST_REPORT.md](./TEST_REPORT.md)** (**2026-04-06**: **290** passed on
-  Deno, **229** on Bun, **62** test files, **0** failures; runners count cases
-  differently — details inside the report).
+- **Latest [2.0.4] — 2026-07-10**:
+  - **Added**: Router SSR (`url`/`ssr`/`matchRoute`/`renderRouterToString`);
+    wider compiler static lifting + `_path$N`; controlled-input IME guards;
+    `deno task bench`.
+  - **Changed**: keyed `For` without span shells; anonymous Signal registry
+    policy; Store/`pathToParts`/SSR stringify micro-opts; TEST_REPORT refresh.
+  - **Fixed**: focus loss when Signal `value` is number vs DOM string; no
+    `value` writeback during IME composition.
+  - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
+- Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**
+  (**2026-07-10**: Deno unit+integration **359** passed / **0** failed);
+  Chinese: **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
 - Chinese changelog: **[docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)**.
 
 ---
