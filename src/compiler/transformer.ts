@@ -301,12 +301,17 @@ export function transformJSX(
               if (!value) {
                 propValue = factory.createTrue();
               } else if (ts.isJsxExpression(value)) {
-                // 如果是 SSR，不需要包装箭头函数，直接求值
-                if (options.generate === "ssr") {
-                  propValue = ts.visitNode(
-                    value.expression!,
-                    visitor,
-                  ) as ts.Expression;
+                const inner = value.expression!;
+                const visited = ts.visitNode(
+                  inner,
+                  visitor,
+                ) as ts.Expression;
+                // SSR：直接求值；DOM：仅潜在响应式包 `() => …`，静态/纯标识符直传
+                if (
+                  options.generate === "ssr" ||
+                  !isPotentiallyReactive(inner)
+                ) {
+                  propValue = visited;
                 } else {
                   propValue = factory.createArrowFunction(
                     undefined,
@@ -314,7 +319,7 @@ export function transformJSX(
                     [],
                     undefined,
                     undefined,
-                    ts.visitNode(value.expression!, visitor) as ts.Expression,
+                    visited,
                   );
                 }
               } else {

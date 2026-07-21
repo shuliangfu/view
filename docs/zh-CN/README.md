@@ -89,16 +89,38 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`** 等与 TS 编译相关的 API                                                      |
 | `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** 构建期字符串压缩等                                                       |
 | `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**、`generateHydrationScript` 及 SSR 辅助符号       |
+| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context**（无 router/form，利于 tree-shake）                          |
+| `jsr:@dreamer/view/scheduler`       | **`batch` / 优先级调度**                                                                                         |
+| `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` 等**                                                                    |
+| `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                 |
+| `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                             |
+| `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` 等**                                                               |
+| `jsr:@dreamer/view/csr`             | **CSR 聚合**：signal + mount/hydrate + 控制流 + Suspense（无 SSR/router）                                        |
 
 按需增加子路径示例：
 
 ```bash
 deno add jsr:@dreamer/view
 deno add jsr:@dreamer/view/ssr
+deno add jsr:@dreamer/view/reactivity
+deno add jsr:@dreamer/view/csr
+deno add jsr:@dreamer/view/router
 deno add jsr:@dreamer/view/compiler
 deno add jsr:@dreamer/view/optimize
 deno add jsr:@dreamer/view/portal
 deno add jsr:@dreamer/view/types
+```
+
+```ts
+// 仅响应式时优先细粒度入口：
+import { createEffect, createSignal } from "@dreamer/view/reactivity";
+// 小型 CSR 应用：
+import { createSignal, For, mount } from "@dreamer/view/csr";
+// 主入口仍完整兼容：
+import { createRouter, createSignal } from "@dreamer/view";
+
+// 水合错位策略（加法）：
+// hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
 ---
@@ -1178,16 +1200,17 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.6] — 2026-07-22**：
-  - **安全**：URL 属性消毒（`javascript:` / 零宽混淆等）；`on*` 仅函数；style
-    XSS 剥离；禁止经 props 写 `innerHTML`。
-  - **变更（公共 API 不变）**：For 键控 **LIS** 重排；`insert` Signal 快路径；
-    SSR 共享转义；编译器更广静态提升；Bun `bunfig.toml` preload happy-dom。
-  - **测试**：Deno 单元+集成 **384** / Bun **317** / 0 失败。
+- **当前版本 [2.1.0] — 2026-07-22**：
+  - **新增**：细粒度子路径（`/reactivity`、`/csr`、`/router`、`/control-flow`
+    等）；`HydrateOptions` + `mismatchMode`
+    （`continue`/`assert`/`remount`）；`sideEffects: false`。
+  - **变更**：编译器对静态组件 props 不包箭头；静态 `&&`/`||` 进模板；主入口仍
+    兼容。
+  - **测试**：Deno 单元+集成 **394** / Bun **326** / 0 失败。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-22**：Deno
-  单元+集成 **384** / Bun **317**，0 失败；英文版
+  单元+集成 **394** / Bun **326**，0 失败；英文版
   **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**）。
 
 ---

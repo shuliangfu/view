@@ -50,6 +50,29 @@ describe("compiler/transformer", () => {
     expect(out).toContain('template("<span>Showed</span>")');
   });
 
+  it("优化：组件静态/非响应式 props 不包箭头函数", () => {
+    const staticWhen = compileSource(
+      `export const App = () => <Show when={true}><span>x</span></Show>;`,
+      "t.tsx",
+    );
+    expect(staticWhen).toContain("Show({");
+    expect(staticWhen).toContain("when: true");
+    expect(staticWhen).not.toContain("when: () => true");
+
+    const idWhen = compileSource(
+      `export const App = () => <Show when={flag}><span>x</span></Show>;`,
+      "t.tsx",
+    );
+    expect(idWhen).toContain("when: flag");
+    expect(idWhen).not.toContain("when: () => flag");
+
+    const reactive = compileSource(
+      `export const App = () => <Show when={ok()}><span>x</span></Show>;`,
+      "t.tsx",
+    );
+    expect(reactive).toContain("when: () => ok()");
+  });
+
   it("属性绑定：应当使用 setAttribute", () => {
     const code = `export const App = () => <div class={color()}></div>;`;
     const out = compileSource(code, "test.tsx");
@@ -140,6 +163,15 @@ describe("compiler/transformer", () => {
     expect(out6).toContain('data-t=\\"string\\"');
     const codePart6 = out6.split("\n").slice(1).join("\n");
     expect(codePart6).not.toContain("setAttribute(");
+
+    // 7. 静态逻辑与/或：提升进 class 模板
+    const code7 =
+      `export const App = () => <div class={"btn" && "btn-primary"} data-x={"" || "fallback"}></div>;`;
+    const out7 = compileSource(code7, "test.tsx");
+    expect(out7).toContain('class=\\"btn-primary\\"');
+    expect(out7).toContain('data-x=\\"fallback\\"');
+    const codePart7 = out7.split("\n").slice(1).join("\n");
+    expect(codePart7).not.toContain("setAttribute(");
   });
 
   it("极致优化：应当提升静态 style 对象", () => {

@@ -7,7 +7,7 @@
 | 项目     | 说明                                                            |
 | -------- | --------------------------------------------------------------- |
 | 包名     | `@dreamer/view`                                                 |
-| 版本     | **2.0.6**（与 `deno.json` / `package.json` 一致）               |
+| 版本     | **2.1.0**（与 `deno.json` / `package.json` 一致）               |
 | 测试框架 | `@dreamer/test` ^1.1.10                                         |
 | 报告日期 | **2026-07-22**                                                  |
 | DOM 环境 | 单元/集成：happy-dom **20.4.0**；E2E：Chromium（Playwright 等） |
@@ -224,17 +224,18 @@ ok | 398 passed | 0 failed (~1m13s)   # Deno
 
 ## 8. 结论
 
-**@dreamer/view 2.0.6** 主路径门禁（**0 失败**）：
+**@dreamer/view 2.1.0** 主路径门禁（**0 失败**）：
 
 | 运行时 | 范围                                           | 结果                  |
 | ------ | ---------------------------------------------- | --------------------- |
-| Deno   | unit + integration（`deno task test`）         | **384 通过 / 0 失败** |
-| Bun    | unit + integration（`bun test` + bunfig 预载） | **317 通过 / 0 失败** |
+| Deno   | unit + integration（`deno task test`）         | **394 通过 / 0 失败** |
+| Bun    | unit + integration（`bun test` + bunfig 预载） | **326 通过 / 0 失败** |
 
 - 覆盖核心响应式、运行时 DOM、**受控表单焦点**、**props/URL 安全**、键控 **`For`
-  LIS 重排**、编译器静态提升、SSR/水合、**SSR 伪 DOM API**、路由、表单、
-  调度与集成
-- **2.0.6** 相对 2.0.5 单元+集成条数上升（原约 377 / 311）
+  LIS 重排**、编译器静态提升、SSR/水合（**mismatch 策略**）、**SSR 伪 DOM
+  API**、路由、表单、调度、**子路径导入**与集成
+- **2.1.0** 新增细粒度 `exports`（`/reactivity`、`/csr` 等）、水合
+  `mismatchMode` 及更多子路径/编译器用例（相对 2.0.6 约 384 / 317）
 - 含 e2e 的全量 `tests/` 为可选；引用总数时请对齐命令范围
 
 本报告随 `tests/` 与发版节奏更新。

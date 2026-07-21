@@ -89,16 +89,38 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`**, etc.                                                                                      |
 | `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                   |
 | `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                     |
+| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** (no router/form; better tree-shake)                                        |
+| `jsr:@dreamer/view/scheduler`       | **`batch` / priority scheduler**                                                                                                |
+| `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` / …**                                                                                  |
+| `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                                |
+| `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                                            |
+| `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                             |
+| `jsr:@dreamer/view/csr`             | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                |
 
 Example optional subpaths:
 
 ```bash
 deno add jsr:@dreamer/view
 deno add jsr:@dreamer/view/ssr
+deno add jsr:@dreamer/view/reactivity
+deno add jsr:@dreamer/view/csr
+deno add jsr:@dreamer/view/router
 deno add jsr:@dreamer/view/compiler
 deno add jsr:@dreamer/view/optimize
 deno add jsr:@dreamer/view/portal
 deno add jsr:@dreamer/view/types
+```
+
+```ts
+// Prefer fine-grained imports when you only need reactivity:
+import { createEffect, createSignal } from "@dreamer/view/reactivity";
+// Small CSR apps:
+import { createSignal, For, mount } from "@dreamer/view/csr";
+// Main barrel remains fully compatible:
+import { createRouter, createSignal } from "@dreamer/view";
+
+// Hydration mismatch strategies (additive):
+// hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
 ---
@@ -1196,17 +1218,16 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Latest [2.0.6] — 2026-07-22**:
-  - **Security**: URL prop sanitization (`javascript:` / zero-width obfuscation
-    etc.); function-only `on*` handlers; style XSS strip; no `innerHTML` via
-    props.
-  - **Changed (API stable)**: keyed `For` **LIS** reorder; `insert` Signal fast
-    path; shared HTML escape for SSR; wider compiler static lifting
-    (`void`/`typeof`/…); Bun `bunfig.toml` preload for happy-dom.
-  - **Tests**: Deno unit+integration **384** / Bun **317** / 0 failed.
+- **Latest [2.1.0] — 2026-07-22**:
+  - **Added**: fine-grained subpaths (`/reactivity`, `/csr`, `/router`,
+    `/control-flow`, …); `HydrateOptions` + `mismatchMode`
+    (`continue`/`assert`/`remount`); `sideEffects: false`.
+  - **Changed**: compiler skips arrow wrappers for static component props;
+    static `&&`/`||` fold into templates. Main barrel still compatible.
+  - **Tests**: Deno unit+integration **394** / Bun **326** / 0 failed.
   - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**
-  (**2026-07-22**: Deno unit+integration **384** / Bun **317**, 0 failed);
+  (**2026-07-22**: Deno unit+integration **394** / Bun **326**, 0 failed);
   Chinese: **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
 - Chinese changelog: **[docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)**.
 

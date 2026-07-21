@@ -7,6 +7,47 @@
 
 ---
 
+## [2.1.0] - 2026-07-22
+
+### 新增
+
+- **按需子路径（tree-shake 友好，主入口仍完整 re-export）**：
+  - `@dreamer/view/reactivity` — Signal / Effect / Memo / Owner / Store /
+    Context
+  - `@dreamer/view/scheduler` — `batch` / 优先级调度
+  - `@dreamer/view/router` — `createRouter` / `Link` / …
+  - `@dreamer/view/form` — `createForm`
+  - `@dreamer/view/resource` — `createResource`
+  - `@dreamer/view/control-flow` — `Show` / `For` / `Switch` / `ErrorBoundary`
+    等
+  - `@dreamer/view/csr` — CSR 聚合（signal + mount/hydrate + 控制流 +
+    Suspense，无 SSR/router）
+- **水合选项
+  `HydrateOptions`**（第三参可为数组绑定表，或对象；**兼容**旧数组写法）：
+  - `bindings` / `warnMismatch` / `onMismatch`
+  - **`mismatchMode`**：`continue`（默认）| `assert` | `remount`
+  - `getHydrationMismatches()` 读取本轮错位
+- **`package.json` `sideEffects: false`**：利于 bundler 摇树。
+
+### 变更
+
+- **编译器**：组件静态/非响应式 props 不再包 `() => …`；静态 `&&` / `||`
+  可折叠进 模板。
+- **文档**：中英文 README 子路径表与示例；推荐按需导入写法。
+
+### 测试
+
+- 增补 `subpaths`、hydration assert/remount、编译器逻辑与/或 等用例。
+- **Deno** 单元+集成 **394** / **Bun** 单元+集成 **326**，0 失败。
+
+### 说明
+
+- **无破坏性变更**：既有 `import { … } from "@dreamer/view"` 与
+  `hydrate(fn, el, bindings[])` 仍有效。
+- 主入口删除 re-export 瘦身属未来 **3.0** 议题，不在本版。
+
+---
+
 ## [2.0.6] - 2026-07-22
 
 ### 安全
@@ -42,7 +83,7 @@
 ### 说明
 
 - **无** 公共 API / `exports` 破坏性变更；适合作为 2.0.x 的 patch。
-- 后续 tree-shake 子路径等加法计划走 **2.1.0**。
+- Tree-shake 子路径已在 **2.1.0** 落地。
 
 ---
 

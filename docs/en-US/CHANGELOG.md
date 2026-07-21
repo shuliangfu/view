@@ -8,6 +8,49 @@ and this project adheres to
 
 ---
 
+## [2.1.0] - 2026-07-22
+
+### Added
+
+- **Optional subpaths** (tree-shake friendly; main barrel still re-exports
+  everything):
+  - `@dreamer/view/reactivity` — Signal / Effect / Memo / Owner / Store /
+    Context
+  - `@dreamer/view/scheduler` — `batch` / priority scheduler
+  - `@dreamer/view/router` — `createRouter` / `Link` / …
+  - `@dreamer/view/form` — `createForm`
+  - `@dreamer/view/resource` — `createResource`
+  - `@dreamer/view/control-flow` — `Show` / `For` / `Switch` / `ErrorBoundary` /
+    …
+  - `@dreamer/view/csr` — CSR bundle (signal + mount/hydrate + control-flow +
+    Suspense; no SSR/router)
+- **`HydrateOptions`** (3rd arg may still be a bindings array, or an options
+  object — **backward compatible**):
+  - `bindings` / `warnMismatch` / `onMismatch`
+  - **`mismatchMode`**: `continue` (default) | `assert` | `remount`
+  - `getHydrationMismatches()` for diagnostics
+- **`package.json` `sideEffects: false`** for bundler tree-shaking.
+
+### Changed
+
+- **Compiler**: non-reactive component props no longer wrapped in `() => …`;
+  static `&&` / `||` fold into templates.
+- **Docs**: EN/ZH README subpath tables and recommended fine-grained imports.
+
+### Tests
+
+- Added `subpaths`, hydration assert/remount, compiler logical-and/or cases.
+- **Deno** unit+integration **394** / **Bun** unit+integration **326**, 0
+  failed.
+
+### Notes
+
+- **No breaking changes**: existing `import { … } from "@dreamer/view"` and
+  `hydrate(fn, el, bindings[])` keep working.
+- Removing main-barrel re-exports is a future **3.0** topic, not this release.
+
+---
+
 ## [2.0.6] - 2026-07-22
 
 ### Security
@@ -49,7 +92,7 @@ and this project adheres to
 ### Notes
 
 - **No** public API / `exports` breaking changes; intentional **patch**.
-- Additive tree-shake subpaths are planned for **2.1.0**.
+- Tree-shake subpaths shipped in **2.1.0**.
 
 ---
 

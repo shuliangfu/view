@@ -37,6 +37,7 @@
  * **使用方式：**
  * import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"
  * SSR：`renderToString` / `renderToStream` 等从 `@dreamer/view/ssr` 导入（主入口不打包 happy-dom，避免浏览器构建解析 `node:*`）。
+ * 按需：`/reactivity` `/scheduler` `/router` `/form` `/resource` `/control-flow` `/csr`（主入口仍 re-export，兼容不变）。
  *
  * **当前状态：** 核心功能完整，测试覆盖较好，但部分高级特性还在优化中。
  */

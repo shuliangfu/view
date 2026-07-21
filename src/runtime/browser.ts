@@ -5,31 +5,29 @@
  * **支持的功能：**
  * - ✅ mount() - 将组件挂载到 DOM 容器
  * - ✅ hydrate() - 服务端渲染内容的水合 (客户端激活)
+ * - ✅ mismatch 策略：continue / assert / remount
  * - ✅ 自动清理 loading 骨架屏 (data-view-cloak 处理)
- * - ✅ 正确的错误边界和清理机制
- *
- * **核心职责：**
- * - 应用启动入口
- * - SSR 内容激活
- * - DOM 容器初始化和清理
- * - 开发环境的 HMR 支持
- *
- * **范围说明：**
- * - 浏览器挂载/水合为主；SSR 完整链路见 `runtime/server` 等；路由见 `integrations/router.ts`。
  *
  * @usage
  * mount(() => <App/>, document.getElementById("root"))
+ * hydrate(() => <App/>, root, { bindings, mismatchMode: "remount" })
  */
 
 import { createRoot } from "../reactivity/owner.ts";
 import { insert } from "./insert.ts";
-import { internalHydrate, stopHydration } from "./hydration.ts";
+import {
+  getHydrationMismatches,
+  type HydrateOptions,
+  internalHydrate,
+  resolveMismatchMode,
+  stopHydration,
+} from "./hydration.ts";
+
+/** 供类型引用；运行时符号由 `runtime/hydration` 经主入口 re-export */
+export type { HydrateOptions, HydrationMismatchMode } from "./hydration.ts";
 
 /**
  * 在 `container` 内执行 `fn()` 并 `insert` 结果；卸载时 `dispose` 并清空子节点。
- * @param fn 返回可插入视图（VNode/节点等）的函数
- * @param container 挂载目标 DOM 节点
- * @returns 卸载函数：释放 Owner 并移除子节点
  */
 /** 清空容器子节点：Element 用 `textContent` 更快；其它 Node 回退逐子 remove */
 function clearContainerChildren(container: Node): void {
@@ -42,25 +40,25 @@ function clearContainerChildren(container: Node): void {
   }
 }
 
+/** 移除 cloak 并保证可见（mount / remount 共用） */
+function uncloakContainer(container: Node): void {
+  if (container instanceof HTMLElement) {
+    container.removeAttribute("data-view-cloak");
+    container.style.display = "";
+  }
+}
+
 export function mount(fn: () => any, container: Node): () => void {
   return createRoot((dispose) => {
-    // 1. 物理清空容器 (移除 Loading 骨架屏)
     clearContainerChildren(container);
+    uncloakContainer(container);
 
-    // 2. 强行移除 cloak 隐藏属性
-    if (container instanceof HTMLElement) {
-      container.removeAttribute("data-view-cloak");
-      container.style.display = ""; // 确保可见
-    }
-
-    // 3. 执行挂载
     const content = fn();
     insert(container, content);
 
     /**
      * 先回收 Owner/Effect，再物理清空容器。
-     * 仅 `cleanNode` 时 insert 产生的节点未必会从 DOM 摘除，CSR 下 unmount 后仍会看到旧文案；
-     * 与入口「先清空再插入」对称，且与 `hydrate`（卸载后保留 SSR 节点）区分。
+     * 与 `hydrate`（卸载后默认保留 SSR 节点）区分。
      */
     return () => {
       dispose();
@@ -70,27 +68,75 @@ export function mount(fn: () => any, container: Node): () => void {
 }
 
 /**
- * 在已有 SSR 标记的 `container` 上启用水合并插入 `fn()`；`bindings` 为编译器生成的动态位点映射。
- * @param fn 客户端根组件
- * @param container 服务端已输出 HTML 的节点
- * @param bindings 可选 `[path, exprId][]` 绑定表
- * @returns `createRoot` 的 `dispose`，用于卸载（不默认清空容器，与 `mount` 对称语义见实现）
+ * 解析 `hydrate` 第三参：历史数组绑定表，或 {@link HydrateOptions} 对象（加法）。
+ */
+function resolveHydrateBindings(
+  bindingsOrOptions: [number[], string][] | HydrateOptions = [],
+): { bindings: [number[], string][]; options: HydrateOptions } {
+  if (Array.isArray(bindingsOrOptions)) {
+    return { bindings: bindingsOrOptions, options: {} };
+  }
+  if (bindingsOrOptions != null && typeof bindingsOrOptions === "object") {
+    const options = bindingsOrOptions as HydrateOptions;
+    return {
+      bindings: options.bindings ?? [],
+      options,
+    };
+  }
+  return { bindings: [], options: {} };
+}
+
+/**
+ * 在已有 SSR 标记的 `container` 上启用水合并插入 `fn()`。
+ *
+ * @param bindingsOrOptions 可选绑定表数组，或 {@link HydrateOptions}
+ *   - `mismatchMode: "assert"`：绑定失败抛错
+ *   - `mismatchMode: "remount"`：清空容器后按 CSR 重挂（放弃 SSR 节点复用）
+ * @returns dispose；remount 时卸载会清空容器（与 mount 一致）
  */
 export function hydrate(
   fn: () => any,
   container: Node,
-  bindings: [number[], string][] = [],
+  bindingsOrOptions: [number[], string][] | HydrateOptions = [],
 ): () => void {
   return createRoot((dispose) => {
-    // 停止之前的水合状态
     stopHydration();
 
-    // 执行水合，传入 bindingMap
-    internalHydrate(container, bindings);
+    const { bindings, options } = resolveHydrateBindings(bindingsOrOptions);
+    const mode = resolveMismatchMode(options);
 
+    try {
+      internalHydrate(container, bindings, options);
+    } catch (err) {
+      // assert 模式：结束水合上下文后抛出
+      stopHydration();
+      throw err;
+    }
+
+    const mismatches = getHydrationMismatches();
+    if (mode === "remount" && mismatches.length > 0) {
+      // 放弃绑定表与 SSR DOM，退回 CSR 挂载语义
+      stopHydration();
+      if (options.warnMismatch !== false) {
+        console.warn(
+          `[@dreamer/view] hydration remount: ${mismatches.length} mismatch(es), falling back to CSR mount`,
+        );
+      }
+      clearContainerChildren(container);
+      uncloakContainer(container);
+      const content = fn();
+      insert(container, content);
+      return () => {
+        dispose();
+        clearContainerChildren(container);
+      };
+    }
+
+    uncloakContainer(container);
     const content = fn();
     insert(container, content);
 
+    // 默认：保留容器内 SSR 节点；仅 dispose Owner
     return dispose;
   });
 }

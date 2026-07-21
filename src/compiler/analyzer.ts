@@ -282,8 +282,9 @@ function serializeStaticValue(expr: ts.Expression): string {
     return serializeStaticValue(expr.expression);
   }
   if (ts.isBinaryExpression(expr)) {
+    const op = expr.operatorToken.kind;
     // 字符串拼接：直接连接序列化结果
-    if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    if (op === ts.SyntaxKind.PlusToken) {
       const l = serializeStaticValue(expr.left);
       const r = serializeStaticValue(expr.right);
       // 两侧皆为数字文本时做算术（避免 "1"+"2" 在 class 里变 "12" 以外的语义歧义：属性值本就是字符串）
@@ -296,6 +297,18 @@ function serializeStaticValue(expr: ts.Expression): string {
         return String(ln + rn);
       }
       return l + r;
+    }
+    // 静态逻辑与：`"a" && "b"` → 按 JS 真值取右/左（属性进模板）
+    if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
+      const l = serializeStaticValue(expr.left);
+      if (l === "" || l === "false" || l === "0" || l === "null") return l;
+      return serializeStaticValue(expr.right);
+    }
+    // 静态逻辑或
+    if (op === ts.SyntaxKind.BarBarToken) {
+      const l = serializeStaticValue(expr.left);
+      if (l !== "" && l !== "false" && l !== "0" && l !== "null") return l;
+      return serializeStaticValue(expr.right);
     }
   }
   if (ts.isObjectLiteralExpression(expr)) {

@@ -7,7 +7,7 @@
 | Item            | Details                                                                  |
 | --------------- | ------------------------------------------------------------------------ |
 | Package         | `@dreamer/view`                                                          |
-| Version         | **2.0.6** (aligned with `deno.json` / `package.json`)                    |
+| Version         | **2.1.0** (aligned with `deno.json` / `package.json`)                    |
 | Test framework  | `@dreamer/test` ^1.1.10                                                  |
 | Report date     | **2026-07-22**                                                           |
 | DOM environment | Unit/integration: happy-dom **20.4.0**; E2E: Chromium (Playwright, etc.) |
@@ -230,18 +230,18 @@ reflect v1; trust the current `tests/` tree).
 
 ## 8. Conclusion
 
-**@dreamer/view 2.0.6** (all **0 failures** on the primary gate):
+**@dreamer/view 2.1.0** (all **0 failures** on the primary gate):
 
 | Runtime | Scope                                            | Result                    |
 | ------- | ------------------------------------------------ | ------------------------- |
-| Deno    | unit + integration (`deno task test`)            | **384 passed / 0 failed** |
-| Bun     | unit + integration (`bun test` + bunfig preload) | **317 passed / 0 failed** |
+| Deno    | unit + integration (`deno task test`)            | **394 passed / 0 failed** |
+| Bun     | unit + integration (`bun test` + bunfig preload) | **326 passed / 0 failed** |
 
 - Covers core reactivity, runtime DOM, **controlled-form focus**, **props/URL
   security**, keyed **`For` LIS reorder**, compiler static lifting,
-  SSR/hydration, **SSR pseudo-DOM API**, router, forms, scheduler, and
-  integration
-- **2.0.6** adds security + list-reorder + escape/compiler tests; counts rose vs
-  2.0.5 unit+integration (was ~377 / ~311)
+  SSR/hydration (**mismatch modes**), **SSR pseudo-DOM API**, router, forms,
+  scheduler, **subpath imports**, and integration
+- **2.1.0** adds fine-grained `exports` (`/reactivity`, `/csr`, …), hydration
+  `mismatchMode`, and more compiler/subpath tests (vs 2.0.6 ~384 / ~317)
 - Full `tests/` (with e2e) is optional; compare apples-to-apples when citing
   totals

@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/view",
-  "version": "2.0.6",
+  "version": "2.1.0",
   "license": "Apache-2.0",
   "description": "High-performance reactive UI framework inspired by Solid.js. Features fine-grained reactivity, no virtual DOM, compiler-optimized DOM/SSR paths, and built-in HMR.",
   "repository": {
@@ -17,7 +17,14 @@
     "./portal": "./src/runtime/portal.ts",
     "./compiler": "./src/compiler/mod.ts",
     "./optimize": "./src/optimize.ts",
-    "./ssr": "./src/runtime/server.ts"
+    "./ssr": "./src/runtime/server.ts",
+    "./reactivity": "./src/reactivity/mod.ts",
+    "./scheduler": "./src/scheduler/mod.ts",
+    "./router": "./src/router.ts",
+    "./form": "./src/form.ts",
+    "./resource": "./src/resource.ts",
+    "./control-flow": "./src/control-flow.ts",
+    "./csr": "./src/csr.ts"
   },
   "publish": {
     "include": [
@@ -49,6 +56,13 @@
     "@dreamer/view/jsx-dev-runtime": "./src/jsx-runtime.ts",
     "@dreamer/view/compiler": "./src/compiler/mod.ts",
     "@dreamer/view/ssr": "./src/runtime/server.ts",
+    "@dreamer/view/reactivity": "./src/reactivity/mod.ts",
+    "@dreamer/view/scheduler": "./src/scheduler/mod.ts",
+    "@dreamer/view/router": "./src/router.ts",
+    "@dreamer/view/form": "./src/form.ts",
+    "@dreamer/view/resource": "./src/resource.ts",
+    "@dreamer/view/control-flow": "./src/control-flow.ts",
+    "@dreamer/view/csr": "./src/csr.ts",
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.1.0",
     "@dreamer/console": "jsr:@dreamer/console@^1.0.12",
     "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.2.0",
