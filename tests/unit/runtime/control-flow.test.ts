@@ -188,6 +188,96 @@ describe("runtime/control-flow", () => {
     expect(parent.textContent).toBe("static-true");
   });
 
+  it("For + key：反转/洗牌后节点身份保持且顺序正确（LIS 重排）", async () => {
+    const items = ["a", "b", "c", "d", "e"].map((id) => ({
+      id,
+      text: id.toUpperCase(),
+    }));
+    const [list, setList] = createSignal(items.slice());
+    const parent = document.createElement("div");
+    const fragment = For<{ id: string; text: string }>({
+      each: () => list(),
+      key: (item) => item.id,
+      children: (item) => {
+        const span = document.createElement("span");
+        span.dataset.id = item.id;
+        span.textContent = item.text;
+        return span;
+      },
+    });
+    parent.appendChild(fragment);
+    flushPendingSync();
+    await Promise.resolve();
+
+    const nodeById = new Map<string, HTMLElement>();
+    for (const id of ["a", "b", "c", "d", "e"]) {
+      nodeById.set(
+        id,
+        parent.querySelector(`[data-id="${id}"]`) as HTMLElement,
+      );
+    }
+    expect(parent.textContent).toBe("ABCDE");
+
+    // 全反转
+    setList([...list()].reverse());
+    flushPendingSync();
+    await Promise.resolve();
+    expect(parent.textContent).toBe("EDCBA");
+    for (const id of ["a", "b", "c", "d", "e"]) {
+      expect(parent.querySelector(`[data-id="${id}"]`)).toBe(nodeById.get(id));
+    }
+
+    // 局部洗牌：a c e b d
+    const byId = Object.fromEntries(items.map((x) => [x.id, x]));
+    setList([byId.a!, byId.c!, byId.e!, byId.b!, byId.d!]);
+    flushPendingSync();
+    await Promise.resolve();
+    expect(parent.textContent).toBe("ACEBD");
+    for (const id of ["a", "b", "c", "d", "e"]) {
+      expect(parent.querySelector(`[data-id="${id}"]`)).toBe(nodeById.get(id));
+    }
+    expect(
+      Array.from(parent.querySelectorAll("span")).map((el) =>
+        (el as HTMLElement).dataset.id
+      ),
+    ).toEqual(["a", "c", "e", "b", "d"]);
+  }, { sanitizeOps: false, sanitizeResources: false });
+
+  it("For + key：中间插入一项时前后节点应保持身份（最小移动）", async () => {
+    const a = { id: "a", text: "A" };
+    const b = { id: "b", text: "B" };
+    const c = { id: "c", text: "C" };
+    const [list, setList] = createSignal([a, c]);
+    const parent = document.createElement("div");
+    const fragment = For<{ id: string; text: string }>({
+      each: () => list(),
+      key: (item) => item.id,
+      children: (item) => {
+        const span = document.createElement("span");
+        span.dataset.id = item.id;
+        span.textContent = item.text;
+        return span;
+      },
+    });
+    parent.appendChild(fragment);
+    flushPendingSync();
+    await Promise.resolve();
+
+    const elA = parent.querySelector('[data-id="a"]') as HTMLElement;
+    const elC = parent.querySelector('[data-id="c"]') as HTMLElement;
+    expect(elA && elC).toBeTruthy();
+
+    setList([a, b, c]);
+    flushPendingSync();
+    await Promise.resolve();
+
+    expect(parent.querySelector('[data-id="a"]')).toBe(elA);
+    expect(parent.querySelector('[data-id="c"]')).toBe(elC);
+    expect(parent.textContent).toBe("ABC");
+    expect(parent.children[0]).toBe(elA);
+    expect(parent.children[2]).toBe(elC);
+  }, { sanitizeOps: false, sanitizeResources: false });
+
   it("For + key：重排后应复用同一 DOM 节点（同对象引用）", async () => {
     const itemA = { id: "a", text: "A" };
     const itemB = { id: "b", text: "B" };

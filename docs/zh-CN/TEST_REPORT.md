@@ -7,9 +7,9 @@
 | 项目     | 说明                                                            |
 | -------- | --------------------------------------------------------------- |
 | 包名     | `@dreamer/view`                                                 |
-| 版本     | **2.0.5**（与 `deno.json` / `package.json` 一致）               |
-| 测试框架 | `@dreamer/test` ^1.1.8                                          |
-| 报告日期 | **2026-07-10**                                                  |
+| 版本     | **2.0.6**（与 `deno.json` / `package.json` 一致）               |
+| 测试框架 | `@dreamer/test` ^1.1.10                                         |
+| 报告日期 | **2026-07-22**                                                  |
 | DOM 环境 | 单元/集成：happy-dom **20.4.0**；E2E：Chromium（Playwright 等） |
 | 主要命令 | 见下文「如何运行」                                              |
 
@@ -17,11 +17,11 @@
 
 | 层级             | 路径                       | 文件数                                       |
 | ---------------- | -------------------------- | -------------------------------------------- |
-| 单元             | `tests/unit/**`            | **61** 个 `*.test.ts` / `*.test.tsx`         |
+| 单元             | `tests/unit/**`            | **~62** 个 `*.test.ts` / `*.test.tsx`        |
 | 集成             | `tests/integration/**`     | **6** 个测试模块                             |
 | E2E              | `tests/e2e/**`             | **1** 个模块（examples 多场景）              |
-| 基准             | `tests/bench/**`           | **1** 个 `*.bench.ts`（不计入通过/失败用例） |
-| **合计测试模块** | `tests/` 下 `*.test.ts(x)` | **68**                                       |
+| 基准             | `tests/bench/**`           | **2** 个 `*.bench.ts`（不计入通过/失败用例） |
+| **合计测试模块** | `tests/` 下 `*.test.ts(x)` | **~69**                                      |
 
 ---
 
@@ -43,11 +43,12 @@ deno task test:e2e
 # 性能基准（不计入 pass/fail）
 deno task bench
 
-# Bun（preload happy-dom；主路径）
-bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration
+# Bun（happy-dom 由 bunfig.toml preload；主路径）
+bun test tests/unit tests/integration
+# 若无 bunfig：bun test --preload ./tests/unit/dom-setup.ts …
 
-# SSR 伪 DOM 专项（可不依赖 happy-dom 语义；仍建议 preload 以统一环境）
-bun test --preload ./tests/unit/dom-setup.ts tests/unit/runtime/ssr-dom-element-api.test.ts
+# SSR 伪 DOM 专项
+bun test tests/unit/runtime/ssr-dom-element-api.test.ts
 ```
 
 | 注意            | 说明                                                                                             |
@@ -223,17 +224,17 @@ ok | 398 passed | 0 failed (~1m13s)   # Deno
 
 ## 8. 结论
 
-**@dreamer/view 2.0.5** 在当前自动化套件下（**0 失败**）：
+**@dreamer/view 2.0.6** 主路径门禁（**0 失败**）：
 
-| 运行时 | 范围                                     | 结果                             |
-| ------ | ---------------------------------------- | -------------------------------- |
-| Deno   | unit + integration（`deno task test`）   | **377 通过 / 0 失败**            |
-| Deno   | **全量 `tests/`**（含 e2e）              | **398 通过 / 0 失败**            |
-| Bun    | unit + integration                       | **311 通过 / 0 失败**            |
-| Bun    | **全量 `tests/`**（`package.json` test） | **331 通过 / 0 失败 · 68 files** |
+| 运行时 | 范围                                           | 结果                  |
+| ------ | ---------------------------------------------- | --------------------- |
+| Deno   | unit + integration（`deno task test`）         | **384 通过 / 0 失败** |
+| Bun    | unit + integration（`bun test` + bunfig 预载） | **317 通过 / 0 失败** |
 
-- 覆盖核心响应式、运行时 DOM、**受控表单焦点**、编译器、SSR/水合、**SSR 伪 DOM
-  API**、路由（含 **SSR 同构**）、表单、调度、集成与 **examples e2e**
-- 对比数字时请先确认命令是 **unit+integration** 还是 **`tests/` 全量**
+- 覆盖核心响应式、运行时 DOM、**受控表单焦点**、**props/URL 安全**、键控 **`For`
+  LIS 重排**、编译器静态提升、SSR/水合、**SSR 伪 DOM API**、路由、表单、
+  调度与集成
+- **2.0.6** 相对 2.0.5 单元+集成条数上升（原约 377 / 311）
+- 含 e2e 的全量 `tests/` 为可选；引用总数时请对齐命令范围
 
 本报告随 `tests/` 与发版节奏更新。

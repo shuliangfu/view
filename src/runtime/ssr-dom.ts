@@ -11,8 +11,11 @@
  * `append`/`children`/`nodeName`/`parentElement`、`style.*` 等（见类实现）。
  * **非目标：** 完整 CSS 选择器引擎、布局几何、真实事件派发。
  *
- * **序列化热路径：** `escapeHtmlText` / `escapeHtmlAttr` 无特殊字符时快速返回；`innerHTML`/`outerHTML`/`textContent` 用 `joinChildOuterHtml` 等聚合，减少重复 `map` 与 `Object.entries`。
+ * **序列化热路径：** 复用 `utils/escape` 的 `escapeForText` / `escapeForAttr`（无特殊字符零分配）；
+ * `innerHTML`/`outerHTML`/`textContent` 用 `joinChildOuterHtml` 等聚合。
  */
+
+import { escapeForAttr, escapeForText } from "../utils/escape.ts";
 
 /** 与 `insert.ts` 共用：标记 SSR 树节点，避免在无 `Node` 全局时 `instanceof` 不可用 */
 export const SSR_VIEW_TREE_NODE = Symbol.for("@dreamer/view/ssrTreeNode");
@@ -48,33 +51,6 @@ const NODE_FRAGMENT = 11;
 /** 开始标签匹配（与 `parseHtmlChildren` / `findMatchingCloseTagStart` 共用，避免重复构造正则） */
 const OPEN_TAG_RE =
   /^<([\w:-]+)((?:\s+[^>\s/]+(?:\s*=\s*(?:"[^"]*"|'[^']*|[^\s>]+))?)*)\s*(\/)?>/i;
-
-/**
- * 转义文本节点内容：无特殊字符时零分配返回原串；否则单次扫描拼接。
- */
-function escapeHtmlText(s: string): string {
-  if (
-    s.indexOf("&") === -1 && s.indexOf("<") === -1 && s.indexOf(">") === -1
-  ) {
-    return s;
-  }
-  let out = "";
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    if (c === 38) out += "&amp;";
-    else if (c === 60) out += "&lt;";
-    else if (c === 62) out += "&gt;";
-    else out += s[i]!;
-  }
-  return out;
-}
-
-/** 属性值转义：快速路径跳过无 &、" 的字符串 */
-function escapeHtmlAttr(s: string): string {
-  const str = String(s);
-  if (str.indexOf("&") === -1 && str.indexOf('"') === -1) return str;
-  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-}
 
 /**
  * 解码常见 HTML 实体（模板内文本用）。
@@ -475,7 +451,7 @@ export class SsrText extends SsrNode {
   }
 
   get outerHTML(): string {
-    return escapeHtmlText(this.data);
+    return escapeForText(this.data);
   }
 
   cloneNode(_deep?: boolean): SsrText {
@@ -985,7 +961,7 @@ export class SsrElement extends SsrNode {
     const tag = this.namespaceURI === SVG_NS ? this.localName : this.localName;
     const parts: string[] = [];
     for (const [k, val] of this._attrs) {
-      parts.push(` ${k}="${escapeHtmlAttr(val)}"`);
+      parts.push(` ${k}="${escapeForAttr(val)}"`);
     }
     if (this.namespaceURI === SVG_NS && this.localName === "svg") {
       if (!this._attrs.has("xmlns")) {

@@ -1,0 +1,3 @@
+# 与 package.json `scripts.test` 一致：默认 `bun test` 也注入 happy-dom + resetRegistry
+[test]
+preload = ["./tests/unit/dom-setup.ts"]

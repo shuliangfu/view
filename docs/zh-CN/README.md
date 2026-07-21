@@ -1178,19 +1178,16 @@ function ModalHost() {
 
 ## 二十五、测试报告与变更日志
 
-- **当前版本 [2.0.5] — 2026-07-10**：
-  - **修复**：SSR 伪 DOM 补齐 `hasAttribute` / `toggleAttribute`（dweb hybrid 在
-    Deno/Bun 上不再 `el.hasAttribute is not a function`）；`setProperty`
-    属性分支 防御性回退。
-  - **变更**：SSR 伪 DOM 补全（`classList`、`dataset`、`matches`/`closest`/
-    `querySelector`、现代插入 API、`document.head`/`body`
-    等）；`BUN_COMPAT.md`。
-  - **测试**：`ssr-dom-element-api`（18 条）；测试报告更新（Deno 全量 **398** /
-    Bun 全量 **331** / 0 失败）。
+- **当前版本 [2.0.6] — 2026-07-22**：
+  - **安全**：URL 属性消毒（`javascript:` / 零宽混淆等）；`on*` 仅函数；style
+    XSS 剥离；禁止经 props 写 `innerHTML`。
+  - **变更（公共 API 不变）**：For 键控 **LIS** 重排；`insert` Signal 快路径；
+    SSR 共享转义；编译器更广静态提升；Bun `bunfig.toml` preload happy-dom。
+  - **测试**：Deno 单元+集成 **384** / Bun **317** / 0 失败。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
-- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-10**：Deno
-  `tests/` **398** / Bun `tests/` **331**，0 失败；英文版
+- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-22**：Deno
+  单元+集成 **384** / Bun **317**，0 失败；英文版
   **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**）。
 
 ---

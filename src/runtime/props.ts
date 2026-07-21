@@ -30,7 +30,32 @@
 
 import { createRenderEffect } from "../reactivity/effect.ts";
 import { batch } from "../scheduler/batch.ts";
+import { sanitizeUrl } from "../utils/escape.ts";
 import { isObject } from "./utils.ts";
+
+/** 需 URL 消毒的 prop / attribute 名（小写比较） */
+const URL_PROP_NAMES = new Set([
+  "href",
+  "src",
+  "xlink:href",
+  "formaction",
+  "action",
+  "poster",
+  "cite",
+  "background",
+]);
+
+/**
+ * 内联 style 值消毒：拦截 `expression(` / `javascript:`（IE 与旧浏览器 XSS 面）。
+ */
+function sanitizeStyleValue(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  const lower = v.toLowerCase();
+  if (lower.includes("expression(") || lower.includes("javascript:")) {
+    return "";
+  }
+  return v;
+}
 
 /** style 键 camelCase → kebab-case 的有界缓存，减轻热路径上重复正则替换 */
 const STYLE_KEY_CSS_CACHE_MAX = 256;
@@ -259,9 +284,18 @@ export function setProperty(el: any, name: string, value: any) {
     return;
   }
 
-  // 1. 处理事件绑定 (必须在处理响应式函数之前)
-  if (name.startsWith("on")) {
+  // 1. 事件：仅 JSX 风格 `onX…`（第三字符大写），避免误伤 `open`/`once` 等 HTML 属性
+  //    仅接受函数 handler，拒绝字符串（XSS）
+  if (
+    name.length > 2 &&
+    name.startsWith("on") &&
+    name.charCodeAt(2) >= 65 &&
+    name.charCodeAt(2) <= 90
+  ) {
     const eventName = name.slice(2).toLowerCase();
+    const clearDelegated = () => {
+      delete el[`__on${eventName}`];
+    };
 
     if (NON_BUBBLING_DIRECT_EVENT_NAMES.has(eventName)) {
       const wrapperKey = `${DIRECT_EVENT_WRAPPER_PREFIX}${eventName}`;
@@ -272,12 +306,8 @@ export function setProperty(el: any, name: string, value: any) {
         el.removeEventListener(eventName, prevWrapped as EventListener);
         delete el[wrapperKey];
       }
-      delete el[`__on${eventName}`];
-
-      if (value == null || value === false) {
-        return;
-      }
-      if (typeof value !== "function") {
+      clearDelegated();
+      if (value == null || value === false || typeof value !== "function") {
         return;
       }
       const wrapped = function (this: unknown, e: Event) {
@@ -288,6 +318,13 @@ export function setProperty(el: any, name: string, value: any) {
       return;
     }
 
+    if (value == null || value === false) {
+      clearDelegated();
+      return;
+    }
+    if (typeof value !== "function") {
+      return;
+    }
     el[`__on${eventName}`] = value;
     if (!delegatedEvents.has(eventName)) {
       document.addEventListener(eventName, delegateHandler);
@@ -297,7 +334,6 @@ export function setProperty(el: any, name: string, value: any) {
   }
 
   // 2. 自动解包响应式函数 (Signal 或普通函数)
-  // 如果属性值是函数且不是事件处理器，则自动订阅并应用更新
   if (typeof value === "function") {
     createRenderEffect(() => {
       setProperty(el, name, value());
@@ -305,9 +341,33 @@ export function setProperty(el: any, name: string, value: any) {
     return;
   }
 
+  // URL 属性：拦截 javascript: / vbscript: / data:text/html
+  const nameLower = name.toLowerCase();
+  if (URL_PROP_NAMES.has(nameLower)) {
+    if (value == null || value === false) {
+      value = null;
+    } else {
+      value = sanitizeUrl(value);
+      if (value == null) {
+        // 危险 URL：移除既有属性，不写入
+        if (typeof el.removeAttribute === "function") {
+          try {
+            el.removeAttribute(nameLower === "xlink:href" ? "href" : name);
+          } catch { /* ignore */ }
+        }
+        if (nameLower === "href" && "href" in el) {
+          try {
+            (el as HTMLAnchorElement).removeAttribute("href");
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+    }
+  }
+
   const isSVG = el.namespaceURI === "http://www.w3.org/2000/svg";
 
-  // 3. 处理特殊的 className / class (这里的 value 已经是解包后的值)
+  // 3. className / class
   if (name === "className" || name === "class") {
     const next = value == null || value === false ? "" : String(value);
     if (isSVG) {
@@ -318,7 +378,7 @@ export function setProperty(el: any, name: string, value: any) {
     return;
   }
 
-  // 4. 处理 Style
+  // 4. Style
   if (name === "style") {
     if (isObject(value)) {
       const record = value as Record<string, unknown>;
@@ -332,20 +392,23 @@ export function setProperty(el: any, name: string, value: any) {
           }
         }
       }
-      Object.assign(el.style, value);
+      const safe: Record<string, unknown> = {};
+      for (let i = 0; i < nextKeys.length; i++) {
+        const k = nextKeys[i]!;
+        safe[k] = sanitizeStyleValue(record[k]);
+      }
+      Object.assign(el.style, safe);
       lastStyleObjectKeys.set(el, nextKeys);
     } else {
       lastStyleObjectKeys.delete(el);
-      const next = value || "";
-      // 同值 cssText 跳过，避免无意义样式重算
+      const next = sanitizeStyleValue(value || "") as string;
       if (el.style.cssText !== next) el.style.cssText = next;
     }
     return;
   }
 
-  // 5. 处理普通属性
+  // 5. 普通属性
   if (name in el && !isSVG) {
-    // 焦点稳定性：value 必须按字符串与 DOM 比较，且 IME 组合期禁止回写（见 setControlledValue）
     if (name === "value") {
       setControlledValue(el, value);
       return;
@@ -355,11 +418,6 @@ export function setProperty(el: any, name: string, value: any) {
       if (el.checked !== next) el.checked = next;
       return;
     }
-    /**
-     * `id` / `name` / `for` 等未传 props 时常为 `undefined`；直接写 `el.id = undefined`
-     * 在浏览器里会变成**字面量** `"undefined"`，DevTools 里可见且破坏 label 关联与表单语义。
-     * 未传时应移除对应 HTML 特性（与下方 `setAttribute` 分支对 `null` 的行为一致）。
-     */
     if (value === null || value === undefined) {
       try {
         (el as Element).removeAttribute(name);
@@ -367,12 +425,10 @@ export function setProperty(el: any, name: string, value: any) {
         /* 部分属性在特定元素上不可 remove，忽略 */
       }
     } else if (!Object.is((el as any)[name], value)) {
-      // 同值跳过（id/tabIndex/disabled 等重复 setProperty 热路径）
       (el as any)[name] = value;
     }
   } else {
     if (value == null) {
-      // SSR 伪 DOM / 非 Element 宿主：优先 hasAttribute；缺失时用 getAttribute 兜底
       const has = typeof el.hasAttribute === "function"
         ? el.hasAttribute(name)
         : typeof el.getAttribute === "function" &&

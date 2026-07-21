@@ -117,4 +117,34 @@ describe("runtime/props", () => {
     await Promise.resolve();
     expect(entered).toBe(11);
   });
+
+  it("安全：javascript: href 应被拒绝且不写入", () => {
+    const a = document.createElement("a");
+    setProperty(a, "href", "https://ok.example/");
+    expect(a.getAttribute("href")).toContain("ok.example");
+    setProperty(a, "href", "javascript:alert(1)");
+    expect(a.getAttribute("href")).toBeNull();
+  });
+
+  it("安全：字符串 onClick 应被忽略；函数 onClick 仍有效", async () => {
+    const btn = document.createElement("button");
+    document.body.appendChild(btn);
+    let n = 0;
+    setProperty(btn, "onClick", "alert(1)" as unknown as () => void);
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(n).toBe(0);
+    setProperty(btn, "onClick", () => {
+      n++;
+    });
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(n).toBe(1);
+  });
+
+  it("open 属性不应被当成 on* 事件", () => {
+    const d = document.createElement("details");
+    setProperty(d, "open", true);
+    expect((d as HTMLDetailsElement).open).toBe(true);
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

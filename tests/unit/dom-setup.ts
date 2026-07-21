@@ -8,11 +8,6 @@ import { resetRegistry } from "../../src/reactivity/master.ts";
 
 export { resetRegistry };
 
-// 每个测试 it 运行前都重置物理单例状态，确保彻底隔离
-beforeEach(() => {
-  resetRegistry();
-});
-
 // 加载文件时也重置一次
 resetRegistry();
 
@@ -82,6 +77,19 @@ globalThis.KeyboardEvent = win.KeyboardEvent;
 
 // 默认开启 HMR 开发模式以供测试
 (globalThis as any).VIEW_DEV = true;
+
+// 每个 it 前重置内核 + 清空 body，避免跨用例 DOM / 订阅泄漏（Bun 全量套件必需）
+beforeEach(() => {
+  resetRegistry();
+  try {
+    const body = globalThis.document?.body;
+    if (body) {
+      while (body.firstChild) body.removeChild(body.firstChild);
+    }
+  } catch {
+    /* SSR 测试可能临时拆除 document */
+  }
+});
 
 /**
  * 等待所有异步任务完成（用于 Happy DOM）。

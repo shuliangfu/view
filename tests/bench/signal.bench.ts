@@ -37,3 +37,33 @@ Deno.bench("1 signal × 10 effect，batch 内写一次", () => {
     dispose();
   });
 });
+
+Deno.bench("1 signal × 100 effect，batch 内写一次", () => {
+  const s = createSignal(0);
+  createRoot((dispose) => {
+    for (let i = 0; i < 100; i++) {
+      createEffect(() => {
+        s();
+      });
+    }
+    batch(() => {
+      s(1);
+    });
+    dispose();
+  });
+});
+
+Deno.bench("batch 内 50 次 signal 写、10 个 effect", () => {
+  const s = createSignal(0);
+  createRoot((dispose) => {
+    for (let i = 0; i < 10; i++) {
+      createEffect(() => {
+        s();
+      });
+    }
+    batch(() => {
+      for (let i = 0; i < 50; i++) s(i);
+    });
+    dispose();
+  });
+});

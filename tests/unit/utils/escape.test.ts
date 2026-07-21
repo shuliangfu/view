@@ -1,11 +1,13 @@
 /**
- * @fileoverview escape 工具：特殊字符转义与无特殊字符快路径。
+ * @fileoverview escape 工具：特殊字符转义、无特殊字符快路径、URL 消毒。
  */
 import { describe, expect, it } from "@dreamer/test";
 import {
   escapeForAttr,
   escapeForAttrHtml,
   escapeForText,
+  isDangerousUrl,
+  sanitizeUrl,
 } from "../../../src/utils/escape.ts";
 
 describe("utils/escape", () => {
@@ -34,5 +36,20 @@ describe("utils/escape", () => {
 
   it("escapeForAttrHtml：应转义引号与撇号", () => {
     expect(escapeForAttrHtml(`a"b'c`)).toBe("a&quot;b&#39;c");
+  });
+
+  it("isDangerousUrl / sanitizeUrl：拦截危险 scheme", () => {
+    expect(isDangerousUrl("javascript:alert(1)")).toBe(true);
+    expect(isDangerousUrl("JavaScript:alert(1)")).toBe(true);
+    expect(isDangerousUrl("vbscript:msgbox(1)")).toBe(true);
+    expect(isDangerousUrl("data:text/html,<script>")).toBe(true);
+    // 零宽字符 / 空白混淆
+    expect(isDangerousUrl("java\u200bscript:alert(1)")).toBe(true);
+    expect(isDangerousUrl("java script:alert(1)")).toBe(true);
+    expect(isDangerousUrl("data:text/html;base64,PHNjcmlwdD4=")).toBe(true);
+    expect(sanitizeUrl("javascript:alert(1)")).toBe(null);
+    expect(sanitizeUrl("https://example.com/a")).toBe("https://example.com/a");
+    expect(sanitizeUrl("/path")).toBe("/path");
+    expect(sanitizeUrl(null)).toBe(null);
   });
 });

@@ -132,6 +132,14 @@ describe("compiler/transformer", () => {
     expect(out5).toContain('data-x=\\"v-1\\"');
     const codePart5 = out5.split("\n").slice(1).join("\n");
     expect(codePart5).not.toContain("setAttribute(");
+
+    // 6. typeof 字面量 / void 0：可序列化进模板
+    const code6 =
+      `export const App = () => <div data-t={typeof "x"} data-v={void 0}></div>;`;
+    const out6 = compileSource(code6, "test.tsx");
+    expect(out6).toContain('data-t=\\"string\\"');
+    const codePart6 = out6.split("\n").slice(1).join("\n");
+    expect(codePart6).not.toContain("setAttribute(");
   });
 
   it("极致优化：应当提升静态 style 对象", () => {
@@ -150,6 +158,23 @@ describe("compiler/transformer", () => {
 
     // 期望不再包含 Show 组件，而是包含 memo(() => cond() ? ... : ...)
     expect(out).toContain("memo(() => cond()");
+  });
+
+  it("优化：store/属性访问仍包 Effect；纯 Identifier 不包", () => {
+    const prop = compileSource(
+      `export const App = () => <div class={store.theme}></div>;`,
+      "t.tsx",
+    );
+    expect(prop).toContain('setAttribute(_el, "class", () => store.theme)');
+
+    const idOnly = compileSource(
+      `export const App = () => <div class={themeClass}></div>;`,
+      "t.tsx",
+    );
+    expect(idOnly).toContain('setProperty(_el, "class", themeClass)');
+    expect(idOnly.split("\n").slice(1).join("\n")).not.toContain(
+      "setAttribute(",
+    );
   });
 
   it("极致优化：应当合并静态子树", () => {

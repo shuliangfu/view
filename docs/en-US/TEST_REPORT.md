@@ -7,9 +7,9 @@
 | Item            | Details                                                                  |
 | --------------- | ------------------------------------------------------------------------ |
 | Package         | `@dreamer/view`                                                          |
-| Version         | **2.0.5** (aligned with `deno.json` / `package.json`)                    |
-| Test framework  | `@dreamer/test` ^1.1.8                                                   |
-| Report date     | **2026-07-10**                                                           |
+| Version         | **2.0.6** (aligned with `deno.json` / `package.json`)                    |
+| Test framework  | `@dreamer/test` ^1.1.10                                                  |
+| Report date     | **2026-07-22**                                                           |
 | DOM environment | Unit/integration: happy-dom **20.4.0**; E2E: Chromium (Playwright, etc.) |
 | Commands        | See “How to run” below                                                   |
 
@@ -17,11 +17,11 @@
 
 | Layer                  | Path                          | Files                                         |
 | ---------------------- | ----------------------------- | --------------------------------------------- |
-| Unit                   | `tests/unit/**`               | **61** `*.test.ts` / `*.test.tsx`             |
+| Unit                   | `tests/unit/**`               | **~62** `*.test.ts` / `*.test.tsx`            |
 | Integration            | `tests/integration/**`        | **6** modules                                 |
 | E2E                    | `tests/e2e/**`                | **1** module (multi-scenario examples)        |
-| Benchmarks             | `tests/bench/**`              | **1** `*.bench.ts` (not counted in pass/fail) |
-| **Test modules total** | `*.test.ts(x)` under `tests/` | **68**                                        |
+| Benchmarks             | `tests/bench/**`              | **2** `*.bench.ts` (not counted in pass/fail) |
+| **Test modules total** | `*.test.ts(x)` under `tests/` | **~69**                                       |
 
 ---
 
@@ -43,11 +43,12 @@ deno task test:e2e
 # Benchmarks (not pass/fail gates)
 deno task bench
 
-# Bun (preload happy-dom; primary path)
-bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration
+# Bun (happy-dom via bunfig.toml preload; primary path)
+bun test tests/unit tests/integration
+# equivalent if bunfig missing: bun test --preload ./tests/unit/dom-setup.ts …
 
 # SSR pseudo-DOM suite
-bun test --preload ./tests/unit/dom-setup.ts tests/unit/runtime/ssr-dom-element-api.test.ts
+bun test tests/unit/runtime/ssr-dom-element-api.test.ts
 ```
 
 | Note               | Detail                                                                                                             |
@@ -229,17 +230,18 @@ reflect v1; trust the current `tests/` tree).
 
 ## 8. Conclusion
 
-**@dreamer/view 2.0.5** (all **0 failures**):
+**@dreamer/view 2.0.6** (all **0 failures** on the primary gate):
 
-| Runtime | Scope                                   | Result                               |
-| ------- | --------------------------------------- | ------------------------------------ |
-| Deno    | unit + integration (`deno task test`)   | **377 passed / 0 failed**            |
-| Deno    | **full `tests/`** (includes e2e)        | **398 passed / 0 failed**            |
-| Bun     | unit + integration                      | **311 passed / 0 failed**            |
-| Bun     | **full `tests/`** (`package.json` test) | **331 passed / 0 failed · 68 files** |
+| Runtime | Scope                                            | Result                    |
+| ------- | ------------------------------------------------ | ------------------------- |
+| Deno    | unit + integration (`deno task test`)            | **384 passed / 0 failed** |
+| Bun     | unit + integration (`bun test` + bunfig preload) | **317 passed / 0 failed** |
 
-- Covers core reactivity, runtime DOM, **controlled-form focus**, compiler,
-  SSR/hydration, **SSR pseudo-DOM API**, router (including **SSR isomorphism**),
-  forms, scheduler, integration, and **examples e2e**
-- When comparing counts, check whether the command was **unit+integration** or
-  **full `tests/`**
+- Covers core reactivity, runtime DOM, **controlled-form focus**, **props/URL
+  security**, keyed **`For` LIS reorder**, compiler static lifting,
+  SSR/hydration, **SSR pseudo-DOM API**, router, forms, scheduler, and
+  integration
+- **2.0.6** adds security + list-reorder + escape/compiler tests; counts rose vs
+  2.0.5 unit+integration (was ~377 / ~311)
+- Full `tests/` (with e2e) is optional; compare apples-to-apples when citing
+  totals

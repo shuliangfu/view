@@ -25,7 +25,11 @@
  */
 
 import ts from "typescript";
-import { getTagName, serializeToTemplate } from "./analyzer.ts";
+import {
+  getTagName,
+  isStaticExpression,
+  serializeToTemplate,
+} from "./analyzer.ts";
 
 export interface TransformOptions {
   hydration?: boolean;
@@ -35,16 +39,13 @@ export interface TransformOptions {
 
 /**
  * 判断表达式是否可能依赖响应式读，从而需要包进 `() => …` / Effect。
- *
- * 含 **调用**、**属性访问**、**下标**（如 `count()`、`store.theme`、`arr[i]`），
- * 以便编译产物对 Store 字段与 Signal 调用保持细粒度更新。
- * 纯 Identifier / 已判定为静态的字面量组合返回 false（走一次性 `setProperty` 或模板提升）。
- *
- * **少 Effect 策略**：先快速排除「明显静态」的 AST（与 analyzer `isStaticExpression` 对齐的子集），
- * 避免对 `true ? "a" : "b"`、`` `x${"y"}` `` 等再包 `setAttribute(() => …)`。
+ * 含调用 / 属性访问 / 下标；纯静态字面量组合（见 {@link isStaticExpression}）返回 false。
+ * 纯 Identifier（如 `myColor`）视为一次性读取，走 `setProperty` 无 Effect。
  */
 function isPotentiallyReactive(node: ts.Node): boolean {
-  if (ts.isExpression(node) && isClearlyStaticExpr(node)) return false;
+  if (ts.isExpression(node) && isStaticExpression(node)) return false;
+  // 纯标识符：非 Signal 调用、非属性读，编译期不包 Effect（与既有 golden 一致）
+  if (ts.isIdentifier(node)) return false;
 
   let reactive = false;
   function walk(n: ts.Node) {
@@ -60,54 +61,6 @@ function isPotentiallyReactive(node: ts.Node): boolean {
   }
   walk(node);
   return reactive;
-}
-
-/**
- * 与 analyzer 静态规则对齐的轻量子集（避免 transformer 依赖未导出的 isStaticExpression）。
- * 仅用于「可不包 Effect」判定，不负责写入模板 HTML。
- */
-function isClearlyStaticExpr(expr: ts.Expression): boolean {
-  if (
-    ts.isStringLiteral(expr) || ts.isNumericLiteral(expr) ||
-    ts.isNoSubstitutionTemplateLiteral(expr)
-  ) return true;
-  if (
-    expr.kind === ts.SyntaxKind.TrueKeyword ||
-    expr.kind === ts.SyntaxKind.FalseKeyword ||
-    expr.kind === ts.SyntaxKind.NullKeyword ||
-    expr.kind === ts.SyntaxKind.UndefinedKeyword
-  ) return true;
-  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
-    return isClearlyStaticExpr(expr.expression);
-  }
-  if (ts.isNonNullExpression(expr) || ts.isParenthesizedExpression(expr)) {
-    return isClearlyStaticExpr(expr.expression);
-  }
-  if (ts.isPrefixUnaryExpression(expr)) {
-    return isClearlyStaticExpr(expr.operand as ts.Expression);
-  }
-  if (ts.isBinaryExpression(expr)) {
-    return isClearlyStaticExpr(expr.left) && isClearlyStaticExpr(expr.right);
-  }
-  if (ts.isConditionalExpression(expr)) {
-    return isClearlyStaticExpr(expr.condition) &&
-      isClearlyStaticExpr(expr.whenTrue) &&
-      isClearlyStaticExpr(expr.whenFalse);
-  }
-  if (ts.isTemplateExpression(expr)) {
-    return expr.templateSpans.every((s) => isClearlyStaticExpr(s.expression));
-  }
-  if (ts.isObjectLiteralExpression(expr)) {
-    return expr.properties.every((p) =>
-      ts.isPropertyAssignment(p) && isClearlyStaticExpr(p.initializer)
-    );
-  }
-  if (ts.isArrayLiteralExpression(expr)) {
-    return expr.elements.every((el) =>
-      !ts.isSpreadElement(el) && isClearlyStaticExpr(el)
-    );
-  }
-  return false;
 }
 
 function isJsxLike(node: ts.Node): boolean {

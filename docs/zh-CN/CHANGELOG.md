@@ -7,6 +7,45 @@
 
 ---
 
+## [2.0.6] - 2026-07-22
+
+### 安全
+
+- **`setProperty` / URL 属性**：`href` / `src` / `action` 等经 `sanitizeUrl`
+  消毒； 拦截 `javascript:` / `vbscript:` /
+  `data:text/html`（含零宽字符与空白混淆）。
+- **事件 handler**：仅接受函数；字符串 `onClick="..."` 等不再写入。
+- **`on*` 判定**：第三字符须为大写（`onClick`），避免误伤 `open` / `once`
+  等属性。
+- **内联 style**：剥离 `expression(` / `javascript:`。
+- **props 拒绝** `innerHTML` / `outerHTML` 直接写入（控制台警告）。
+
+### 变更（性能 / 精简，公共 API 不变）
+
+- **For + key 重排**：基于当前 DOM 行序的 **LIS** 最小移动；整序正确仍为 no-op；
+  错位有安全兜底。
+- **`insert`**：Signal 专用 Effect 快路径；数组插入统一 `isDomNode`。
+- **escape / SSR**：`escapeForText` / `escapeForAttr` 单路径实现， `ssr-dom`
+  复用共享转义。
+- **编译器**：扩大静态表达式（`void` / `typeof` 字面量 / `satisfies` 等），
+  更多属性进模板、更少 Effect；`isStaticExpression` 集中复用。
+- **依赖**：`@dreamer/runtime-adapter` ^1.1.0、`@dreamer/test` ^1.1.10 等对齐。
+
+### 测试 / 工程
+
+- Bun：`bunfig.toml` 默认 preload `tests/unit/dom-setup.ts`（与 `package.json`
+  test 脚本一致，避免隔离环境缺 DOM）。
+- 增补：For 反转/洗牌与中间插入、props 安全、escape URL 混淆、编译器
+  typeof/void、`for.bench.ts` 等。
+- **Deno** 单元+集成 **384** / **Bun** 单元+集成 **317**，0 失败。
+
+### 说明
+
+- **无** 公共 API / `exports` 破坏性变更；适合作为 2.0.x 的 patch。
+- 后续 tree-shake 子路径等加法计划走 **2.1.0**。
+
+---
+
 ## [2.0.5] - 2026-07-10
 
 ### 修复

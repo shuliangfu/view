@@ -192,6 +192,113 @@ function isKeyedRowOrderCorrect<T>(
 }
 
 /**
+ * 对「旧序位置序列」求最长递增子序列（LIS）成员标记。
+ * `prevPos[i] < 0` 表示新挂载行，永不进 LIS（必须落位）。
+ * O(n log n) patience sorting；返回 `inLis[i] === true` 表示 `keys[i]` 可不动。
+ */
+function markKeyedLis(prevPos: number[]): boolean[] {
+  const n = prevPos.length;
+  const inLis = new Array<boolean>(n);
+  for (let i = 0; i < n; i++) inLis[i] = false;
+  if (n === 0) return inLis;
+
+  /** tails[len-1] = 当前长度为 len 的 LIS 末项在 keys 中的下标 */
+  const tails: number[] = [];
+  /** 回溯前驱：prevLink[i] = LIS 链上 i 的前一项下标 */
+  const prevLink = new Array<number>(n);
+  for (let i = 0; i < n; i++) prevLink[i] = -1;
+
+  for (let i = 0; i < n; i++) {
+    const v = prevPos[i]!;
+    if (v < 0) continue;
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (prevPos[tails[mid]!]! < v) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo > 0) prevLink[i] = tails[lo - 1]!;
+    if (lo === tails.length) tails.push(i);
+    else tails[lo] = i;
+  }
+
+  if (tails.length > 0) {
+    let k = tails[tails.length - 1]!;
+    while (k >= 0) {
+      inLis[k] = true;
+      k = prevLink[k]!;
+    }
+  }
+  return inLis;
+}
+
+/**
+ * 将键控行排到 `marker` 前，**尽量少次** `moveBefore`：
+ * 1. 整序已正确 → no-op（{@link isKeyedRowOrderCorrect}）
+ * 2. 否则按当前 DOM 中行序得到 `prevPos`，求 LIS；自后向前**仅移动不在 LIS 上的行**
+ *    （乱序/局部插入时比「凡 nextSibling 不对就搬」更省 DOM 写入）
+ * 3. 若 LIS 极短（几乎全表乱序），仍靠「仅当 nextSibling !== ref」兜底，避免多余 move
+ */
+function reorderKeyedRowsMinimal<T>(
+  keys: string[],
+  rowMap: Map<string, KeyedListRow<T>>,
+  marker: Node,
+  parent: Node,
+): void {
+  const n = keys.length;
+  if (n === 0) return;
+  if (isKeyedRowOrderCorrect(keys, rowMap, marker)) return;
+
+  // 行首注释 → key，O(1) 标注 DOM 中现有顺序
+  const startToKey = new Map<Comment, string>();
+  for (const [k, row] of rowMap) {
+    startToKey.set(row.start, k);
+  }
+
+  const oldIndex = new Map<string, number>();
+  let pos = 0;
+  let node: Node | null = parent.firstChild;
+  while (node && node !== marker) {
+    if (node.nodeType === 8 /* COMMENT */) {
+      const k = startToKey.get(node as Comment);
+      if (k !== undefined && !oldIndex.has(k)) {
+        oldIndex.set(k, pos++);
+      }
+    }
+    node = node.nextSibling;
+  }
+
+  const prevPos = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    prevPos[i] = oldIndex.get(keys[i]!) ?? -1;
+  }
+  const inLis = markKeyedLis(prevPos);
+
+  // 自后向前：LIS 上的行相对序已正确，不动；其余行插入到 ref 前
+  let ref: Node = marker;
+  for (let i = n - 1; i >= 0; i--) {
+    const row = rowMap.get(keys[i]!)!;
+    if (!inLis[i] && row.end.nextSibling !== ref) {
+      row.moveBefore(parent, ref);
+    }
+    ref = row.start;
+  }
+
+  // 安全兜底：极端错位时退回「仅 nextSibling 不对才搬」全表一遍，保证语义正确
+  if (!isKeyedRowOrderCorrect(keys, rowMap, marker)) {
+    ref = marker;
+    for (let i = n - 1; i >= 0; i--) {
+      const row = rowMap.get(keys[i]!)!;
+      if (row.end.nextSibling !== ref) {
+        row.moveBefore(parent, ref);
+      }
+      ref = row.start;
+    }
+  }
+}
+
+/**
  * 创建键控行：注释锚点 + 其间的内容；响应 `item` / 下标变化。
  */
 function createKeyedListRow<T>(
@@ -584,15 +691,8 @@ function forKeyedList<T>(props: {
         }
       }
 
-      // 顺序已正确时跳过整段 move（列表仅改字段、追加末项等常见路径）
-      if (!isKeyedRowOrderCorrect(keys, rowMap, marker)) {
-        let ref: Node = marker;
-        for (let i = items.length - 1; i >= 0; i--) {
-          const row = rowMap.get(keys[i]!)!;
-          row.moveBefore(parent, ref);
-          ref = row.start;
-        }
-      }
+      // 最小次数重排（顺序已正确则为 no-op）
+      reorderKeyedRowsMinimal(keys, rowMap, marker, parent);
     });
 
     onCleanup(() => {

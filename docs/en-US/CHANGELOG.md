@@ -8,6 +8,51 @@ and this project adheres to
 
 ---
 
+## [2.0.6] - 2026-07-22
+
+### Security
+
+- **`setProperty` / URL props**: `href` / `src` / `action` (and related) go
+  through `sanitizeUrl`; blocks `javascript:` / `vbscript:` / `data:text/html`
+  (including zero-width and whitespace obfuscation).
+- **Event handlers**: functions only; string handlers like `onClick="..."` are
+  ignored.
+- **`on*` detection**: third character must be uppercase (`onClick`), so
+  attributes such as `open` / `once` are not treated as events.
+- **Inline `style`**: strips `expression(` / `javascript:`.
+- **Props**: direct `innerHTML` / `outerHTML` via props is rejected (console
+  warn).
+
+### Changed (perf / slim — public API unchanged)
+
+- **Keyed `For` reorder**: **LIS**-based minimal moves from current DOM order;
+  no-op when order is already correct; safe full fallback if needed.
+- **`insert`**: dedicated Signal effect fast path; array path uses shared
+  `isDomNode`.
+- **escape / SSR**: single-pass `escapeForText` / `escapeForAttr`; `ssr-dom`
+  reuses shared escape helpers.
+- **Compiler**: wider static lifting (`void`, `typeof` literals, `satisfies`, …)
+  so more props land in templates with fewer Effects; shared
+  `isStaticExpression`.
+- **Deps**: align `@dreamer/runtime-adapter` ^1.1.0, `@dreamer/test` ^1.1.10,
+  etc.
+
+### Tests / tooling
+
+- Bun: `bunfig.toml` preloads `tests/unit/dom-setup.ts` by default (matches
+  `package.json` test script; avoids missing DOM under isolation).
+- Added coverage: For reverse/shuffle + mid-insert, props security, escape URL
+  obfuscation, compiler `typeof`/`void`, `for.bench.ts`, etc.
+- **Deno** unit+integration **384** / **Bun** unit+integration **317**, 0
+  failed.
+
+### Notes
+
+- **No** public API / `exports` breaking changes; intentional **patch**.
+- Additive tree-shake subpaths are planned for **2.1.0**.
+
+---
+
 ## [2.0.5] - 2026-07-10
 
 ### Fixed

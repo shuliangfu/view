@@ -100,8 +100,9 @@ export function getTagName(node: ts.JsxTagNameExpression): string {
 /**
  * 判断一个表达式是否为静态（字面量或可序列化的常量）。
  * 含括号、断言、模板串、三元、一元/二元纯字面量，便于更多属性直接进 HTML 模板、少挂 Effect。
+ * 供 transformer 复用，避免重复静态判定逻辑。
  */
-function isStaticExpression(expr: ts.Expression): boolean {
+export function isStaticExpression(expr: ts.Expression): boolean {
   if (expr == null) return false;
   if (
     ts.isStringLiteral(expr) || ts.isNumericLiteral(expr) ||
@@ -130,6 +131,16 @@ function isStaticExpression(expr: ts.Expression): boolean {
   // 一元：`+1` / `-2` / `!true`（仅对静态操作数）
   if (ts.isPrefixUnaryExpression(expr)) {
     return isStaticExpression(expr.operand as ts.Expression);
+  }
+
+  // `void 0` / `void <static>`（AST 为 VoidExpression，非 PrefixUnary）
+  if (ts.isVoidExpression(expr)) {
+    return isStaticExpression(expr.expression);
+  }
+
+  // `typeof "x"` / `typeof 1`：操作数为静态时结果可序列化
+  if (ts.isTypeOfExpression(expr)) {
+    return isStaticExpression(expr.expression);
   }
 
   // 二元：仅两侧皆静态时（字符串拼接、算术等）可折叠进模板
@@ -163,6 +174,14 @@ function isStaticExpression(expr: ts.Expression): boolean {
     return expr.elements.every((el) =>
       !ts.isSpreadElement(el) && isStaticExpression(el)
     );
+  }
+
+  // `satisfies` 类型收窄不改变运行时值
+  if (
+    typeof ts.isSatisfiesExpression === "function" &&
+    ts.isSatisfiesExpression(expr)
+  ) {
+    return isStaticExpression(expr.expression);
   }
 
   return false;
@@ -207,6 +226,10 @@ function serializeStaticValue(expr: ts.Expression): string {
     }
     return out;
   }
+  if (ts.isVoidExpression(expr)) {
+    // void 静态 → 空属性值（与 undefined 一致）
+    return "";
+  }
   if (ts.isPrefixUnaryExpression(expr)) {
     const op = expr.operator === ts.SyntaxKind.MinusToken
       ? "-"
@@ -225,6 +248,38 @@ function serializeStaticValue(expr: ts.Expression): string {
         : `!${inner}`;
     }
     return op + serializeStaticValue(expr.operand as ts.Expression);
+  }
+  if (ts.isTypeOfExpression(expr)) {
+    // 对字面量求 typeof，便于 `data-t={typeof "x"}` 进模板
+    const inner = expr.expression;
+    if (
+      ts.isStringLiteral(inner) || ts.isNoSubstitutionTemplateLiteral(inner)
+    ) {
+      return "string";
+    }
+    if (ts.isNumericLiteral(inner)) return "number";
+    if (
+      inner.kind === ts.SyntaxKind.TrueKeyword ||
+      inner.kind === ts.SyntaxKind.FalseKeyword
+    ) return "boolean";
+    if (
+      inner.kind === ts.SyntaxKind.NullKeyword ||
+      inner.kind === ts.SyntaxKind.UndefinedKeyword
+    ) {
+      return inner.kind === ts.SyntaxKind.NullKeyword ? "object" : "undefined";
+    }
+    if (
+      ts.isObjectLiteralExpression(inner) || ts.isArrayLiteralExpression(inner)
+    ) {
+      return "object";
+    }
+    return "string";
+  }
+  if (
+    typeof ts.isSatisfiesExpression === "function" &&
+    ts.isSatisfiesExpression(expr)
+  ) {
+    return serializeStaticValue(expr.expression);
   }
   if (ts.isBinaryExpression(expr)) {
     // 字符串拼接：直接连接序列化结果

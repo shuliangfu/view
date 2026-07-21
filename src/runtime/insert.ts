@@ -227,19 +227,9 @@ function insertArrayAsDirectChildren(
       undefined,
       nextBefore ?? undefined,
     );
-    if (
-      firstInBlock == null &&
-      lastOut != null &&
-      typeof Node !== "undefined" &&
-      lastOut instanceof Node
-    ) {
-      firstInBlock = lastOut;
-    }
-    if (
-      lastOut != null &&
-      typeof Node !== "undefined" &&
-      lastOut instanceof Node
-    ) {
+    // isDomNode 兼容浏览器 Node 与 SSR 伪节点，避免重复 instanceof 分支
+    if (lastOut != null && isDomNode(lastOut)) {
+      if (firstInBlock == null) firstInBlock = lastOut;
       nextBefore = lastOut.nextSibling;
     }
   }
@@ -278,16 +268,31 @@ export function insert(
 
   // 1. 处理函数 (Thunks 或 Signals)
   if (typeof value === "function") {
-    // 强制追踪
+    const isSig = (value as ViewSignalTagged).__VIEW_SIGNAL === true;
+    // Signal 热路径：少一层闭包分支，直接读值再 insert
+    if (isSig) {
+      createEffect(() => {
+        const latestParent =
+          (before && before.parentNode && before.parentNode !== parent)
+            ? before.parentNode
+            : parent;
+        current = insert(
+          latestParent,
+          (value as () => InsertValue)(),
+          current,
+          before,
+        );
+      });
+      return current;
+    }
+
     createEffect(() => {
       const latestParent =
         (before && before.parentNode && before.parentNode !== parent)
           ? before.parentNode
           : parent;
 
-      let nextValue = value();
-
-      // Thunk 扁平化：循环同步解包（非递归），带深度上限防死循环
+      let nextValue: unknown = (value as () => unknown)();
       let depth = 0;
       while (
         typeof nextValue === "function" &&
