@@ -7,9 +7,9 @@
 | Item            | Details                                                                  |
 | --------------- | ------------------------------------------------------------------------ |
 | Package         | `@dreamer/view`                                                          |
-| Version         | **2.1.0** (aligned with `deno.json` / `package.json`)                    |
-| Test framework  | `@dreamer/test` ^1.1.10                                                  |
-| Report date     | **2026-07-22**                                                           |
+| Version         | **2.2.0** (aligned with `deno.json` / `package.json`)                    |
+| Test framework  | `@dreamer/test` ^1.2.3                                                   |
+| Report date     | **2026-07-23**                                                           |
 | DOM environment | Unit/integration: happy-dom **20.4.0**; E2E: Chromium (Playwright, etc.) |
 | Commands        | See “How to run” below                                                   |
 
@@ -49,6 +49,11 @@ bun test tests/unit tests/integration
 
 # SSR pseudo-DOM suite
 bun test tests/unit/runtime/ssr-dom-element-api.test.ts
+
+# Node.js 22+ (unit + integration; e2e and dweb-import-ssr excluded)
+npm install
+npm run test:node
+# equivalent: node --import tsx --test-force-exit test-node.mjs
 ```
 
 | Note               | Detail                                                                                                             |
@@ -73,7 +78,7 @@ bun test tests/unit/runtime/ssr-dom-element-api.test.ts
 
 | Scope                                     | Passed  | Failed | Duration         | Command                                     |
 | ----------------------------------------- | ------- | ------ | ---------------- | ------------------------------------------- |
-| **unit + integration** (`deno task test`) | **377** | **0**  | ~**28–29s**      | `deno test -A tests/unit tests/integration` |
+| **unit + integration** (`deno task test`) | **394** | **0**  | ~**11s**         | `deno test -A tests/unit tests/integration` |
 | **full `tests/`** (includes e2e)          | **398** | **0**  | ~**1m11s–1m13s** | `deno test -A tests/`                       |
 
 Note: full suite has ~**21** more cases than unit+integration, mostly from
@@ -83,12 +88,21 @@ Note: full suite has ~**21** more cases than unit+integration, mostly from
 
 | Scope                                        | Passed  | Failed | Files  | Duration | Command                                                                     |
 | -------------------------------------------- | ------- | ------ | ------ | -------- | --------------------------------------------------------------------------- |
-| **unit + integration**                       | **311** | **0**  | 67     | ~**5s**  | `bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration` |
+| **unit + integration**                       | **326** | **0**  | 68     | ~**6s**  | `bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration` |
 | **full `tests/`** (`npm`/`bun test` default) | **331** | **0**  | **68** | ~**48s** | `bun test --preload ./tests/unit/dom-setup.ts tests/`                       |
 
 Note: full suite has ~**20** more cases (+1 file → 68 files), mostly e2e.
 
-### 3.3 Matching local output
+### 3.3 Node.js 22+
+
+| Scope                                        | Passed     | Failed | Files  | Duration | Command                                          |
+| -------------------------------------------- | ---------- | ------ | ------ | -------- | ------------------------------------------------ |
+| **unit + integration** (e2e + dweb excluded) | **65/65**  | **0**  | **65** | ~**60s** | `node --import tsx --test-force-exit test-node.mjs` |
+
+Note: `tests/integration/dweb-import-ssr.test.ts` excluded — spawns a Deno
+subprocess dependent on the dweb project's `deno.json`, not runnable on Node.
+
+### 3.4 Matching local output
 
 If you see:
 

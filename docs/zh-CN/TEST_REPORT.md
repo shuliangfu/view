@@ -7,9 +7,9 @@
 | 项目     | 说明                                                            |
 | -------- | --------------------------------------------------------------- |
 | 包名     | `@dreamer/view`                                                 |
-| 版本     | **2.1.0**（与 `deno.json` / `package.json` 一致）               |
-| 测试框架 | `@dreamer/test` ^1.1.10                                         |
-| 报告日期 | **2026-07-22**                                                  |
+| 版本     | **2.2.0**（与 `deno.json` / `package.json` 一致）               |
+| 测试框架 | `@dreamer/test` ^1.2.3                                         |
+| 报告日期 | **2026-07-23**                                                  |
 | DOM 环境 | 单元/集成：happy-dom **20.4.0**；E2E：Chromium（Playwright 等） |
 | 主要命令 | 见下文「如何运行」                                              |
 
@@ -49,6 +49,11 @@ bun test tests/unit tests/integration
 
 # SSR 伪 DOM 专项
 bun test tests/unit/runtime/ssr-dom-element-api.test.ts
+
+# Node.js 22+（单元 + 集成；排除 e2e 与 dweb-import-ssr）
+npm install
+npm run test:node
+# 等价：node --import tsx --test-force-exit test-node.mjs
 ```
 
 | 注意            | 说明                                                                                             |
@@ -73,7 +78,7 @@ bun test tests/unit/runtime/ssr-dom-element-api.test.ts
 
 | 范围                                       | 通过    | 失败  | 耗时             | 命令                                        |
 | ------------------------------------------ | ------- | ----- | ---------------- | ------------------------------------------- |
-| **unit + integration**（`deno task test`） | **377** | **0** | ~**28–29s**      | `deno test -A tests/unit tests/integration` |
+| **unit + integration**（`deno task test`） | **394** | **0** | ~**11s**         | `deno test -A tests/unit tests/integration` |
 | **全量 `tests/`**（含 e2e）                | **398** | **0** | ~**1m11s–1m13s** | `deno test -A tests/`                       |
 
 说明：全量比 unit+integration 多约 **21** 条，主要来自
@@ -83,13 +88,22 @@ bun test tests/unit/runtime/ssr-dom-element-api.test.ts
 
 | 范围                                     | 通过    | 失败  | 文件   | 耗时     | 命令                                                                        |
 | ---------------------------------------- | ------- | ----- | ------ | -------- | --------------------------------------------------------------------------- |
-| **unit + integration**                   | **311** | **0** | 67     | ~**5s**  | `bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration` |
+| **unit + integration**                   | **326** | **0** | 68     | ~**6s**  | `bun test --preload ./tests/unit/dom-setup.ts tests/unit tests/integration` |
 | **全量 `tests/`**（`npm/bun test` 默认） | **331** | **0** | **68** | ~**48s** | `bun test --preload ./tests/unit/dom-setup.ts tests/`                       |
 
 说明：全量比 unit+integration 多约 **20** 条，主要来自 e2e 文件（+1 文件 → 68
 files）。
 
-### 3.3 与「你本地数字」对齐
+### 3.3 Node.js 22+
+
+| 范围                                    | 通过      | 失败  | 文件   | 耗时     | 命令                                             |
+| --------------------------------------- | --------- | ----- | ------ | -------- | ------------------------------------------------ |
+| **unit + integration**（排除 e2e/dweb） | **65/65** | **0** | **65** | ~**60s** | `node --import tsx --test-force-exit test-node.mjs` |
+
+说明：`tests/integration/dweb-import-ssr.test.ts` 排除——该测试起 Deno 子进程，
+依赖 dweb 项目的 `deno.json`，Node 上无法运行。
+
+### 3.4 与「你本地数字」对齐
 
 若你看到：
 

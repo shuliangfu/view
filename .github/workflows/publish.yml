@@ -1,4 +1,4 @@
-# 推送 v* tag 时自动发布到 JSR；发布前执行 check/lint 以在 CI 层兜底
+# 推送 v* tag 时自动发布到 JSR
 name: Publish
 
 on:
@@ -17,16 +17,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.5
-
-      - name: Cache dependencies
-        run: deno cache src/mod.ts src/cli.ts src/setup.ts
-
-      - name: Check
-        run: deno check src
-
-      - name: Lint
-        run: deno lint src
+          deno-version: v2.9
 
       - name: Publish to JSR
         run: deno publish

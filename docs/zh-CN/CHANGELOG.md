@@ -7,6 +7,39 @@
 
 ---
 
+## [2.2.0] - 2026-07-23
+
+### 新增
+
+- **Node.js 22+ 兼容** — `@dreamer/view` 现可运行于 Deno 2.9+、Bun 1.3+、
+  Node.js 22+，核心运行时/编译器/响应式源码零改动。
+  - `package.json`：`engines.node >= 22`，`test:node` 脚本经 tsx 执行。
+  - `test-node.mjs`：Node 测试运行器——每文件在主进程执行（无 `--test`
+    fork/IPC），规避测试向 stdout 输出时 "Unable to deserialize cloned data"
+    问题。排除 E2E 与 Deno 专属集成测试。
+  - `tsconfig.json`：Bundler 模块解析 + `dom` lib，跨运行时类型一致。
+  - CI：9-job 矩阵（3 Deno v2.9 + 3 Bun + 3 Node 22，无 Chromium）。
+- **CLI Node 支持**：`upgrade` 命令在 Node 上用 `npx jsr run`；`update` 命令
+  在 Node 上用 `npm update`。`getRuntime()` 不再对 Node 抛错。
+
+### 变更
+
+- **deno.json**：全部 `@dreamer/*` 依赖升至 Node 兼容版本
+  （runtime-adapter ^1.2.2、i18n ^1.1.2、console ^1.1.0、esbuild ^1.3.0 等）；
+  `compilerOptions.lib` 加 `deno.ns` 以在 `nodeModulesDir: "auto"` 加载
+  `@types/node` 时保留 `import.meta.main`；`minimumDependencyAge: "0"`。
+- **publish.yml**：移除 `deno check` 门槛（JSR 发布内部用 `--no-check`）；
+  Deno 升至 v2.9。
+
+### 测试
+
+- **Deno** 单元+集成 **394** / **Bun** **326** / **Node.js 22** **65/65 文件**
+  — 三端 0 失败。
+- 排除 `tests/integration/dweb-import-ssr.test.ts` 于 Node CI（起 Deno 子进程，
+  依赖 dweb 项目的 `deno.json`）。
+
+---
+
 ## [2.1.0] - 2026-07-22
 
 ### 新增

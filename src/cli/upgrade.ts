@@ -20,7 +20,7 @@ import {
   succeedSpinner,
   success,
 } from "@dreamer/console";
-import { createCommand, exit, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
+import { createCommand, exit, IS_BUN, IS_DENO, IS_NODE } from "@dreamer/runtime-adapter";
 import { $tr } from "../i18n.ts";
 import {
   compareVersions,
@@ -30,22 +30,25 @@ import {
 } from "../server/utils/version.ts";
 
 /**
- * 获取当前运行时名称（deno 或 bun），供 createCommand 使用
+ * 获取当前运行时名称（deno / bun / node），供 createCommand 使用
  */
-function getRuntime(): "deno" | "bun" {
+function getRuntime(): "deno" | "bun" | "npx" {
   if (IS_DENO) return "deno";
   if (IS_BUN) return "bun";
+  if (IS_NODE) return "npx";
   throw new Error($tr("error.runtimeUnsupported"));
 }
 
 /**
- * 获取执行 deno run / bun run 脚本的参数字段
+ * 获取执行 deno run / bun run / npx jsr run 脚本的参数字段
  * - Deno: ["run", "-A", spec]
  * - Bun: ["run", spec]
+ * - Node: ["jsr", "run", spec]（经 npx 调用 jsr CLI）
  */
 function getRunArgs(spec: string): string[] {
   if (IS_DENO) return ["run", "-A", spec];
   if (IS_BUN) return ["run", spec];
+  if (IS_NODE) return ["jsr", "run", spec];
   return ["run", "-A", spec];
 }
 

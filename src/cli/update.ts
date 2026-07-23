@@ -12,15 +12,23 @@
  */
 
 import { error, info, success } from "@dreamer/console";
-import { createCommand, cwd, IS_BUN, IS_DENO } from "@dreamer/runtime-adapter";
+import {
+  createCommand,
+  cwd,
+  IS_BUN,
+  IS_DENO,
+  IS_NODE,
+} from "@dreamer/runtime-adapter";
 import { $tr } from "../i18n.ts";
 
 /**
- * 获取当前运行时名称（deno 或 bun）
+ * 获取当前运行时名称（deno / bun / node）
+ * - Node 用 npm 执行 update
  */
-function getRuntime(): "deno" | "bun" {
+function getRuntime(): "deno" | "bun" | "npm" {
   if (IS_DENO) return "deno";
   if (IS_BUN) return "bun";
+  if (IS_NODE) return "npm";
   throw new Error($tr("error.runtimeUnsupported"));
 }
 

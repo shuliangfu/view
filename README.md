@@ -75,6 +75,17 @@ deno add jsr:@dreamer/view
 bunx jsr add @dreamer/view
 ```
 
+**Node.js** (>= 22)
+
+```bash
+npx jsr add @dreamer/view
+```
+
+> **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun 1.3+**,
+> and **Node.js 22+** with zero source changes. Unit and integration tests pass
+> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. The CLI
+> `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
+
 ### 2.3 `exports` map (same as `view/deno.json`)
 
 | Subpath                             | Purpose                                                                                                                         |

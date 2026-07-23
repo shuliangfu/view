@@ -8,6 +8,40 @@ and this project adheres to
 
 ---
 
+## [2.2.0] - 2026-07-23
+
+### Added
+
+- **Node.js 22+ compatibility** — `@dreamer/view` now runs on Deno 2.9+, Bun 1.3+,
+  and Node.js 22+ with zero source changes to core runtime/compiler/reactivity.
+  - `package.json`: `engines.node >= 22`, `test:node` script via tsx.
+  - `test-node.mjs`: Node test runner — runs each file in the main process (no
+    `--test` fork/IPC), avoiding the "Unable to deserialize cloned data" bug when
+    tests write to stdout. E2E and Deno-only integration tests excluded.
+  - `tsconfig.json`: Bundler module resolution + `dom` lib for cross-runtime type
+    consistency.
+  - CI: 9-job matrix (3 Deno v2.9 + 3 Bun + 3 Node 22, no Chromium).
+- **CLI Node support**: `upgrade` command uses `npx jsr run` on Node; `update`
+  command uses `npm update` on Node. `getRuntime()` no longer throws for Node.
+
+### Changed
+
+- **deno.json**: bumped all `@dreamer/*` deps to Node-compatible versions
+  (runtime-adapter ^1.2.2, i18n ^1.1.2, console ^1.1.0, esbuild ^1.3.0, etc.);
+  added `deno.ns` to `compilerOptions.lib` to retain `import.meta.main` when
+  `nodeModulesDir: "auto"` loads `@types/node`; `minimumDependencyAge: "0"`.
+- **publish.yml**: removed `deno check` gate (JSR publish uses `--no-check`
+  internally); bumped Deno to v2.9.
+
+### Tests
+
+- **Deno** unit+integration **394** / **Bun** **326** / **Node.js 22** **65/65
+  files** — 0 failed on all three runtimes.
+- Excluded `tests/integration/dweb-import-ssr.test.ts` from Node CI (spawns a
+  Deno subprocess dependent on the dweb project's `deno.json`).
+
+---
+
 ## [2.1.0] - 2026-07-22
 
 ### Added
