@@ -9,7 +9,14 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **体积门禁：压 `/form` 入口（不改阈值、不刷基线）**
+  - Form `field(as)`／`messageFromSafeParse` 胶水保留；收紧 `field` 实现（统一 `onChange`、省略默认 `"text"` 字面量等），使 `@dreamer/view/form` minify／gzip 回到基线 **+5%** 内。
+  - **未**放宽 `size:check` 阈值、**未**改 CI job、**未**刷新 `bundle-size-baseline.json`；禁 JSR／npm。
+
 ### 新增
+
 
 - **Form checkbox／select／schema 桥（2.x 加法）**
   - `field(name, { as? })`：可选 `checkbox`／`select`／`textarea`／`number`；省略第二参时与旧版文本绑定兼容。

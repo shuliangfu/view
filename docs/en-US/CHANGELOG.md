@@ -10,7 +10,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **Size gate: slim `/form` entry (no budget loosen, no baseline bump)**
+  - Keep Form `field(as)` / `messageFromSafeParse` glue; tighten `field` (shared `onChange`, omit default `"text"` literal, etc.) so `@dreamer/view/form` minify / gzip stay within baseline **+5%**.
+  - Did **not** raise the `size:check` budget, disable the CI job, or refresh `bundle-size-baseline.json`; no JSR / npm publish.
+
 ### Added
+
 
 - **Form checkbox / select / schema bridge (2.x additive)**
   - `field(name, { as? })`: optional `checkbox` / `select` / `textarea` / `number`;

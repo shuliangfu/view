@@ -202,63 +202,29 @@ export function createForm<T extends Record<string, unknown>>(
   };
 
   /**
-   * 读控件值：checkbox 用 checked；number 尽量转数字；其余用 .value。
-   */
-  const readControlValue = (
-    el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
-    as: FormFieldAs,
-  ): unknown => {
-    if (as === "checkbox") {
-      return (el as HTMLInputElement).checked;
-    }
-    const raw = el.value;
-    if (as === "number") {
-      if (raw === "") return "";
-      const n = Number(raw);
-      return Number.isFinite(n) ? n : raw;
-    }
-    return raw;
-  };
-
-  /**
-   * 生成双向绑定属性；第二参 `as` 可选（默认 text，与旧版兼容）。
+   * 生成双向绑定；第二参 `as` 可选（省略／text／textarea／select → value）。
+   * 统一挂 onChange，便于 checkbox／select 原生展开。
    */
   const field = (name: keyof T, fieldOpts?: FormFieldOptions): FormFieldBindings => {
-    const as: FormFieldAs = fieldOpts?.as ?? "text";
-
+    const as = fieldOpts?.as;
     const applyValue = (e: Event) => {
-      const el = e.target as
-        | HTMLInputElement
-        | HTMLSelectElement
-        | HTMLTextAreaElement;
-      const val = readControlValue(el, as);
+      const el = e.target as HTMLInputElement;
+      let val: unknown = as === "checkbox" ? el.checked : el.value;
+      if (as === "number" && val !== "") {
+        const n = Number(val);
+        if (n == n) val = n;
+      }
       setData(name, val as T[keyof T]);
-      if (validateOnSet.has("change") && options?.rules?.[name]) {
-        validateField(name);
-      }
+      if (validateOnSet.has("change") && options?.rules?.[name]) validateField(name);
     };
-
-    const base: FormFieldBindings = {
-      onInput: applyValue,
-    };
-
-    if (as === "checkbox") {
-      base.checked = () => Boolean(data[name]);
-      // 部分环境更稳地走 change；与 onInput 同逻辑，便于 {...field()} 一次展开
-      base.onChange = applyValue;
-    } else {
-      base.value = () => data[name];
-      if (as === "select") {
-        base.onChange = applyValue;
-      }
-    }
-
+    const base: FormFieldBindings = { onInput: applyValue, onChange: applyValue };
+    if (as === "checkbox") base.checked = () => !!data[name];
+    else base.value = () => data[name];
     if (validateOnSet.has("blur") && options?.rules?.[name]) {
-      base.onBlur = (_e: FocusEvent) => {
+      base.onBlur = () => {
         validateField(name);
       };
     }
-
     return base;
   };
 
@@ -299,19 +265,12 @@ export function createForm<T extends Record<string, unknown>>(
 
 
 /**
- * 把「类 Zod safeParse」结果映射为 `rules` 用的 `string | null`。
- * 不依赖任何 schema 库；自行传入 `safeParse` 结果即可。
- *
- * @example
- * rules: {
- *   email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
- * }
+ * 把类 Zod `safeParse` 结果映射为 `rules` 用的 `string | null`（无 schema 运行时依赖）。
  */
 export function messageFromSafeParse(
   result:
     | { success: true }
     | { success: false; error: { issues: ReadonlyArray<{ message: string }> } },
 ): string | null {
-  if (result.success) return null;
-  return result.error.issues[0]?.message ?? "invalid";
+  return result.success ? null : result.error.issues[0]?.message ?? null;
 }
