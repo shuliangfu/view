@@ -1,0 +1,102 @@
+{
+  "package": "@dreamer/view",
+  "version": "2.2.0",
+  "measuredAt": "2026-11-03T10:59:03.589Z",
+  "tool": {
+    "bundler": "esbuild",
+    "esbuildVersion": "0.27.7",
+    "command": "node scripts/size-baseline/measure.mjs [--write]",
+    "denoTask": "deno task size:baseline",
+    "notes": [
+      "packages:external + explicit @dreamer/* externals — sizes are view source only",
+      "platform:neutral ESM; minify via esbuild; gzip = zlib level 9 of minified",
+      "Apple Silicon / Deno host independent: this script is Node+esbuild"
+    ]
+  },
+  "entries": [
+    {
+      "name": "@dreamer/view",
+      "exportPath": ".",
+      "entry": "scripts/size-baseline/entry-main.ts",
+      "rawBytes": 101180,
+      "minBytes": 44557,
+      "gzipMinBytes": 15725,
+      "rawKiB": 98.81,
+      "minKiB": 43.51,
+      "gzipMinKiB": 15.36,
+      "inputFileCount": 33
+    },
+    {
+      "name": "@dreamer/view/reactivity",
+      "exportPath": "./reactivity",
+      "entry": "scripts/size-baseline/entry-reactivity.ts",
+      "rawBytes": 24581,
+      "minBytes": 10714,
+      "gzipMinBytes": 3946,
+      "rawKiB": 24,
+      "minKiB": 10.46,
+      "gzipMinKiB": 3.85,
+      "inputFileCount": 13
+    },
+    {
+      "name": "@dreamer/view/csr",
+      "exportPath": "./csr",
+      "entry": "scripts/size-baseline/entry-csr.ts",
+      "rawBytes": 71737,
+      "minBytes": 30762,
+      "gzipMinBytes": 10874,
+      "rawKiB": 70.06,
+      "minKiB": 30.04,
+      "gzipMinKiB": 10.62,
+      "inputFileCount": 28
+    },
+    {
+      "name": "@dreamer/view/ssr",
+      "exportPath": "./ssr",
+      "entry": "scripts/size-baseline/entry-ssr.ts",
+      "rawBytes": 95716,
+      "minBytes": 45518,
+      "gzipMinBytes": 14900,
+      "rawKiB": 93.47,
+      "minKiB": 44.45,
+      "gzipMinKiB": 14.55,
+      "inputFileCount": 25
+    },
+    {
+      "name": "@dreamer/view/router",
+      "exportPath": "./router",
+      "entry": "scripts/size-baseline/entry-router.ts",
+      "rawBytes": 58772,
+      "minBytes": 26595,
+      "gzipMinBytes": 9423,
+      "rawKiB": 57.39,
+      "minKiB": 25.97,
+      "gzipMinKiB": 9.2,
+      "inputFileCount": 24
+    },
+    {
+      "name": "@dreamer/view/form",
+      "exportPath": "./form",
+      "entry": "scripts/size-baseline/entry-form.ts",
+      "rawBytes": 13958,
+      "minBytes": 6020,
+      "gzipMinBytes": 2509,
+      "rawKiB": 13.63,
+      "minKiB": 5.88,
+      "gzipMinKiB": 2.45,
+      "inputFileCount": 8
+    },
+    {
+      "name": "@dreamer/view/resource",
+      "exportPath": "./resource",
+      "entry": "scripts/size-baseline/entry-resource.ts",
+      "rawBytes": 14273,
+      "minBytes": 6192,
+      "gzipMinBytes": 2415,
+      "rawKiB": 13.94,
+      "minKiB": 6.05,
+      "gzipMinKiB": 2.36,
+      "inputFileCount": 12
+    }
+  ]
+}

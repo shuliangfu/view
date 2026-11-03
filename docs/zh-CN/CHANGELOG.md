@@ -7,6 +7,26 @@
 
 ---
 
+## [Unreleased]
+
+### 新增
+
+- **P0 工程基线（体积／性能，非破坏）**
+  - `scripts/size-baseline/`：用本仓库 esbuild 测量主入口与子路径
+    （`reactivity`／`csr`／`ssr`／`router`／`form`／`resource`）的 raw／minify／gzip；
+    命令 `node scripts/size-baseline/measure.mjs --write` 或 `deno task size:baseline`。
+  - `scripts/size-baseline/bundle-size-baseline.json`、`docs/zh-CN/P0-bench-baseline.md`、
+    `analysis/P0-基线-体积与性能.md`（gitignore 工作副本）／`docs/zh-CN/P0-基线-体积与性能.md`（入库）：可复现数字与「下一条 2.x 优化」建议
+    （文档强推子路径导入）。
+  - `deno task size:baseline`／`bench:baseline` 任务入口。
+
+### 说明
+
+- **无运行时／API 行为变更**；未发 JSR／npm；响应式内核未改。
+- 真实页 Effect／DOM 计数：见报告「如何测」——本刀不向核心加计数器。
+
+---
+
 ## [2.2.0] - 2026-07-23
 
 ### 新增

@@ -49,7 +49,9 @@
     "bench": "deno bench -A tests/bench/",
     "check": "deno check src/mod.ts",
     "lint": "deno lint src/",
-    "fmt": "deno fmt src/ tests/"
+    "fmt": "deno fmt src/ tests/",
+    "size:baseline": "node scripts/size-baseline/measure.mjs --write",
+    "bench:baseline": "deno bench -A tests/bench/"
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",

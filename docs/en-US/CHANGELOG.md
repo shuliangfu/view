@@ -8,6 +8,29 @@ and this project adheres to
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **P0 engineering baseline (bundle size / perf, non-breaking)**
+  - `scripts/size-baseline/`: measure main entry vs subpaths
+    (`reactivity` / `csr` / `ssr` / `router` / `form` / `resource`) raw / minify /
+    gzip via this repo’s esbuild; run
+    `node scripts/size-baseline/measure.mjs --write` or `deno task size:baseline`.
+  - `scripts/size-baseline/bundle-size-baseline.json`, `docs/zh-CN/P0-bench-baseline.md`,
+    `analysis/P0-基线-体积与性能.md` (gitignored working copy) / `docs/zh-CN/P0-基线-体积与性能.md` + `docs/en-US/P0-baseline-bundle-and-perf.md` (committed): reproducible numbers and the single
+    recommended next 2.x non-breaking step (docs-first subpath imports).
+  - `deno task size:baseline` / `bench:baseline` task entry points.
+
+### Notes
+
+- **No runtime / API behavior change**; no JSR / npm publish; reactive core
+  untouched.
+- Real-page Effect / DOM op counts: see the report’s “how to measure” section —
+  this knife does not add counters to the core.
+
+---
+
 ## [2.2.0] - 2026-07-23
 
 ### Added
