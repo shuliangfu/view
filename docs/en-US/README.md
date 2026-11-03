@@ -1347,6 +1347,10 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
+- **Current framework analysis** (Chinese canonical): [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md)
+- **Analysis doc status** (obsolete / drifted index): [`analysis-doc-status.md`](./analysis-doc-status.md) · [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
+- **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
+
 - **Latest [2.1.0] — 2026-07-22**:
   - **Added**: fine-grained subpaths (`/reactivity`, `/csr`, `/router`,
     `/control-flow`, …); `HydrateOptions` + `mismatchMode`

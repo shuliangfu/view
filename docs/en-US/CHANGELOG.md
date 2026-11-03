@@ -10,6 +10,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Documentation
+
+- **Analysis docs governance (P1-6, docs-only)**
+  - Commit current [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) (v2.2.0 / 2026-11-03).
+  - Add [`analysis-doc-status.md`](./analysis-doc-status.md) / [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md): mark local gitignored `analysis/` v1 / early-architecture notes as obsolete / drifted; point to current analysis + README.
+  - Watermark matching local `analysis/` files; refresh [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md) links; Chinese / English README §25 entry points.
+  - **No** runtime / export changes; no JSR / npm publish.
+
+
 ### Fixed
 
 - **Size gate: slim `/form` entry (no budget loosen, no baseline bump)**

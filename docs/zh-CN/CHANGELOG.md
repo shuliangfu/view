@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### 文档
+
+- **分析文档治理（P1-6，仅文档）**
+  - 入库现行 [`view-framework-analysis.md`](./view-framework-analysis.md)（v2.2.0／2026-11-03）。
+  - 新增 [`分析文档状态.md`](./分析文档状态.md)／[`../en-US/analysis-doc-status.md`](../en-US/analysis-doc-status.md)：标明本地 `analysis/`（gitignore）中 v1／早期架构文为过时／漂移，并指向现行分析与 README。
+  - 本地 `analysis/` 对应旧文加水印；修订 [`3.0.0-规划分析.md`](./3.0.0-规划分析.md) 相关链接；中英 README §25 增加入口。
+  - **无**运行时／导出变更；禁 JSR／npm。
+
+
 ### 修复
 
 - **体积门禁：压 `/form` 入口（不改阈值、不刷基线）**
