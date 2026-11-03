@@ -12,6 +12,20 @@ and this project adheres to
 
 ### Added
 
+- **Bundle-size CI gate (2.x non-breaking)**
+  - `scripts/size-baseline/check.mjs` + `deno task size:check`: compare a fresh
+    measure to the committed `bundle-size-baseline.json`; each entry’s
+    **minify / gzip(min)** must stay within **+5%** of baseline (`Math.ceil`);
+    over limit → non-zero exit (CI / local preflight).
+  - Override via `--budget-pct` or `SIZE_BUDGET_PCT`; intentional growth →
+    `deno task size:baseline` and commit the refreshed JSON.
+  - Baseline restamped to current sizes after Resource Abort (`b0c8786`).
+  - CI: ubuntu `size-check` job. **No** runtime default behavior change; no
+    JSR / npm publish.
+
+
+### Added
+
 - **Resource optional AbortSignal + inflight dedupe docs (2.x additive)**
   - Each `createResource` load passes `{ signal: AbortSignal }` as the fetcher’s
     second argument; source changes / `refetch` abort the previous load; optional

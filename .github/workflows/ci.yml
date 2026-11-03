@@ -80,3 +80,19 @@ jobs:
 
       - name: Test (Node.js)
         run: node --import tsx --test-force-exit test-node.mjs
+
+  # ───────────────── Bundle size gate (ubuntu only) ─────────────────
+  size-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Bundle size gate (+5% vs committed baseline)
+        run: node scripts/size-baseline/check.mjs

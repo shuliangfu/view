@@ -11,6 +11,18 @@
 
 ### 新增
 
+- **体积 CI 门禁（2.x 非破坏）**
+  - `scripts/size-baseline/check.mjs`＋`deno task size:check`：对照已提交
+    `bundle-size-baseline.json`，主入口与关键子路径的 **minify／gzip(min)**
+    不得超过基线 **+5%**（`Math.ceil`）；超限非 0 退出，可供 CI／本地 preflight。
+  - 阈值可用 `--budget-pct` 或 `SIZE_BUDGET_PCT` 覆盖；故意涨包则
+    `deno task size:baseline` 刷新 JSON 并入库。
+  - 基线已按 Resource Abort（`b0c8786`）后的当前体积重打（resource／主入口等随之更新）。
+  - CI 增加 ubuntu `size-check` job。**无**运行时默认行为变更；禁 JSR／npm 发版。
+
+
+### 新增
+
 - **Resource 可选 AbortSignal＋inflight 去重文档（2.x 加法）**
   - `createResource` 每次 load 向 fetcher 传入第二参 `{ signal: AbortSignal }`；
     source 变化／`refetch` 会 abort 上一趟；可选第三参

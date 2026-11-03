@@ -1,9 +1,9 @@
-# Bundle size baseline
+# Bundle size baseline & CI gate
 
-## Reproduce
+## Reproduce measure
 
 ```bash
-# from repo root
+# from repo root — refresh committed baseline JSON
 node scripts/size-baseline/measure.mjs --write
 # or
 deno task size:baseline
@@ -13,7 +13,27 @@ deno task size:baseline
 - **Method:** bundle each `entry-*.ts` as ESM (`platform: neutral`), tree-shake on,
   mark `@dreamer/*` / `happy-dom` / `typescript` external so the byte count is
   **view source only**. Report raw / minify / gzip(min, zlib level 9).
-- **Output:** stdout table; with `--write` also `analysis/bundle-size-baseline.json`
+- **Output:** stdout table; with `--write` also
+  `scripts/size-baseline/bundle-size-baseline.json` (committed gate baseline)
+
+## CI / preflight gate
+
+```bash
+node scripts/size-baseline/check.mjs
+# or
+deno task size:check
+```
+
+**Budget (default):** each entry’s **minify** and **gzip(min)** must stay within
+**+5%** of the committed baseline bytes (`Math.ceil(baseline * 1.05)`). Any
+entry over either limit → **exit 1**.
+
+Override: `--budget-pct 5` or env `SIZE_BUDGET_PCT=5`.
+
+Intentional growth: re-run `deno task size:baseline`, commit the updated
+`bundle-size-baseline.json`, and note why in CHANGELOG.
+
+This gate does **not** change runtime behavior; it only measures and compares.
 
 ## Entries covered
 
