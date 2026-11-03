@@ -4,7 +4,7 @@
  *
  * **支持的功能：**
  * - ✅ createForm(initial, options?) — 第二参可选，无规则时与旧版行为兼容
- * - ✅ field() — value + onInput；在 `validateOn` 含 `blur` 且该字段有规则时附带 onBlur
+ * - ✅ field(name, options?) — 默认 value + onInput；`{ as: "checkbox" | "select" | "textarea" | "number" }` 分支；blur 规则同前
  * - ✅ rules — 每字段 `(value, data) => string | null`
  * - ✅ validateOn — `change` | `blur` | `submit`（可多选；默认仅 `submit`）
  * - ✅ validate() / validateField(name)
@@ -50,14 +50,38 @@ export interface CreateFormOptions<T extends Record<string, unknown>> {
 /**
  * createForm 返回的 API 形状（供 JSR slow-types 与调用方标注）。
  */
+/** field() 控件种类；默认 text（value + onInput） */
+export type FormFieldAs =
+  | "text"
+  | "checkbox"
+  | "select"
+  | "textarea"
+  | "number";
+
+/** field 第二参（可选；省略时与旧版纯文本绑定兼容） */
+export interface FormFieldOptions {
+  /**
+   * 控件种类。
+   * - `text` / `textarea` / `select`：`value` + `onInput`（读 `.value`）
+   * - `number`：同上，写入时 `Number(...)`（空串保持 `""` 以便必填规则）
+   * - `checkbox`：`checked` + `onInput`／`onChange`（读 `.checked`）
+   */
+  as?: FormFieldAs;
+}
+
+/** field() 返回的绑定属性（按 as 分支） */
+export type FormFieldBindings = {
+  value?: () => unknown;
+  checked?: () => boolean;
+  onInput: (e: Event) => void;
+  onChange?: (e: Event) => void;
+  onBlur?: (e: FocusEvent) => void;
+};
+
 export interface CreateFormReturn<T extends Record<string, unknown>> {
   data: Store<T>;
   errors: Store<Record<keyof T, string | null>>;
-  field: (name: keyof T) => {
-    value: () => unknown;
-    onInput: (e: InputEvent) => void;
-    onBlur?: (e: FocusEvent) => void;
-  };
+  field: (name: keyof T, options?: FormFieldOptions) => FormFieldBindings;
   updateField: (name: keyof T, val: T[keyof T]) => void;
   reset: () => void;
   produce: (fn: (state: T) => void) => void;
@@ -178,23 +202,56 @@ export function createForm<T extends Record<string, unknown>>(
   };
 
   /**
-   * 生成双向绑定属性；按需附带 onBlur。
+   * 读控件值：checkbox 用 checked；number 尽量转数字；其余用 .value。
    */
-  const field = (name: keyof T) => {
-    const base: {
-      value: () => unknown;
-      onInput: (e: InputEvent) => void;
-      onBlur?: (e: FocusEvent) => void;
-    } = {
-      value: () => data[name],
-      onInput: (e: InputEvent) => {
-        const val = (e.target as HTMLInputElement).value;
-        setData(name, val as unknown as T[keyof T]);
-        if (validateOnSet.has("change") && options?.rules?.[name]) {
-          validateField(name);
-        }
-      },
+  const readControlValue = (
+    el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+    as: FormFieldAs,
+  ): unknown => {
+    if (as === "checkbox") {
+      return (el as HTMLInputElement).checked;
+    }
+    const raw = el.value;
+    if (as === "number") {
+      if (raw === "") return "";
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : raw;
+    }
+    return raw;
+  };
+
+  /**
+   * 生成双向绑定属性；第二参 `as` 可选（默认 text，与旧版兼容）。
+   */
+  const field = (name: keyof T, fieldOpts?: FormFieldOptions): FormFieldBindings => {
+    const as: FormFieldAs = fieldOpts?.as ?? "text";
+
+    const applyValue = (e: Event) => {
+      const el = e.target as
+        | HTMLInputElement
+        | HTMLSelectElement
+        | HTMLTextAreaElement;
+      const val = readControlValue(el, as);
+      setData(name, val as T[keyof T]);
+      if (validateOnSet.has("change") && options?.rules?.[name]) {
+        validateField(name);
+      }
     };
+
+    const base: FormFieldBindings = {
+      onInput: applyValue,
+    };
+
+    if (as === "checkbox") {
+      base.checked = () => Boolean(data[name]);
+      // 部分环境更稳地走 change；与 onInput 同逻辑，便于 {...field()} 一次展开
+      base.onChange = applyValue;
+    } else {
+      base.value = () => data[name];
+      if (as === "select") {
+        base.onChange = applyValue;
+      }
+    }
 
     if (validateOnSet.has("blur") && options?.rules?.[name]) {
       base.onBlur = (_e: FocusEvent) => {
@@ -238,4 +295,23 @@ export function createForm<T extends Record<string, unknown>>(
     validateField,
     handleSubmit,
   };
+}
+
+
+/**
+ * 把「类 Zod safeParse」结果映射为 `rules` 用的 `string | null`。
+ * 不依赖任何 schema 库；自行传入 `safeParse` 结果即可。
+ *
+ * @example
+ * rules: {
+ *   email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
+ * }
+ */
+export function messageFromSafeParse(
+  result:
+    | { success: true }
+    | { success: false; error: { issues: ReadonlyArray<{ message: string }> } },
+): string | null {
+  if (result.success) return null;
+  return result.error.issues[0]?.message ?? "invalid";
 }

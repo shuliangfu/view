@@ -939,12 +939,13 @@ const prefs = createStore(
 | 项目              | 说明                                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **签名**          | **`createForm(initialValues, options?)`** — 第二参可选，不传时与旧版行为兼容                                             |
-| **双向绑定**      | **`field(name)`** → **`value` + `onInput`**（文本 **`<input>`**，读 **`HTMLInputElement.value`**）                       |
+| **双向绑定**      | **`field(name, options?)`** → 默认 **`value` + `onInput`**；`{ as: "checkbox" }` 用 **`checked`**                       |
 | **规则校验**      | **`options.rules`**：每字段 **`(value, data) => string \| null`**，`null` 表示通过                                       |
 | **校验时机**      | **`validateOn`**：**`submit`**（默认）、**`change`**、**`blur`**，可传数组组合                                           |
 | **API**           | **`validate()`** 整表、**`validateField(name)`** 单字段、**`handleSubmit(onValid, onInvalid?)`**                         |
-| **未内置 schema** | 不与 Zod 等绑定；可在 **`rules`** 内调用外部解析，或继续手写 **`errors`**                                                |
-| **控件类型**      | **`checkbox` / `select` / `textarea`** 等仍需自写事件或后续扩展；**`produce` 改 data 不会自动触发 `validateOn: change`** |
+| **未内置 schema** | 不与 Zod 等绑定；可用 **`messageFromSafeParse`** 或在 **`rules`** 内手写／外调解析                                       |
+| **控件类型**      | **`field(name, { as })`**：默认文本；**`checkbox`／`select`／`textarea`／`number`**；**`produce` 改 data 不会自动触发 `validateOn: change`** |
+| **Schema 桥**     | 不内置 Zod；**`messageFromSafeParse(safeParseResult)`** 把类 Zod 结果映射为 `rules` 文案 |
 
 类型导出（与主入口一并导出）：**`CreateFormOptions`**、**`FormValidateOn`**、**`FormFieldRule`**。
 
@@ -1051,11 +1052,72 @@ const form = createForm(
 整表 **`validate()`** 会按 **`initialValues` 的键顺序**
 跑规则；依赖别字段的项若需严格顺序，可把被依赖字段写在对象字面量前（如上）。
 
-### 16.6 仍可自行扩展的方向
+### 16.6 checkbox／select／textarea／number
 
-- **`field` 按类型分支**（`checkbox` / `number` / `textarea`）。
-- 与 **Zod** 的薄封装（在 **`rules`** 里调 **`.safeParse`**）。
+第二参可选；**省略时与旧版纯文本 `value + onInput` 完全兼容**。
+
+```tsx
+import { createForm } from "jsr:@dreamer/view/form";
+
+const form = createForm(
+  { role: "user", agree: false, age: 18, note: "" },
+  {
+    rules: {
+      agree: (v) => (v ? null : "请勾选同意"),
+      role: (v) => (v ? null : "请选择角色"),
+    },
+  },
+);
+
+<select {...form.field("role", { as: "select" })}>
+  <option value="user">用户</option>
+  <option value="admin">管理员</option>
+</select>
+
+<label>
+  <input type="checkbox" {...form.field("agree", { as: "checkbox" })} />
+  同意条款
+</label>
+
+<textarea {...form.field("note", { as: "textarea" })} />
+<input type="number" {...form.field("age", { as: "number" })} />
+```
+
+- **`checkbox`**：绑定 **`checked`**，读写 boolean（同时提供 **`onInput`／`onChange`**）。
+- **`select`／`textarea`／`text`**：绑定 **`value`**；`select` 额外带 **`onChange`**。
+- **`number`**：写入时 `Number(raw)`；空串保持 `""`，便于必填规则。
+
+### 16.7 Schema 桥（可选，无 Zod 运行时依赖）
+
+在 **`rules`** 里调用任意 `safeParse`，再用 **`messageFromSafeParse`** 转成 `string | null`：
+
+```tsx
+import { createForm, messageFromSafeParse } from "jsr:@dreamer/view/form";
+// import { z } from "zod"; // 可选
+
+const form = createForm(
+  { email: "" },
+  {
+    rules: {
+      // email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
+      email: (v) =>
+        messageFromSafeParse(
+          String(v).includes("@")
+            ? { success: true as const }
+            : {
+              success: false as const,
+              error: { issues: [{ message: "邮箱格式不对" }] },
+            },
+        ),
+    },
+  },
+);
+```
+
+### 16.8 仍可自行扩展的方向
+
 - 数组字段、嵌套路径错误模型（当前 **`errors` 与顶层键对齐）。
+- 与具体 schema 库的更深封装（本库只提供 **`messageFromSafeParse`** 胶水）。
 
 ---
 

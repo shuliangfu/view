@@ -11,6 +11,14 @@
 
 ### 新增
 
+- **Form checkbox／select／schema 桥（2.x 加法）**
+  - `field(name, { as? })`：可选 `checkbox`／`select`／`textarea`／`number`；省略第二参时与旧版文本绑定兼容。
+  - 导出 `messageFromSafeParse`：把类 Zod `safeParse` 结果映射为 `rules` 文案（无 schema 运行时依赖）。
+  - 示例页 `examples/src/views/form` 覆盖 checkbox／select／schema 桥；中英 README §16 同步。
+  - 单测补 checkbox／select／`messageFromSafeParse`。**禁** JSR／npm 发版。
+
+### 新增
+
 - **体积 CI 门禁（2.x 非破坏）**
   - `scripts/size-baseline/check.mjs`＋`deno task size:check`：对照已提交
     `bundle-size-baseline.json`，主入口与关键子路径的 **minify／gzip(min)**

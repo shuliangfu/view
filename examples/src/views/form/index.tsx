@@ -1,27 +1,49 @@
 /**
  * @module views/form
- * @description 展示 @dreamer/view 高级表单集成 (createForm) 与校验。
+ * @description 展示 @dreamer/view createForm：文本／checkbox／select，以及 schema 桥模式。
  */
 import { createSignal, Show } from "@dreamer/view/csr";
-import { createForm } from "@dreamer/view/form";
+import { createForm, messageFromSafeParse } from "@dreamer/view/form";
+
+/** 无 Zod 依赖时的最小「类 safeParse」示意（生产可换成 z.string().email().safeParse） */
+function parseEmail(value: unknown):
+  | { success: true }
+  | { success: false; error: { issues: { message: string }[] } } {
+  const s = String(value ?? "").trim();
+  if (!s) {
+    return { success: false, error: { issues: [{ message: "请输入邮箱" }] } };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
+    return {
+      success: false,
+      error: { issues: [{ message: "邮箱格式不对" }] },
+    };
+  }
+  return { success: true };
+}
 
 export default function FormDemo() {
   const [submitted, setSubmitted] = createSignal(false);
 
-  // 1. 使用 createForm 管理表单状态
-  const form = createForm({
-    username: "dreamer",
-    password: "",
-    email: "",
-    bio: "致力于构建极致性能的前端框架",
-  });
-
-  const handleSubmit = (e: Event) => {
-    e.preventDefault();
-    console.log("提交数据:", form.data);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
-  };
+  const form = createForm(
+    {
+      username: "dreamer",
+      password: "",
+      email: "",
+      bio: "致力于构建极致性能的前端框架",
+      role: "user",
+      agree: false,
+    },
+    {
+      rules: {
+        username: (v) => (String(v).trim() ? null : "请输入用户名"),
+        password: (v) => (String(v).length >= 6 ? null : "密码至少 6 位"),
+        email: (v) => messageFromSafeParse(parseEmail(v)),
+        role: (v) => (v ? null : "请选择角色"),
+        agree: (v) => (v ? null : "请勾选同意"),
+      },
+    },
+  );
 
   return (
     <section className="space-y-12">
@@ -30,12 +52,16 @@ export default function FormDemo() {
           高级表单 (Form Integration)
         </h2>
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
-          演示 createForm 带来的极致简洁与响应式追踪。
+          createForm：文本、checkbox、select，以及 messageFromSafeParse schema 桥。
         </p>
       </header>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={form.handleSubmit((data) => {
+          console.log("提交数据:", data);
+          setSubmitted(true);
+          setTimeout(() => setSubmitted(false), 3000);
+        })}
         className="p-10 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-xl dark:shadow-none max-w-lg mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-700 transition-colors"
       >
         <h3 className="text-xl font-black border-b border-slate-100 dark:border-slate-700 pb-6 dark:text-slate-100">
@@ -52,6 +78,9 @@ export default function FormDemo() {
               className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               placeholder="请输入用户名..."
             />
+            <Show when={() => !!form.errors.username}>
+              <span className="text-xs text-rose-500 px-1">{() => form.errors.username}</span>
+            </Show>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -64,6 +93,9 @@ export default function FormDemo() {
               className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               placeholder="请输入密码..."
             />
+            <Show when={() => !!form.errors.password}>
+              <span className="text-xs text-rose-500 px-1">{() => form.errors.password}</span>
+            </Show>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -76,6 +108,26 @@ export default function FormDemo() {
               className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               placeholder="example@dreamer.com"
             />
+            <Show when={() => !!form.errors.email}>
+              <span className="text-xs text-rose-500 px-1">{() => form.errors.email}</span>
+            </Show>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              角色
+            </label>
+            <select
+              {...form.field("role", { as: "select" })}
+              className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            >
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+              <option value="guest">访客</option>
+            </select>
+            <Show when={() => !!form.errors.role}>
+              <span className="text-xs text-rose-500 px-1">{() => form.errors.role}</span>
+            </Show>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -83,12 +135,26 @@ export default function FormDemo() {
               个人简介
             </label>
             <textarea
-              {...form.field("bio")}
+              {...form.field("bio", { as: "textarea" })}
               rows={3}
               className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               placeholder="写点什么..."
             />
           </div>
+
+          <label className="flex items-center gap-3 px-1 cursor-pointer">
+            <input
+              type="checkbox"
+              {...form.field("agree", { as: "checkbox" })}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              我已阅读并同意服务条款
+            </span>
+          </label>
+          <Show when={() => !!form.errors.agree}>
+            <span className="text-xs text-rose-500 px-1">{() => form.errors.agree}</span>
+          </Show>
         </div>
 
         <div className="flex gap-4 pt-4">
@@ -108,7 +174,6 @@ export default function FormDemo() {
         </div>
       </form>
 
-      {/* 实时状态展示 */}
       <Show when={submitted}>
         <div className="fixed top-8 left-1/2 -translate-x-1/2 p-8 bg-emerald-600 text-white rounded-3xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500 z-100">
           <div className="flex items-center gap-4 mb-4">

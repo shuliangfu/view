@@ -969,12 +969,13 @@ Partial list/tree updates with stable references (use with **`setState`**).
 | Item                   | Notes                                                                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                  |
-| **Two-way binding**    | **`field(name)`** → **`value` + `onInput`** (text **`<input>`**, reads **`HTMLInputElement.value`**)                                                       |
+| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` uses **`checked`**                                                     |
 | **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                  |
 | **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                            |
 | **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                  |
-| **No built-in schema** | Not wired to Zod; call external parsers inside **`rules`** or manage **`errors`** manually                                                                 |
-| **Control types**      | **`checkbox` / `select` / `textarea`** still need custom handlers or future extensions; **`produce` on `data` does not auto-trigger `validateOn: change`** |
+| **No built-in schema** | Not wired to Zod; use **`messageFromSafeParse`** or call parsers inside **`rules`** / manage **`errors`**                                                  |
+| **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
+| **Schema bridge**      | No built-in Zod; **`messageFromSafeParse(safeParseResult)`** maps Zod-like results to `rules` messages |
 
 Types exported from the main entry: **`CreateFormOptions`**,
 **`FormValidateOn`**, **`FormFieldRule`**.
@@ -1085,12 +1086,72 @@ const form = createForm(
 **`validate()`** runs rules in **`initialValues` key order**; put dependencies
 earlier in the object literal if order matters.
 
-### 16.6 Possible extensions
+### 16.6 checkbox / select / textarea / number
 
-- **`field` branches by control type** (`checkbox` / `number` / `textarea`).
-- Thin **Zod** wrapper inside **`rules`** (**`.safeParse`**).
-- Array fields / nested error paths (today **`errors` aligns with top-level
-  keys).
+Second arg is optional; **omit it for legacy text `value + onInput`**.
+
+```tsx
+import { createForm } from "jsr:@dreamer/view/form";
+
+const form = createForm(
+  { role: "user", agree: false, age: 18, note: "" },
+  {
+    rules: {
+      agree: (v) => (v ? null : "Please accept"),
+      role: (v) => (v ? null : "Pick a role"),
+    },
+  },
+);
+
+<select {...form.field("role", { as: "select" })}>
+  <option value="user">User</option>
+  <option value="admin">Admin</option>
+</select>
+
+<label>
+  <input type="checkbox" {...form.field("agree", { as: "checkbox" })} />
+  I agree
+</label>
+
+<textarea {...form.field("note", { as: "textarea" })} />
+<input type="number" {...form.field("age", { as: "number" })} />
+```
+
+- **`checkbox`**: binds **`checked`** (boolean); exposes **`onInput` / `onChange`**.
+- **`select` / `textarea` / `text`**: bind **`value`**; `select` also sets **`onChange`**.
+- **`number`**: writes `Number(raw)`; empty string stays `""` for required rules.
+
+### 16.7 Schema bridge (optional; no Zod runtime dependency)
+
+Call any `safeParse` inside **`rules`**, then **`messageFromSafeParse`**:
+
+```tsx
+import { createForm, messageFromSafeParse } from "jsr:@dreamer/view/form";
+// import { z } from "zod"; // optional
+
+const form = createForm(
+  { email: "" },
+  {
+    rules: {
+      // email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
+      email: (v) =>
+        messageFromSafeParse(
+          String(v).includes("@")
+            ? { success: true as const }
+            : {
+              success: false as const,
+              error: { issues: [{ message: "Invalid email" }] },
+            },
+        ),
+    },
+  },
+);
+```
+
+### 16.8 Possible further extensions
+
+- Array fields / nested error paths (today **`errors` aligns with top-level keys).
+- Deeper schema-library wrappers (this package only ships **`messageFromSafeParse`**).
 
 ---
 

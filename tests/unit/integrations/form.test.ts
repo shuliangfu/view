@@ -1,6 +1,6 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createForm } from "../../../src/integrations/form.ts";
+import { createForm, messageFromSafeParse } from "../../../src/integrations/form.ts";
 import { waitUntilComplete } from "../dom-setup.ts";
 
 describe("integrations/form", () => {
@@ -14,7 +14,7 @@ describe("integrations/form", () => {
     expect(form.data.age).toBe(18);
 
     const usernameField = form.field("username");
-    expect(usernameField.value()).toBe("admin");
+    expect(usernameField.value!()).toBe("admin");
 
     // 模拟 Input 事件
     const input = document.createElement("input");
@@ -27,7 +27,7 @@ describe("integrations/form", () => {
     await waitUntilComplete(); // 等待异步更新
 
     expect(form.data.username).toBe("new_admin");
-    expect(usernameField.value()).toBe("new_admin");
+    expect(usernameField.value!()).toBe("new_admin");
   });
 
   it("应当能手动更新字段", async () => {
@@ -228,5 +228,49 @@ describe("integrations/form", () => {
     form.updateField("n", 1);
     await waitUntilComplete();
     expect(form.errors.n).toBe(null);
+  });
+
+  it("field as checkbox 应绑定 checked 并写入 boolean", async () => {
+    const form = createForm({ agree: false });
+    const f = form.field("agree", { as: "checkbox" });
+    expect(f.checked!()).toBe(false);
+    expect(f.value).toBeUndefined();
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = true;
+    const ev = new Event("change", { bubbles: true });
+    Object.defineProperty(ev, "target", { value: input, enumerable: true });
+    f.onChange!(ev);
+    await waitUntilComplete();
+    expect(form.data.agree).toBe(true);
+    expect(f.checked!()).toBe(true);
+  });
+
+  it("field as select 应读写 option value", async () => {
+    const form = createForm({ role: "user" });
+    const f = form.field("role", { as: "select" });
+    expect(f.value!()).toBe("user");
+
+    const select = document.createElement("select");
+    const opt = document.createElement("option");
+    opt.value = "admin";
+    select.appendChild(opt);
+    select.value = "admin";
+    const ev = new Event("change", { bubbles: true });
+    Object.defineProperty(ev, "target", { value: select, enumerable: true });
+    f.onChange!(ev);
+    await waitUntilComplete();
+    expect(form.data.role).toBe("admin");
+  });
+
+  it("messageFromSafeParse 应映射 success／issues", () => {
+    expect(messageFromSafeParse({ success: true })).toBe(null);
+    expect(
+      messageFromSafeParse({
+        success: false,
+        error: { issues: [{ message: "邮箱格式不对" }] },
+      }),
+    ).toBe("邮箱格式不对");
   });
 }, { sanitizeOps: false, sanitizeResources: false });

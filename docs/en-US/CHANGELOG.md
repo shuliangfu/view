@@ -12,6 +12,18 @@ and this project adheres to
 
 ### Added
 
+- **Form checkbox / select / schema bridge (2.x additive)**
+  - `field(name, { as? })`: optional `checkbox` / `select` / `textarea` / `number`;
+    omit second arg for legacy text bindings.
+  - Export `messageFromSafeParse` to map Zod-like `safeParse` results into `rules`
+    messages (no schema runtime dependency).
+  - Example `examples/src/views/form` covers checkbox / select / schema bridge;
+    Chinese / English README §16 updated.
+  - Unit tests for checkbox / select / `messageFromSafeParse`. **No** JSR / npm
+    publish.
+
+### Added
+
 - **Bundle-size CI gate (2.x non-breaking)**
   - `scripts/size-baseline/check.mjs` + `deno task size:check`: compare a fresh
     measure to the committed `bundle-size-baseline.json`; each entry’s
