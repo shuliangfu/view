@@ -12,7 +12,7 @@ import {
   Show,
   Switch,
   useContext,
-} from "@dreamer/view";
+} from "@dreamer/view/csr";
 
 const UserContext = createContext({ name: "Guest", role: "none" });
 

@@ -5,7 +5,7 @@
 > **路由、异步 Resource、Store、表单、Context、Suspense / ErrorBoundary**
 > 等能力。\
 > **英文对照**（章节与本文一一对应）：**[docs/en-US/README.md](../en-US/README.md)**；仓库根
-> **[README.md](../../README.md)** 为简版索引。
+> **[README.md](../../README.md)** 与英文指南同步（包首页）。
 
 [English](../en-US/README.md) | 中文
 
@@ -33,10 +33,14 @@
      **`createRenderEffect`**，用于 `className={() => ...}`、`value={() => ...}`
      等响应式属性。
 
-4. **与 `deno.json` 完全一致的子路径**\
-   本包在 JSR 上**仅**注册下文「安装」中的导出键；**不存在**
-   `/store`、`/router`、`/csr` 等额外入口——`createStore`、`createRouter` 等均在
-   **`jsr:@dreamer/view`** 主入口。
+4. **优先子路径导入（2.x）**\
+   导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
+   **`@dreamer/view/reactivity`**、**`/csr`**、**`/ssr`**、**`/router`**、
+   **`/form`**、**`/resource`**、**`/control-flow`** 等。主入口
+   **`@dreamer/view`** 仍完整 re-export，仅作**便捷全家桶**（见该小节）；P0
+   基线 minify：主入口约 **43.5 KiB**，`/reactivity` 约 **10.5 KiB**（详见
+   [P0 基线报告](./P0-基线-体积与性能.md)／
+   [EN summary](../en-US/P0-baseline-bundle-and-perf.md)）。
 
 ---
 
@@ -97,30 +101,38 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` 等**                                                               |
 | `jsr:@dreamer/view/csr`             | **CSR 聚合**：signal + mount/hydrate + 控制流 + Suspense（无 SSR/router）                                        |
 
-按需增加子路径示例：
+**推荐导入（新代码请优先用子路径）：**
 
 ```bash
 deno add jsr:@dreamer/view
-deno add jsr:@dreamer/view/ssr
-deno add jsr:@dreamer/view/reactivity
-deno add jsr:@dreamer/view/csr
-deno add jsr:@dreamer/view/router
-deno add jsr:@dreamer/view/compiler
-deno add jsr:@dreamer/view/optimize
-deno add jsr:@dreamer/view/portal
-deno add jsr:@dreamer/view/types
+# 同一包只需添加一次；子路径共享该依赖
 ```
 
 ```ts
-// 仅响应式时优先细粒度入口：
+// 仅响应式：
 import { createEffect, createSignal } from "@dreamer/view/reactivity";
-// 小型 CSR 应用：
+// 小型 CSR（signal + mount + 控制流 + Suspense）：
 import { createSignal, For, mount } from "@dreamer/view/csr";
-// 主入口仍完整兼容：
-import { createRouter, createSignal } from "@dreamer/view";
+// 需要时再引路由／表单／Resource／SSR：
+import { createRouter, Link, mountWithRouter } from "@dreamer/view/router";
+import { createForm } from "@dreamer/view/form";
+import { createResource } from "@dreamer/view/resource";
+import { renderToString } from "@dreamer/view/ssr";
 
 // 水合错位策略（加法）：
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
+```
+
+#### 便捷全家桶（`@dreamer/view`）
+
+主入口仍完整 re-export，方便一行演示或旧项目。生产请优先子路径：P0 esbuild
+基线（minify）主入口约 **43.5 KiB**，`@dreamer/view/reactivity` 约 **10.5 KiB**
+（约 4.2 倍）。详见 [P0 基线](./P0-基线-体积与性能.md)／
+[EN](../en-US/P0-baseline-bundle-and-perf.md)。
+
+```ts
+// 兼容，但会拉起便捷全家桶图：
+import { createRouter, createSignal } from "@dreamer/view";
 ```
 
 ---
@@ -152,8 +164,8 @@ import { createRouter, createSignal } from "@dreamer/view";
 DOM 节点**。`mount` 会先清空容器再插入（适合纯 CSR）。
 
 ```tsx
-import { createSignal, mount } from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+import { createSignal, mount } from "jsr:@dreamer/view/csr";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 /**
  * 计数器页面：演示 Signal 在 JSX 中与事件中的两种用法。
@@ -197,8 +209,8 @@ if (root) {
 **`insert`** 布局。
 
 ```tsx
-import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+import { createRoot, createSignal, insert } from "jsr:@dreamer/view/csr";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 function App(): VNode {
   const n = createSignal(0);
@@ -244,7 +256,7 @@ const stop = createRoot((dispose) => {
   **`insert`**。
 
 ```tsx
-import { hydrate } from "jsr:@dreamer/view";
+import { hydrate } from "jsr:@dreamer/view/csr";
 
 function RootView() {
   return <div id="app">...</div>;
@@ -283,7 +295,7 @@ hydrate(() => <RootView />, container /* , bindingMap */);
   **`for…of`** 解构，因实现了迭代器）
 
 ```tsx
-import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view";
+import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view/reactivity";
 
 const [count, setCount] = createSignal(0);
 const double = createMemo(() => count() * 2);
@@ -303,7 +315,7 @@ setCount(1);
   属性更新时序强相关的场景（框架内部也用于原生节点上的函数型 prop）。
 
 ```tsx
-import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view";
+import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view/reactivity";
 
 const id = createSignal(0);
 
@@ -319,7 +331,7 @@ createEffect(() => {
 ### 7.3 `createMemo(fn)` 与别名 `memo`
 
 ```tsx
-import { createMemo, createSignal, memo } from "jsr:@dreamer/view";
+import { createMemo, createSignal, memo } from "jsr:@dreamer/view/reactivity";
 
 const n = createSignal(2);
 const squared = createMemo(() => n() * n());
@@ -331,7 +343,7 @@ const same = memo(() => n() + 1); // 与 createMemo 等价
 在 **`fn`** 执行期间合并通知，减少多余 Effect 刷新（与调度器配合）。
 
 ```tsx
-import { batch, createSignal } from "jsr:@dreamer/view";
+import { batch, createSignal } from "jsr:@dreamer/view/reactivity";
 
 const a = createSignal(0);
 const b = createSignal(0);
@@ -358,7 +370,7 @@ batch(() => {
 用于延迟提交、过渡更新（与 **`createEffect`** 调度配合）。
 
 ```tsx
-import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view";
+import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
@@ -387,7 +399,7 @@ import {
   createRoot,
   getOwner,
   runWithOwner,
-} from "jsr:@dreamer/view";
+} from "jsr:@dreamer/view/reactivity";
 
 createRoot((dispose) => {
   const owner = getOwner();
@@ -423,12 +435,12 @@ createRoot((dispose) => {
 
 ---
 
-## 十、控制流组件（均从主入口导入）
+## 十、控制流组件（`/csr` 或 `/control-flow`）
 
 ### 10.1 `Show`
 
 ```tsx
-import { createSignal, Show } from "jsr:@dreamer/view";
+import { createSignal, Show } from "jsr:@dreamer/view/csr";
 
 const user = createSignal<{ name: string } | null>(null);
 
@@ -451,7 +463,7 @@ function Greeting() {
 ### 10.2 `For`
 
 ```tsx
-import { createSignal, For } from "jsr:@dreamer/view";
+import { createSignal, For } from "jsr:@dreamer/view/csr";
 
 const items = createSignal([
   { id: "1", label: "A" },
@@ -488,7 +500,7 @@ function List() {
 ### 10.4 `Switch` / `Match`
 
 ```tsx
-import { createSignal, Match, Switch } from "jsr:@dreamer/view";
+import { createSignal, Match, Switch } from "jsr:@dreamer/view/csr";
 
 const status = createSignal<"idle" | "loading" | "error">("idle");
 
@@ -512,7 +524,7 @@ function StatusView() {
 ### 10.5 `Dynamic`
 
 ```tsx
-import { createSignal, Dynamic } from "jsr:@dreamer/view";
+import { createSignal, Dynamic } from "jsr:@dreamer/view/csr";
 
 const Tag = createSignal<"h1" | "h2">("h1");
 
@@ -534,7 +546,7 @@ function Heading(props: { text: string }) {
 ### 10.6 `lazy`
 
 ```tsx
-import { lazy, Suspense } from "jsr:@dreamer/view";
+import { lazy, Suspense } from "jsr:@dreamer/view/csr";
 
 const Heavy = lazy(() => import("./Heavy.tsx"));
 
@@ -554,7 +566,8 @@ function Page() {
 ### 11.1 基本用法
 
 ```tsx
-import { createResource, ErrorBoundary, Suspense } from "jsr:@dreamer/view";
+import { ErrorBoundary, Suspense } from "jsr:@dreamer/view/csr";
+import { createResource } from "jsr:@dreamer/view/resource";
 
 /**
  * 在模块或父级作用域创建 Resource，避免每次父组件执行都 new 一份。
@@ -591,7 +604,8 @@ export function PageWithSuspense() {
 ### 11.2 带依赖的 `createResource(source, fetcher)`
 
 ```tsx
-import { createResource, createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
+import { createResource } from "jsr:@dreamer/view/resource";
 
 const userId = createSignal(1);
 
@@ -619,7 +633,7 @@ const user = createResource(
 ## 十二、`ErrorBoundary`
 
 ```tsx
-import { createSignal, ErrorBoundary } from "jsr:@dreamer/view";
+import { createSignal, ErrorBoundary } from "jsr:@dreamer/view/csr";
 
 const key = createSignal(0);
 
@@ -663,7 +677,7 @@ export function Guarded() {
 ### 13.1 声明式 `Portal`
 
 ```tsx
-import { createSignal, Portal } from "jsr:@dreamer/view";
+import { createSignal, Portal } from "jsr:@dreamer/view/csr";
 
 const open = createSignal(false);
 
@@ -683,11 +697,11 @@ export function ModalDemo() {
 
 - **`mount`** 可选，默认 **`document.body`**。
 
-### 13.2 命令式 `createPortal`（`jsr:@dreamer/view/portal` 或主入口）
+### 13.2 命令式 `createPortal`（`jsr:@dreamer/view/portal`）
 
 ```tsx
 import { createPortal } from "jsr:@dreamer/view/portal";
-import { createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
 
 const box = document.getElementById("modal-root")!;
 const visible = createSignal(true);
@@ -705,7 +719,7 @@ const root = createPortal(
 ## 十四、`createContext` / `useContext`
 
 ```tsx
-import { createContext, useContext } from "jsr:@dreamer/view";
+import { createContext, useContext } from "jsr:@dreamer/view/reactivity";
 
 const ThemeCtx = createContext<"light" | "dark">("light");
 
@@ -762,7 +776,7 @@ export function App() {
 ### 15.1 对象根：代理 + `setState`
 
 ```tsx
-import { createEffect, createStore, produce } from "jsr:@dreamer/view";
+import { createEffect, createStore, produce } from "jsr:@dreamer/view/reactivity";
 
 const store = createStore({
   user: { name: "Ada", age: 36 },
@@ -785,7 +799,7 @@ store.setState(
 ### 15.2 元组解构：`[getStore, setState]`
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 const [getStore, setState] = createStore({ count: 0 });
 
@@ -810,7 +824,7 @@ console.log(getStore().count);
 对齐的「写全」示例**（便于对照类型与默认值）：
 
 ```tsx
-import { createStore } from "@dreamer/view";
+import { createStore } from "@dreamer/view/reactivity";
 
 export const USER_STORE_PERSIST_KEY = "view-examples-user";
 
@@ -842,7 +856,7 @@ export const userStore = createStore(
 `deserialize` 走默认**）：
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 export const PERSIST_KEY = "my-app-user";
 
@@ -864,7 +878,7 @@ export const userStore = createStore(
 **写法 B：第二参数为 options 对象（与具名三参数等价能力，按项目风格二选一）**
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 const prefs = createStore(
   { theme: "light" as const },
@@ -900,7 +914,7 @@ const prefs = createStore(
 ### 16.2 无规则（最简，与旧文档一致）
 
 ```tsx
-import { createForm } from "jsr:@dreamer/view";
+import { createForm } from "jsr:@dreamer/view/form";
 
 export function LoginForm() {
   const form = createForm({ username: "", password: "" });
@@ -931,7 +945,7 @@ export function LoginForm() {
 ### 16.3 推荐：`rules` + 默认仅提交时校验
 
 ```tsx
-import { createForm } from "jsr:@dreamer/view";
+import { createForm } from "jsr:@dreamer/view/form";
 
 export function LoginForm() {
   const form = createForm(
@@ -1018,8 +1032,8 @@ import {
   Link,
   mountWithRouter,
   useRouter,
-} from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+} from "jsr:@dreamer/view/router";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 function Home(): VNode {
   return (
@@ -1071,7 +1085,7 @@ mountWithRouter("#root", router);
 **layout 嵌套** 与 **懒加载**）。
 
 ```tsx
-import { useRouter } from "jsr:@dreamer/view";
+import { useRouter } from "jsr:@dreamer/view/router";
 
 export function Shell() {
   const router = useRouter();
@@ -1163,7 +1177,7 @@ const code = optimize(bundleSource);
 Effect**。
 
 ```tsx
-import { createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
 
 function ModalHost() {
   const open = createSignal(false);

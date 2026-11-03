@@ -11,7 +11,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
-} from "@dreamer/view";
+} from "@dreamer/view/reactivity";
 
 export default function SignalDemo() {
   // 1. 创建基础信号

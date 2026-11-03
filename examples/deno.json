@@ -18,7 +18,14 @@
     "@dreamer/view/optimize": "../src/optimize.ts",
     "@dreamer/view/ssr": "../src/runtime/server.ts",
     "@dreamer/plugins": "jsr:@dreamer/plugins@^1.1.0",
-    "tailwindcss": "npm:tailwindcss@4.2.0"
+    "tailwindcss": "npm:tailwindcss@4.2.0",
+    "@dreamer/view/reactivity": "../src/reactivity/mod.ts",
+    "@dreamer/view/scheduler": "../src/scheduler/mod.ts",
+    "@dreamer/view/router": "../src/router.ts",
+    "@dreamer/view/form": "../src/form.ts",
+    "@dreamer/view/resource": "../src/resource.ts",
+    "@dreamer/view/control-flow": "../src/control-flow.ts",
+    "@dreamer/view/csr": "../src/csr.ts"
   },
   "lint": {
     "include": [

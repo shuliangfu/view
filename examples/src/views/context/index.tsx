@@ -2,7 +2,7 @@
  * @module views/context
  * @description 展示上下文提供者/消费者模式。
  */
-import { createContext, createSignal, useContext } from "@dreamer/view";
+import { createContext, createSignal, useContext } from "@dreamer/view/reactivity";
 
 // 1. 创建 Context 实例
 const UserContext = createContext({ name: "Guest", role: "none" });

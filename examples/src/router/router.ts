@@ -2,9 +2,9 @@
  * @module router/router
  * @description 示例路由辅助：再导出 `useRouter`；全局 `beforeEach` 与拦截演示用的 storage 键放在此文件，供 `main.tsx` 与 `/route-guard` 页共用。路由器实例仅在 `main.tsx` 中 `createRouter` 一次。
  */
-import type { RouteLocation } from "@dreamer/view";
+import type { RouteLocation } from "@dreamer/view/router";
 
-export { type Router, useRouter } from "@dreamer/view";
+export { type Router, useRouter } from "@dreamer/view/router";
 
 /** sessionStorage 键：为 "1" 时拦截所有前往 `/form` 的导航（演示路由卫士） */
 export const GUARD_BLOCK_FORM_KEY = "view-examples:guard:block-form";

@@ -3,13 +3,8 @@
  * @description 展示 @dreamer/view 异步资源加载与数据获取。
  */
 
-import {
-  createResource,
-  createSignal,
-  ErrorBoundary,
-  type Resource,
-  Suspense,
-} from "@dreamer/view";
+import { createSignal, ErrorBoundary, Suspense } from "@dreamer/view/csr";
+import { createResource, type Resource } from "@dreamer/view/resource";
 
 /**
  * 模拟一个异步数据获取 API。

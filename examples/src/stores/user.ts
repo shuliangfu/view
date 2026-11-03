@@ -2,7 +2,7 @@
  * @module stores/user
  * @description 用户持久化状态：仅数据 + persist。改状态请用 `hooks/user.ts`。
  */
-import { createStore } from "@dreamer/view";
+import { createStore } from "@dreamer/view/reactivity";
 
 /** 与 Store 示例页「清除持久化」共用，勿与其它示例冲突 */
 export const USER_STORE_PERSIST_KEY = "view-examples-user";

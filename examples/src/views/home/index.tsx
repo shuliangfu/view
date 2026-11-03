@@ -3,7 +3,8 @@
  * 支持深色模式 (Dark Mode)。
  */
 
-import { createEffect, Link } from "@dreamer/view";
+import { createEffect } from "@dreamer/view/reactivity";
+import { Link } from "@dreamer/view/router";
 import "../../assets/index.css";
 
 export const metadata = {

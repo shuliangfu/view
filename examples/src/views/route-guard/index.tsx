@@ -2,7 +2,8 @@
  * @module views/route-guard
  * @description 路由卫士演示：开关拦截 `/form`，控制台可观察 beforeEach 打印。
  */
-import { createSignal, Link, useRouter } from "@dreamer/view";
+import { createSignal } from "@dreamer/view/reactivity";
+import { Link, useRouter } from "@dreamer/view/router";
 import { GUARD_BLOCK_FORM_KEY } from "../../router/router.ts";
 
 export default function RouteGuardDemo() {

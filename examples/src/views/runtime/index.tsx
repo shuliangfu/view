@@ -2,7 +2,7 @@
  * @module views/runtime
  * @description 展示 @dreamer/view 核心运行时 API：SSR、插入与动态 DOM。
  */
-import { createSignal } from "@dreamer/view";
+import { createSignal } from "@dreamer/view/reactivity";
 /** 客户端 bundle 不经过 `@dreamer/view/ssr`，避免打入 happy-dom / `node:perf_hooks` */
 import { renderToString } from "@dreamer/view/ssr";
 

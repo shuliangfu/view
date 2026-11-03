@@ -2,7 +2,7 @@
  * @module views/store
  * @description 展示 @dreamer/view 深度状态管理：produce、reconcile；持久化见 `stores/user.ts`，写操作见 `hooks/user.ts`。
  */
-import { createStore, For, produce } from "@dreamer/view";
+import { createStore, For, produce } from "@dreamer/view/csr";
 import {
   incrementLoginCount,
   loginUser,

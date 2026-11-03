@@ -3,7 +3,7 @@
  * @description 演示：子目录 _layout 设置 inheritLayout = false 后脱离根布局与上层 layout-nested/_layout
  */
 
-import { Link } from "@dreamer/view";
+import { Link } from "@dreamer/view/router";
 
 /** 路由元信息：仍可在根 _layout 的导航源里出现（由 routes 扫描），但本页渲染时不套根 layout */
 export const metadata = {

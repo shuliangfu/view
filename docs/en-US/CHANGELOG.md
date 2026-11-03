@@ -10,6 +10,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Documentation
+
+- **Docs-first subpath imports (2.x non-breaking)**
+  - Chinese / English README getting-started examples now prefer
+    `@dreamer/view/reactivity` / `/csr` / `/ssr` / `/router` / `/form` /
+    `/resource` (and peers); the main entry is documented only as a
+    **convenience barrel** with P0 size cost (minify ~43.5 KiB main vs
+    ~10.5 KiB `/reactivity`).
+  - Corrected outdated architecture note that claimed `/router` / `/csr` did
+    not exist; synced `docs/en-US/README.md`.
+  - In-repo `examples/` and `view-cli init` scaffolds switched to subpath
+    imports; **no** runtime / export breaking changes.
+
 ### Added
 
 - **P0 engineering baseline (bundle size / perf, non-breaking)**

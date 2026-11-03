@@ -3,7 +3,7 @@
  * 全面转向自动化 jsx-runtime 与统一导入路径。
  */
 
-import { createRouter, mountWithRouter } from "@dreamer/view";
+import { createRouter, mountWithRouter } from "@dreamer/view/router";
 import { routerBeforeEach } from "./router/router.ts";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 import "./assets/global.css";

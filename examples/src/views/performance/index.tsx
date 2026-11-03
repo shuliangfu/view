@@ -3,7 +3,8 @@
  * @description 展示 @dreamer/view 极致性能与高级表单集成。
  */
 
-import { createForm, createSelector, createSignal, For } from "@dreamer/view";
+import { createSelector, createSignal, For } from "@dreamer/view/csr";
+import { createForm } from "@dreamer/view/form";
 
 export const metadata = {
   title: "Performance",

@@ -3,7 +3,7 @@
  * @description 多层 _layout 嵌套演示页（根 layout → layout-nested → inner → 本页）
  */
 
-import { Link, useRouter } from "@dreamer/view";
+import { Link, useRouter } from "@dreamer/view/router";
 
 /** 路由元信息：归入「示例」导航分组 */
 export const metadata = {

@@ -817,7 +817,7 @@ body {
   const mainTsx = `/**
  * ${$tr("init.template.mainComment")}
  */
-import { createRouter, mountWithRouter } from "@dreamer/view";
+import { createRouter, mountWithRouter } from "@dreamer/view/router";
 import { notFoundRoute, routes } from "./router/routers.tsx";
 import "./assets/global.css";
 
@@ -865,7 +865,7 @@ export function App() {
  * ${$tr("init.template.layoutComment")}
  * 顶栏与 examples 对齐；主题前为「首页 / 关于」Link；主题图标为 SVG（深色太阳、浅色月亮）。
  */
-import { Link, useRouter } from "@dreamer/view";
+import { Link, useRouter } from "@dreamer/view/router";
 import { theme, toggleTheme } from "../stores/theme.ts";
 
 /** 顶栏导航链接样式（当前路由高亮） */
@@ -1128,7 +1128,7 @@ const counterIncClass =
  * ${$tr("init.template.homeComment")}
  * Signal 在 JSX 中勿写 {count()}（会静态化）；须 {() => String(count())}，与 examples/views/signal 一致。
  */
-import { createSignal } from "@dreamer/view";
+import { createSignal } from "@dreamer/view/reactivity";
 
 export const metadata = {
   title: ${JSON.stringify($tr("init.template.homeNavTitle"))},
@@ -1196,7 +1196,7 @@ ${homeCounterRow}
  * ${$tr("init.template.aboutComment")}
  * 返回首页使用 Link，与顶栏一致走客户端路由；样式与首页「前往关于」主按钮统一。
  */
-import { Link } from "@dreamer/view";
+import { Link } from "@dreamer/view/router";
 
 /** 与首页 section 卡片样式一致 */
 const cardSectionClass =
@@ -1252,7 +1252,7 @@ export default function About() {
  * ${$tr("init.template.routerComment")}
  * 路由器仅在 main.tsx 中 createRouter 一次；此处再导出 useRouter，与 @dreamer/view 全局单例一致，切勿在此再次 createRouter。
  */
-export { type Router, useRouter } from "@dreamer/view";
+export { type Router, useRouter } from "@dreamer/view/router";
 `;
   await writeTextFile(join(targetDir, "src", "router", "router.ts"), routerTs);
   addFile("src/router/router.ts");
@@ -1265,7 +1265,7 @@ export { type Router, useRouter } from "@dreamer/view";
  * ${$tr("init.template.routersComment1")}
  * ${$tr("init.template.routersComment2")}
  */
-import type { RouteConfig } from "@dreamer/view";
+import type { RouteConfig } from "@dreamer/view/router";
 
 export const routes: RouteConfig[] = [
   { path: "/", component: () => import("../views/home.tsx"), metadata: { title: ${
@@ -1292,7 +1292,7 @@ export const notFoundRoute: RouteConfig = {
   // ---------------------------------------------------------------------------
   // src/stores/theme.ts
   // ---------------------------------------------------------------------------
-  const themeTs = `import { createStore } from "@dreamer/view";
+  const themeTs = `import { createStore } from "@dreamer/view/reactivity";
 
 export type Theme = "light" | "dark";
 

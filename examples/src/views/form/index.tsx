@@ -2,7 +2,8 @@
  * @module views/form
  * @description 展示 @dreamer/view 高级表单集成 (createForm) 与校验。
  */
-import { createForm, createSignal, Show } from "@dreamer/view";
+import { createSignal, Show } from "@dreamer/view/csr";
+import { createForm } from "@dreamer/view/form";
 
 export default function FormDemo() {
   const [submitted, setSubmitted] = createSignal(false);

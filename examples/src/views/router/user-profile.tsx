@@ -2,7 +2,7 @@
  * @module views/router/user-profile
  * @description 动态路由段演示：`/router/user/:userId` 由 `params.userId` 注入。
  */
-import { Link, useRouter } from "@dreamer/view";
+import { Link, useRouter } from "@dreamer/view/router";
 
 /**
  * 覆盖扫描器由文件名推断的 path，使示例中 `Link href="/router/user/alice"` 等与路由表一致

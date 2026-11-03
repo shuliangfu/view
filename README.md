@@ -5,13 +5,13 @@
 > Supports **CSR, SSR, streaming output, and hydration**; includes **router,
 > async Resource, Store, forms, Context, Suspense / ErrorBoundary**, and more.
 > **Chinese mirror** (same section structure):
-> **[docs/zh-CN/README.md](../zh-CN/README.md)**; repo root
-> **[README.md](../../README.md)** is a short index.
+> **[docs/zh-CN/README.md](./docs/zh-CN/README.md)**; English copy also at
+> **[docs/en-US/README.md](./docs/en-US/README.md)**.
 
-[中文](../zh-CN/README.md) | English
+[中文](./docs/zh-CN/README.md) | English
 
 [![JSR](https://jsr.io/badges/@dreamer/view)](https://jsr.io/@dreamer/view)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-359%20passed%20Deno%20unit%2Bintegration-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
@@ -33,10 +33,14 @@
      **`createRenderEffect`** (e.g. `className={() => ...}`,
      `value={() => ...}`).
 
-4. **Subpaths match `deno.json` exactly** On JSR this package registers **only**
-   the export keys listed under **Installation** below; there are **no** extra
-   entry points such as `/store`, `/router`, or `/csr` — `createStore`,
-   `createRouter`, etc. live on the **`jsr:@dreamer/view`** main entry.
+4. **Prefer subpath imports (2.x)** Export keys match `deno.json` / the table in
+   **Installation**. For app code, default to **`@dreamer/view/reactivity`**,
+   **`/csr`**, **`/ssr`**, **`/router`**, **`/form`**, **`/resource`**,
+   **`/control-flow`**, etc. The main **`@dreamer/view`** barrel remains a
+   compatible convenience re-export (see **Convenience barrel**); P0 baseline
+   minify size is ~**43.5 KiB** for the main entry vs ~**10.5 KiB** for
+   `/reactivity` ([P0 report](./docs/zh-CN/P0-基线-体积与性能.md) /
+   [EN summary](./docs/en-US/P0-baseline-bundle-and-perf.md)).
 
 ---
 
@@ -108,30 +112,39 @@ npx jsr add @dreamer/view
 | `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                             |
 | `jsr:@dreamer/view/csr`             | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                |
 
-Example optional subpaths:
+**Recommended imports (prefer these in new code):**
 
 ```bash
 deno add jsr:@dreamer/view
-deno add jsr:@dreamer/view/ssr
-deno add jsr:@dreamer/view/reactivity
-deno add jsr:@dreamer/view/csr
-deno add jsr:@dreamer/view/router
-deno add jsr:@dreamer/view/compiler
-deno add jsr:@dreamer/view/optimize
-deno add jsr:@dreamer/view/portal
-deno add jsr:@dreamer/view/types
+# then import from subpaths — add the same package once; subpaths share it
 ```
 
 ```ts
-// Prefer fine-grained imports when you only need reactivity:
+// Reactivity only:
 import { createEffect, createSignal } from "@dreamer/view/reactivity";
-// Small CSR apps:
+// Small CSR apps (signal + mount + control-flow + Suspense):
 import { createSignal, For, mount } from "@dreamer/view/csr";
-// Main barrel remains fully compatible:
-import { createRouter, createSignal } from "@dreamer/view";
+// Router / form / resource / SSR when you need them:
+import { createRouter, Link, mountWithRouter } from "@dreamer/view/router";
+import { createForm } from "@dreamer/view/form";
+import { createResource } from "@dreamer/view/resource";
+import { renderToString } from "@dreamer/view/ssr";
 
 // Hydration mismatch strategies (additive):
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
+```
+
+#### Convenience barrel (`@dreamer/view`)
+
+The main entry still re-exports the full public surface for one-line demos and
+older apps. Prefer subpaths in production: P0 esbuild baseline (minify) is about
+**43.5 KiB** for `@dreamer/view` vs **10.5 KiB** for `@dreamer/view/reactivity`
+(~4.2×). See [P0 baseline](./docs/zh-CN/P0-基线-体积与性能.md) /
+[EN](./docs/en-US/P0-baseline-bundle-and-perf.md).
+
+```ts
+// Compatible, but pulls the convenience graph:
+import { createRouter, createSignal } from "@dreamer/view";
 ```
 
 ---
@@ -165,8 +178,8 @@ the second is the **DOM node** to mount into. `mount` clears the container first
 (good for pure CSR).
 
 ```tsx
-import { createSignal, mount } from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+import { createSignal, mount } from "jsr:@dreamer/view/csr";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 /**
  * Counter demo: Signal in JSX vs in events.
@@ -212,8 +225,8 @@ explicit **`dispose()`** to tear down a subtree, or you pass the **parent node**
 and **`insert`** yourself.
 
 ```tsx
-import { createRoot, createSignal, insert } from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+import { createRoot, createSignal, insert } from "jsr:@dreamer/view/csr";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 function App(): VNode {
   const n = createSignal(0);
@@ -261,7 +274,7 @@ const stop = createRoot((dispose) => {
   then **`insert`**.
 
 ```tsx
-import { hydrate } from "jsr:@dreamer/view";
+import { hydrate } from "jsr:@dreamer/view/csr";
 
 function RootView() {
   return <div id="app">...</div>;
@@ -300,7 +313,7 @@ The **`Signal<T>`** return supports:
   `set(1)` (also iterable for `for…of`)
 
 ```tsx
-import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view";
+import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view/reactivity";
 
 const [count, setCount] = createSignal(0);
 const double = createMemo(() => count() * 2);
@@ -320,7 +333,7 @@ setCount(1);
   (also used internally for function props on native nodes).
 
 ```tsx
-import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view";
+import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view/reactivity";
 
 const id = createSignal(0);
 
@@ -336,7 +349,7 @@ createEffect(() => {
 ### 7.3 `createMemo(fn)` and alias `memo`
 
 ```tsx
-import { createMemo, createSignal, memo } from "jsr:@dreamer/view";
+import { createMemo, createSignal, memo } from "jsr:@dreamer/view/reactivity";
 
 const n = createSignal(2);
 const squared = createMemo(() => n() * n());
@@ -349,7 +362,7 @@ While **`fn`** runs, notifications are merged to reduce redundant effect flushes
 (works with the scheduler).
 
 ```tsx
-import { batch, createSignal } from "jsr:@dreamer/view";
+import { batch, createSignal } from "jsr:@dreamer/view/reactivity";
 
 const a = createSignal(0);
 const b = createSignal(0);
@@ -378,7 +391,7 @@ Deferred commits and transition updates (integrate with **`createEffect`**
 scheduling).
 
 ```tsx
-import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view";
+import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
@@ -406,7 +419,7 @@ import {
   createRoot,
   getOwner,
   runWithOwner,
-} from "jsr:@dreamer/view";
+} from "jsr:@dreamer/view/reactivity";
 
 createRoot((dispose) => {
   const owner = getOwner();
@@ -444,12 +457,12 @@ createRoot((dispose) => {
 
 ---
 
-## 10. Control-flow components (main entry)
+## 10. Control-flow components (`/csr` or `/control-flow`)
 
 ### 10.1 `Show`
 
 ```tsx
-import { createSignal, Show } from "jsr:@dreamer/view";
+import { createSignal, Show } from "jsr:@dreamer/view/csr";
 
 const user = createSignal<{ name: string } | null>(null);
 
@@ -472,7 +485,7 @@ function Greeting() {
 ### 10.2 `For`
 
 ```tsx
-import { createSignal, For } from "jsr:@dreamer/view";
+import { createSignal, For } from "jsr:@dreamer/view/csr";
 
 const items = createSignal([
   { id: "1", label: "A" },
@@ -510,7 +523,7 @@ still **`() => array`**; **`children(item, index)`** matches **`For`**; **no**
 ### 10.4 `Switch` / `Match`
 
 ```tsx
-import { createSignal, Match, Switch } from "jsr:@dreamer/view";
+import { createSignal, Match, Switch } from "jsr:@dreamer/view/csr";
 
 const status = createSignal<"idle" | "loading" | "error">("idle");
 
@@ -534,7 +547,7 @@ function StatusView() {
 ### 10.5 `Dynamic`
 
 ```tsx
-import { createSignal, Dynamic } from "jsr:@dreamer/view";
+import { createSignal, Dynamic } from "jsr:@dreamer/view/csr";
 
 const Tag = createSignal<"h1" | "h2">("h1");
 
@@ -557,7 +570,7 @@ function Heading(props: { text: string }) {
 ### 10.6 `lazy`
 
 ```tsx
-import { lazy, Suspense } from "jsr:@dreamer/view";
+import { lazy, Suspense } from "jsr:@dreamer/view/csr";
 
 const Heavy = lazy(() => import("./Heavy.tsx"));
 
@@ -577,7 +590,8 @@ function Page() {
 ### 11.1 Basic usage
 
 ```tsx
-import { createResource, ErrorBoundary, Suspense } from "jsr:@dreamer/view";
+import { ErrorBoundary, Suspense } from "jsr:@dreamer/view/csr";
+import { createResource } from "jsr:@dreamer/view/resource";
 
 /**
  * Create the resource in module or parent scope so it is not recreated every render.
@@ -614,7 +628,8 @@ export function PageWithSuspense() {
 ### 11.2 `createResource(source, fetcher)` with dependencies
 
 ```tsx
-import { createResource, createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
+import { createResource } from "jsr:@dreamer/view/resource";
 
 const userId = createSignal(1);
 
@@ -643,7 +658,7 @@ reset.
 ## 12. `ErrorBoundary`
 
 ```tsx
-import { createSignal, ErrorBoundary } from "jsr:@dreamer/view";
+import { createSignal, ErrorBoundary } from "jsr:@dreamer/view/csr";
 
 const key = createSignal(0);
 
@@ -687,7 +702,7 @@ export function Guarded() {
 ### 13.1 Declarative `Portal`
 
 ```tsx
-import { createSignal, Portal } from "jsr:@dreamer/view";
+import { createSignal, Portal } from "jsr:@dreamer/view/csr";
 
 const open = createSignal(false);
 
@@ -707,11 +722,11 @@ export function ModalDemo() {
 
 - **`mount`** is optional; default **`document.body`**.
 
-### 13.2 Imperative `createPortal` (`jsr:@dreamer/view/portal` or main entry)
+### 13.2 Imperative `createPortal` (`jsr:@dreamer/view/portal`)
 
 ```tsx
 import { createPortal } from "jsr:@dreamer/view/portal";
-import { createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
 
 const box = document.getElementById("modal-root")!;
 const visible = createSignal(true);
@@ -729,7 +744,7 @@ const root = createPortal(
 ## 14. `createContext` / `useContext`
 
 ```tsx
-import { createContext, useContext } from "jsr:@dreamer/view";
+import { createContext, useContext } from "jsr:@dreamer/view/reactivity";
 
 const ThemeCtx = createContext<"light" | "dark">("light");
 
@@ -787,7 +802,7 @@ Sections **15.1 / 15.2** expand proxy vs tuple examples.
 ### 15.1 Object root: proxy + `setState`
 
 ```tsx
-import { createEffect, createStore, produce } from "jsr:@dreamer/view";
+import { createEffect, createStore, produce } from "jsr:@dreamer/view/reactivity";
 
 const store = createStore({
   user: { name: "Ada", age: 36 },
@@ -810,7 +825,7 @@ store.setState(
 ### 15.2 Tuple: `[getStore, setState]`
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 const [getStore, setState] = createStore({ count: 0 });
 
@@ -834,7 +849,7 @@ See **`PersistOptions<T>`** in **`reactivity/store.ts`**:
 **Full example aligned with `view/examples/src/stores/user.ts`:**
 
 ```tsx
-import { createStore } from "@dreamer/view";
+import { createStore } from "@dreamer/view/reactivity";
 
 export const USER_STORE_PERSIST_KEY = "view-examples-user";
 
@@ -865,7 +880,7 @@ export const userStore = createStore(
 **Minimal** (framework defaults: only **`key`**, rest default):
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 export const PERSIST_KEY = "my-app-user";
 
@@ -888,7 +903,7 @@ changing **`serialize`** unless you need a custom format.
 style)**
 
 ```tsx
-import { createStore } from "jsr:@dreamer/view";
+import { createStore } from "jsr:@dreamer/view/reactivity";
 
 const prefs = createStore(
   { theme: "light" as const },
@@ -925,7 +940,7 @@ Types exported from the main entry: **`CreateFormOptions`**,
 ### 16.2 No rules (minimal, same as older docs)
 
 ```tsx
-import { createForm } from "jsr:@dreamer/view";
+import { createForm } from "jsr:@dreamer/view/form";
 
 export function LoginForm() {
   const form = createForm({ username: "", password: "" });
@@ -956,7 +971,7 @@ export function LoginForm() {
 ### 16.3 Recommended: `rules` + validate on submit by default
 
 ```tsx
-import { createForm } from "jsr:@dreamer/view";
+import { createForm } from "jsr:@dreamer/view/form";
 
 export function LoginForm() {
   const form = createForm(
@@ -1047,8 +1062,8 @@ import {
   Link,
   mountWithRouter,
   useRouter,
-} from "jsr:@dreamer/view";
-import type { VNode } from "jsr:@dreamer/view";
+} from "jsr:@dreamer/view/router";
+import type { VNode } from "jsr:@dreamer/view/types";
 
 function Home(): VNode {
   return (
@@ -1100,7 +1115,7 @@ Common pattern: root shell calls **`router.render()`** for the current route
 (nested **layouts**, lazy routes, etc.).
 
 ```tsx
-import { useRouter } from "jsr:@dreamer/view";
+import { useRouter } from "jsr:@dreamer/view/router";
 
 export function Shell() {
   const router = useRouter();
@@ -1192,7 +1207,7 @@ returned JSX, the **parent `insert` effect** may subscribe to child state and
 subtree runs in an **inner effect**.
 
 ```tsx
-import { createSignal } from "jsr:@dreamer/view";
+import { createSignal } from "jsr:@dreamer/view/reactivity";
 
 function ModalHost() {
   const open = createSignal(false);

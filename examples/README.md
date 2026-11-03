@@ -44,3 +44,7 @@ serve）。切换页面使用顶部导航或首页链接；在任意路由下刷
 示例通过 `deno.json` 的 `imports` 将 `@dreamer/view` 等指向上级
 `../src`，因此需在 **view 仓库内** 运行；发布到 JSR 后，用户可改为
 `jsr:@dreamer/view` 等。
+
+**导入约定（与主文档一致）：** 示例源码优先
+`@dreamer/view/reactivity`／`/csr`／`/router`／`/form`／`/resource`／`/ssr`
+等子路径，避免默认走主入口全家桶。

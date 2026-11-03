@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 文档
+
+- **强推子路径导入（2.x 非破坏）**
+  - 中英 README／入门默认示例改为优先
+    `@dreamer/view/reactivity`／`/csr`／`/ssr`／`/router`／`/form`／`/resource` 等；
+    主入口仅保留「便捷全家桶」小节，并引用 P0 体积数字（minify 主入口 ~43.5 KiB vs
+    `/reactivity` ~10.5 KiB）。
+  - 修正架构说明中「不存在 /router／/csr」的过时表述；同步 `docs/en-US/README.md`。
+  - 仓库 `examples/` 与 `view-cli init` 脚手架导入改为子路径；**无**运行时／导出破坏。
+
 ### 新增
 
 - **P0 工程基线（体积／性能，非破坏）**

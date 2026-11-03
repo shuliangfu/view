@@ -2,7 +2,7 @@
  * @module stores/theme
  * @description 主题值 + 持久化；切换逻辑见 `hooks/theme.ts`。
  */
-import { createStore } from "@dreamer/view";
+import { createStore } from "@dreamer/view/reactivity";
 
 export type Theme = "light" | "dark";
 

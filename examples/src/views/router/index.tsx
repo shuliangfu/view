@@ -2,7 +2,7 @@
  * @module views/router
  * @description 展示 @dreamer/view 路由：Link、navigate/replace、动态段、query、全局 beforeEach 与 /route-guard 演示入口。
  */
-import { Link, useRouter } from "@dreamer/view";
+import { Link, useRouter } from "@dreamer/view/router";
 
 export default function RouterDemo() {
   const router = useRouter();

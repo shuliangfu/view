@@ -7,7 +7,7 @@
  * default 即根布局，供 RoutePage 的 layouts 链调用。
  */
 
-import { Link, useRouter } from "@dreamer/view";
+import { Link, useRouter } from "@dreamer/view/router";
 import { routes } from "../router/routers.tsx";
 import { theme, toggleTheme } from "../hooks/theme.ts";
 
