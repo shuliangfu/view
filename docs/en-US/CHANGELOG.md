@@ -10,6 +10,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **Resource optional AbortSignal + inflight dedupe docs (2.x additive)**
+  - Each `createResource` load passes `{ signal: AbortSignal }` as the fetcher’s
+    second argument; source changes / `refetch` abort the previous load; optional
+    third-arg `{ signal }` cancels on outer lifecycle (e.g. route leave). Omitting
+    / ignoring `signal` keeps today’s default; abort does **not** set `error`.
+  - Export `createInflightDedupe()` (share one in-flight Promise per key; **not**
+    an HTTP cache).
+  - Chinese / English README §11 updated; `resource-abort` unit tests added.
+
 ### Documentation
 
 - **Docs-first subpath imports (2.x non-breaking)**

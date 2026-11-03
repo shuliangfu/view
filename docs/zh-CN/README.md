@@ -611,22 +611,59 @@ const userId = createSignal(1);
 
 const user = createResource(
   () => userId.value,
-  async (id) => {
-    const r = await fetch(`/api/user/${id}`);
+  async (id, { signal }) => {
+    const r = await fetch(`/api/user/${id}`, { signal });
     return r.json();
   },
 );
 ```
 
-### 11.3 Resource 对象上的字段
+把 **`signal`** 传给 `fetch`（或你的请求客户端），这样 source 变化／`refetch`
+会取消上一趟 in-flight。忽略第二参数则与**以往默认行为一致**。
+
+### 11.3 可选外层 `AbortSignal` 与字段
+
+```tsx
+const ac = new AbortController();
+const page = createResource(
+  () => routeId(),
+  (id, { signal }) => fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
+  { signal: ac.signal }, // 例如路由离开时 abort
+);
+// ac.abort();
+```
 
 - **`resource()`**：读数据；若有 **error** 会 **throw**（交给
-  **ErrorBoundary**）。
+  **ErrorBoundary**）。取消／abort **不会**写入 `error`。
 - **`resource.loading()`** / **`resource.error()`**
-- **`resource.mutate(value)`** / **`resource.refetch()`**
+- **`resource.mutate(value)`** / **`resource.refetch()`**（refetch 会 abort 上一趟）
 
 框架在 **`resource()` / `resource.loading()`** 时会确保挂到当前 **Suspense**（含
 **ErrorBoundary** 重置后的新边界）。
+
+### 11.4 上层 inflight 去重（不是 HTTP 缓存）
+
+`createResource` **不会**跨实例去重。需要「同一 key 在 Promise settle 前共用一个
+请求」时，用 **`createInflightDedupe()`**：
+
+```tsx
+import {
+  createInflightDedupe,
+  createResource,
+} from "jsr:@dreamer/view/resource";
+
+const inflight = createInflightDedupe();
+
+const user = createResource(
+  () => userId.value,
+  (id, { signal }) =>
+    inflight(`user:${id}`, () =>
+      fetch(`/api/user/${id}`, { signal }).then((r) => r.json())
+    ),
+);
+```
+
+这**不是** HTTP 缓存／SWR。共享同一 key 时，一方 abort 可能影响其他消费者——需要独立取消时请用不同 key。
 
 ---
 

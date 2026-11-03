@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **Resource 可选 AbortSignal＋inflight 去重文档（2.x 加法）**
+  - `createResource` 每次 load 向 fetcher 传入第二参 `{ signal: AbortSignal }`；
+    source 变化／`refetch` 会 abort 上一趟；可选第三参
+    `{ signal }` 供路由离开等外层取消。不传／不用 signal 时默认行为与现网一致；
+    abort **不**写入 `error`。
+  - 导出 `createInflightDedupe()`（按 key 复用 in-flight Promise；**非** HTTP 缓存）。
+  - 中英 README §11 同步 Abort／去重用法；补 `resource-abort` 单测。
+
 ### 文档
 
 - **强推子路径导入（2.x 非破坏）**

@@ -635,23 +635,65 @@ const userId = createSignal(1);
 
 const user = createResource(
   () => userId.value,
-  async (id) => {
-    const r = await fetch(`/api/user/${id}`);
+  async (id, { signal }) => {
+    const r = await fetch(`/api/user/${id}`, { signal });
     return r.json();
   },
 );
 ```
 
-### 11.3 Fields on the resource object
+Pass **`signal`** into `fetch` (or your client) so a source change / `refetch`
+cancels the previous in-flight request. Ignoring the second argument keeps the
+**same default behavior** as before.
+
+### 11.3 Optional outer `AbortSignal` and fields
+
+```tsx
+const ac = new AbortController();
+const page = createResource(
+  () => routeId(),
+  (id, { signal }) => fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
+  { signal: ac.signal }, // e.g. abort on route leave
+);
+// ac.abort();
+```
 
 - **`resource()`**: read data; throws if there is an **error** (handled by
-  **ErrorBoundary**).
+  **ErrorBoundary**). Abort / cancel does **not** set `error`.
 - **`resource.loading()`** / **`resource.error()`**
-- **`resource.mutate(value)`** / **`resource.refetch()`**
+- **`resource.mutate(value)`** / **`resource.refetch()`** (refetch aborts the
+  previous load)
 
 The framework ensures registration with the current **Suspense** when calling
 **`resource()` / `resource.loading()`**, including after **ErrorBoundary**
 reset.
+
+### 11.4 Upper-layer inflight dedupe (not an HTTP cache)
+
+`createResource` does **not** dedupe across instances. Use
+**`createInflightDedupe()`** when several callers should share one in-flight
+Promise for the same key until it settles:
+
+```tsx
+import {
+  createInflightDedupe,
+  createResource,
+} from "jsr:@dreamer/view/resource";
+
+const inflight = createInflightDedupe();
+
+const user = createResource(
+  () => userId.value,
+  (id, { signal }) =>
+    inflight(`user:${id}`, () =>
+      fetch(`/api/user/${id}`, { signal }).then((r) => r.json())
+    ),
+);
+```
+
+This is **not** HTTP caching / SWR. If one shared consumer aborts, others on the
+same key may see that abort — use distinct keys when you need independent
+cancellation.
 
 ---
 
