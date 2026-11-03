@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "measuredAt": "2026-11-03T11:32:43.083Z",
+  "runtime": "Deno/2.9.8 aarch64-apple-darwin",
+  "cpu": "Apple M5 Max",
+  "command": "deno bench -A --json tests/bench/",
+  "entries": [
+    {
+      "name": "1 signal × 10 effect，batch 内写一次",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/signal.bench.ts",
+      "avgNs": 2785.674407142857,
+      "minNs": 2490.8625,
+      "maxNs": 3290.25,
+      "p75Ns": 2820.7459,
+      "n": 28
+    },
+    {
+      "name": "1 signal × 100 effect，batch 内写一次",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/signal.bench.ts",
+      "avgNs": 15963,
+      "minNs": 11750,
+      "maxNs": 1377959,
+      "p75Ns": 14500,
+      "n": 31333
+    },
+    {
+      "name": "batch 内 50 次 signal 写、10 个 effect",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/signal.bench.ts",
+      "avgNs": 3929.2099652173915,
+      "minNs": 3483.7709,
+      "maxNs": 4460.2459,
+      "p75Ns": 4073.9333,
+      "n": 23
+    },
+    {
+      "name": "For+key 创建 200 行",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/for.bench.ts",
+      "avgNs": 1935480,
+      "minNs": 1391209,
+      "maxNs": 6469916,
+      "p75Ns": 2120958,
+      "n": 269
+    },
+    {
+      "name": "For+key 反转 200 行（重排）",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/for.bench.ts",
+      "avgNs": 2768531,
+      "minNs": 1987583,
+      "maxNs": 4233958,
+      "p75Ns": 3096084,
+      "n": 193
+    },
+    {
+      "name": "For+key 仅改字段不重排 200 行",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/for.bench.ts",
+      "avgNs": 2961987,
+      "minNs": 1792500,
+      "maxNs": 11225417,
+      "p75Ns": 3307875,
+      "n": 179
+    },
+    {
+      "name": "insert 100 个元素子节点（数组）",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/insert.bench.ts",
+      "avgNs": 185683,
+      "minNs": 68583,
+      "maxNs": 6593959,
+      "p75Ns": 102750,
+      "n": 2712
+    },
+    {
+      "name": "insert 静态文本 ×100",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/insert.bench.ts",
+      "avgNs": 26216,
+      "minNs": 20083,
+      "maxNs": 277625,
+      "p75Ns": 27875,
+      "n": 19082
+    },
+    {
+      "name": "insert Signal thunk 初次 + 100 次更新",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/insert.bench.ts",
+      "avgNs": 19456,
+      "minNs": 14000,
+      "maxNs": 2140042,
+      "p75Ns": 16959,
+      "n": 25712
+    },
+    {
+      "name": "signal write + Object.is 同值跳过",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/signal.bench.ts",
+      "avgNs": 3488.5210119999997,
+      "minNs": 2821.3042,
+      "maxNs": 3858.1334,
+      "p75Ns": 3678.25,
+      "n": 25
+    },
+    {
+      "name": "signal write 1000 次不同值（无订阅者）",
+      "origin": "file:///Users/shuliangfu/worker/deno/dreamer-jsr/view/tests/bench/signal.bench.ts",
+      "avgNs": 4653.407533333333,
+      "minNs": 4228.3166,
+      "maxNs": 5577.75,
+      "p75Ns": 4889.9292,
+      "n": 21
+    }
+  ]
+}

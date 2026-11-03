@@ -96,3 +96,23 @@ jobs:
 
       - name: Bundle size gate (+5% vs committed baseline)
         run: node scripts/size-baseline/check.mjs
+
+  # ───────────────── Bench gate (ubuntu only; loose budget vs reference CPU) ─────────────────
+  bench-check:
+    runs-on: ubuntu-latest
+    env:
+      # Actions hosts ≠ Apple reference CPU used for committed baseline
+      BENCH_BUDGET_PCT: "300"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        continue-on-error: true
+        run: deno cache src/mod.ts tests/ --minimum-dependency-age=0
+
+      - name: Bench regression gate (signal / Effect / For / insert)
+        run: node scripts/bench-baseline/check.mjs

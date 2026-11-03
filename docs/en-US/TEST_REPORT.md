@@ -135,7 +135,7 @@ e2e**.
 
 - `tests/bench/signal.bench.ts`: signal writes, same-value skip, batch +
   multi-effect.
-- `deno task bench` is for performance observation; **not** a red/green CI gate
+- `deno task bench` / `bench:check`: Signal / Effect / For / insert micro-benches; CI `bench-check` vs `scripts/bench-baseline/bench-baseline.json` (see [P0-1](./P0-1-profiling-and-bench-ci.md)). Bundle gate remains `size:check`.
   unless configured separately.
 
 ---

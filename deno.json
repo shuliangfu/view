@@ -51,7 +51,8 @@
     "lint": "deno lint src/",
     "fmt": "deno fmt src/ tests/",
     "size:baseline": "node scripts/size-baseline/measure.mjs --write",
-    "bench:baseline": "deno bench -A tests/bench/",
+    "bench:baseline": "node scripts/bench-baseline/measure.mjs --write",
+    "bench:check": "node scripts/bench-baseline/check.mjs",
     "size:check": "node scripts/size-baseline/check.mjs",
     "size": "node scripts/size-baseline/check.mjs"
   },

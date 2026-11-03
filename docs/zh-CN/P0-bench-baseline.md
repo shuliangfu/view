@@ -28,6 +28,17 @@
 
 > 同机二次跑动会有 ±5–10% 抖动；上表取第二次完整跑次。原始终端输出见 `bench-baseline-raw.txt`。
 
+
+## insert（`tests/bench/insert.bench.ts`，happy-dom）
+
+| benchmark | 说明 |
+|-----------|------|
+| insert 静态文本 ×100 | 纯文本多次 insert |
+| insert Signal thunk 初次 + 100 次更新 | 响应式替换 |
+| insert 100 个元素子节点（数组） | 数组子节点 |
+
+具体数字以入库的 `scripts/bench-baseline/bench-baseline.json`（`deno task bench:baseline`）为准；CI 门禁见 [P0-1](./P0-1-profiling-and-bench-ci.md)。
+
 ## 真实页 Effect／DOM 操作计数
 
 当前 **核心未内置** Effect／DOM 操作计数器（本刀不改响应式内核）。测量方式见同目录报告「如何测 Effect／DOM」小节，以及 `scripts/size-baseline/README.md`。

@@ -133,7 +133,7 @@ ok | 398 passed | 0 failed (~1m13s)   # Deno
 ### 3.6 Bench
 
 - `tests/bench/signal.bench.ts`：Signal 写、同值跳过、batch + 多 Effect。
-- `deno task bench` 仅作性能回归参考，**不**作为 CI 红绿门禁（除非另行配置）。
+- `deno task bench`／`bench:check`：Signal／Effect／For／insert 微型 bench；CI `bench-check` 对照 `scripts/bench-baseline/bench-baseline.json`（见 [P0-1](./P0-1-profiling-and-bench-ci.md)）。体积门禁仍为 `size:check`。
 
 ---
 

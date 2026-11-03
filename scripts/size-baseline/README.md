@@ -57,3 +57,7 @@ Do **not** change the reactive core for counters. Options:
    `insert` at the call site for a one-off probe (never commit into `src/`).
 3. Future **optional** debug export (additive, off by default) would need a
    separate approved knife — out of P0 baseline scope.
+
+## Related
+
+Bench / profiling CI: `scripts/bench-baseline/` and `docs/zh-CN/P0-1-profiling-and-bench-ci.md`.

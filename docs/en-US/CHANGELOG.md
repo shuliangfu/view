@@ -10,6 +10,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P0-1: real-page profiling notes + Signal / Effect / For / insert benches in CI (non-breaking)**
+  - Add `tests/bench/insert.bench.ts` (static text / Signal thunk / array children);
+    fold existing `signal.bench.ts` (incl. Effect) and `for.bench.ts` into the gate.
+  - `scripts/bench-baseline/`: `measure.mjs --write` → `bench-baseline.json`;
+    `check.mjs` / `deno task bench:check` enforces **avgNs ≤ baseline +100%**
+    (overridable); CI ubuntu `bench-check` uses `BENCH_BUDGET_PCT=300` for
+    order-of-magnitude regressions with less flake.
+  - Docs: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) /
+    [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md);
+    optional local probe `scripts/profiling/local-probe-example.ts` (**not** in
+    `src/` hot paths).
+  - **No** runtime default-semantics change; no JSR / npm publish.
+
+
 ### Documentation
 
 - **Analysis docs governance (P1-6, docs-only)**

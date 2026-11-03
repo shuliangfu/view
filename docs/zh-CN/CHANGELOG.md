@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P0-1：真实页 Profiling 对照 + Signal／Effect／For／insert bench 入 CI（非破坏）**
+  - 新增 `tests/bench/insert.bench.ts`（静态文本／Signal thunk／数组子节点）；既有
+    `signal.bench.ts`（含 Effect）与 `for.bench.ts` 一并纳入门禁。
+  - `scripts/bench-baseline/`：`measure.mjs --write` → `bench-baseline.json`；
+    `check.mjs`／`deno task bench:check` 按 **avgNs ≤ 基线 +100%**（可调）；
+    CI ubuntu `bench-check` 使用 `BENCH_BUDGET_PCT=300` 防数量级回退、减 flake。
+  - 文档：[`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md)／
+    [`../en-US/P0-1-profiling-and-bench-ci.md`](../en-US/P0-1-profiling-and-bench-ci.md)；
+    可选本地探针 `scripts/profiling/local-probe-example.ts`（**不进** `src/` 热路径）。
+  - **无**运行时默认语义变更；禁 JSR／npm。
+
+
 ### 文档
 
 - **分析文档治理（P1-6，仅文档）**
