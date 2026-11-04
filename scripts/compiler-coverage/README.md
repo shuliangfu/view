@@ -14,7 +14,7 @@ deno task compiler:coverage:baseline
 ```
 
 - **Tool:** Deno + `compileSource` from `src/compiler/`
-- **Corpus:** `scripts/compiler-coverage/corpus.ts` (23 fixtures)
+- **Corpus:** `scripts/compiler-coverage/corpus.ts` (26 fixtures)
 - **Metrics:** call counts in compiled **body** (after injected imports):
   `template` / `walk` / `insert` / `setAttribute` / `setProperty` / `spread` /
   `memo` / `_path$` / `_tmpl$`, plus `zeroReactiveDomOps` and

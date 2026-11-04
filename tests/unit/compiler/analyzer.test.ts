@@ -78,3 +78,32 @@ describe("compiler/analyzer", () => {
     expect(html).toContain('title="t-x"');
   });
 });
+
+  it("isFullyStatic: 可提升的静态文本表达式子节点应视为静态", () => {
+    const code = `<div>{"a" + "b"}</div>`;
+    const sf = ts.createSourceFile(
+      "t.tsx",
+      code,
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const expr =
+      (sf.statements[0] as ts.ExpressionStatement).expression;
+    expect(isFullyStatic(expr)).toBe(true);
+    expect(serializeStatic(expr)).toBe("<div>ab</div>");
+  });
+
+  it("isFullyStatic: 动态调用子节点仍非静态", () => {
+    const code = `<div>{count()}</div>`;
+    const sf = ts.createSourceFile(
+      "t.tsx",
+      code,
+      ts.ScriptTarget.ESNext,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const expr =
+      (sf.statements[0] as ts.ExpressionStatement).expression;
+    expect(isFullyStatic(expr)).toBe(false);
+  });

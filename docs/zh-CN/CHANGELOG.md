@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P2：编译器静态子文本 `+` 拼接提升进 template（非破坏）**
+  - `{"hello" + " world"}`／静态模板串／静态三元／数字字面量等子文本写入
+    `template(...)`，省 `walk`+`insert`（及由此产生的 Effect）；`escapeForText` 转义 `&<>`。
+  - **不**提升：`&&`／`||`／`??`、null／boolean、空串 `""`（与 `insert` 空 Text／占位
+    路径保持一致，避免 DOM 分叉）。
+  - 语料 23→**26**（`static-text-concat`／`static-text-template-ternary`／
+    `static-text-mixed`）；`staticDomOpFreeRatio` 基线约 **0.6538**（17/26）。
+
 ### 修复
 
 - **编译器：静态 `??` 属性折叠进模板（非破坏）**

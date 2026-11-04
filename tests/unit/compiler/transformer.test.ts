@@ -220,6 +220,37 @@ describe("compiler/transformer", () => {
     );
   });
 
+  it("优化：静态子文本 + 拼接应提升进 template，无 walk/insert", () => {
+    const out = compileSource(
+      `export const App = () => <div>{"hello" + " world"}</div>;`,
+      "test.tsx",
+    );
+    expect(out).toContain('template("<div>hello world</div>")');
+    const body = out.split("\n").slice(1).join("\n");
+    expect(body).not.toContain("walk(");
+    expect(body).not.toContain("insert(");
+
+    const mixed = compileSource(
+      `export const App = () => <div>pre {"a" + "b"} {count()}</div>;`,
+      "test.tsx",
+    );
+    expect(mixed).toContain("pre ab ");
+    expect(mixed).toContain("insert(");
+    expect(mixed).toContain("() => count()");
+
+    // 空串／逻辑与仍走动态路径（本刀不做）
+    const empty = compileSource(
+      `export const App = () => <div>{""}</div>;`,
+      "test.tsx",
+    );
+    expect(empty).toContain("insert(");
+    const andExpr = compileSource(
+      `export const App = () => <div>{"a" && "b"}</div>;`,
+      "test.tsx",
+    );
+    expect(andExpr).toContain("insert(");
+  });
+
   it("极致优化：应当合并静态子树", () => {
     const code =
       `export const App = () => <div><span>Static 1</span><span>Static 2</span></div>;`;

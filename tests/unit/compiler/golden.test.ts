@@ -22,7 +22,7 @@ const GOLDENS = join(
 
 describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   it("corpus has expected fixture count", () => {
-    expect(FIXTURES.length).toBe(23);
+    expect(FIXTURES.length).toBe(26);
   });
 
   for (const f of FIXTURES) {
@@ -37,7 +37,7 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   }
 
   it("static-nested / static-attr-concat emit no walk or setAttribute", () => {
-    for (const id of ["static-nested", "static-attr-concat", "static-style-object", "static-and-or", "static-typeof-void", "static-nullish", "static-satisfies"]) {
+    for (const id of ["static-nested", "static-attr-concat", "static-style-object", "static-and-or", "static-typeof-void", "static-nullish", "static-satisfies", "static-text-concat", "static-text-template-ternary"]) {
       const f = FIXTURES.find((x) => x.id === id)!;
       const body = normalizeGolden(compileSource(f.source, f.fileName))
         .split("\n")
@@ -47,6 +47,14 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
       expect(body).not.toContain("setAttribute(");
       expect(body).not.toContain("setProperty(");
     }
+  });
+
+  it("static-text-mixed lifts concat but keeps dynamic walk+insert", () => {
+    const f = FIXTURES.find((x) => x.id === "static-text-mixed")!;
+    const out = normalizeGolden(compileSource(f.source, f.fileName));
+    expect(out).toContain("pre ab post");
+    expect(out).toContain("walk(");
+    expect(out).toContain("insert(");
   });
 
   it("reactive-attr uses setAttribute; id-attr uses setProperty", () => {

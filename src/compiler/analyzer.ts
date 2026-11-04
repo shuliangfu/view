@@ -23,6 +23,7 @@
  */
 
 import ts from "typescript";
+import { escapeForText } from "../utils/escape.ts";
 
 export interface DynamicBinding {
   id: string; // 唯一 ID，用于水合
@@ -43,7 +44,11 @@ export interface DynamicBinding {
  * 判断 JSX 节点是否为完全静态（不含任何动态表达式及组件）。
  */
 export function isFullyStatic(node: ts.Node): boolean {
-  if (ts.isJsxExpression(node)) return false;
+  if (ts.isJsxExpression(node)) {
+    // 空 {/* */} 视为静态；可提升的非空静态文本子节点亦然（与 processChild 对齐）
+    if (!node.expression) return true;
+    return isLiftableStaticTextChild(node.expression);
+  }
   if (
     ts.isJsxAttribute(node) && node.initializer &&
     ts.isJsxExpression(node.initializer)
@@ -185,6 +190,61 @@ export function isStaticExpression(expr: ts.Expression): boolean {
   }
 
   return false;
+}
+
+
+/**
+ * 子文本是否可静态提升进 template：字面量／数字／`+` 拼接／模板串／静态三元，
+ * 及括号／断言／satisfies 包装。不含 `&&`／`||`／`??`／null／boolean（与 insert 省略语义缠绕，本刀不做）。
+ * 结果序列化为空串时不提升，以免与 insert("") 的空 Text 节点／占位注释路径分叉。
+ */
+export function isStaticTextChildExpression(expr: ts.Expression): boolean {
+  if (expr == null) return false;
+  if (
+    ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr) ||
+    ts.isNumericLiteral(expr)
+  ) return true;
+
+  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+    return isStaticTextChildExpression(expr.expression);
+  }
+  if (ts.isNonNullExpression(expr) || ts.isParenthesizedExpression(expr)) {
+    return isStaticTextChildExpression(expr.expression);
+  }
+  if (
+    typeof ts.isSatisfiesExpression === "function" &&
+    ts.isSatisfiesExpression(expr)
+  ) {
+    return isStaticTextChildExpression(expr.expression);
+  }
+
+  if (ts.isTemplateExpression(expr)) {
+    return expr.templateSpans.every((span) =>
+      isStaticExpression(span.expression)
+    );
+  }
+
+  if (
+    ts.isBinaryExpression(expr) &&
+    expr.operatorToken.kind === ts.SyntaxKind.PlusToken
+  ) {
+    return isStaticTextChildExpression(expr.left) &&
+      isStaticTextChildExpression(expr.right);
+  }
+
+  if (ts.isConditionalExpression(expr)) {
+    return isStaticExpression(expr.condition) &&
+      isStaticTextChildExpression(expr.whenTrue) &&
+      isStaticTextChildExpression(expr.whenFalse);
+  }
+
+  return false;
+}
+
+/** 可提升：静态文本子表达式且序列化结果非空。 */
+export function isLiftableStaticTextChild(expr: ts.Expression): boolean {
+  if (!isStaticTextChildExpression(expr)) return false;
+  return serializeStaticValue(expr) !== "";
 }
 
 
@@ -455,6 +515,12 @@ export function serializeToTemplate(
             childIndex++;
           } else if (ts.isJsxExpression(child)) {
             if (!child.expression) return; // 忽略空表达式（如 {/* comment */}）
+            // 静态字符串／数字／+ 拼接等：写入模板文本，省 walk+insert（及 Effect）
+            if (isLiftableStaticTextChild(child.expression)) {
+              html += escapeForText(serializeStaticValue(child.expression));
+              childIndex++;
+              return;
+            }
             dynamics.push({
               id: `v-${idCounter++}`,
               path: [...path, childIndex + 1], // 指向闭合标签

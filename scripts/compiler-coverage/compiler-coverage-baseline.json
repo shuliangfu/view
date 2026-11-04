@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T13:23:54.259Z",
+  "measuredAt": "2026-11-04T13:29:26.893Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -195,6 +195,75 @@
         "zeroReactiveDomOps": true
       },
       "goldenRel": "scripts/compiler-coverage/goldens/static-satisfies.out.txt"
+    },
+    {
+      "id": "static-text-concat",
+      "fileName": "static-text-concat.tsx",
+      "note": "Static string + concat child lifted into template (no walk/insert)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 226,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-text-concat.out.txt"
+    },
+    {
+      "id": "static-text-template-ternary",
+      "fileName": "static-text-template-ternary.tsx",
+      "note": "Static template literal + ternary text children lifted",
+      "options": {},
+      "metrics": {
+        "outputBytes": 220,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-text-template-ternary.out.txt"
+    },
+    {
+      "id": "static-text-mixed",
+      "fileName": "static-text-mixed.tsx",
+      "note": "Static concat lifted beside dynamic child; one walk+insert remains",
+      "options": {},
+      "metrics": {
+        "outputBytes": 311,
+        "templateCalls": 1,
+        "walkCalls": 1,
+        "insertCalls": 1,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 1,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-text-mixed.out.txt"
     },
     {
       "id": "dyn-text",
@@ -551,15 +620,15 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 23,
+    "fixtureCount": 26,
     "totalSetAttribute": 4,
     "totalSetProperty": 1,
-    "totalWalk": 4,
-    "totalInsert": 6,
+    "totalWalk": 5,
+    "totalInsert": 7,
     "totalMemo": 1,
     "totalSpread": 1,
-    "totalPathConsts": 4,
-    "zeroReactiveDomOpsCount": 15,
-    "staticDomOpFreeRatio": 0.6522
+    "totalPathConsts": 5,
+    "zeroReactiveDomOpsCount": 17,
+    "staticDomOpFreeRatio": 0.6538
   }
 }

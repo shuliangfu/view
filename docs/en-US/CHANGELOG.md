@@ -10,6 +10,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P2: compiler lifts static text-child `+` concat into templates (non-breaking)**
+  - `{"hello" + " world"}` / static template literals / static ternaries / numeric
+    literals land in `template(...)`, skipping `walk`+`insert` (and Effects from
+    insert); `escapeForText` escapes `&<>`.
+  - **Not** lifted: `&&` / `||` / `??`, null / boolean, empty `""` (keeps parity with
+    `insert`'s empty-Text / placeholder paths).
+  - Corpus 23→**26** (`static-text-concat` / `static-text-template-ternary` /
+    `static-text-mixed`); `staticDomOpFreeRatio` baseline ≈ **0.6538** (17/26).
+
 ### Fixed
 
 - **Compiler: fold static `??` attrs into templates (non-breaking)**

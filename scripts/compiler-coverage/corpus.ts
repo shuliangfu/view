@@ -71,6 +71,27 @@ export const FIXTURES: Fixture[] = [
     note: "satisfies wrapper stripped; literal lifted into template",
   },
   {
+    id: "static-text-concat",
+    fileName: "static-text-concat.tsx",
+    source:
+      `export const App = () => <div>{"hello" + " world"}</div>;`,
+    note: "Static string + concat child lifted into template (no walk/insert)",
+  },
+  {
+    id: "static-text-template-ternary",
+    fileName: "static-text-template-ternary.tsx",
+    source:
+      `export const App = () => <div>{\`hi-\${"x"}\`}{true ? "!" : "?"}</div>;`,
+    note: "Static template literal + ternary text children lifted",
+  },
+  {
+    id: "static-text-mixed",
+    fileName: "static-text-mixed.tsx",
+    source:
+      `export const App = () => <div>pre {"a" + "b"} post {count()}</div>;`,
+    note: "Static concat lifted beside dynamic child; one walk+insert remains",
+  },
+  {
     id: "dyn-text",
     fileName: "dyn-text.tsx",
     source: `export const App = () => <div>{count()}</div>;`,
