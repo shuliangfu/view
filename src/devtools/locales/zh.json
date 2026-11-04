@@ -64,8 +64,6 @@
   "settingsHint": "拖拽标题栏或浮动按钮可改位置。位置与偏好保存在 localStorage（{storageKey}）。Esc 关闭。生产构建不会挂载本面板。存在 DEV HMR 桥时，状态显示在「总览 → HMR」，并抑制 server 独立胶囊。",
   "resetPos": "重置位置",
   "clearWarns": "清除警告",
-  "devOn": "VIEW_DEV · 开",
-  "devOff": "VIEW_DEV · 关",
   "noOwnerRoots": "尚未登记 Owner 根。",
   "noSourcesMatch": "无匹配的订阅源",
   "noSourcesYet": "注册表尚无订阅源",

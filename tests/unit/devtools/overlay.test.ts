@@ -77,6 +77,15 @@ describe("devtools overlay (P2)", () => {
     expect(handle!.isOpen).toBe(false);
   });
 
+  it("footer has no VIEW_DEV status pill", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector("[data-el='dev-pill']")).toBeNull();
+    expect(shadow.querySelector(".foot")!.textContent).not.toMatch(/VIEW_DEV/);
+    handle.unmount();
+  });
+
   it("head-actions keeps refresh/close clickable and brand flexes", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     handle.open();

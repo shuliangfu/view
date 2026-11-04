@@ -457,11 +457,6 @@ const CSS = /* css */ `
   font-size: 11.5px; font-weight: 550; padding: 5px 10px; border-radius: 8px; cursor: pointer;
 }
 .ghost:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
-.pill {
-  font-size: 10.5px; font-weight: 600; padding: 4px 8px; border-radius: 999px;
-  background: rgba(34,197,94,0.14); color: #4ade80; letter-spacing: 0.02em;
-}
-.pill.off { background: rgba(248,113,113,0.14); color: #f87171; }
 .kbd {
   font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   padding: 2px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.12);
@@ -871,7 +866,6 @@ export function mountDevtoolsOverlay(
       <button type="button" class="ghost" data-action="refresh-foot">↻ <span data-i18n="refresh">${
     ot("refresh")
   }</span></button>
-      <span class="pill" data-el="dev-pill">${ot("devOn")}</span>
     </div>
   `;
 
@@ -1437,12 +1431,6 @@ export function mountDevtoolsOverlay(
     setN("n-memos", summary.memos);
     setN("n-nodes", summary.nodes);
     setN("n-edges", summary.upstreamEdges);
-    const pill = el("[data-el='dev-pill']");
-    if (pill) {
-      const on = isViewDev();
-      pill.textContent = on ? ot("devOn") : ot("devOff");
-      pill.className = on ? "pill" : "pill off";
-    }
     // Keep HMR card in sync on refresh ticks (bridge may appear late).
     if (!attachHmrBridge()) renderHmr(lastHmrSnap);
   };

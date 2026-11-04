@@ -64,8 +64,6 @@
   "settingsHint": "Drag the header or the floating button to reposition. Position & prefs persist in localStorage ({storageKey}). Esc closes. Production builds never mount this overlay. When the DEV HMR bridge is present, its status appears under Overview → HMR and the standalone server capsule is suppressed.",
   "resetPos": "Reset position",
   "clearWarns": "Clear warnings",
-  "devOn": "VIEW_DEV · on",
-  "devOff": "VIEW_DEV · off",
   "noOwnerRoots": "No Owner roots tracked yet.",
   "noSourcesMatch": "No sources match filter",
   "noSourcesYet": "No registry sources yet",
