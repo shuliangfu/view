@@ -27,6 +27,14 @@
 
 ### 修复
 
+- **DevTools：路由 loading→页面扩张不再误报 REMOUNT-CHURN（非破坏）**
+  - `detectOwnerRemountChurn` 豁免一次性「小占位 → 大页面」扩张（路由首屏 loading 壳→页面）。
+  - examples layout 把 `path()`／`theme()` 收到属性 getter，避免顶层订阅导致切主题整树 remount。
+  - 等大壳重建仍告警（预期）。
+
+- **JSR slow types**：`noteRemount`／`detectRemountChurn` 的 `now` 参数补显式 `number`，通过 `deno publish` 公共 API 检查。
+
+
 - **DevTools overlay 顶栏**：加强 `.head { justify-content: space-between;
   width: 100% }`，刷新／关闭在各种布局下仍靠右。
 
@@ -334,6 +342,12 @@
 - 真实页 Effect／DOM 计数：见报告「如何测」——本刀不向核心加计数器。
 
 ---
+
+### 本版刻意 SKIP（交刀说明）
+
+- **编译器续作（更多静态化／少 Effect）**：P0-3 已锁覆盖率＋golden；再动 analyzer／transformer 属 C1 级语义风险，无把握的小步可测绿改动，**SKIP**。
+- **HOLD P2-1／P2-2／P2-3**：P2-1／3 为主入口破坏或改严默认水合；P2-2 默认时间分片仍禁；均无法做成 2.x 小步加法，**SKIP**。
+
 
 ## [2.2.0] - 2026-07-23
 

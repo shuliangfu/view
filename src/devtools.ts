@@ -565,7 +565,7 @@ export function detectWideSubscriptions(
  * Record a remount for a logical key (component id, route, test label).
  * Explicit opt-in — call from your remount path or tests. No hot-path hooks.
  */
-export function noteRemount(key: string, now = Date.now()): void {
+export function noteRemount(key: string, now: number = Date.now()): void {
   const list = remountLog.get(key) ?? [];
   list.push(now);
   remountLog.set(key, list);
@@ -584,7 +584,7 @@ export function clearRemountNotes(): void {
 export function detectRemountChurn(
   key: string,
   options?: OversubscribeWarnOptions,
-  now = Date.now(),
+  now: number = Date.now(),
 ): OversubscribeWarning | null {
   const opts = resolveOpts(options);
   const list = remountLog.get(key);

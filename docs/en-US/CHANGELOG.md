@@ -32,6 +32,14 @@ and this project adheres to
 
 ### Fixed
 
+- **DevTools: don't flag route-loading expansion as REMOUNT-CHURN (non-breaking)**
+  - `detectOwnerRemountChurn` exempts a one-time small-placeholder → large-page expansion (route loading shell → page).
+  - examples layout reads `path()` / `theme()` in attribute getters so theme toggles don't remount the page tree.
+  - Equal-size shell rebuilds still warn (expected).
+
+- **JSR slow types**: annotate `now: number` on `noteRemount` / `detectRemountChurn` so `deno publish` public-API checks pass.
+
+
 - **DevTools overlay header**: reinforce `.head { justify-content: space-between;
   width: 100% }` so refresh/close stay trailing across layouts.
 
@@ -377,6 +385,12 @@ and this project adheres to
   this knife does not add counters to the core.
 
 ---
+
+### Intentionally SKIPPED this release
+
+- **Compiler continuation (more staticization / fewer Effects)**: P0-3 already locked coverage + goldens; further analyzer/transformer changes are C1-class semantic risk with no clearly safe micro-step — **SKIP**.
+- **HOLD P2-1 / P2-2 / P2-3**: P2-1/3 imply main-entry breakage or stricter default hydration; P2-2 default time-slicing remains forbidden — not 2.x additive micro-steps — **SKIP**.
+
 
 ## [2.2.0] - 2026-07-23
 
