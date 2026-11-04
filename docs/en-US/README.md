@@ -138,7 +138,7 @@ import { createForm } from "@dreamer/view/form";
 import { createResource } from "@dreamer/view/resource";
 import { renderToString } from "@dreamer/view/ssr";
 
-// Hydration mismatch strategies (additive):
+// Hydration mismatch strategies (3.0: omit → DEV assert / prod remount; 2.x tolerant needs explicit continue):
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
@@ -294,17 +294,18 @@ const stop = createRoot((dispose) => {
 - Calls **`stopHydration()`**, then **`internalHydrate`** with options, then
   **`insert`**.
 
-#### `mismatchMode` (additive · **default `continue`**)
+#### `mismatchMode` (**stricter 3.0 defaults** · resolved by environment when omitted)
 
-| Value | Behavior | Use |
-|-------|----------|-----|
-| **`continue`** (default) | Record mismatches; do not abort; keep SSR nodes | Production hybrid; **do not flip the 2.x library default** |
-| **`assert`** | Throw on any mismatch | CI / strict gates — pass **explicitly** |
-| **`remount`** | Clear container and CSR-remount on mismatch | Prefer a clean remount — pass **explicitly** |
+| Value | Behavior | When it applies |
+|-------|----------|-----------------|
+| **`assert`** | Throw on any mismatch | **Default when omitted** and `VIEW_DEV === true`; also pass explicitly |
+| **`remount`** | Clear container and CSR-remount on mismatch | **Default when omitted** in production (no `VIEW_DEV`); also pass explicitly |
+| **`continue`** | Record mismatches; do not abort; keep SSR nodes | Must pass **explicitly** (2.x tolerant behavior) |
 
-Guide: [P1-2 hydration opt-in pilot](./P1-2-hydration-opt-in-pilot.md) /
-[ZH](../zh-CN/P1-2-hydration-opt-in-pilot.md). examples `/runtime` demos all
-three modes. Progressive / chunked hydration hooks are **not** shipped yet.
+Resolver: `resolveMismatchMode(options)` (see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1/R3).
+Historical opt-in notes: [P1-2](./P1-2-hydration-opt-in-pilot.md) /
+[ZH](../zh-CN/P1-2-hydration-opt-in-pilot.md) (2.x default `continue` superseded by 3.0).
+examples `/runtime` demos all three modes. Progressive / chunked hydration hooks are **not** shipped yet.
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -314,9 +315,9 @@ function RootView() {
 }
 
 const container = document.getElementById("root")!;
-// default continue (mismatchMode may be omitted)
+// 3.0: omit mismatchMode → DEV assert / prod remount
 hydrate(() => <RootView />, container /* , bindingMap */);
-// CI: hydrate(() => <RootView />, container, { bindings, mismatchMode: "assert" });
+// 2.x tolerant: hydrate(..., { bindings, mismatchMode: "continue" });
 ```
 
 ---
@@ -425,11 +426,18 @@ Reads inside **`fn`** do **not** track dependencies.
 Deferred commits and transition updates (integrate with **`createEffect`**
 scheduling).
 
+- **Default:** `createDeferred(source)` aligns via **`queueMicrotask`** (unchanged).
+- **Optional** `timeout?: number`: defer with `requestIdleCallback({ timeout })`
+  (else `setTimeout`); pending handles cancel on Effect re-run / dispose.
+- **Not** `scheduleTask` / Priority — intentionally **not** merged into the
+  priority kernel (`batch` still owns Observer flushing only).
+
 ```tsx
 import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
+// optional: createDeferred(source, { timeout: 100 });
 const [isPending, startTransitionFromHook] = useTransition();
 
 void startTransitionFromHook(() => {

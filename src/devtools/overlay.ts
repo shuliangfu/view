@@ -71,6 +71,49 @@ export interface DreamerHmrBridge {
 
 const HMR_BRIDGE_KEY = "__DREAMER_HMR__";
 
+/**
+ * Watch SPA path changes (popstate + history push/replace) without importing
+ * the router. Used so Overview / Warnings resnapshot to the current page.
+ */
+function installRoutePathWatch(onChange: () => void): () => void {
+  const win = (typeof globalThis !== "undefined"
+    ? (globalThis as unknown as Window)
+    : undefined) ??
+    (typeof document !== "undefined"
+      ? (document.defaultView as Window | null)
+      : null);
+  const loc = win?.location;
+  const hist = win?.history;
+  if (!loc || !hist) return () => {};
+  let last = `${loc.pathname}${loc.search}${loc.hash}`;
+  const check = () => {
+    const cur = `${loc.pathname}${loc.search}${loc.hash}`;
+    if (cur === last) return;
+    last = cur;
+    onChange();
+  };
+  const onPop = () => check();
+  win.addEventListener?.("popstate", onPop);
+  const origPush = hist.pushState.bind(hist);
+  const origReplace = hist.replaceState.bind(hist);
+  hist.pushState = ((...args: Parameters<History["pushState"]>) => {
+    const ret = origPush(...args);
+    Promise.resolve().then(check);
+    return ret;
+  }) as History["pushState"];
+  hist.replaceState = ((...args: Parameters<History["replaceState"]>) => {
+    const ret = origReplace(...args);
+    Promise.resolve().then(check);
+    return ret;
+  }) as History["replaceState"];
+  return () => {
+    win.removeEventListener?.("popstate", onPop);
+    hist.pushState = origPush;
+    hist.replaceState = origReplace;
+  };
+}
+
+
 /** Read the live HMR bridge if the DEV server client has published it. */
 export function getDreamerHmrBridge(): DreamerHmrBridge | null {
   const raw = (globalThis as Record<string, unknown>)[HMR_BRIDGE_KEY];
@@ -807,6 +850,11 @@ export function mountDevtoolsOverlay(
         <ul class="list" data-el="sig-list"></ul>
       </div>
       <div class="pane" data-pane="warnings">
+        <div class="toolbar" style="margin:0 0 8px">
+          <button type="button" class="ghost" data-action="clear-warns" data-i18n="clearWarns">${
+    ot("clearWarns")
+  }</button>
+        </div>
         <div class="section-h" style="margin:0 0 8px">
           <h3 class="section-title" data-i18n="misuseScan">${
     ot("misuseScan")
@@ -1297,7 +1345,9 @@ export function mountDevtoolsOverlay(
     syncStatusDot();
     if (!list) return;
     if (!n) {
-      list.innerHTML = `<p class="empty">${ot("noIssues")}</p>`;
+      list.innerHTML = `<div class="empty-block" data-el="warn-empty"><p class="empty">${
+        ot("noIssues")
+      }</p><p class="empty-hint">${ot("warnEmptyHint")}</p></div>`;
       return;
     }
     list.innerHTML = warnings
@@ -1455,6 +1505,13 @@ export function mountDevtoolsOverlay(
     if (!attachHmrBridge()) renderHmr(lastHmrSnap);
   };
 
+  /** Reset page-scoped overlay snapshot (warnings accumulate otherwise). */
+  const resetPageSnapshot = () => {
+    warnings.length = 0;
+    selectedPath = null;
+    refresh();
+  };
+
   const refresh = () => {
     const before = panel.getAttribute("data-locale");
     syncOverlayLocaleFromPage();
@@ -1467,6 +1524,10 @@ export function mountDevtoolsOverlay(
     renderWarnings();
     syncHighlight();
   };
+
+  let stopPathWatch: (() => void) | null = installRoutePathWatch(() => {
+    resetPageSnapshot();
+  });
 
   try {
     if (typeof MutationObserver !== "undefined" && document.documentElement) {
@@ -1538,12 +1599,12 @@ export function mountDevtoolsOverlay(
   panel.querySelectorAll("[data-action='refresh']").forEach((n) =>
     n.addEventListener("click", () => refresh())
   );
-  panel.querySelector("[data-action='clear-warns']")?.addEventListener(
-    "click",
-    () => {
+  panel.querySelectorAll("[data-action='clear-warns']").forEach((n) =>
+    n.addEventListener("click", () => {
       warnings.length = 0;
       renderWarnings();
-    },
+      syncStatusDot();
+    })
   );
   panel.querySelector("[data-action='reset-pos']")?.addEventListener(
     "click",
@@ -1795,6 +1856,10 @@ export function mountDevtoolsOverlay(
       if (stopWatch) {
         stopWatch();
         stopWatch = null;
+      }
+      if (stopPathWatch) {
+        stopPathWatch();
+        stopPathWatch = null;
       }
       if (langObserver) {
         langObserver.disconnect();

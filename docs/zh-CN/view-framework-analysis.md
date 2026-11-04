@@ -1,6 +1,6 @@
 # @dreamer/view 前端框架深入优化可行性分析
 
-> **现行入库分析（v2.2.0／2026-11-03）。** 旧版 `analysis/` 下 v1／早期文已加水印；完整清单见 [`分析文档状态.md`](./分析文档状态.md)。入门 API 见 [`README.md`](./README.md)。
+> **历史入库分析（原 v2.2.0／2026-11-03）。** 包已至 **3.0.0** — 见下方 **勘误／水印**。旧版 `analysis/` 下 v1／早期文已加水印；完整清单见 [`分析文档状态.md`](./分析文档状态.md)。入门 API 见 [`README.md`](./README.md)／[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)。
 
 
 | 项 | 值 |
@@ -14,6 +14,20 @@
 
 ---
 
+
+## 勘误／水印（2026-11-05 · 对照 3.0.0 @ `ba114a9`）
+
+| 旧文表述 | 现行 |
+|----------|------|
+| 分析对象 **v2.2.0** | 包版本 **3.0.0**；主入口已瘦身（无 router／form／resource re-export） |
+| 水合默认／「默认 continue」类叙述 | **3.0**：省略 `mismatchMode` → DEV **`assert`**／prod **`remount`**；见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／README §6.2 |
+| For keyed「span shell」 | keyed For 已用 **Comment 锚点**（旧 span shell 过时） |
+| P0／P1 多项「待做」 | 多数已落地（bench／体积／compiler coverage／严水合／Abort／Router 拆／Form 桥／DevTools 等）；队列见本地 `analysis/optimization-queue-2026-11-05.md` |
+| `analysis/bundle-size-baseline.json` 数字 | **过期**；以 `scripts/size-baseline/bundle-size-baseline.json` 为准 |
+
+本文仍保留 2026-11-03 只读分析正文作历史参考；**决策以 `src/`＋迁移文档＋现行 CHANGELOG 为准**。
+
+---
 ## 0. 结论先行
 
 **还能继续深入优化／升级：能，而且空间仍然明确；但杠杆不在「再堆平行 API」，而在编译器吃满、默认包体边界、水合产品化、以及工程可观测性。**

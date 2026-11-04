@@ -101,3 +101,33 @@ export function warnEagerControlFlowProp(
 export function clearEagerControlFlowWarns(): void {
   eagerControlFlowWarned.clear();
 }
+
+/** VIEW_DEV once-per-kind: For/Index without `key` rebuilds the whole list. */
+const missingListKeyWarned = new Set<string>();
+
+/**
+ * DEV tip: pass `key` on `<For>` / `<Index>` to reuse rows on reorder/update
+ * instead of tearing down the entire list each `each` change.
+ */
+export function warnMissingListKey(
+  kind: "For" | "Index",
+  key: unknown,
+): void {
+  try {
+    if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV !== true) return;
+    if (typeof key === "function") return;
+    if (missingListKeyWarned.has(kind)) return;
+    missingListKeyWarned.add(kind);
+    console.warn(
+      `[@dreamer/view] <${kind}> without key={...} rebuilds the whole list on each change. ` +
+        `Pass key={(item) => item.id} (or a stable field) to reuse/reorder DOM rows.`,
+    );
+  } catch {
+    /* DEV tip must not break render */
+  }
+}
+
+/** Test helper: clear missing-key warn-once set. */
+export function clearMissingListKeyWarns(): void {
+  missingListKeyWarned.clear();
+}

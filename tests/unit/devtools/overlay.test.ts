@@ -206,6 +206,44 @@ describe("devtools overlay (P2)", () => {
     handle.unmount();
   });
 
+  it("Warnings pane has clear button and explicit empty state", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.setTab("warnings");
+    const shadow = handle.root.shadowRoot!;
+    const clearBtns = shadow.querySelectorAll("[data-action='clear-warns']");
+    expect(clearBtns.length).toBeGreaterThanOrEqual(1);
+    // Warnings tab itself includes a clear control (not only Settings)
+    const warnPane = shadow.querySelector("[data-pane='warnings']")!;
+    expect(warnPane.querySelector("[data-action='clear-warns']")).not.toBeNull();
+    const empty = shadow.querySelector("[data-el='warn-empty']");
+    expect(empty).not.toBeNull();
+    expect(empty!.textContent!).toMatch(/No issues|未发现问题/i);
+    expect(empty!.textContent!.length).toBeGreaterThan(20);
+    handle.unmount();
+  });
+
+  it("route path change clears warnings and refreshes overview snapshot", async () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    handle.setTab("warnings");
+    const loc = globalThis.location ?? (document.defaultView as Window).location;
+    const hist = globalThis.history ?? (document.defaultView as Window).history;
+    expect(loc).toBeTruthy();
+    const orig = `${loc.pathname}${loc.search}${loc.hash}`;
+    const next = orig.includes("?") ? `${orig}&__dv=1` : `${orig}?__dv=1`;
+    hist.pushState({}, "", next);
+    await Promise.resolve();
+    await Promise.resolve();
+    handle.setTab("warnings");
+    expect(shadow.querySelector("[data-el='warn-empty']")).not.toBeNull();
+    expect(shadow.querySelector("[data-el='n-effects']")).not.toBeNull();
+    expect(shadow.querySelector("[data-el='n-effects']")!.textContent).toBeTruthy();
+    hist.replaceState({}, "", orig);
+    await Promise.resolve();
+    handle.unmount();
+  });
+
   it("Warnings pane shows setup-rerun badge from auto notes", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     clearComponentSetupNotes();

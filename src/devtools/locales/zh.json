@@ -67,6 +67,7 @@
   "noSourcesYet": "注册表尚无订阅源",
   "noSources": "无订阅源",
   "obs": "{n} 订户",
+  "warnEmptyHint": "当前页的误用警告。清除会清空列表；路由切换也会重新快照。",
   "noIssues": "未发现问题",
   "rootsBadge": "{n} 个根 · 深度 {depth}",
   "rootsBadgePlural": "{n} 个根 · 深度 {depth}",

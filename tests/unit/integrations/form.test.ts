@@ -247,6 +247,29 @@ describe("integrations/form", () => {
     expect(f.checked!()).toBe(true);
   });
 
+
+  it("field as radio 应按 options.value 绑定 checked，并写入 DOM value", async () => {
+    const form = createForm({ plan: "free" });
+    const free = form.field("plan", { as: "radio", value: "free" });
+    const pro = form.field("plan", { as: "radio", value: "pro" });
+    expect(free.checked!()).toBe(true);
+    expect(pro.checked!()).toBe(false);
+    expect(free.value).toBeUndefined();
+    expect(pro.value).toBeUndefined();
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.value = "pro";
+    input.checked = true;
+    const ev = new Event("change", { bubbles: true });
+    Object.defineProperty(ev, "target", { value: input, enumerable: true });
+    pro.onChange!(ev);
+    await waitUntilComplete();
+    expect(form.data.plan).toBe("pro");
+    expect(free.checked!()).toBe(false);
+    expect(pro.checked!()).toBe(true);
+  });
+
   it("field as select 应读写 option value", async () => {
     const form = createForm({ role: "user" });
     const f = form.field("role", { as: "select" });

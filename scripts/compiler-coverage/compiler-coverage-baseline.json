@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T13:48:16.805Z",
+  "measuredAt": "2026-11-04T17:36:22.571Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -813,6 +813,169 @@
       "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-attr-logic.out.txt"
     },
     {
+      "id": "ex-static-card",
+      "fileName": "ex-static-card.tsx",
+      "note": "examples/form-like static card tree → single template (no DOM ops)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 664,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-static-card.out.txt"
+    },
+    {
+      "id": "ex-static-class-join",
+      "fileName": "ex-static-class-join.tsx",
+      "note": "examples/_layout-like static class + concat folded into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 276,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-static-class-join.out.txt"
+    },
+    {
+      "id": "ex-static-tpl-class",
+      "fileName": "ex-static-tpl-class.tsx",
+      "note": "examples/home-like static template-literal className (no ${})",
+      "options": {},
+      "metrics": {
+        "outputBytes": 342,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-static-tpl-class.out.txt"
+    },
+    {
+      "id": "ex-static-ternary-class",
+      "fileName": "ex-static-ternary-class.tsx",
+      "note": "examples/resource-like static base + ternary class concat",
+      "options": {},
+      "metrics": {
+        "outputBytes": 290,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-static-ternary-class.out.txt"
+    },
+    {
+      "id": "ex-static-array-join",
+      "fileName": "ex-static-array-join.tsx",
+      "note": "static Array#join class tokens folded (examples-style class lists)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 255,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-static-array-join.out.txt"
+    },
+    {
+      "id": "ex-semi-dyn-tpl-class",
+      "fileName": "ex-semi-dyn-tpl-class.tsx",
+      "note": "examples/home semi-dynamic template class → setAttribute (lock non-fold)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 280,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 1,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ex-semi-dyn-tpl-class.out.txt"
+    },
+    {
+      "id": "ssr-ex-static-ternary-class",
+      "fileName": "ssr-ex-static-ternary-class.tsx",
+      "note": "SSR parity: static ternary class concat folded like CSR",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 103,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-ex-static-ternary-class.out.txt"
+    },
+    {
       "id": "hmr-export",
       "fileName": "hmr-export.tsx",
       "note": "HMR wraps export const component",
@@ -839,15 +1002,15 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 35,
-    "totalSetAttribute": 4,
+    "fixtureCount": 42,
+    "totalSetAttribute": 5,
     "totalSetProperty": 1,
     "totalWalk": 5,
     "totalInsert": 7,
     "totalMemo": 1,
     "totalSpread": 1,
     "totalPathConsts": 5,
-    "zeroReactiveDomOpsCount": 26,
-    "staticDomOpFreeRatio": 0.7429
+    "zeroReactiveDomOpsCount": 32,
+    "staticDomOpFreeRatio": 0.7619
   }
 }

@@ -106,3 +106,46 @@ export function sanitizeUrl(url: unknown): string | null {
   if (isDangerousUrl(s)) return null;
   return s;
 }
+
+/**
+ * 消毒 `srcset`：按逗号拆候选，对每个 URL（首个非空白 token）跑 {@link sanitizeUrl}；
+ * **任一**危险则整段返回 `null`（调用方应移除属性，不写入半残列表）。
+ *
+ * 为何不只对整串 `sanitizeUrl`：合法 srcset 形如 `/a.jpg 1x, javascript:… 2x`，
+ * 整串不以危险 scheme 开头，会漏过嵌入的危险候选。描述符（`1x`／`100w`）原样保留。
+ * 不解析带括号／引号的稀有写法——与现行 HTML 常见产出对齐；那种应走应用层清洗。
+ */
+export function sanitizeSrcset(value: unknown): string | null {
+  if (value == null || value === false) return null;
+  const s = String(value);
+  const parts = s.split(",");
+  const out: string[] = [];
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(/^(\S+)(\s+.*)?$/);
+    const url = m ? m[1]! : trimmed;
+    const rest = m && m[2] ? m[2] : "";
+    const sanitized = sanitizeUrl(url);
+    if (sanitized == null) return null;
+    out.push(sanitized + rest);
+  }
+  return out.length ? out.join(", ") : null;
+}
+
+/**
+ * SSR／CSR props 共用：需 URL 消毒的 attribute 名（**小写**比较）。
+ * 与 `setProperty`／`SsrElement.setAttribute` 同源，避免两条路径漏防。
+ * `srcdoc` 不在此列——属危险 HTML 面，由 props 层整段拒绝，而非 URL 消毒。
+ */
+export const URL_ATTR_NAMES = new Set([
+  "href",
+  "src",
+  "srcset",
+  "xlink:href",
+  "formaction",
+  "action",
+  "poster",
+  "cite",
+  "background",
+]);

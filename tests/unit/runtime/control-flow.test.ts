@@ -413,6 +413,38 @@ describe("runtime/control-flow", () => {
     expect(comments.length).toBeGreaterThanOrEqual(2);
   }, { sanitizeOps: false, sanitizeResources: false });
 
+
+  it("Switch: 使用注释锚点且无 data-view-switch 节点", async () => {
+    const [tab, setTab] = createSignal<"a" | "b">("a");
+    const parent = document.createElement("div");
+    const fragment = Switch({
+      fallback: document.createTextNode("none"),
+      children: [
+        jsx(Match, {
+          when: () => tab() === "a",
+          children: document.createTextNode("A"),
+        }),
+        jsx(Match, {
+          when: () => tab() === "b",
+          children: document.createTextNode("B"),
+        }),
+      ],
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    expect(parent.querySelector("[data-view-switch]")).toBeNull();
+    const comments = Array.from(parent.childNodes).filter(
+      (n) => n.nodeType === Node.COMMENT_NODE,
+    ) as Comment[];
+    expect(comments.some((c) => c.data === "view:switch")).toBe(true);
+    expect(comments.some((c) => c.data === "/view:switch")).toBe(true);
+    expect(parent.textContent).toContain("A");
+    setTab("b");
+    await Promise.resolve();
+    expect(parent.querySelector("[data-view-switch]")).toBeNull();
+    expect(parent.textContent).toContain("B");
+  });
+
   it("Switch: 切换分支时不应删除插槽外的兄弟节点（如上方按钮区）", async () => {
     const [tab, setTab] = createSignal<"a" | "b">("a");
     const section = document.createElement("section");

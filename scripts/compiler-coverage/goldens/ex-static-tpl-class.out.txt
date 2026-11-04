@@ -1,0 +1,6 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<div class=\"group relative flex flex-col rounded-2xl border bg-white p-6 shadow-lg border-l-4 border-indigo-500\"><span>card</span></div>");
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    return _el;
+})();

@@ -1,0 +1,6 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<section className=\"space-y-12\"><header><h2 className=\"text-3xl font-black tracking-tight\">Form</h2><p className=\"mt-3 text-slate-500 font-medium\">createForm demo</p></header><div className=\"p-10 border rounded-3xl bg-white shadow-xl max-w-lg mx-auto space-y-8\"><h3 className=\"text-xl font-black border-b pb-6\">\u7528\u6237\u6CE8\u518C</h3><label className=\"text-xs font-black uppercase tracking-widest\">\u7528\u6237\u540D</label></div></section>");
+export const App = () => ((() => {
+    const _el = _tmpl$1();
+    return _el;
+})());

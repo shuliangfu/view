@@ -63,6 +63,41 @@ describe("reactivity/advanced-features", () => {
     expect(deferred()).toBe(1);
   });
 
+  it("createDeferred: 省略 timeout 仍走 microtask（默认不变）", async () => {
+    const [s, setS] = createSignal(0);
+    const deferred = createDeferred(s, {});
+    setS(1);
+    expect(deferred()).toBe(0);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(deferred()).toBe(1);
+  });
+
+  it("createDeferred: timeout 路径应在延迟后对齐且可被 Effect 清理取消", async () => {
+    const [s, setS] = createSignal(1);
+    let dispose!: () => void;
+    let deferred!: () => number;
+    createRoot((d) => {
+      dispose = d;
+      deferred = createDeferred(s, { timeout: 20 });
+    });
+    expect(deferred()).toBe(1);
+    setS(2);
+    // 同步与紧随的 microtask 都不应已提交（timeout 路径）
+    expect(deferred()).toBe(1);
+    await Promise.resolve();
+    expect(deferred()).toBe(1);
+    // 等 macrotask／idle 回退（测试环境无 requestIdleCallback 时为 setTimeout）
+    await new Promise((r) => setTimeout(r, 40));
+    expect(deferred()).toBe(2);
+
+    // dispose 后入队的 timeout 不得再写入
+    setS(3);
+    dispose();
+    await new Promise((r) => setTimeout(r, 40));
+    expect(deferred()).toBe(2);
+  });
+
   it("useTransition: 应当追踪异步状态并批量更新", async () => {
     const [isPending, start] = useTransition();
     const [s, setS] = createSignal(1);

@@ -57,7 +57,11 @@ import {
   type ViewSlot,
 } from "../types.ts";
 import { insert } from "./insert.ts";
-import { readAccessor, warnEagerControlFlowProp } from "./utils.ts";
+import {
+  readAccessor,
+  warnEagerControlFlowProp,
+  warnMissingListKey,
+} from "./utils.ts";
 
 /**
  * 比较两组 resetKeys 是否逐项相同（Object.is），用于判断依赖是否相对上次 effect 运行发生变化。
@@ -137,6 +141,10 @@ interface KeyedListRow<T> {
 /** 行首/尾注释 data，便于调试与测试定位 */
 const VIEW_FOR_START = "view:for";
 const VIEW_FOR_END = "/view:for";
+
+/** Switch 锚点注释 data（对齐 For keyed，无额外 span） */
+const VIEW_SWITCH_START = "view:switch";
+const VIEW_SWITCH_END = "/view:switch";
 
 /**
  * 将 `start` 到 `end`（含）的节点依次 `insertBefore(parent, before)`，保持相对顺序。
@@ -560,6 +568,7 @@ export function For<T>(props: {
   key?: (item: T) => unknown;
 }): DocumentFragment {
   warnEagerControlFlowProp("each", props.each);
+  warnMissingListKey("For", props.key);
   if (props.key) {
     return forKeyedList(props as typeof props & { key: (item: T) => unknown });
   }
@@ -727,6 +736,7 @@ export function Index<T>(props: {
   key?: (item: T) => unknown;
 }): DocumentFragment {
   warnEagerControlFlowProp("each", props.each);
+  warnMissingListKey("Index", props.key);
   if (props.key) {
     return forKeyedList({
       each: props.each,
@@ -800,6 +810,9 @@ function normalizeSwitchChildren(
  * Switch：仅渲染第一个 `when()` 为真的 Match 的 children；若无匹配且提供 fallback 则渲染 fallback。
  * Match 返回描述对象而非 DOM，由 Switch 统一 insert，避免多分支同时挂载。
  *
+ * 锚点为注释起止（对齐 For keyed），**不再**包 `span[data-view-switch][display:contents]`，
+ * 清除范围限于 start..end 之间，避免误删外层兄弟节点。
+ *
  * @param props.children `Match` 描述符或数组
  * @param props.fallback 无匹配分支时的内容
  * @returns `DocumentFragment`
@@ -808,21 +821,22 @@ export function Switch(props: {
   children: SwitchChild | readonly SwitchChild[];
   fallback?: InsertValue;
 }): DocumentFragment {
-  /** 插槽容器：marker 的 previousSibling 仅限 Switch 自己插入的内容，避免误删外层 section 里更靠前的按钮等节点 */
-  const slot = document.createElement("span");
-  slot.setAttribute("data-view-switch", "");
-  slot.style.display = "contents";
-
-  const marker = document.createTextNode("");
-  slot.appendChild(marker);
-
+  const start = document.createComment(VIEW_SWITCH_START);
+  const end = document.createComment(VIEW_SWITCH_END);
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(slot);
+  fragment.appendChild(start);
+  fragment.appendChild(end);
 
   createEffect(() => {
-    const parent = marker.parentNode || slot;
-    while (marker.previousSibling) {
-      parent.removeChild(marker.previousSibling);
+    // 未挂载时 parent 可能仍是 fragment；挂载后为真实父节点。两种都只清锚点之间。
+    const parent = end.parentNode || fragment;
+    // 为何不用「marker.previousSibling 一路删」：那会在无壳 span 时误删 section 里
+    // Switch 之前的按钮等兄弟（见单测「不应删除插槽外的兄弟节点」）。
+    let node: Node | null = start.nextSibling;
+    while (node && node !== end) {
+      const next: Node | null = node.nextSibling;
+      parent.removeChild(node);
+      node = next;
     }
 
     const parts = normalizeSwitchChildren(props.children);
@@ -844,9 +858,9 @@ export function Switch(props: {
     }
 
     if (selected != null && selected !== false) {
-      insert(parent, selected, null, marker);
+      insert(parent, selected, null, end);
     } else if (props.fallback != null) {
-      insert(parent, props.fallback, null, marker);
+      insert(parent, props.fallback, null, end);
     }
   });
 

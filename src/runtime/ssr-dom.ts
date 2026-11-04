@@ -15,7 +15,13 @@
  * `innerHTML`/`outerHTML`/`textContent` 用 `joinChildOuterHtml` 等聚合。
  */
 
-import { escapeForAttr, escapeForText } from "../utils/escape.ts";
+import {
+  escapeForAttr,
+  escapeForText,
+  sanitizeSrcset,
+  sanitizeUrl,
+  URL_ATTR_NAMES,
+} from "../utils/escape.ts";
 
 /** 与 `insert.ts` 共用：标记 SSR 树节点，避免在无 `Node` 全局时 `instanceof` 不可用 */
 export const SSR_VIEW_TREE_NODE = Symbol.for("@dreamer/view/ssrTreeNode");
@@ -891,9 +897,23 @@ export class SsrElement extends SsrNode {
     else this.removeAttribute("checked");
   }
 
+  /**
+   * 设置属性。URL 类名（见 {@link URL_ATTR_NAMES}）先消毒，与 CSR `setProperty` 对齐，
+   * 避免 `el.href = "javascript:…"`／直接 `setAttribute` 绕过 JSX 护栏后进 `renderToString`。
+   * 危险值：删除既有键并 return（不写入）。`href`／`src` 反射 setter 亦经此路径。
+   */
   setAttribute(name: string, value: string): void {
     const n = name.toLowerCase();
-    this._attrs.set(n, value);
+    let v = value;
+    if (URL_ATTR_NAMES.has(n)) {
+      const cleaned = n === "srcset" ? sanitizeSrcset(v) : sanitizeUrl(v);
+      if (cleaned == null) {
+        this._attrs.delete(n);
+        return;
+      }
+      v = cleaned;
+    }
+    this._attrs.set(n, v);
     if (n === "class") {
       /* className getter reads _attrs */
     }

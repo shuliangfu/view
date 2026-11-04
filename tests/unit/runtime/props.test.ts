@@ -142,6 +142,38 @@ describe("runtime/props", () => {
     expect(n).toBe(1);
   });
 
+
+  it("安全：危险 srcset 应被拒绝；安全 srcset 保留", () => {
+    const img = document.createElement("img");
+    setProperty(img, "srcset", "/a.jpg 1x, /b.jpg 2x");
+    expect(img.getAttribute("srcset")).toContain("/a.jpg");
+    expect(img.getAttribute("srcset")).toContain("/b.jpg");
+    setProperty(img, "srcset", "javascript:alert(1)");
+    expect(img.getAttribute("srcset")).toBeNull();
+    setProperty(img, "srcset", "/ok.jpg 1x, javascript:alert(1) 2x");
+    expect(img.getAttribute("srcset")).toBeNull();
+  });
+
+  it("安全：srcdoc / srcDoc 应被拒绝且不写入", () => {
+    const iframe = document.createElement("iframe");
+    const warns: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warns.push(String(args[0] ?? ""));
+    };
+    try {
+      setProperty(iframe, "srcdoc", "<script>alert(1)</script>");
+      expect(iframe.getAttribute("srcdoc")).toBeNull();
+      setProperty(iframe, "srcDoc", "<p>x</p>");
+      expect(iframe.getAttribute("srcdoc")).toBeNull();
+      expect(warns.some((w) => w.includes("srcdoc") || w.includes("srcDoc"))).toBe(
+        true,
+      );
+    } finally {
+      console.warn = orig;
+    }
+  });
+
   it("open 属性不应被当成 on* 事件", () => {
     const d = document.createElement("details");
     setProperty(d, "open", true);

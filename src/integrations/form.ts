@@ -4,7 +4,8 @@
  *
  * **支持的功能：**
  * - ✅ createForm(initial, options?) — 第二参可选，无规则时与旧版行为兼容
- * - ✅ field(name, options?) — 默认 value + onInput；`{ as: "checkbox" | "select" | "textarea" | "number" }` 分支；blur 规则同前
+ * - ✅ field(name, options?) — 默认 value + onInput；`{ as: "checkbox" | "radio" | "select" | "textarea" | "number" }` 分支；blur 规则同前
+ * - ⚠ `as: "file"` **不做**：FileList／多文件／清空语义属应用层；请自绑 `onChange` + `updateField`
  * - ✅ rules — 每字段 `(value, data) => string | null`
  * - ✅ validateOn — `change` | `blur` | `submit`（可多选；默认仅 `submit`）
  * - ✅ validate() / validateField(name)
@@ -54,6 +55,7 @@ export interface CreateFormOptions<T extends Record<string, unknown>> {
 export type FormFieldAs =
   | "text"
   | "checkbox"
+  | "radio"
   | "select"
   | "textarea"
   | "number";
@@ -65,8 +67,19 @@ export interface FormFieldOptions {
    * - `text` / `textarea` / `select`：`value` + `onInput`（读 `.value`）
    * - `number`：同上，写入时 `Number(...)`（空串保持 `""` 以便必填规则）
    * - `checkbox`：`checked` + `onInput`／`onChange`（读 `.checked`）
+   * - `radio`：`checked`（`data[name] === options.value`）+ `onInput`／`onChange`（写入
+   *   **该 radio 的 DOM `.value`**，不是 boolean）。须同时传 {@link FormFieldOptions.value}
+   *   标识本组选项；**不要**再绑 `value={() => data[name]}`，否则同组所有 radio 的
+   *   value 属性会被改成当前选中值。
+   *
+   * 边界：无 `as: "file"` — `<input type="file">` 的 FileList／多选／重置请应用层自管。
    */
   as?: FormFieldAs;
+  /**
+   * radio 选项值（与 `<input type="radio" value="…">` 对齐）。
+   * 仅 `as: "radio"` 使用；其它 `as` 忽略。
+   */
+  value?: string;
 }
 
 /** field() 返回的绑定属性（按 as 分支） */
@@ -203,23 +216,46 @@ export function createForm<T extends Record<string, unknown>>(
 
   /**
    * 生成双向绑定；第二参 `as` 可选（省略／text／textarea／select → value）。
-   * 统一挂 onChange，便于 checkbox／select 原生展开。
+   * 统一挂 onChange，便于 checkbox／radio／select 原生展开（部分浏览器只派 change）。
+   *
+   * 不变量：同一次 `applyValue` 既挂 `onInput` 也挂 `onChange`，避免控件只触发其一
+   * 时漏写；校验仍受 `validateOn` 约束。
    */
   const field = (name: keyof T, fieldOpts?: FormFieldOptions): FormFieldBindings => {
     const as = fieldOpts?.as;
+    /** radio 选项字面量；缺省时仍可读 DOM `.value`，但 checked 比较会退化 */
+    const radioValue = fieldOpts?.value;
     const applyValue = (e: Event) => {
       const el = e.target as HTMLInputElement;
-      let val: unknown = as === "checkbox" ? el.checked : el.value;
+      let val: unknown;
+      if (as === "checkbox") {
+        val = el.checked;
+      } else if (as === "radio") {
+        // 选中时写入该 radio 的 value（组内互斥由浏览器保证）
+        val = el.value;
+      } else {
+        val = el.value;
+      }
       if (as === "number" && val !== "") {
         const n = Number(val);
-        if (n == n) val = n;
+        if (n == n) val = n; // NaN 时保留原字符串，避免脏输入被静默清掉
       }
       setData(name, val as T[keyof T]);
       if (validateOnSet.has("change") && options?.rules?.[name]) validateField(name);
     };
     const base: FormFieldBindings = { onInput: applyValue, onChange: applyValue };
-    if (as === "checkbox") base.checked = () => !!data[name];
-    else base.value = () => data[name];
+    if (as === "checkbox") {
+      base.checked = () => !!data[name];
+    } else if (as === "radio") {
+      // 与 options.value 比；若调用方未传 value，退化为与 DOM 当前 value 无关的恒 false，
+      // 迫使调用方显式传 value（比静默用 data[name] 当 value 属性更安全）。
+      const opt = radioValue;
+      base.checked = () =>
+        opt !== undefined && String(data[name] ?? "") === String(opt);
+      // 不设置 base.value：由 JSX `value="red"` 提供选项标识，避免覆盖
+    } else {
+      base.value = () => data[name];
+    }
     if (validateOnSet.has("blur") && options?.rules?.[name]) {
       base.onBlur = () => {
         validateField(name);

@@ -49,9 +49,12 @@ CI：ubuntu job `bench-check`，环境变量 `BENCH_BUDGET_PCT=300`（Actions �
 
 ```bash
 deno run -A scripts/profiling/local-probe-example.ts
+# 路由来回：Owner／订阅／叶子 Effect 启发式（可 VIEW_PROBE_ITERS=N）
+deno run -A scripts/profiling/route-churn-probe.ts
 ```
 
 在**应用侧**临时包装 `createEffect`／`insert` 统计调用次数亦可；用完即删，**禁止**合进 `src/` 默认路径。
+`route-churn-probe.ts` 只读测量 dispose／订阅规模，**不**进运行时热路径；发现泄漏再另开运行时刀。
 
 ### 2.3 与微型 bench 的关系
 

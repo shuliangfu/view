@@ -118,6 +118,7 @@ export default function ControlFlowDemo() {
         <ul className="space-y-2">
           <For
             each={fruits}
+            key={(item: string) => item}
             fallback={
               <li className="text-red-500 dark:text-red-400 italic p-2 bg-red-50 dark:bg-red-900/20 rounded">
                 暂无水果数据

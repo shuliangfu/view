@@ -1,6 +1,8 @@
 # P1-2: Hydration quality opt-in pilot (`mismatchMode` · 2.x additive)
 
 > **Superseded for defaults:** as of **3.0** (`R1`/`R3`), omitting `mismatchMode` is no longer `continue` — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md). This P1-2 page remains the 2.x opt-in pilot record.
+>
+> **Reading note (2026-11-05):** §§1–4 tables/examples below still describe the **2.x “default continue”** snapshot. Current behavior is `resolveMismatchMode` + [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) / README §6.2: omit → **DEV `assert` / prod `remount`**; 2.x tolerance requires explicit `mismatchMode: "continue"`.
 
 | Item | Value |
 |------|-------|

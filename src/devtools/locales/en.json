@@ -67,6 +67,7 @@
   "noSourcesYet": "No registry sources yet",
   "noSources": "No sources",
   "obs": "{n} obs",
+  "warnEmptyHint": "Misuse warnings for the current page. Clear resets the list; navigating also starts a fresh snapshot.",
   "noIssues": "No issues detected",
   "rootsBadge": "{n} root · depth {depth}",
   "rootsBadgePlural": "{n} roots · depth {depth}",

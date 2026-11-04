@@ -41,6 +41,7 @@ import {
   catchError,
   cleanNode,
   getOwner,
+  onCleanup,
   Owner,
   setOwner,
 } from "./owner.ts";
@@ -170,28 +171,101 @@ export function createRenderEffect(fn: () => void): void {
 }
 
 /**
- * 将 `source` 的更新推迟到微任务，避免与高优先级同步更新争抢。
+ * `createDeferred` 第二参选项。
+ *
+ * **不变量：** 默认路径只走 `queueMicrotask`，与 `scheduler/priority` **解耦**。
+ * 可选 `timeout` 仅用 idle／macrotask 推迟提交，**不会**把 Observer 批处理并入
+ * `scheduleTask`／Priority 队列（那是架构级 RFC，现行硬禁）。
+ */
+export interface CreateDeferredOptions<T> {
+  /** 自定义相等判断；省略时用 `Object.is` */
+  equals?: (a: T, b: T) => boolean;
+  /**
+   * 可选：在应用 deferred 值前最多等待的毫秒数。
+   * - **省略**：`queueMicrotask`（默认，行为与历史一致）
+   * - **数字**：优先 `requestIdleCallback(fn, { timeout })`，否则 `setTimeout(fn, timeout)`
+   *
+   * 为何不用 `scheduleTask(Priority.Idle)`：priority 面向任意回调分级队列，与
+   * `batch` 的 Observer 微任务批是两套调度器；在 deferred 里桥过去会暗示「已统一」，
+   * 易误导后续把 Effect 也塞进 priority（破坏顺序）。timeout 只表达「可晚一点提交」。
+   */
+  timeout?: number;
+}
+
+/**
+ * 按 `timeout` 选项安排一次 deferred 提交；返回取消函数（microtask 不可取消则 no-op）。
+ *
+ * 边界：`requestIdleCallback` 在 Deno／部分测试环境不存在时回退 `setTimeout`；
+ * Effect 重跑／dispose 时必须取消未触发的 idle／timeout，避免向已清理 signal 写入。
+ */
+function scheduleDeferredCommit(
+  apply: () => void,
+  timeout: number | undefined,
+): () => void {
+  if (timeout === undefined) {
+    // 默认：纯 microtask。不用 generation 门闩，以保持与历史路径一致的竞态语义。
+    queueMicrotask(apply);
+    return () => {};
+  }
+
+  const g = globalThis as typeof globalThis & {
+    requestIdleCallback?: (
+      cb: () => void,
+      opts?: { timeout?: number },
+    ) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+
+  if (typeof g.requestIdleCallback === "function") {
+    const id = g.requestIdleCallback(apply, { timeout });
+    return () => {
+      if (typeof g.cancelIdleCallback === "function") {
+        g.cancelIdleCallback(id);
+      }
+    };
+  }
+
+  const id = setTimeout(apply, timeout);
+  return () => clearTimeout(id);
+}
+
+/**
+ * 将 `source` 的更新推迟提交，避免与高优先级同步更新争抢。
+ *
+ * **意图：** 读侧立刻拿到「上一帧」稳定值；写侧在 microtask（或可选 idle／timeout）
+ * 后再对齐 `source`，减轻输入过程中的级联渲染。
+ *
+ * **不变量：**
+ * - 省略 `timeout` 时语义 ≡ 历史 `queueMicrotask` 路径（默认不变）
+ * - 不调用 `scheduleTask`／不改 `batch` Observer 队列
+ *
+ * **边界／坑：** `timeout` 路径在 Effect 重跑前会 `onCleanup` 取消未触发句柄；
+ * 默认 microtask 路径与历史一样不可取消（已入队的 microtask 仍可能跑一次 equals 检查）。
+ *
  * @template T 值类型
  * @param source 同步读取的派生源
- * @param options 可选 `equals` 自定义相等判断
- * @returns 与 `source` 同步的 getter（读时建立对内部 signal 的订阅）
+ * @param options {@link CreateDeferredOptions}；可只传 `equals`（旧调用方兼容）
+ * @returns 与 `source` 延迟对齐的 getter（读时建立对内部 signal 的订阅）
  */
 export function createDeferred<T>(
   source: () => T,
-  options?: { equals?: (a: T, b: T) => boolean },
+  options?: CreateDeferredOptions<T>,
 ): () => T {
   const [get, set] = createSignal(source());
   const equals = options?.equals;
+  const timeout = options?.timeout;
 
   createEffect(() => {
     const value = source();
-    // 使用微任务推迟，这是最简单的优先级调度
-    queueMicrotask(() => {
+    const apply = () => {
       // untrack：避免在偶然仍有 Observer 的上下文里把 deferred 自身订成依赖
       const current = untrack(get);
       const same = equals ? equals(current, value) : Object.is(current, value);
       if (!same) set(() => value);
-    });
+    };
+    const cancel = scheduleDeferredCommit(apply, timeout);
+    // timeout／idle 句柄可取消；microtask 取消为 no-op（见上）
+    onCleanup(cancel);
   });
 
   return get;

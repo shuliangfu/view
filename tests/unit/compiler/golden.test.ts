@@ -22,7 +22,7 @@ const GOLDENS = join(
 
 describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   it("corpus has expected fixture count", () => {
-    expect(FIXTURES.length).toBe(35);
+    expect(FIXTURES.length).toBe(42);
   });
 
   for (const f of FIXTURES) {
@@ -37,7 +37,7 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   }
 
   it("static-nested / static-attr-concat emit no walk or setAttribute", () => {
-    for (const id of ["static-nested", "static-attr-concat", "static-style-object", "static-and-or", "static-typeof-void", "static-nullish", "static-satisfies", "static-text-concat", "static-text-template-ternary", "ssr-static-text-concat", "ssr-static-text-escape", "static-true-and-jsx", "static-false-and-jsx", "static-false-or-jsx", "ssr-static-true-and-jsx", "ssr-static-attr-concat", "ssr-static-attr-style", "ssr-static-attr-logic"]) {
+    for (const id of ["static-nested", "static-attr-concat", "static-style-object", "static-and-or", "static-typeof-void", "static-nullish", "static-satisfies", "static-text-concat", "static-text-template-ternary", "ssr-static-text-concat", "ssr-static-text-escape", "static-true-and-jsx", "static-false-and-jsx", "static-false-or-jsx", "ssr-static-true-and-jsx", "ssr-static-attr-concat", "ssr-static-attr-style", "ssr-static-attr-logic", "ex-static-card", "ex-static-class-join", "ex-static-tpl-class", "ex-static-ternary-class", "ex-static-array-join", "ssr-ex-static-ternary-class"]) {
       const f = FIXTURES.find((x) => x.id === id)!;
       const body = normalizeGolden(compileSource(f.source, f.fileName))
         .split("\n")
@@ -55,6 +55,15 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
     expect(out).toContain("pre ab post");
     expect(out).toContain("walk(");
     expect(out).toContain("insert(");
+  });
+
+  it("ex-semi-dyn-tpl-class keeps setAttribute (dynamic template span)", () => {
+    const f = FIXTURES.find((x) => x.id === "ex-semi-dyn-tpl-class")!;
+    const body = normalizeGolden(compileSource(f.source, f.fileName))
+      .split("\n")
+      .slice(1)
+      .join("\n");
+    expect(body).toContain("setAttribute(");
   });
 
   it("reactive-attr uses setAttribute; id-attr uses setProperty", () => {

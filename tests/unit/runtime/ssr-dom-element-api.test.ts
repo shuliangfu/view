@@ -288,6 +288,40 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
     });
   });
 
+  it("安全：href/src 直接 setter 与 setAttribute 应对齐消毒", () => {
+    withSsrDoc((doc) => {
+      const a = doc.createElement("a") as SsrElement;
+      a.href = "https://ok.example/";
+      expect(a.getAttribute("href")).toContain("ok.example");
+      a.href = "javascript:alert(1)";
+      expect(a.getAttribute("href")).toBeNull();
+
+      const img = doc.createElement("img") as SsrElement;
+      img.src = "/safe.png";
+      expect(img.getAttribute("src")).toBe("/safe.png");
+      img.src = "javascript:alert(1)";
+      expect(img.getAttribute("src")).toBeNull();
+
+      img.setAttribute("srcset", "/a.jpg 1x, /b.jpg 2x");
+      expect(img.getAttribute("srcset")).toContain("/a.jpg");
+      img.setAttribute("srcset", "/ok.jpg 1x, javascript:alert(1) 2x");
+      expect(img.getAttribute("srcset")).toBeNull();
+    });
+  });
+
+  it("安全：JSX setProperty 路径危险 URL 不应出现在 renderToString", () => {
+    withSsrDoc((_doc) => {
+      const html = renderToString(() =>
+        jsx("a", { href: "javascript:alert(1)", children: "x" }),
+      );
+      expect(html).not.toContain("javascript:");
+      const imgHtml = renderToString(() =>
+        jsx("img", { src: "javascript:alert(1)", alt: "x" }),
+      );
+      expect(imgHtml).not.toContain("javascript:");
+    });
+  });
+
   it("innerHTML / innerText / textContent 应可读写", () => {
     withSsrDoc((doc) => {
       const el = doc.createElement("div") as SsrElement;

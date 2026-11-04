@@ -1,6 +1,6 @@
 /**
  * @module views/form
- * @description 展示 @dreamer/view createForm：文本／checkbox／select，以及 schema 桥模式。
+ * @description 展示 @dreamer/view createForm：文本／checkbox／radio／select，以及 schema 桥模式。
  */
 import { createSignal } from "@dreamer/view/reactivity";
 import { Show } from "@dreamer/view/control-flow";
@@ -33,6 +33,7 @@ export default function FormDemo() {
       email: "",
       bio: "致力于构建极致性能的前端框架",
       role: "user",
+      plan: "free",
       agree: false,
     },
     {
@@ -41,6 +42,7 @@ export default function FormDemo() {
         password: (v) => (String(v).length >= 6 ? null : "密码至少 6 位"),
         email: (v) => messageFromSafeParse(parseEmail(v)),
         role: (v) => (v ? null : "请选择角色"),
+        plan: (v) => (v ? null : "请选择方案"),
         agree: (v) => (v ? null : "请勾选同意"),
       },
     },
@@ -53,7 +55,7 @@ export default function FormDemo() {
           高级表单 (Form Integration)
         </h2>
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
-          createForm：文本、checkbox、select，以及 messageFromSafeParse schema 桥。
+          createForm：文本、checkbox、radio、select，以及 messageFromSafeParse schema 桥。
         </p>
       </header>
 
@@ -141,6 +143,38 @@ export default function FormDemo() {
               className="w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               placeholder="写点什么..."
             />
+          </div>
+
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+              方案（radio）
+            </span>
+            <div className="flex flex-wrap gap-4 px-1">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-slate-300">
+                <input
+                  type="radio"
+                  name="plan"
+                  value="free"
+                  {...form.field("plan", { as: "radio", value: "free" })}
+                  className="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Free
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-slate-300">
+                <input
+                  type="radio"
+                  name="plan"
+                  value="pro"
+                  {...form.field("plan", { as: "radio", value: "pro" })}
+                  className="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Pro
+              </label>
+            </div>
+            <Show when={() => !!form.errors.plan}>
+              <span className="text-xs text-rose-500 px-1">{() => form.errors.plan}</span>
+            </Show>
           </div>
 
           <label className="flex items-center gap-3 px-1 cursor-pointer">

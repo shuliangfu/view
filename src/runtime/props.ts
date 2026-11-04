@@ -30,20 +30,18 @@
 
 import { createRenderEffect } from "../reactivity/effect.ts";
 import { batch } from "../scheduler/batch.ts";
-import { sanitizeUrl } from "../utils/escape.ts";
+import {
+  sanitizeSrcset,
+  sanitizeUrl,
+  URL_ATTR_NAMES,
+} from "../utils/escape.ts";
 import { isObject } from "./utils.ts";
 
-/** 需 URL 消毒的 prop / attribute 名（小写比较） */
-const URL_PROP_NAMES = new Set([
-  "href",
-  "src",
-  "xlink:href",
-  "formaction",
-  "action",
-  "poster",
-  "cite",
-  "background",
-]);
+/**
+ * 需 URL 消毒的 prop 名（小写比较）。
+ * 别名 {@link URL_ATTR_NAMES}，保证 CSR setProperty 与 SSR setAttribute 名单不漂移。
+ */
+const URL_PROP_NAMES = URL_ATTR_NAMES;
 
 /**
  * 内联 style 值消毒：拦截 `expression(` / `javascript:`（IE 与旧浏览器 XSS 面）。
@@ -267,7 +265,7 @@ export function resetEventDelegationForSSR(): void {
 /**
  * 为元素设置属性、事件或样式；函数值会包一层 `createRenderEffect` 做响应式绑定（`on*` 除外）。
  * @param el 目标元素（含 SVG）
- * @param name 属性名；`children`/`ref` 忽略；`innerHTML`/`outerHTML` 拒绝写入
+ * @param name 属性名；`children`/`ref` 忽略；`innerHTML`/`outerHTML`/`srcdoc`/`srcDoc` 拒绝写入
  * @param value 标量、对象 style、或 getter 函数
  * @returns `void`
  */
@@ -275,9 +273,16 @@ export function setProperty(el: any, name: string, value: any) {
   // 0. 忽略特殊属性 (children, ref 等由编译器或特定逻辑处理)
   if (name === "children" || name === "ref") return;
 
-  // 安全审计：禁止直接通过 props 设置 innerHTML / outerHTML 以防止 XSS。
-  // 如果确有需要，用户应直接操作 DOM 节点。
-  if (name === "innerHTML" || name === "outerHTML") {
+  // 安全审计：拒绝经 props 写入的危险 HTML 面（XSS）。
+  // `srcdoc`／`srcDoc` 与 innerHTML 同级：iframe 内联文档可执行脚本。
+  // 为何 warn+return 而非抛错：保持与既有 innerHTML 行为一致，避免破坏性；
+  // 确有信任 HTML 需求时请直接操作 DOM／编译期 template()。
+  if (
+    name === "innerHTML" ||
+    name === "outerHTML" ||
+    name === "srcdoc" ||
+    name === "srcDoc"
+  ) {
     console.warn(
       `[Security] Direct setting of "${name}" through props is prohibited.`,
     );
@@ -341,19 +346,20 @@ export function setProperty(el: any, name: string, value: any) {
     return;
   }
 
-  // URL 属性：拦截 javascript: / vbscript: / data:text/html
+  // URL 属性：拦截 javascript: / vbscript: / data:text/html。
+  // srcset 走 sanitizeSrcset（逐候选），其余走 sanitizeUrl；名单见 URL_ATTR_NAMES。
   const nameLower = name.toLowerCase();
   if (URL_PROP_NAMES.has(nameLower)) {
     if (value == null || value === false) {
       value = null;
     } else {
-      value = sanitizeUrl(value);
+      value = nameLower === "srcset" ? sanitizeSrcset(value) : sanitizeUrl(value);
       if (value == null) {
-        // 危险 URL：移除既有属性，不写入
+        // 危险 URL：尽量移除既有属性后直接返回，避免留下旧安全值被误以为仍有效
         if (typeof el.removeAttribute === "function") {
           try {
             el.removeAttribute(nameLower === "xlink:href" ? "href" : name);
-          } catch { /* ignore */ }
+          } catch { /* SVG／非 Element 等：忽略 */ }
         }
         if (nameLower === "href" && "href" in el) {
           try {

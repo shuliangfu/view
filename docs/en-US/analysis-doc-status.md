@@ -2,7 +2,7 @@
 
 | Item | Value |
 |------|-------|
-| Date | **2026-11-04** (Asia/Shanghai) |
+| Date | **2026-11-05** (Asia/Shanghai) |
 | Nature | **Docs governance**: mark obsolete / drifted analysis; point to current docs; **no** runtime changes |
 | Current analysis | [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) (Chinese; canonical) |
 | Getting started / API | [`README.md`](./README.md) · [`../zh-CN/README.md`](../zh-CN/README.md) |
@@ -21,8 +21,8 @@
 | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md) | Component author guide (Memo / ref / subscription boundaries) |
 | [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md) | Consumer / examples bundle analyze + independent size gate |
 | [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md) | Main-entry barrel deprecation preview (Strategy A) |
-| [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md) | Hydration `mismatchMode` opt-in pilot (default remains continue) |
-- [P1-4-router-split-ssr.md](./P1-4-router-split-ssr.md) — Router split + SSR isomorphism
+| [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md) | 2.x hydration opt-in **history**; **3.0 defaults** in [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) (omit → DEV `assert` / prod `remount`) |
+| [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md) · [`../zh-CN/P1-4-router-split-ssr.md`](../zh-CN/P1-4-router-split-ssr.md) | Router split + SSR isomorphism |
 | [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md) | examples subpath dogfood (codegen / Bun import map) |
 | [`P2-4-devtools.md`](./P2-4-devtools.md) · [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md) | DEV-only DevTools (Owner / subscriptions) |
 | [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) · [`../zh-CN/P2-dev-warn-oversubscribe.md`](../zh-CN/P2-dev-warn-oversubscribe.md) | DEV-only oversubscribe / remount warnings (§5.1) |

@@ -51,6 +51,43 @@ function MiddleLayer() {
   );
 }
 
+/**
+ * Props Signal thunk dogfood（与 Context Proxy 对齐）：
+ * 父组件把 Signal-of-object 当 `user={user}` 传入；子组件可急切写
+ * `{props.user.name}` / `const user = props.user; {user.name}`，
+ * setup untrack 下仍细粒度更新，不会整卡重跑。
+ */
+function UserCard(props: { user: { name: string; role: string } }) {
+  const user = props.user;
+  return (
+    <div
+      className="p-6 bg-emerald-50/50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl shadow-inner transition-colors"
+      data-demo="eager-props-card"
+    >
+      <h3 className="font-black text-emerald-700 dark:text-emerald-400 mb-2 uppercase tracking-widest text-xs">
+        Props 急切读 (UserCard)
+      </h3>
+      <div className="space-y-1">
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+          props.user.name:{" "}
+          <span
+            className="font-mono text-emerald-600 dark:text-emerald-400"
+            data-demo="eager-props-name"
+          >
+            {props.user.name}
+          </span>
+        </p>
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+          user.role:{" "}
+          <span className="font-mono text-emerald-600 dark:text-emerald-400">
+            {user.role}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ContextDemo() {
   const [user, setUser] = createSignal({ name: "Guest", role: "none" });
 
@@ -88,16 +125,29 @@ export default function ContextDemo() {
         </UserContext.Provider>
       </section>
 
+      <section className="space-y-4" data-demo="eager-props">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+          Props 急切读（Signal thunk）
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          与 Context 相同：把 Signal 当 prop 传入后，子组件可直接写{" "}
+          <code className="text-xs bg-slate-100 dark:bg-slate-900 px-1 rounded">
+            {"{props.user.name}"}
+          </code>
+          ，无需 {"{() => props.user().name}"}。点上方登录／注销即可看到细粒度刷新。
+        </p>
+        <UserCard user={user} />
+      </section>
+
       <section className="p-8 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-3xl">
         <h4 className="text-amber-900 dark:text-amber-300 font-bold mb-2">
           架构原理
         </h4>
         <p className="text-amber-700/70 dark:text-amber-400 text-sm font-medium leading-relaxed">
-          <b>智能 Context 代理</b>：我们现在支持自动解包。 当您通过 `useContext`
-          获取一个存储了信号（Signal）的上下文时，框架会自动为您创建一个 Proxy。
-          您只需直接访问 `user.name`，Proxy
-          内部会自动执行信号函数并触发响应式追踪。
-          这使得代码在保持极致性能的同时，拥有了最自然的对象访问语法。
+          <b>智能 Context／Props 代理</b>：`useContext` 与经 `jsx()` 传入的
+          Signal props 共用 `signal-value-proxy`。直接访问 `user.name` /
+          `props.user.name` 时，Proxy 在 setup `untrack` 下返回 `__VIEW_SIGNAL`
+          thunk，由 insert 细粒度订阅——组件 setup 不会因字段变化整段重跑。
         </p>
       </section>
     </section>

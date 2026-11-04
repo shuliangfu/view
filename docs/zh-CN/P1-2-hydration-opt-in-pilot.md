@@ -1,6 +1,8 @@
 # P1-2：水合质量 opt-in 试点（`mismatchMode` · 2.x 加法）
 
 > **默认已由 3.0 取代：** `R1`／`R3` 起省略 `mismatchMode` 不再是 `continue` — 见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)。本文保留 2.x opt-in 试点记录。
+>
+> **阅读注意（2026-11-05）：** 下文 §1–§4 表格／示例仍按 **2.x「默认 continue」** 叙述（历史快照）。现行行为以 `resolveMismatchMode` 与 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／README §6.2 为准：省略 → **DEV `assert`／prod `remount`**；要 2.x 容忍须显式 `mismatchMode: "continue"`。
 
 | 项 | 值 |
 |----|-----|

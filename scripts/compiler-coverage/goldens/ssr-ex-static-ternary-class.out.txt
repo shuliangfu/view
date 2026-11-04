@@ -1,0 +1,2 @@
+import { memo } from "@dreamer/view";
+export const App = () => "<button class=\"base on\">T</button>";

@@ -91,8 +91,9 @@ API；需要指令级演示时请本地使用 `jsx-compiler`/`compileSource` 或
 | `createContext(defaultValue)`  | 创建上下文 | ✅       | Context 页                    |
 | `Provider`（value + children） | 提供值     | ✅       | Context 页（theme）           |
 | `useContext()`                 | 消费上下文 | ✅       | Context 页（light/dark 切换） |
+| 急切 `{user.name}` / props thunk | Context Proxy + props Signal thunk | ✅ | Context 页（Consumer + UserCard `user={user}`） |
 
-**结论**：Context 全流程已有示例。
+**结论**：Context 全流程已有示例；Props 急切读与 Context 对齐 dogfood。
 
 ---
 

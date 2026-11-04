@@ -48,10 +48,14 @@ reference CPU; still catches order-of-magnitude regressions). Local default
 
 ```bash
 deno run -A scripts/profiling/local-probe-example.ts
+# Route A↔B churn: Owner / subscribe / leaf-Effect heuristics (VIEW_PROBE_ITERS=N)
+deno run -A scripts/profiling/route-churn-probe.ts
 ```
 
 App-level wrappers around `createEffect` / `insert` are fine for a session;
 delete afterward — **never** land them on default `src/` paths.
+`route-churn-probe.ts` only measures dispose / subscription scale — **not** on the
+runtime hot path; open a separate runtime knife if it smells like a leak.
 
 ### 2.3 Relation to micro-benches
 

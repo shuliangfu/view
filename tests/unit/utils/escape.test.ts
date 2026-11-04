@@ -7,6 +7,7 @@ import {
   escapeForAttrHtml,
   escapeForText,
   isDangerousUrl,
+  sanitizeSrcset,
   sanitizeUrl,
 } from "../../../src/utils/escape.ts";
 
@@ -51,5 +52,11 @@ describe("utils/escape", () => {
     expect(sanitizeUrl("https://example.com/a")).toBe("https://example.com/a");
     expect(sanitizeUrl("/path")).toBe("/path");
     expect(sanitizeUrl(null)).toBe(null);
+  });
+
+  it("sanitizeSrcset：危险候选整段拒绝；安全保留", () => {
+    expect(sanitizeSrcset("/a.jpg 1x, /b.jpg 2x")).toContain("/a.jpg");
+    expect(sanitizeSrcset("javascript:alert(1)")).toBe(null);
+    expect(sanitizeSrcset("/ok.jpg 1x, javascript:alert(1) 2x")).toBe(null);
   });
 });

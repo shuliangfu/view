@@ -123,7 +123,7 @@ import { createForm } from "@dreamer/view/form";
 import { createResource } from "@dreamer/view/resource";
 import { renderToString } from "@dreamer/view/ssr";
 
-// 水合错位策略（加法）：
+// 水合错位策略（3.0：省略 → DEV assert／prod remount；要 2.x 容忍须显式 continue）：
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
@@ -267,15 +267,16 @@ const stop = createRoot((dispose) => {
   - **`HydrateOptions`**：`{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
 - 会先 **`stopHydration()`**，再按选项 **`internalHydrate`**，然后 **`insert`**。
 
-#### `mismatchMode`（加法 · **默认 `continue`**）
+#### `mismatchMode`（**3.0 更严默认** · 省略时按环境解析）
 
-| 值 | 行为 | 推荐 |
-|----|------|------|
-| **`continue`**（默认） | 记录 mismatch，不中断；保留 SSR 节点 | 生产 hybrid；**2.x 勿改库默认** |
-| **`assert`** | 有 mismatch 则抛错 | CI／严格门 — **显式**传入 |
-| **`remount`** | 有 mismatch 则清空容器并 CSR 重挂 | 宁可整树重挂 — **显式**传入 |
+| 值 | 行为 | 何时生效 |
+|----|------|----------|
+| **`assert`** | 有 mismatch 则抛错 | **省略**且 `VIEW_DEV === true` 时的默认；也可显式传入 |
+| **`remount`** | 有 mismatch 则清空容器并 CSR 重挂 | **省略**且生产（无 `VIEW_DEV`）时的默认；也可显式传入 |
+| **`continue`** | 记录 mismatch，不中断；保留 SSR 节点 | **须显式**传入（2.x 容忍错位） |
 
-指南：[P1-2 水合 opt-in 试点](./P1-2-hydration-opt-in-pilot.md)／[EN](../en-US/P1-2-hydration-opt-in-pilot.md)。
+解析：`resolveMismatchMode(options)`（见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1／R3）。
+历史 opt-in 记录：[P1-2](./P1-2-hydration-opt-in-pilot.md)／[EN](../en-US/P1-2-hydration-opt-in-pilot.md)（2.x 默认 `continue` 已由 3.0 取代）。
 examples `/runtime` 有三档演示。渐进／分片水合钩子**尚未**提供。
 
 ```tsx
@@ -286,9 +287,9 @@ function RootView() {
 }
 
 const container = document.getElementById("root")!;
-// 默认 continue（可省略 mismatchMode）
+// 3.0：省略 mismatchMode → DEV assert／prod remount
 hydrate(() => <RootView />, container /* , bindingMap */);
-// CI：hydrate(() => <RootView />, container, { bindings, mismatchMode: "assert" });
+// 要 2.x 容忍：hydrate(..., { bindings, mismatchMode: "continue" });
 ```
 
 ---
@@ -394,11 +395,16 @@ batch(() => {
 
 用于延迟提交、过渡更新（与 **`createEffect`** 调度配合）。
 
+- **默认**：`createDeferred(source)` 经 **`queueMicrotask`** 对齐（与历史一致）。
+- **可选** `timeout?: number`：用 `requestIdleCallback({ timeout })`（无则 `setTimeout`）推迟提交；Effect 重跑／dispose 时取消未触发句柄。
+- **不是** `scheduleTask`／Priority：文档与实现刻意不并入 priority 内核（batch 仍只管 Observer）。
+
 ```tsx
 import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
+// 可选：createDeferred(source, { timeout: 100 });
 const [isPending, startTransitionFromHook] = useTransition();
 
 // deferred() 在微任务后对齐到最新 source；第二项为启动 transition 的函数

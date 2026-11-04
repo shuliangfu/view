@@ -114,6 +114,40 @@ export function getTagName(node: ts.JsxTagNameExpression): string {
  * 含括号、断言、模板串、三元、一元/二元纯字面量，便于更多属性直接进 HTML 模板、少挂 Effect。
  * 供 transformer 复用，避免重复静态判定逻辑。
  */
+
+/**
+ * 静态 `["a","b"].join(" ")`／`[].join()`：数组元素与分隔符皆可编译期求值时，
+ * 视为静态表达式（examples 里常见的 class 拼接边角）。
+ *
+ * 不变量：仅字面量数组 + 标识符名恰为 `join`；不折叠 `arr.join`（Identifier）或
+ * 带 spread 的数组，避免与运行时可变绑定／展开语义分叉。
+ * 为何不只靠 Binary `+`：真实 UI 更常写 `["base", cond && "on"].filter(Boolean).join(" ")`，
+ * 本刀先收纯静态 join；带 filter／动态元素仍走 setAttribute。
+ */
+function isStaticArrayJoinCall(expr: ts.Expression): boolean {
+  if (!ts.isCallExpression(expr)) return false;
+  if (!ts.isPropertyAccessExpression(expr.expression)) return false;
+  if (expr.expression.name.text !== "join") return false;
+  const receiver = expr.expression.expression;
+  if (!ts.isArrayLiteralExpression(receiver)) return false;
+  if (
+    !receiver.elements.every((el) =>
+      !ts.isSpreadElement(el) && isStaticExpression(el)
+    )
+  ) {
+    return false;
+  }
+  // join 至多一个分隔符参数；缺省为 ","（与 Array.prototype.join 一致）
+  if (expr.arguments.length > 1) return false;
+  if (
+    expr.arguments.length === 1 &&
+    !isStaticExpression(expr.arguments[0] as ts.Expression)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function isStaticExpression(expr: ts.Expression): boolean {
   if (expr == null) return false;
   if (
@@ -195,6 +229,9 @@ export function isStaticExpression(expr: ts.Expression): boolean {
   ) {
     return isStaticExpression(expr.expression);
   }
+
+  // 静态数组 `.join(sep)`（见 isStaticArrayJoinCall）
+  if (isStaticArrayJoinCall(expr)) return true;
 
   return false;
 }
@@ -560,6 +597,18 @@ function serializeStaticValue(expr: ts.Expression): string {
       }
     });
     return styles.join(";") + (styles.length > 0 ? ";" : "");
+  }
+  // 静态 `["a","b"].join(" ")` → 与运行时 Array#join 同结果进模板属性
+  if (isStaticArrayJoinCall(expr)) {
+    const call = expr as ts.CallExpression;
+    const arr = (call.expression as ts.PropertyAccessExpression)
+      .expression as ts.ArrayLiteralExpression;
+    const sep = call.arguments.length === 0
+      ? ","
+      : serializeStaticValue(call.arguments[0] as ts.Expression);
+    return arr.elements
+      .map((el) => serializeStaticValue(el as ts.Expression))
+      .join(sep);
   }
   return expr.getText();
 }

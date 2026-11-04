@@ -250,7 +250,68 @@ export const FIXTURES: Fixture[] = [
     note: "SSR: static ?? / || / typeof attrs folded",
   },
   {
+    id: "ex-static-card",
+    fileName: "ex-static-card.tsx",
+    source: `export const App = () => (
+  <section className="space-y-12">
+    <header>
+      <h2 className="text-3xl font-black tracking-tight">Form</h2>
+      <p className="mt-3 text-slate-500 font-medium">createForm demo</p>
+    </header>
+    <div className="p-10 border rounded-3xl bg-white shadow-xl max-w-lg mx-auto space-y-8">
+      <h3 className="text-xl font-black border-b pb-6">用户注册</h3>
+      <label className="text-xs font-black uppercase tracking-widest">用户名</label>
+    </div>
+  </section>
+);`,
+    note: "examples/form-like static card tree → single template (no DOM ops)",
+  },
+  {
+    id: "ex-static-class-join",
+    fileName: "ex-static-class-join.tsx",
+    source:
+      `export const App = () => <a className={"block px-4 py-2 text-sm " + "text-indigo-600 bg-indigo-50"}>Go</a>;`,
+    note: "examples/_layout-like static class + concat folded into template",
+  },
+  {
+    id: "ex-static-tpl-class",
+    fileName: "ex-static-tpl-class.tsx",
+    source:
+      "export const App = () => <div className={`group relative flex flex-col rounded-2xl border bg-white p-6 shadow-lg border-l-4 border-indigo-500`}><span>card</span></div>;",
+    note: "examples/home-like static template-literal className (no ${})",
+  },
+  {
+    id: "ex-static-ternary-class",
+    fileName: "ex-static-ternary-class.tsx",
+    source:
+      `export const App = () => <button className={"px-6 py-2 rounded-xl font-bold " + (true ? "bg-indigo-600 text-white" : "bg-white text-slate-700")}>Tab</button>;`,
+    note: "examples/resource-like static base + ternary class concat",
+  },
+  {
+    id: "ex-static-array-join",
+    fileName: "ex-static-array-join.tsx",
+    source:
+      `export const App = () => <div className={["base", "text-sm", "text-indigo-600"].join(" ")}>x</div>;`,
+    note: "static Array#join class tokens folded (examples-style class lists)",
+  },
+  {
+    id: "ex-semi-dyn-tpl-class",
+    fileName: "ex-semi-dyn-tpl-class.tsx",
+    source:
+      "export const App = () => <div className={`base ${mod.accent}`}>x</div>;",
+    note: "examples/home semi-dynamic template class → setAttribute (lock non-fold)",
+  },
+  {
+    id: "ssr-ex-static-ternary-class",
+    fileName: "ssr-ex-static-ternary-class.tsx",
+    source:
+      `export const App = () => <button className={"base " + (true ? "on" : "off")}>T</button>;`,
+    options: { generate: "ssr" },
+    note: "SSR parity: static ternary class concat folded like CSR",
+  },
+  {
     id: "hmr-export",
+
     fileName: "hmr-export.tsx",
     source: `export const App = () => <div>Hi</div>;`,
     options: { hmr: true },

@@ -1,0 +1,6 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<button class=\"px-6 py-2 rounded-xl font-bold bg-indigo-600 text-white\">Tab</button>");
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    return _el;
+})();
