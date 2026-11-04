@@ -12,6 +12,19 @@ and this project adheres to
 
 ### Fixed
 
+- **P0-hotfix: examples form E2E `page.evaluate` host timeout (non-breaking)**
+  - Root cause: `/form` demo `createForm` rules require `agree`; the E2E clicked Submit
+    without checking it, so `handleSubmit` never ran onValid and 「提交成功」 never appeared.
+    `t.browser.waitFor` uses a host race equal to Playwright `waitForFunction` timeout, so a
+    never-true predicate often surfaces as `page.evaluate` host timeout (not a blocked app
+    main thread / hard CDP hang).
+  - Fix: check 「我已阅读并同意服务条款」 before submit; wait for the 「提交成功」 heading via
+    Playwright locator; after reset assert username returns to initial `dreamer`. Assertions
+    are **not** relaxed; E2E is **not** added to the CI matrix in this change.
+  - No JSR / npm.
+
+### Fixed
+
 - **P0-hotfix: examples import of `batch` from `/reactivity` failed (non-breaking)**
   - Root cause: `batch` lives in `scheduler/batch` and was exported from the main entry,
     `/scheduler`, and `/csr`, but **not** re-exported from `src/reactivity/mod.ts`, while

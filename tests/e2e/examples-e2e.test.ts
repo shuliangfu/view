@@ -483,12 +483,29 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     await pw(t).getByPlaceholder("请输入密码...").fill("secret");
     await pw(t).getByPlaceholder("example@dreamer.com").fill("r@e2e.dev");
     await pw(t).getByPlaceholder("写点什么...").fill("hello e2e");
+    /**
+     * createForm rules 含 agree 必勾；未勾选时 handleSubmit 不进 onValid，
+     * 「提交成功」永不出现。原先 t.browser.waitFor 宿主 timeout 与 PW 同值，
+     * 条件不成立时易误报 page.evaluate 宿主超时（非业务主线程卡死）。
+     */
+    await pw(t).getByRole("checkbox", {
+      name: "我已阅读并同意服务条款",
+      exact: true,
+    }).check({ timeout: E2E_ACTION_TIMEOUT_MS });
     await pw(t).getByRole("button", { name: "立即提交" }).click();
-    await t.browser.waitFor(
-      () => document.body.innerText.includes("提交成功"),
-      { timeout: 15_000 },
-    );
+    // Playwright locator：断言强度不变，避免 waitForFunction 宿主 race 误导
+    await pw(t).getByRole("heading", { name: "提交成功", exact: true }).waitFor({
+      state: "visible",
+      timeout: 15_000,
+    });
     await pw(t).getByRole("button", { name: "重置" }).click();
+    await pw(t).getByPlaceholder("请输入用户名...").waitFor({
+      state: "visible",
+      timeout: E2E_ACTION_TIMEOUT_MS,
+    });
+    expect(await pw(t).getByPlaceholder("请输入用户名...").inputValue()).toBe(
+      "dreamer",
+    );
   }, { timeout: E2E_TIMEOUT_MS });
 
   it("[store] 用户钩子、昵称、待办、清除持久化刷新", async (t) => {

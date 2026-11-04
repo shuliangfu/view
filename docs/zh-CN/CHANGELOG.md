@@ -11,6 +11,17 @@
 
 ### 修复
 
+- **P0-hotfix：examples form E2E `page.evaluate` 宿主超时（非破坏）**
+  - 根因：`/form` 示例 `createForm` 规则要求勾选 `agree`；E2E 未勾选即点「立即提交」，
+    `handleSubmit` 不进入 onValid → 「提交成功」永不出现。`t.browser.waitFor` 宿主 timeout
+    与 Playwright `waitForFunction` 同值，条件不成立时易误报 `page.evaluate` 宿主超时
+    （非业务主线程卡死／非 CDP 必挂）。
+  - 修复：勾选「我已阅读并同意服务条款」后再提交；用 Playwright heading locator 等待
+    「提交成功」；重置后断言用户名恢复为初始值 `dreamer`。**未**放宽断言；E2E **未**入 CI 矩阵。
+  - 禁 JSR／npm。
+
+### 修复
+
 - **P0-hotfix：examples 从 `/reactivity` 导入 `batch` 失败（非破坏）**
   - 根因：`batch` 实现在 `scheduler/batch`，主入口／`/scheduler`／`/csr` 已导出，但
     `src/reactivity/mod.ts` **未** re-export；README §7.4 与 `examples/.../signal` 却从
