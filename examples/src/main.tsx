@@ -32,6 +32,8 @@ function prepareRoot(container: HTMLElement): void {
 /**
  * DEV dogfood: mount via {@link createRootTracked} so DevTools 「树」sees a real
  * Owner root (plain `mountWithRouter` → `createRoot` does not auto-track).
+ * `createRootTracked` also installs Owner→DOM tracking under `VIEW_DEV` before
+ * the first paint, so a Tree click can outline the matching elements.
  * Production / non-VIEW_DEV keeps `mountWithRouter` unchanged.
  */
 function mountExamplesApp(): void {

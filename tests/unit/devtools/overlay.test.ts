@@ -15,6 +15,7 @@ import {
   clearTrackedRoots,
   createRootTracked,
   inspectOwnerIndexed,
+  uninstallOwnerDomTracking,
 } from "@dreamer/view/devtools";
 import { createEffect, createSignal, getOwner } from "@dreamer/view/reactivity";
 import { resetRegistry } from "../dom-setup.ts";
@@ -41,6 +42,8 @@ describe("devtools overlay (P2)", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    uninstallOwnerDomTracking();
+    document.querySelector("[data-dreamer-view-inspect]")?.remove();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
   });
@@ -156,10 +159,14 @@ describe("devtools overlay (P2)", () => {
     const selected = shadow.querySelector(".tree-row.selected");
     expect(selected).not.toBeNull();
     expect(selected!.getAttribute("data-path")).toBe(childPath);
+    expect(selected!.getAttribute("aria-selected")).toBe("true");
     const detail = shadow.querySelector("[data-el='tree-detail']")!
       .textContent!;
     expect(detail).toContain(childPath);
     expect(detail.toLowerCase()).toMatch(/upstream|downstream|depth/);
+    // Signal-only owners have no host elements — no page outline.
+    expect(detail).toMatch(/No connected DOM/i);
+    expect(document.querySelector("[data-dreamer-view-inspect]")).toBeNull();
   });
 
   it("Signals filter narrows registry list", () => {
@@ -235,7 +242,10 @@ describe("devtools overlay (P2)", () => {
     handle.unmount();
 
     document.documentElement.lang = "zh-CN";
-    const handleZh = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    const handleZh = mountDevtoolsOverlay({
+      refreshMs: 0,
+      watchMisuse: false,
+    })!;
     handleZh.open();
     handleZh.setTab("tree");
     const zh = handleZh.root.shadowRoot!.querySelector(
@@ -328,6 +338,7 @@ describe("devtools overlay HMR bridge integration", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    uninstallOwnerDomTracking();
     delete gAny.__DREAMER_HMR__;
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
@@ -388,6 +399,7 @@ describe("devtools inspectOwnerIndexed", () => {
   });
   afterEach(() => {
     clearTrackedRoots();
+    uninstallOwnerDomTracking();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
   });
@@ -425,6 +437,7 @@ describe("devtools overlay i18n (page lang, no switcher)", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    uninstallOwnerDomTracking();
     document.documentElement.lang = prevLang;
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;

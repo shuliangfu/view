@@ -11,11 +11,14 @@ import {
   getSignalObserverCount,
   getTrackedRoots,
   inspectOwner,
+  installOwnerDomTracking,
+  isOwnerDomTracking,
   isViewDev,
   requireViewDev,
   snapshotRegistrySources,
   summarizeOwnerTree,
   trackRoot,
+  uninstallOwnerDomTracking,
   untrackRoot,
 } from "@dreamer/view/devtools";
 import {
@@ -42,6 +45,7 @@ describe("devtools (P2-4)", () => {
   afterEach(() => {
     clearTrackedRoots();
     resetRegistry();
+    uninstallOwnerDomTracking();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
   });
@@ -152,6 +156,7 @@ describe("devtools production posture (no hot-path hooks)", () => {
   afterEach(() => {
     clearTrackedRoots();
     resetRegistry();
+    uninstallOwnerDomTracking();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
   });
@@ -167,5 +172,15 @@ describe("devtools production posture (no hot-path hooks)", () => {
       expect(summary!.effects).toBeGreaterThanOrEqual(1);
       dispose();
     });
+  });
+
+  it("createRootTracked does not install DOM tracking when VIEW_DEV is off", () => {
+    uninstallOwnerDomTracking();
+    createRootTracked(() => {
+      expect(isOwnerDomTracking()).toBe(false);
+    });
+    expect(isOwnerDomTracking()).toBe(false);
+    installOwnerDomTracking();
+    expect(isOwnerDomTracking()).toBe(false);
   });
 });

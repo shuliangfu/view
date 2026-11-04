@@ -46,6 +46,8 @@
   "disposables": "disposables",
   "upstream": "upstream",
   "downstream": "downstream",
+  "dom": "DOM",
+  "noDomForNode": "No connected DOM for this Owner.",
   "upstreamHint": "Upstream = Observer→Source edges on Effects/Memos. Downstream = Source→Observer edges on Memos.",
   "sigFilterPh": "Search registry sources…",
   "misuseScan": "Misuse scan",

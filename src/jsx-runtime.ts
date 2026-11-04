@@ -54,6 +54,25 @@ const SVG_TAG_NAMES = new Set([
 ]);
 
 /**
+ * DEV inspect：`@dreamer/view/devtools` 在 `VIEW_DEV` 下安装
+ * `globalThis.__DREAMER_OWNER_DOM__`。此处捕获的是 **`jsx()` 调用时** 的 Owner
+ * （组件函数执行期），不是稍后在 Effect 里执行宿主 thunk 时的 Owner。
+ * 未安装钩子时只读一次 global，不改生产行为、不写 DOM。
+ */
+function captureOwnerDom(): {
+  record: (owner: unknown, el: Element) => void;
+  owner: NonNullable<ReturnType<typeof getOwner>>;
+} | null {
+  const record = (globalThis as {
+    __DREAMER_OWNER_DOM__?: (owner: unknown, el: Element) => void;
+  }).__DREAMER_OWNER_DOM__;
+  if (typeof record !== "function") return null;
+  const owner = getOwner();
+  if (!owner) return null;
+  return { record, owner };
+}
+
+/**
  * 将 JSX 元素编译为延迟求值的 {@link VNode}（Thunk）：执行时才创建 Owner、插入 DOM。
  * @param type 标签名字符串或组件函数
  * @param props 元素/组件属性（含 `children`、`ref` 等）
@@ -67,6 +86,7 @@ export function jsx(
   props: any,
   _key?: string | number | null,
 ): VNode {
+  const devDom = captureOwnerDom();
   // 返回一个 Thunk (延迟评估函数)
   return () => {
     const parent = getOwner();
@@ -124,6 +144,7 @@ export function jsx(
       }
     }
 
+    if (devDom) devDom.record(devDom.owner, el);
     return el;
   };
 }

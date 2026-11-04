@@ -16,7 +16,7 @@
 | Tab | 内容 |
 |-----|------|
 | **Overview** | effects／memos／nodes／上游边＋健康度＋Top Sources |
-| **Tree** | 可展开 Owner 树（`inspectOwnerIndexed` path）、过滤、选中看详情 |
+| **Tree** | 可展开 Owner 树（`inspectOwnerIndexed` path）、过滤、选中看详情（含 DOM 数量）。**点击**节点：树行选中态，并在页面上勾出该 Owner 的 DOM 轮廓 |
 | **Signals** | registry Source 列表＋搜索过滤 |
 | **Warnings** | 过订阅／remount；**点击**跳到 Tree 对应 path |
 | **Settings** | 角落、刷新间隔、快捷键说明、复位位置／清空警告 |
@@ -29,9 +29,22 @@
 - 非 `VIEW_DEV`：`mountDevtoolsOverlay()`→`null`、不建 DOM
 - 框架不自动挂；examples 仅 `if (VIEW_DEV)`
 
+## 点击高亮
+
+`VIEW_DEV` 下，`createRootTracked`（以及 `mountDevtoolsOverlay`）会在被跟踪的
+渲染**之前**安装 `globalThis.__DREAMER_OWNER_DOM__`。`jsx()` 把宿主元素记在
+**调用 `jsx()` 时**的 Owner（组件）上，而不是稍后执行 thunk 的 Effect。
+面板不往应用节点上写属性。轮廓是面板下方的 `pointer-events: none` 层
+（`data-dreamer-view-inspect`）；关闭面板即隐藏，卸载时移除。没有已连接 DOM
+的 Owner（例如纯 effect）仍保持树行选中，并提示「没有已连接的 DOM」。
+
+`installOwnerDomTracking`／`collectOwnerDomElements` 在 `@dreamer/view/devtools`。
+不引用 `src/i18n.ts`。
+
 ## 演示
 
 `examples/src/main.tsx`（`examples` 下 `deno task dev`）。
+打开角标 →「树」→ 点击节点：该行保持选中，蓝色矩形罩住对应 DOM。滚动或缩放会重算位置。
 
 ## 验收
 

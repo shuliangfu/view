@@ -7,8 +7,8 @@
  * returns `null` and creates no DOM. Not on measured size / consumer entries.
  *
  * Reuses / extends `@dreamer/view/devtools` (indexed Owner tree, registry
- * sources, oversubscribe warnings with path deep-links). Does **not** patch
- * createSignal / createRoot / insert.
+ * sources, oversubscribe warnings with path deep-links, Owner→DOM inspect
+ * highlight). Does **not** patch createSignal / createRoot / insert.
  *
  * When `@dreamer/server` DEV HMR publishes `globalThis.__DREAMER_HMR__`, the
  * overlay claims that UI (`claimUi`) so the standalone “HMR Connected” capsule
@@ -17,14 +17,17 @@
 
 import type { Owner } from "../reactivity/owner.ts";
 import {
+  collectOwnerDomElements,
   detectOversubscribe,
   detectOwnerRemountChurn,
   disableOversubscribeWarnings,
   enableOversubscribeWarnings,
   flattenIndexedOwner,
+  getOwnerByPath,
   getTrackedRoots,
   type IndexedOwnerNode,
   inspectOwnerIndexed,
+  installOwnerDomTracking,
   isViewDev,
   type OversubscribeWarning,
   type OwnerTreeSummary,
@@ -143,7 +146,10 @@ export interface DevtoolsOverlayHandle {
   toggle(): void;
   /** Switch active tab (also opens the panel). */
   setTab(tab: DevtoolsOverlayTab): void;
-  /** Select an Owner path in the Tree tab (`inspectOwnerIndexed` id). */
+  /**
+   * Select an Owner path in the Tree tab (`inspectOwnerIndexed` id).
+   * Opens the panel, marks the row selected, and outlines that Owner's DOM.
+   */
   selectNode(path: string | null): void;
   unmount(): void;
   readonly root: HTMLElement;
@@ -377,7 +383,10 @@ const CSS = /* css */ `
   cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 .tree-row:hover { background: rgba(255,255,255,0.06); }
-.tree-row.selected { background: rgba(59,130,246,0.22); color: #dbeafe; }
+.tree-row.selected {
+  background: rgba(59,130,246,0.28); color: #dbeafe;
+  box-shadow: inset 3px 0 0 #60a5fa;
+}
 .tree-twist {
   width: 16px; height: 16px; display: grid; place-items: center;
   color: rgba(236,236,241,0.45); font-size: 9px; flex-shrink: 0;
@@ -624,6 +633,8 @@ export function mountDevtoolsOverlay(
 ): DevtoolsOverlayHandle | null {
   if (!isViewDev()) return null;
   if (typeof document === "undefined" || !document.body) return null;
+
+  installOwnerDomTracking();
 
   if (active) active.unmount();
 
@@ -942,6 +953,96 @@ export function mountDevtoolsOverlay(
     if (opt) opt.value = corner;
   };
 
+  const ownerForPath = (path: string): Owner | null => {
+    const first = path.split("/")[0] ?? "";
+    for (const { root, id } of collectRoots(primaryOwner)) {
+      if (id === first) return getOwnerByPath(root, path);
+    }
+    return null;
+  };
+
+  const domCountFor = (path: string): number => {
+    const owner = ownerForPath(path);
+    return owner ? collectOwnerDomElements(owner).length : 0;
+  };
+
+  const clearInspectHighlight = () => {
+    document.querySelector("[data-dreamer-view-inspect]")?.remove();
+  };
+
+  const paintInspectHighlight = (path: string, elements: Element[]) => {
+    if (!elements.length) {
+      clearInspectHighlight();
+      return;
+    }
+    const z = Math.max(1, zIndex - 10);
+    let layer = document.querySelector(
+      "[data-dreamer-view-inspect]",
+    ) as HTMLElement | null;
+    if (!layer) {
+      layer = document.createElement("div");
+      document.body.appendChild(layer);
+    }
+    layer.setAttribute("data-dreamer-view-inspect", "");
+    layer.setAttribute("data-inspect-path", path);
+    layer.style.cssText =
+      `position:fixed;inset:0;pointer-events:none;z-index:${z};`;
+    layer.replaceChildren();
+    for (let i = 0; i < elements.length; i++) {
+      const el = elements[i]!;
+      let rect: DOMRect;
+      try {
+        rect = el.getBoundingClientRect();
+      } catch {
+        continue;
+      }
+      const box = document.createElement("div");
+      box.setAttribute("data-inspect-box", "");
+      box.style.cssText =
+        `position:absolute;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;` +
+        "border:2px solid #3b82f6;background:rgba(59,130,246,0.18);border-radius:4px;box-sizing:border-box;";
+      if (i === 0) {
+        const label = document.createElement("span");
+        label.setAttribute("data-inspect-label", "");
+        label.textContent = path;
+        label.style.cssText =
+          "position:absolute;left:-2px;top:0;transform:translateY(-100%);" +
+          "background:#3b82f6;color:#fff;font:600 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;" +
+          "padding:1px 5px;border-radius:3px 3px 0 0;white-space:nowrap;pointer-events:none;";
+        box.appendChild(label);
+      }
+      layer.appendChild(box);
+    }
+    if (!layer.childElementCount) clearInspectHighlight();
+  };
+
+  const syncHighlight = () => {
+    if (!open || !selectedPath) {
+      clearInspectHighlight();
+      return;
+    }
+    const owner = ownerForPath(selectedPath);
+    const els = owner ? collectOwnerDomElements(owner) : [];
+    paintInspectHighlight(selectedPath, els);
+  };
+
+  let highlightRaf = 0;
+  const onViewport = () => {
+    if (!open || !selectedPath) return;
+    const view = document.defaultView;
+    if (view && typeof view.requestAnimationFrame === "function") {
+      if (highlightRaf) return;
+      highlightRaf = view.requestAnimationFrame(() => {
+        highlightRaf = 0;
+        syncHighlight();
+      });
+      return;
+    }
+    syncHighlight();
+  };
+  document.addEventListener("scroll", onViewport, true);
+  document.defaultView?.addEventListener("resize", onViewport);
+
   const setOpen = (next: boolean) => {
     open = next;
     panel.classList.toggle("open", open);
@@ -951,6 +1052,7 @@ export function mountDevtoolsOverlay(
       open ? ot("closeAria") : ot("openAria"),
     );
     persist();
+    syncHighlight();
   };
 
   const setTab = (next: DevtoolsOverlayTab) => {
@@ -978,6 +1080,7 @@ export function mountDevtoolsOverlay(
       }</p>`;
       return;
     }
+    const domCount = domCountFor(node.id);
     detail.innerHTML = `
       <div class="section-h" style="margin-bottom:10px">
         <h3 class="section-title">${ot("nodeDetail")}</h3>
@@ -990,8 +1093,10 @@ export function mountDevtoolsOverlay(
         <dt>${ot("disposables")}</dt><dd>${node.disposables}</dd>
         <dt>${ot("upstream")}</dt><dd>${node.upstream}</dd>
         <dt>${ot("downstream")}</dt><dd>${node.downstream}</dd>
+        <dt>${ot("dom")}</dt><dd>${domCount}</dd>
       </dl>
       <p class="hint">${ot("upstreamHint")}</p>
+      ${domCount === 0 ? `<p class="hint">${ot("noDomForNode")}</p>` : ""}
     `;
   };
 
@@ -1025,6 +1130,7 @@ export function mountDevtoolsOverlay(
           data-path="${
         escapeHtml(node.id)
       }" style="padding-left:${pad}px" role="treeitem"
+          aria-selected="${selectedPath === node.id ? "true" : "false"}"
           ${hasKids ? `aria-expanded="${isOpen ? "true" : "false"}"` : ""}>
           <span class="tree-twist${hasKids ? "" : " empty"}" data-twist="${
         escapeHtml(node.id)
@@ -1331,6 +1437,7 @@ export function mountDevtoolsOverlay(
     renderTree();
     renderSignals();
     renderWarnings();
+    syncHighlight();
   };
 
   try {
@@ -1352,18 +1459,20 @@ export function mountDevtoolsOverlay(
     langObserver = null;
   }
 
-  const selectNode = (path: string | null) => {
+  const selectNode = (path: string | null, expandSelf = true) => {
     selectedPath = path;
     if (path) {
-      // expand ancestors
-      const parts = path.split("/");
-      for (let i = 1; i <= parts.length; i++) {
-        expanded.add(parts.slice(0, i).join("/"));
+      if (expandSelf) {
+        const parts = path.split("/");
+        for (let i = 1; i <= parts.length; i++) {
+          expanded.add(parts.slice(0, i).join("/"));
+        }
       }
       setTab("tree");
       setOpen(true);
     }
     renderTree();
+    syncHighlight();
   };
 
   const onWarn = (w: OversubscribeWarning) => {
@@ -1427,17 +1536,18 @@ export function mountDevtoolsOverlay(
   el("[data-el='tree-list']")?.addEventListener("click", (ev) => {
     const t = ev.target as HTMLElement | null;
     if (!t) return;
+    const row = t.closest("[data-path]") as HTMLElement | null;
+    if (!row?.dataset.path) return;
+    const path = row.dataset.path;
     const twist = t.closest("[data-twist]") as HTMLElement | null;
-    if (twist?.dataset.twist) {
-      const id = twist.dataset.twist;
-      if (expanded.has(id)) expanded.delete(id);
-      else expanded.add(id);
-      renderTree();
-      ev.stopPropagation();
+    if (twist?.dataset.twist === path) {
+      if (expanded.has(path)) expanded.delete(path);
+      else expanded.add(path);
+      // Keep the collapsed row collapsed; still select + highlight.
+      selectNode(path, false);
       return;
     }
-    const row = t.closest("[data-path]") as HTMLElement | null;
-    if (row?.dataset.path) selectNode(row.dataset.path);
+    selectNode(path);
   });
 
   el("[data-el='warn-list']")?.addEventListener("click", (ev) => {
@@ -1661,6 +1771,13 @@ export function mountDevtoolsOverlay(
         langObserver.disconnect();
         langObserver = null;
       }
+      if (highlightRaf && document.defaultView) {
+        document.defaultView.cancelAnimationFrame(highlightRaf);
+        highlightRaf = 0;
+      }
+      document.removeEventListener("scroll", onViewport, true);
+      document.defaultView?.removeEventListener("resize", onViewport);
+      clearInspectHighlight();
       disableOversubscribeWarnings();
       document.removeEventListener("keydown", onKey, true);
       host.remove();
