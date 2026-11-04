@@ -25,7 +25,8 @@
     "./form": "./src/form.ts",
     "./resource": "./src/resource.ts",
     "./control-flow": "./src/control-flow.ts",
-    "./csr": "./src/csr.ts"
+    "./csr": "./src/csr.ts",
+    "./devtools": "./src/devtools.ts"
   },
   "sideEffects": false,
   "scripts": {
