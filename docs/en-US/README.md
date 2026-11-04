@@ -1309,6 +1309,10 @@ returned JSX, the **parent `insert` effect** may subscribe to child state and
 **re-run the whole parent**. Fix: **`return () => ( … JSX … )`** so the dynamic
 subtree runs in an **inner effect**.
 
+Full author conventions (Memo / ref / top-level Signal reads / Context):
+**[P0-4 component author guide](./P0-4-component-author-guide.md)** /
+[ZH](../zh-CN/P0-4-component-author-guide.md).
+
 ```tsx
 import { createSignal } from "jsr:@dreamer/view/reactivity";
 
@@ -1351,6 +1355,7 @@ function ModalHost() {
 - **Analysis doc status** (obsolete / drifted index): [`analysis-doc-status.md`](./analysis-doc-status.md) · [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
 - **P0-1 profiling / bench CI**: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) · [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
 - **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
+- **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
 
 - **Latest [2.1.0] — 2026-07-22**:

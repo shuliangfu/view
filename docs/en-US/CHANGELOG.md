@@ -10,6 +10,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Documentation
+
+- **P0-4: component author guide (Memo / ref / subscription boundaries, non-breaking)**
+  - Add [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) /
+    [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md):
+    setup-once mental model, **no top-level Signal reads that replace the whole tree**,
+    when to use Memo (not as a stable store), transient `ref(null)` + `isConnected`,
+    Effect subscription boundaries, Context must not pass a bare function `value`,
+    controlled props as Signal / getter; distilled from analysis P0-4 and ui-view notes.
+  - Cross-linked from README §22 / §25; **no** runtime semantics change; no JSR / npm.
+
 ### Fixed
 
 - **CI: clear Node 20 action deprecation warnings on Node 24 runners**

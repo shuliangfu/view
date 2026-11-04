@@ -18,6 +18,7 @@
 | [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) | **2026-11-03** read-only framework optimization feasibility (v2.2.0) |
 | [`README.md`](./README.md) | English getting started / API |
 | [`P0-baseline-bundle-and-perf.md`](./P0-baseline-bundle-and-perf.md) | Bundle / bench baseline |
+| [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md) | Component author guide (Memo / ref / subscription boundaries) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---

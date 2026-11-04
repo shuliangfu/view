@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 文档
+
+- **P0-4：组件作者指南（Memo／ref／订阅边界，非破坏）**
+  - 新增 [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md)／
+    [`../en-US/P0-4-component-author-guide.md`](../en-US/P0-4-component-author-guide.md)：
+    心智模型（setup 一次）、**勿顶层读 Signal 致整段替换**、Memo 何时用／勿当稳定仓库、
+    `ref(null)` 瞬态与 `isConnected`、Effect 订阅边界、`Context` 勿传裸函数 value、
+    受控 props 传 Signal／getter；沉淀自分析 P0-4 与 ui-view 踩坑注释。
+  - README §二十二／§二十五互链；**无**运行时语义变更；禁 JSR／npm。
+
 ### 修复
 
 - **CI：消除 Node 20 动作在 Node 24 runner 上的弃用警告**

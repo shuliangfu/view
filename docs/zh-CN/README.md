@@ -1275,6 +1275,10 @@ const code = optimize(bundleSource);
 做法是：组件 **`return () => ( ... JSX ... )`**，把动态子树包进 **内层
 Effect**。
 
+更完整的作者约定（Memo／ref／顶层读 Signal／Context）见
+**[P0-4 组件作者指南](./P0-4-component-author-guide.md)**／
+[EN](../en-US/P0-4-component-author-guide.md)。
+
 ```tsx
 import { createSignal } from "jsr:@dreamer/view/reactivity";
 
@@ -1317,6 +1321,7 @@ function ModalHost() {
 - **分析文档状态**（过时／漂移清单）：[分析文档状态.md](./分析文档状态.md)
 - **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
 - **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
+- **P0-4 组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
 - **当前版本 [2.1.0] — 2026-07-22**：

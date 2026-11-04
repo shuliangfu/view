@@ -114,7 +114,7 @@ ui-view（组件：DataPanel／Modal／Dropdown／图标…）
 | **Router 单文件 ~1200 行** | 难测、难摇树 | 拆 match／history／Link（非行为变更） |
 | **文档漂移** | 部分 zh README／旧 analysis 仍写「不存在／csr 子路径」或 v1 指令／VNode reconcile 表述；与 `deno.json` exports、2.2 CHANGELOG 不一致 | 加水印或修订，避免误决策 |
 | **analysis 文档过多且年代跨 v1→v2** | 易引用过时结论 | 以本文 + `3.0.0-规划分析` + 现行源码为准 |
-| **下游踩坑注释散落 ui-view** | `createMemo` 每次新建、`ref(null)` 瞬态、函数型 Context value 被执行、顶层读 Signal 导致整段替换 | 应沉淀为 **view 官方「组件作者指南」**，减少每个组件重复踩坑 |
+| **下游踩坑注释散落 ui-view** | `createMemo` 每次新建、`ref(null)` 瞬态、函数型 Context value 被执行、顶层读 Signal 导致整段替换 | **已沉淀**：[P0-4 组件作者指南](./P0-4-component-author-guide.md)／[EN](../en-US/P0-4-component-author-guide.md) |
 
 ### 4.3 与 3.0 规划关系
 
@@ -181,7 +181,7 @@ ui-view（组件：DataPanel／Modal／Dropdown／图标…）
 | P0-1 | **真实业务 Profiling + `signal`／`For`／`insert` bench 入 CI** | 指导改哪里、防回退 | 低–中 | 低 |
 | P0-2 | **examples／dweb 主入口 bundle analyze + 体积预算** | 量化 barrel 成本 | 低–中 | 低 |
 | P0-3 | **编译器：静态子树覆盖率指标 + golden（少多余 Effect）** | 性能与表单稳定性上限 | 高 | 中（需强测） |
-| P0-4 | **文档：子路径默认示例 + 组件作者指南（Memo／ref／订阅边界）** | 减少 ui-view／业务重复坑 | 低 | 低 |
+| P0-4 | **文档：子路径默认示例 + 组件作者指南（Memo／ref／订阅边界）** — 作者指南已入 [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md)（子路径示例仍见 README §2） | 减少 ui-view／业务重复坑 | 低 | 低 |
 
 ### P1（中投入，产品或包体收益明显）
 
