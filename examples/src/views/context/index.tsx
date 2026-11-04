@@ -25,13 +25,13 @@ function UserProfile() {
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
           用户名:{" "}
           <span className="font-mono text-indigo-600 dark:text-indigo-400">
-            {() => user.name}
+            {user.name}
           </span>
         </p>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
           角色:{" "}
           <span className="font-mono text-indigo-600 dark:text-indigo-400">
-            {() => user.role}
+            {user.role}
           </span>
         </p>
       </div>

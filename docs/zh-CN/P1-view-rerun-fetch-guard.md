@@ -22,10 +22,10 @@
 在每次属性访问时重读；若一次性 unwrap 成快照，对象型 `value={signal}` 只能靠整树
 remount 刷新，与 setup `untrack` 冲突。同刀已修。
 
-若仅用 esbuild `react-jsx`／`jsx-runtime`（未经 `@dreamer/view` JSX
-编译器），请写 `{() => user.name}` 而非 `{user.name}`，以便 `insert` 收到
-thunk。急切 `{user.name}` 只在 setup 仍订到父级 Effect（整树
-remount）时才能刷新。
+**Context Proxy + jsx-runtime：** 无当前 Observer（setup `untrack`）时，对
+Context Proxy 的数据字段访问返回 `__VIEW_SIGNAL` thunk，急切
+`{user.name}`／属性仍经 `insert`／`createRenderEffect` 细粒度更新；setup
+本身不订父级 insert Effect。
 
 **仍会重建（允许）：** 父级 Effect 重跑（路由切换、父 thunk 显式重读页面
 Signal）、 水合 `mismatchMode: "remount"`、业务主动 remount。

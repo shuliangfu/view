@@ -25,10 +25,10 @@ each property access). Eager unwrap made object-valued `value={signal}` depend
 on whole-tree remount; with setup `untrack` that path went stale. Fixed in the
 same knife.
 
-When the app is compiled with **esbuild `react-jsx` / `jsx-runtime` only** (no
-`@dreamer/view` JSX compiler), write `{() => user.name}` — not `{user.name}` —
-so `insert` receives a thunk. Eager `{user.name}` was fine only while setup
-subscribed the parent Effect (whole-tree remount).
+**Context Proxy + jsx-runtime:** when there is no current Observer (setup
+`untrack`), property access on a Context Proxy returns a `__VIEW_SIGNAL` thunk
+for data fields so eager `{user.name}` / attrs still fine-grain via `insert` /
+`createRenderEffect`. Setup itself does not subscribe the parent insert Effect.
 
 **Still remounts (allowed):** parent Effect re-runs (e.g. route switch, explicit
 parent thunk that re-reads a page Signal), hydration `mismatchMode: "remount"`,

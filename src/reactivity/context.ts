@@ -6,7 +6,7 @@
  * - ✅ createContext() - 创建上下文对象
  * - ✅ Provider - 提供上下文值 (支持 value 是函数或信号)
  * - ✅ useContext() - 消费上下文 (支持 Proxy 响应式访问)
- * - ✅ 支持信号作为上下文值 (value={signal}；Proxy 每次访问重读 getter)
+ * - ✅ 支持信号作为上下文值 (value={signal}；Proxy 重读 getter；无 Observer 时字段延后为 `__VIEW_SIGNAL` thunk，兼容 jsx-runtime 急切 `{user.name}`)
  * - ✅ 透明 Provider (不创建新的 Owner)
  *
  * **核心机制：**
@@ -26,7 +26,7 @@
  */
 
 import { getOwner } from "./owner.ts";
-import { untrack } from "./signal.ts";
+import { getCurrentObserver, untrack } from "./signal.ts";
 
 /**
  * 跨组件树传递数据的上下文：含 `Provider` 与可选 `defaultValue`。
@@ -126,14 +126,50 @@ export function useContext<T>(context: Context<T>): T {
   return context.defaultValue as T;
 }
 
-/** Shared Proxy handler: re-read function targets on each get/set for fine-grained track. */
+/**
+ * Shared Proxy handler for Context values.
+ *
+ * With component setup under `untrack` (P1-view-rerun-fetch-guard), esbuild
+ * `react-jsx` evaluates `{user.name}` **before** `jsx()` / `insert`. If we
+ * returned a plain string there, children would stay stale. When there is
+ * **no current Observer**, property gets that are data fields return a
+ * `__VIEW_SIGNAL` thunk so `insert` / attr `createRenderEffect` can subscribe
+ * fine-grained — while setup still does not subscribe the parent insert Effect.
+ */
 const contextProxyHandler: ProxyHandler<
   object | ((...args: never[]) => unknown)
 > = {
   get(target, prop) {
-    const data = typeof target === "function"
-      ? (target as () => unknown)()
-      : target;
+    const readData = (): unknown =>
+      typeof target === "function" ? (target as () => unknown)() : target;
+
+    // Symbols / internals: never defer
+    if (typeof prop === "symbol") {
+      const data = untrack(readData);
+      if (data == null) return undefined;
+      return Reflect.get(data as object, prop);
+    }
+
+    if (!getCurrentObserver()) {
+      const data = untrack(readData);
+      if (data == null) return undefined;
+      const res = Reflect.get(data as object, prop);
+      if (typeof res === "function") {
+        // Nested Signal field: hand the getter to insert as-is
+        if ((res as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL) return res;
+        return (res as (...args: unknown[]) => unknown).bind(data);
+      }
+      // Primitive / plain field from signal-of-object: deferred read for jsx children/attrs
+      const accessor = () => {
+        const latest = readData();
+        if (latest == null) return undefined;
+        return Reflect.get(latest as object, prop);
+      };
+      (accessor as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL = true;
+      return accessor;
+    }
+
+    const data = readData();
     if (data == null) return undefined;
     const res = Reflect.get(data as object, prop);
     if (typeof res === "function") {

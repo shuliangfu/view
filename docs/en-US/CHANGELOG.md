@@ -14,12 +14,14 @@ and this project adheres to
 
 - **P1: component re-run / bare-fetch DEV guard (non-breaking DX)**
   - **Runtime:** `jsx` function components run setup under `untrack` so
-    top-level Signal reads do not whole-tree remount on non-route updates
-    (test: `component-rerun-guard`).
+    top-level Signal reads do not whole-tree remount on non-route updates (test:
+    `component-rerun-guard`).
   - **Context:** `useContext` keeps Signal getters behind its Proxy (re-read on
     each property access) so object-valued `value={signal}` stays fine-grained
     after setup `untrack` (no remount-only refresh).
-  - **Examples:** context / control-flow use `{() => user.name}` under jsx-runtime so Context updates stay fine-grained after setup `untrack`.
+  - **Context Proxy:** with no Observer (setup `untrack`), data-field gets
+    return a `__VIEW_SIGNAL` thunk so eager `{user.name}` under jsx-runtime
+    stays fine-grained.
 
   - `@dreamer/view/devtools`: `noteComponentSetup` / `detectComponentRerun` /
     `clearComponentSetupNotes`; `setupKeys` on detect/enable oversubscribe.
@@ -27,49 +29,51 @@ and this project adheres to
     now call out focus loss + top-level bare `fetch` re-fire.
   - Docs: [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md); P0-4
     “no top-level bare fetch”.
-  - Thin companion: document route-leave cancel via `createResource` outer `options.signal`
-    (Owner dispose is unsafe with Suspense fallback).
+  - Thin companion: document route-leave cancel via `createResource` outer
+    `options.signal` (Owner dispose is unsafe with Suspense fallback).
 
 ### Changed
 
 - **3.0 R1/R3: stricter hydration defaults (BREAKING)**
   - Omitting `mismatchMode` → **`assert`** when `VIEW_DEV === true`, else
     **`remount`** (was always `continue` in 2.x).
-  - Removed deprecated `HydrateOptions.assertMismatch` /
-    `remountOnMismatch`. Use `mismatchMode` only.
+  - Removed deprecated `HydrateOptions.assertMismatch` / `remountOnMismatch`.
+    Use `mismatchMode` only.
   - Opt back into 2.x tolerance with explicit `mismatchMode: "continue"`.
   - Docs: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md); tests lock the new defaults.
 
 ### Changed
 
 - **3.0 first knife: slim main entry (BREAKING, Strategy A landed)**
-  - `@dreamer/view` main barrel **no longer** re-exports router / form / resource.
-    Use `@dreamer/view/router`, `/form`, `/resource`.
+  - `@dreamer/view` main barrel **no longer** re-exports router / form /
+    resource. Use `@dreamer/view/router`, `/form`, `/resource`.
   - Core CSR surface kept on main (reactivity, mount/hydrate, control-flow,
     Suspense, scheduler, portal, HMR).
   - Migration: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
     [`../zh-CN/MIGRATION-3.0.md`](../zh-CN/MIGRATION-3.0.md).
-  - Package version set to **3.0.0** on `dev` (**JSR publish HOLD** until campaign
-    green + explicit order).
-  - Hydration default `mismatchMode` remains **`continue`** (R1 not in this knife).
+  - Package version set to **3.0.0** on `dev` (**JSR publish HOLD** until
+    campaign green + explicit order).
+  - Hydration default `mismatchMode` remains **`continue`** (R1 not in this
+    knife).
   - Consumer-bundle fixtures that previously pulled integrations through the
     barrel now import subpaths; refresh size / consumer baselines.
-  - Library main entry minify **~44.3 KiB → ~31.6 KiB** (refreshed size baseline); star-reexport premium vs `/reactivity` now ~**3.0×** minify.
-
+  - Library main entry minify **~44.3 KiB → ~31.6 KiB** (refreshed size
+    baseline); star-reexport premium vs `/reactivity` now ~**3.0×** minify.
 
 ### Added
 
 - **P2: SSR static attr fold parity with CSR templates (non-breaking)**
   - `generate: "ssr"` folds `isStaticExpression` attrs (`+` / ternary / `&&` /
-    `||` / `??` / `typeof` / `void` / `satisfies` / static style objects, …)
-    via shared `serializeStaticAttrValue`, matching CSR template lifts and
-    avoiding runtime concat / style `[object Object]`.
+    `||` / `??` / `typeof` / `void` / `satisfies` / static style objects, …) via
+    shared `serializeStaticAttrValue`, matching CSR template lifts and avoiding
+    runtime concat / style `[object Object]`.
   - Dynamic attrs (e.g. `class={color()}`) stay as expressions.
   - Corpus 32→**35**; `staticDomOpFreeRatio` ≈ **0.7429** (26/35).
 
 ### Added
 
-- **P2: compile-time fold for static `true && <JSX>` / falsy short-circuit (non-breaking)**
+- **P2: compile-time fold for static `true && <JSX>` / falsy short-circuit
+  (non-breaking)**
   - `true && <JSX>` / non-empty string / non-zero number `&& <JSX>` → JSX;
     `false` / `null` / `undefined` `&& <JSX>` → omit; `false` / `0` / `""` /
     `null` `|| <JSX>` → JSX; `true || <JSX>` → omit (matches `insert` skipping
@@ -95,30 +99,32 @@ and this project adheres to
 
 ### Added
 
-- **P2: compiler lifts static text-child `+` concat into templates (non-breaking)**
-  - `{"hello" + " world"}` / static template literals / static ternaries / numeric
-    literals land in `template(...)`, skipping `walk`+`insert` (and Effects from
-    insert); `escapeForText` escapes `&<>`.
-  - **Not** lifted: `&&` / `||` / `??`, null / boolean, empty `""` (keeps parity with
-    `insert`'s empty-Text / placeholder paths).
+- **P2: compiler lifts static text-child `+` concat into templates
+  (non-breaking)**
+  - `{"hello" + " world"}` / static template literals / static ternaries /
+    numeric literals land in `template(...)`, skipping `walk`+`insert` (and
+    Effects from insert); `escapeForText` escapes `&<>`.
+  - **Not** lifted: `&&` / `||` / `??`, null / boolean, empty `""` (keeps parity
+    with `insert`'s empty-Text / placeholder paths).
   - Corpus 23→**26** (`static-text-concat` / `static-text-template-ternary` /
     `static-text-mixed`); `staticDomOpFreeRatio` baseline ≈ **0.6538** (17/26).
 
 ### Fixed
 
 - **Compiler: fold static `??` attrs into templates (non-breaking)**
-  - Statically nullish left sides (`null ?? "x"`, `void 0 ?? "x"`, …) serialize to
-    the right-hand value inside `template(...)` instead of embedding raw
+  - Statically nullish left sides (`null ?? "x"`, `void 0 ?? "x"`, …) serialize
+    to the right-hand value inside `template(...)` instead of embedding raw
     `null ?? …` text in HTML.
   - `"" ?? "x"` keeps the empty string (`??` does not treat `""` as nullish);
-    nullishness is decided on the AST so it is not confused with
-    `NullKeyword` → `""` serialization.
+    nullishness is decided on the AST so it is not confused with `NullKeyword` →
+    `""` serialization.
   - Reactive attr paths unchanged; identifier `undefined` still follows the
     existing non-static path.
 
 ### Added
 
-- **P0-3 follow-up: widen compiler static corpus / goldens (measurement lock, non-breaking)**
+- **P0-3 follow-up: widen compiler static corpus / goldens (measurement lock,
+  non-breaking)**
   - Corpus 19→**23**: add `static-and-or` / `static-typeof-void` /
     `static-nullish` / `static-satisfies`, locking existing `&&` / `||` /
     `typeof` / `void` / `satisfies` lifts and the fixed `??` lift;
@@ -129,18 +135,19 @@ and this project adheres to
 ### Added
 
 - **P2: DevTools Owner-tree inspect highlight (non-breaking)**
-  - Clicking a Tree row (or `selectNode`) marks that row selected (`aria-selected`
-    plus inset accent) and draws a page outline over the Owner's DOM.
+  - Clicking a Tree row (or `selectNode`) marks that row selected
+    (`aria-selected` plus inset accent) and draws a page outline over the
+    Owner's DOM.
   - `VIEW_DEV` only: `createRootTracked` / `mountDevtoolsOverlay` install an
     Owner→element hook that `jsx()` reads at call time. No hook means no
     recording and no DOM mutation. Still no `src/i18n.ts` in the overlay.
-  - Closing the panel or unmounting removes the outline. Signal-only nodes
-    show “no connected DOM”.
+  - Closing the panel or unmounting removes the outline. Signal-only nodes show
+    “no connected DOM”.
 
 - **P2: DevTools overlay DX+ (examples Owner dogfood, non-breaking)**
   - `examples/src/main.tsx` mounts via `createRootTracked` under `VIEW_DEV` so
-    the overlay Tree shows real Owner nodes (plain `mount`/`createRoot` does
-    not auto-track).
+    the overlay Tree shows real Owner nodes (plain `mount`/`createRoot` does not
+    auto-track).
   - Empty Tree copy explains `createRootTracked` / `trackRoot` /
     `mountDevtoolsOverlay({ owner })` (zh/en, page lang); filter-miss message
     distinct from empty roots.
@@ -148,17 +155,21 @@ and this project adheres to
 
 ### Fixed
 
-- **DevTools: don't flag route-loading expansion as REMOUNT-CHURN (non-breaking)**
-  - `detectOwnerRemountChurn` exempts a one-time small-placeholder → large-page expansion (route loading shell → page).
-  - examples layout reads `path()` / `theme()` in attribute getters so theme toggles don't remount the page tree.
+- **DevTools: don't flag route-loading expansion as REMOUNT-CHURN
+  (non-breaking)**
+  - `detectOwnerRemountChurn` exempts a one-time small-placeholder → large-page
+    expansion (route loading shell → page).
+  - examples layout reads `path()` / `theme()` in attribute getters so theme
+    toggles don't remount the page tree.
   - Equal-size shell rebuilds still warn (expected).
 
-- **JSR slow types**: annotate `now: number` on `noteRemount` / `detectRemountChurn` so `deno publish` public-API checks pass.
+- **JSR slow types**: annotate `now: number` on `noteRemount` /
+  `detectRemountChurn` so `deno publish` public-API checks pass.
 
-
-- **DevTools overlay header**: reinforce `.head { justify-content: space-between;
-  width: 100% }` so refresh/close stay trailing across layouts.
-
+- **DevTools overlay header**: reinforce
+  `.head { justify-content: space-between;
+  width: 100% }` so refresh/close
+  stay trailing across layouts.
 
 ### Fixed
 
@@ -204,7 +215,8 @@ and this project adheres to
 - **P2: DEV floating DevTools overlay (Next-inspired, non-breaking)**
   - New subpath `@dreamer/view/devtools/overlay`: `mountDevtoolsOverlay` /
     `unmountDevtoolsOverlay` / `getDevtoolsOverlay` — corner indicator + glass
-    panel (Overview / Warnings / Sources). Requires `VIEW_DEV`; otherwise no DOM.
+    panel (Overview / Warnings / Sources). Requires `VIEW_DEV`; otherwise no
+    DOM.
   - Reuses `/devtools` APIs only; **not** on main barrel / measured size /
     consumer-bundle entries (baselines **not** raised). Examples mount under
     `if (VIEW_DEV)` in `examples/src/main.tsx`.
@@ -219,7 +231,8 @@ and this project adheres to
     `detectOwnerRemountChurn`, `enableOversubscribeWarnings` (explicit opt-in;
     emit requires `VIEW_DEV`).
   - **No** hooks on `createSignal` / `createRoot` / `insert`; size /
-    consumer-bundle baselines **not** raised (module still off measured entries).
+    consumer-bundle baselines **not** raised (module still off measured
+    entries).
   - Docs [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) /
     [`../zh-CN/P2-dev-warn-oversubscribe.md`](../zh-CN/P2-dev-warn-oversubscribe.md);
     unit locks `tests/unit/devtools/oversubscribe-warn.test.ts`.
@@ -229,9 +242,9 @@ and this project adheres to
   - New subpath `@dreamer/view/devtools`: `inspectOwner` / `summarizeOwnerTree`,
     `getTrackedRoots`, `getSignalObserverCount`, `snapshotRegistrySources`,
     `countUpstream` / `countDownstream` (no browser extension / UI shell).
-  - **No** `createSignal` / `createRoot` hot-path hooks (probe Observer +
-    opt-in `trackRoot` / `createRootTracked`); module is **not** re-exported from
-    the main barrel or `/reactivity`, so measured size / consumer-bundle baselines
+  - **No** `createSignal` / `createRoot` hot-path hooks (probe Observer + opt-in
+    `trackRoot` / `createRootTracked`); module is **not** re-exported from the
+    main barrel or `/reactivity`, so measured size / consumer-bundle baselines
     are **not** raised.
   - Docs [`P2-4-devtools.md`](./P2-4-devtools.md) /
     [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md); unit locks under
@@ -241,40 +254,48 @@ and this project adheres to
 ### Changed
 
 - **P2: examples subpath dogfood (non-breaking)**
-  - Router codegen / `generateHydrationScript` use `@dreamer/view/router` / `/csr`;
-    hand-written examples prefer `/reactivity` / `/control-flow` / `/csr` / `/form` /
-    `/resource` / `/ssr`; Bun `examples/package.json` gains matching subpath `imports`.
+  - Router codegen / `generateHydrationScript` use `@dreamer/view/router` /
+    `/csr`; hand-written examples prefer `/reactivity` / `/control-flow` /
+    `/csr` / `/form` / `/resource` / `/ssr`; Bun `examples/package.json` gains
+    matching subpath `imports`.
   - Locks: `examples-subpath-dogfood` + codegen / hydrate assertions; docs
     [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) /
     [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md).
-  - No JSR / npm; does **not** change or relax `size:check` / `consumer:bundle:check`
-    baseline numbers.
+  - No JSR / npm; does **not** change or relax `size:check` /
+    `consumer:bundle:check` baseline numbers.
 
 ### Changed
 
-- **P1-4: Router split (match / history / Link) + SSR isomorphism (non-breaking)**
+- **P1-4: Router split (match / history / Link) + SSR isomorphism
+  (non-breaking)**
   - Source boundaries: `src/integrations/router/{types,match,history,link}.ts`;
-    `src/integrations/router.ts` remains the barrel; public API / behavior unchanged.
-  - SSR: tests lock `matchRoute` ↔ `createRouter({ ssr: true }).match` (splat / notFound),
-    explicit `start()` on SSR instances, and `renderRouterToString` agreeing on pattern;
-    docs [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md) /
+    `src/integrations/router.ts` remains the barrel; public API / behavior
+    unchanged.
+  - SSR: tests lock `matchRoute` ↔ `createRouter({ ssr: true }).match` (splat /
+    notFound), explicit `start()` on SSR instances, and `renderRouterToString`
+    agreeing on pattern; docs
+    [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md) /
     [`../zh-CN/P1-4-router-split-ssr.md`](../zh-CN/P1-4-router-split-ssr.md).
-  - No JSR / npm; does **not** relax `size:check` / `consumer:bundle:check` / E2E assertions.
+  - No JSR / npm; does **not** relax `size:check` / `consumer:bundle:check` /
+    E2E assertions.
 
 ### Changed
 
 - **P0-hotfix: gallery E2E zoom click vs scaled preview (CI)**
-  - Root cause: after clicking `＋`, Playwright hit-testing treated the transformed
-    preview (`cursor-grab` / img) as intercepting `－` on ubuntu CI viewports
-    (`subtree intercepts pointer events`, 60s). Local often passed.
+  - Root cause: after clicking `＋`, Playwright hit-testing treated the
+    transformed preview (`cursor-grab` / img) as intercepting `－` on ubuntu CI
+    viewports (`subtree intercepts pointer events`, 60s). Local often passed.
   - Fix: examples gallery controls `relative z-10` + column `overflow-hidden`;
-    E2E clicks `－` then `＋` (still exercises both; asserts % leaves/returns 100),
-    scoped to the preview layer. **No** assertion relaxation; no JSR / npm.
+    E2E clicks `－` then `＋` (still exercises both; asserts % leaves/returns
+    100), scoped to the preview layer. **No** assertion relaxation; no JSR /
+    npm.
 
 - **P0-hotfix: pin `e2e-examples` to ubuntu-24.04 (Playwright 1.59.1)**
-  - CI failure: `ubuntu-latest` is **26.04**; `playwright@1.59.1 install --with-deps chromium`
-    errors with `does not support chromium on ubuntu26.04-x64`. Pin job to **`ubuntu-24.04`**;
-    drop `examples/` from deno cache (routers.tsx generated in E2E `beforeAll`).
+  - CI failure: `ubuntu-latest` is **26.04**;
+    `playwright@1.59.1 install --with-deps chromium` errors with
+    `does not support chromium on ubuntu26.04-x64`. Pin job to
+    **`ubuntu-24.04`**; drop `examples/` from deno cache (routers.tsx generated
+    in E2E `beforeAll`).
   - Assertions unchanged; no JSR / npm.
 
 - **P0: examples browser E2E into CI (non-breaking)**
@@ -286,94 +307,106 @@ and this project adheres to
     browser-less runners.
   - Docs: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) /
     [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md); README /
-    TEST_REPORT clarify local `deno task test:e2e` /
-    `deno test -A tests` vs CI.
+    TEST_REPORT clarify local `deno task test:e2e` / `deno test -A tests` vs CI.
   - No JSR / npm; does **not** relax `size:check` / `consumer:bundle:check`.
-
 
 ### Documentation
 
-- **P1-2: hydration quality opt-in pilot (`mismatchMode` · 2.x additive, non-breaking)**
+- **P1-2: hydration quality opt-in pilot (`mismatchMode` · 2.x additive,
+  non-breaking)**
   - Add [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) /
     [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md):
-    document `continue` / `assert` / `remount` and recommended usage; note progressive /
-    chunked hydration hooks are **not** shipped yet.
-  - `/csr` additively exports `HydrationMismatchMode` and `resolveMismatchMode` (main
-    entry already `export *` hydration); unit tests lock default **`continue`**;
-    examples `/runtime` demos all three modes.
-  - Does **not** change the production default (`continue`); no JSR / npm; does **not**
-    relax `size:check` / `consumer:bundle:check` / E2E assertions.
-
+    document `continue` / `assert` / `remount` and recommended usage; note
+    progressive / chunked hydration hooks are **not** shipped yet.
+  - `/csr` additively exports `HydrationMismatchMode` and `resolveMismatchMode`
+    (main entry already `export *` hydration); unit tests lock default
+    **`continue`**; examples `/runtime` demos all three modes.
+  - Does **not** change the production default (`continue`); no JSR / npm; does
+    **not** relax `size:check` / `consumer:bundle:check` / E2E assertions.
 
 ### Fixed
 
 - **P0-hotfix: examples form E2E `page.evaluate` host timeout (non-breaking)**
-  - Root cause: `/form` demo `createForm` rules require `agree`; the E2E clicked Submit
-    without checking it, so `handleSubmit` never ran onValid and 「提交成功」 never appeared.
-    `t.browser.waitFor` uses a host race equal to Playwright `waitForFunction` timeout, so a
-    never-true predicate often surfaces as `page.evaluate` host timeout (not a blocked app
-    main thread / hard CDP hang).
-  - Fix: check 「我已阅读并同意服务条款」 before submit; wait for the 「提交成功」 heading via
-    Playwright locator; after reset assert username returns to initial `dreamer`. Assertions
-    are **not** relaxed; E2E is **not** added to the CI matrix in this change.
+  - Root cause: `/form` demo `createForm` rules require `agree`; the E2E clicked
+    Submit without checking it, so `handleSubmit` never ran onValid and
+    「提交成功」 never appeared. `t.browser.waitFor` uses a host race equal to
+    Playwright `waitForFunction` timeout, so a never-true predicate often
+    surfaces as `page.evaluate` host timeout (not a blocked app main thread /
+    hard CDP hang).
+  - Fix: check 「我已阅读并同意服务条款」 before submit; wait for the
+    「提交成功」 heading via Playwright locator; after reset assert username
+    returns to initial `dreamer`. Assertions are **not** relaxed; E2E is **not**
+    added to the CI matrix in this change.
   - No JSR / npm.
 
 ### Fixed
 
-- **P0-hotfix: examples import of `batch` from `/reactivity` failed (non-breaking)**
-  - Root cause: `batch` lives in `scheduler/batch` and was exported from the main entry,
-    `/scheduler`, and `/csr`, but **not** re-exported from `src/reactivity/mod.ts`, while
-    README §7.4 and `examples/.../signal` import it from `@dreamer/view/reactivity` →
-    `deno task dev` failed with `No matching export ... "batch"`.
-  - Fix: convenience **re-export** of `batch` from `/reactivity` (canonical entry remains
-    `/scheduler`); README (root / zh / en) subpath table notes the re-export.
-  - **No** runtime semantics change; no JSR / npm; does **not** relax `size:check` /
-    `consumer:bundle:check`.
+- **P0-hotfix: examples import of `batch` from `/reactivity` failed
+  (non-breaking)**
+  - Root cause: `batch` lives in `scheduler/batch` and was exported from the
+    main entry, `/scheduler`, and `/csr`, but **not** re-exported from
+    `src/reactivity/mod.ts`, while README §7.4 and `examples/.../signal` import
+    it from `@dreamer/view/reactivity` → `deno task dev` failed with
+    `No matching export ... "batch"`.
+  - Fix: convenience **re-export** of `batch` from `/reactivity` (canonical
+    entry remains `/scheduler`); README (root / zh / en) subpath table notes the
+    re-export.
+  - **No** runtime semantics change; no JSR / npm; does **not** relax
+    `size:check` / `consumer:bundle:check`.
 
 ### Documentation
 
-- **P1-1: main-entry barrel deprecation preview (Strategy A · 2.x additive, non-breaking)**
-  - Add [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) /
+- **P1-1: main-entry barrel deprecation preview (Strategy A · 2.x additive,
+  non-breaking)**
+  - Add
+    [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)
+    /
     [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md):
-    prefer subpaths, migration steps, link to P0 / P0-2 size numbers; **no** export
-    removals; **no** runtime default changes.
-  - Module-level JSDoc `@deprecated` on `src/mod.ts` (**no** runtime `warn` / side effect).
-  - README (root / zh / en) convenience-barrel + architecture sections mark the preview
-    and cross-link; analysis indexes updated.
-  - Does **not** relax `size:check` / `consumer:bundle:check` baselines; no JSR / npm;
-    **not** a 3.0 slim-barrel landing.
+    prefer subpaths, migration steps, link to P0 / P0-2 size numbers; **no**
+    export removals; **no** runtime default changes.
+  - Module-level JSDoc `@deprecated` on `src/mod.ts` (**no** runtime `warn` /
+    side effect).
+  - README (root / zh / en) convenience-barrel + architecture sections mark the
+    preview and cross-link; analysis indexes updated.
+  - Does **not** relax `size:check` / `consumer:bundle:check` baselines; no JSR
+    / npm; **not** a 3.0 slim-barrel landing.
 
 ### Added
 
-- **P0-2: consumer / examples bundle analyze + independent size budget (non-breaking)**
-  - Add `scripts/consumer-bundle/`: fixtures for named imports, `export *` / namespace,
-    examples main mirror and API union; `measure.mjs --write` →
-    `consumer-bundle-baseline.json`; `check.mjs` / `deno task consumer:bundle:check`
-    default **+5%**; CI ubuntu `consumer-bundle-check`.
-  - Headline (esbuild): named barrel vs subpath minify **Δ≈0**; star-reexport barrel vs
-    `/reactivity` ≈ **+34 KiB minify (~4.26×)** / **+12 KiB gzip**.
-  - Docs: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) /
+- **P0-2: consumer / examples bundle analyze + independent size budget
+  (non-breaking)**
+  - Add `scripts/consumer-bundle/`: fixtures for named imports, `export *` /
+    namespace, examples main mirror and API union; `measure.mjs --write` →
+    `consumer-bundle-baseline.json`; `check.mjs` /
+    `deno task consumer:bundle:check` default **+5%**; CI ubuntu
+    `consumer-bundle-check`.
+  - Headline (esbuild): named barrel vs subpath minify **Δ≈0**; star-reexport
+    barrel vs `/reactivity` ≈ **+34 KiB minify (~4.26×)** / **+12 KiB gzip**.
+  - Docs: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md)
+    /
     [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md).
-  - Does **not** relax existing `size:check` / `bundle-size-baseline.json`; **no**
-    runtime semantics change; no JSR / npm.
-
+  - Does **not** relax existing `size:check` / `bundle-size-baseline.json`;
+    **no** runtime semantics change; no JSR / npm.
 
 ### Documentation
 
-- **P0-4: component author guide (Memo / ref / subscription boundaries, non-breaking)**
+- **P0-4: component author guide (Memo / ref / subscription boundaries,
+  non-breaking)**
   - Add [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) /
     [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md):
-    setup-once mental model, **no top-level Signal reads that replace the whole tree**,
-    when to use Memo (not as a stable store), transient `ref(null)` + `isConnected`,
-    Effect subscription boundaries, Context must not pass a bare function `value`,
-    controlled props as Signal / getter; distilled from analysis P0-4 and ui-view notes.
-  - Cross-linked from README §22 / §25; **no** runtime semantics change; no JSR / npm.
+    setup-once mental model, **no top-level Signal reads that replace the whole
+    tree**, when to use Memo (not as a stable store), transient `ref(null)` +
+    `isConnected`, Effect subscription boundaries, Context must not pass a bare
+    function `value`, controlled props as Signal / getter; distilled from
+    analysis P0-4 and ui-view notes.
+  - Cross-linked from README §22 / §25; **no** runtime semantics change; no JSR
+    / npm.
 
 ### Fixed
 
 - **CI: clear Node 20 action deprecation warnings on Node 24 runners**
-  - Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5`
-    (both `runs.using: node24`).
+  - Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5` (both
+    `runs.using: node24`).
   - Drop workflow-level `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` (no longer needed).
   - Product test matrix stays on Node **22**; no JSR / npm publish.
 
@@ -381,29 +414,34 @@ and this project adheres to
 
 - **P0-3: compiler static-subtree coverage baseline + goldens (non-breaking)**
   - `scripts/compiler-coverage/`: 19 JSX fixtures; `measure.ts --write` →
-    `compiler-coverage-baseline.json` + `goldens/*.out.txt`;
-    `check.ts` / `deno task compiler:coverage:check` exact-match metrics and golden text.
+    `compiler-coverage-baseline.json` + `goldens/*.out.txt`; `check.ts` /
+    `deno task compiler:coverage:check` exact-match metrics and golden text.
   - Metrics (compile body): `template` / `walk` / `insert` / `setAttribute` /
     `setProperty` / `spread` / `memo` / paths; `staticDomOpFreeRatio` baseline ≈
     **0.5789** (11/19).
-  - Unit test `tests/unit/compiler/golden.test.ts`; CI ubuntu `compiler-coverage-check`.
-  - Docs: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) /
+  - Unit test `tests/unit/compiler/golden.test.ts`; CI ubuntu
+    `compiler-coverage-check`.
+  - Docs:
+    [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md)
+    /
     [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md).
   - **No** default compile / runtime semantics change; no JSR / npm publish.
 
 ### Fixed
 
 - **P0-3 CI: golden unit test cross Deno / Bun / Node**
-  - `tests/unit/compiler/golden.test.ts` drops `jsr:@std/path` / `Deno.readTextFile`;
-    uses `@dreamer/runtime-adapter` `dirname` / `fromFileUrl` / `join` / `readTextFile`,
-    matching existing unit tests. Assertions and coverage metrics unchanged.
-
+  - `tests/unit/compiler/golden.test.ts` drops `jsr:@std/path` /
+    `Deno.readTextFile`; uses `@dreamer/runtime-adapter` `dirname` /
+    `fromFileUrl` / `join` / `readTextFile`, matching existing unit tests.
+    Assertions and coverage metrics unchanged.
 
 ### Added
 
-- **P0-1: real-page profiling notes + Signal / Effect / For / insert benches in CI (non-breaking)**
-  - Add `tests/bench/insert.bench.ts` (static text / Signal thunk / array children);
-    fold existing `signal.bench.ts` (incl. Effect) and `for.bench.ts` into the gate.
+- **P0-1: real-page profiling notes + Signal / Effect / For / insert benches in
+  CI (non-breaking)**
+  - Add `tests/bench/insert.bench.ts` (static text / Signal thunk / array
+    children); fold existing `signal.bench.ts` (incl. Effect) and `for.bench.ts`
+    into the gate.
   - `scripts/bench-baseline/`: `measure.mjs --write` → `bench-baseline.json`;
     `check.mjs` / `deno task bench:check` enforces **avgNs ≤ baseline +100%**
     (overridable); CI ubuntu `bench-check` uses `BENCH_BUDGET_PCT=300` for
@@ -414,30 +452,37 @@ and this project adheres to
     `src/` hot paths).
   - **No** runtime default-semantics change; no JSR / npm publish.
 
-
 ### Documentation
 
 - **Analysis docs governance (P1-6, docs-only)**
-  - Commit current [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) (v2.2.0 / 2026-11-03).
-  - Add [`analysis-doc-status.md`](./analysis-doc-status.md) / [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md): mark local gitignored `analysis/` v1 / early-architecture notes as obsolete / drifted; point to current analysis + README.
-  - Watermark matching local `analysis/` files; refresh [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md) links; Chinese / English README §25 entry points.
+  - Commit current
+    [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md)
+    (v2.2.0 / 2026-11-03).
+  - Add [`analysis-doc-status.md`](./analysis-doc-status.md) /
+    [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md): mark local
+    gitignored `analysis/` v1 / early-architecture notes as obsolete / drifted;
+    point to current analysis + README.
+  - Watermark matching local `analysis/` files; refresh
+    [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md) links; Chinese /
+    English README §25 entry points.
   - **No** runtime / export changes; no JSR / npm publish.
-
 
 ### Fixed
 
 - **Size gate: slim `/form` entry (no budget loosen, no baseline bump)**
-  - Keep Form `field(as)` / `messageFromSafeParse` glue; tighten `field` (shared `onChange`, omit default `"text"` literal, etc.) so `@dreamer/view/form` minify / gzip stay within baseline **+5%**.
-  - Did **not** raise the `size:check` budget, disable the CI job, or refresh `bundle-size-baseline.json`; no JSR / npm publish.
+  - Keep Form `field(as)` / `messageFromSafeParse` glue; tighten `field` (shared
+    `onChange`, omit default `"text"` literal, etc.) so `@dreamer/view/form`
+    minify / gzip stay within baseline **+5%**.
+  - Did **not** raise the `size:check` budget, disable the CI job, or refresh
+    `bundle-size-baseline.json`; no JSR / npm publish.
 
 ### Added
 
-
 - **Form checkbox / select / schema bridge (2.x additive)**
-  - `field(name, { as? })`: optional `checkbox` / `select` / `textarea` / `number`;
-    omit second arg for legacy text bindings.
-  - Export `messageFromSafeParse` to map Zod-like `safeParse` results into `rules`
-    messages (no schema runtime dependency).
+  - `field(name, { as? })`: optional `checkbox` / `select` / `textarea` /
+    `number`; omit second arg for legacy text bindings.
+  - Export `messageFromSafeParse` to map Zod-like `safeParse` results into
+    `rules` messages (no schema runtime dependency).
   - Example `examples/src/views/form` covers checkbox / select / schema bridge;
     Chinese / English README §16 updated.
   - Unit tests for checkbox / select / `messageFromSafeParse`. **No** JSR / npm
@@ -447,25 +492,25 @@ and this project adheres to
 
 - **Bundle-size CI gate (2.x non-breaking)**
   - `scripts/size-baseline/check.mjs` + `deno task size:check`: compare a fresh
-    measure to the committed `bundle-size-baseline.json`; each entry’s
-    **minify / gzip(min)** must stay within **+5%** of baseline (`Math.ceil`);
-    over limit → non-zero exit (CI / local preflight).
+    measure to the committed `bundle-size-baseline.json`; each entry’s **minify
+    / gzip(min)** must stay within **+5%** of baseline (`Math.ceil`); over limit
+    → non-zero exit (CI / local preflight).
   - Override via `--budget-pct` or `SIZE_BUDGET_PCT`; intentional growth →
     `deno task size:baseline` and commit the refreshed JSON.
   - Baseline restamped to current sizes after Resource Abort (`b0c8786`).
-  - CI: ubuntu `size-check` job. **No** runtime default behavior change; no
-    JSR / npm publish.
-
+  - CI: ubuntu `size-check` job. **No** runtime default behavior change; no JSR
+    / npm publish.
 
 ### Added
 
 - **Resource optional AbortSignal + inflight dedupe docs (2.x additive)**
   - Each `createResource` load passes `{ signal: AbortSignal }` as the fetcher’s
-    second argument; source changes / `refetch` abort the previous load; optional
-    third-arg `{ signal }` cancels on outer lifecycle (e.g. route leave). Omitting
-    / ignoring `signal` keeps today’s default; abort does **not** set `error`.
-  - Export `createInflightDedupe()` (share one in-flight Promise per key; **not**
-    an HTTP cache).
+    second argument; source changes / `refetch` abort the previous load;
+    optional third-arg `{ signal }` cancels on outer lifecycle (e.g. route
+    leave). Omitting / ignoring `signal` keeps today’s default; abort does
+    **not** set `error`.
+  - Export `createInflightDedupe()` (share one in-flight Promise per key;
+    **not** an HTTP cache).
   - Chinese / English README §11 updated; `resource-abort` unit tests added.
 
 ### Documentation
@@ -474,23 +519,26 @@ and this project adheres to
   - Chinese / English README getting-started examples now prefer
     `@dreamer/view/reactivity` / `/csr` / `/ssr` / `/router` / `/form` /
     `/resource` (and peers); the main entry is documented only as a
-    **convenience barrel** with P0 size cost (minify ~43.5 KiB main vs
-    ~10.5 KiB `/reactivity`).
-  - Corrected outdated architecture note that claimed `/router` / `/csr` did
-    not exist; synced `docs/en-US/README.md`.
+    **convenience barrel** with P0 size cost (minify ~43.5 KiB main vs ~10.5 KiB
+    `/reactivity`).
+  - Corrected outdated architecture note that claimed `/router` / `/csr` did not
+    exist; synced `docs/en-US/README.md`.
   - In-repo `examples/` and `view-cli init` scaffolds switched to subpath
     imports; **no** runtime / export breaking changes.
 
 ### Added
 
 - **P0 engineering baseline (bundle size / perf, non-breaking)**
-  - `scripts/size-baseline/`: measure main entry vs subpaths
-    (`reactivity` / `csr` / `ssr` / `router` / `form` / `resource`) raw / minify /
-    gzip via this repo’s esbuild; run
-    `node scripts/size-baseline/measure.mjs --write` or `deno task size:baseline`.
-  - `scripts/size-baseline/bundle-size-baseline.json`, `docs/zh-CN/P0-bench-baseline.md`,
-    `analysis/P0-基线-体积与性能.md` (gitignored working copy) / `docs/zh-CN/P0-基线-体积与性能.md` + `docs/en-US/P0-baseline-bundle-and-perf.md` (committed): reproducible numbers and the single
-    recommended next 2.x non-breaking step (docs-first subpath imports).
+  - `scripts/size-baseline/`: measure main entry vs subpaths (`reactivity` /
+    `csr` / `ssr` / `router` / `form` / `resource`) raw / minify / gzip via this
+    repo’s esbuild; run `node scripts/size-baseline/measure.mjs --write` or
+    `deno task size:baseline`.
+  - `scripts/size-baseline/bundle-size-baseline.json`,
+    `docs/zh-CN/P0-bench-baseline.md`, `analysis/P0-基线-体积与性能.md`
+    (gitignored working copy) / `docs/zh-CN/P0-基线-体积与性能.md` +
+    `docs/en-US/P0-baseline-bundle-and-perf.md` (committed): reproducible
+    numbers and the single recommended next 2.x non-breaking step (docs-first
+    subpath imports).
   - `deno task size:baseline` / `bench:baseline` task entry points.
 
 ### Notes
@@ -504,22 +552,26 @@ and this project adheres to
 
 ### Intentionally SKIPPED this release
 
-- **Compiler continuation (more staticization / fewer Effects)**: P0-3 already locked coverage + goldens; further analyzer/transformer changes are C1-class semantic risk with no clearly safe micro-step — **SKIP**.
-- **HOLD P2-1 / P2-2 / P2-3**: P2-1/3 imply main-entry breakage or stricter default hydration; P2-2 default time-slicing remains forbidden — not 2.x additive micro-steps — **SKIP**.
-
+- **Compiler continuation (more staticization / fewer Effects)**: P0-3 already
+  locked coverage + goldens; further analyzer/transformer changes are C1-class
+  semantic risk with no clearly safe micro-step — **SKIP**.
+- **HOLD P2-1 / P2-2 / P2-3**: P2-1/3 imply main-entry breakage or stricter
+  default hydration; P2-2 default time-slicing remains forbidden — not 2.x
+  additive micro-steps — **SKIP**.
 
 ## [2.2.0] - 2026-07-23
 
 ### Added
 
-- **Node.js 22+ compatibility** — `@dreamer/view` now runs on Deno 2.9+, Bun 1.3+,
-  and Node.js 22+ with zero source changes to core runtime/compiler/reactivity.
+- **Node.js 22+ compatibility** — `@dreamer/view` now runs on Deno 2.9+, Bun
+  1.3+, and Node.js 22+ with zero source changes to core
+  runtime/compiler/reactivity.
   - `package.json`: `engines.node >= 22`, `test:node` script via tsx.
   - `test-node.mjs`: Node test runner — runs each file in the main process (no
-    `--test` fork/IPC), avoiding the "Unable to deserialize cloned data" bug when
-    tests write to stdout. E2E and Deno-only integration tests excluded.
-  - `tsconfig.json`: Bundler module resolution + `dom` lib for cross-runtime type
-    consistency.
+    `--test` fork/IPC), avoiding the "Unable to deserialize cloned data" bug
+    when tests write to stdout. E2E and Deno-only integration tests excluded.
+  - `tsconfig.json`: Bundler module resolution + `dom` lib for cross-runtime
+    type consistency.
   - CI: 9-job matrix (3 Deno v2.9 + 3 Bun + 3 Node 22, no Chromium).
 - **CLI Node support**: `upgrade` command uses `npx jsr run` on Node; `update`
   command uses `npm update` on Node. `getRuntime()` no longer throws for Node.

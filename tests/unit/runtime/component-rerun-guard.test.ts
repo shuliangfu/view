@@ -130,20 +130,23 @@ describe("runtime/component-rerun-guard (P1)", () => {
     root.remove();
   });
 
-  it("jsx-runtime-style Context needs () => user.name under setup untrack", () => {
+  it("jsx-runtime eager {user.name} stays fine-grained under setup untrack", () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
     const UserContext = createContext({ name: "Guest", role: "none" });
     let setUser!: (v: { name: string; role: string }) => void;
+    let setups = 0;
 
     function UserProfile() {
+      setups++;
       const user = useContext(UserContext) as { name: string; role: string };
+      // esbuild react-jsx evaluates user.name before jsx(); Proxy must defer
+      // a __VIEW_SIGNAL thunk when there is no Observer (setup untrack).
       return jsx("div", {
         id: "profile",
         children: jsx("span", {
           id: "name",
-          // esbuild react-jsx path: must be a thunk, not eager user.name
-          children: () => user.name,
+          children: user.name,
         }),
       });
     }
@@ -158,10 +161,14 @@ describe("runtime/component-rerun-guard (P1)", () => {
     }
 
     const dispose = mount(() => jsx(Demo as never, {}), root);
+    const profile = root.querySelector("#profile");
     expect(root.querySelector("#name")?.textContent).toBe("Guest");
+    expect(setups).toBe(1);
     setUser({ name: "Admin", role: "superuser" });
     flushPendingSync();
+    expect(root.querySelector("#profile")).toBe(profile);
     expect(root.querySelector("#name")?.textContent).toBe("Admin");
+    expect(setups).toBe(1);
     dispose();
     root.remove();
   });

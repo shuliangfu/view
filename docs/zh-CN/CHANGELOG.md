@@ -12,20 +12,21 @@
 ### 新增
 
 - **P1：组件重跑／裸 fetch DEV 防护（非破坏 DX）**
-  - **运行时：** `jsx` 函数组件 setup 在 `untrack` 下执行，顶层读 Signal 不再导致
-    非路由更新整树 remount（测：`component-rerun-guard`）。
+  - **运行时：** `jsx` 函数组件 setup 在 `untrack` 下执行，顶层读 Signal
+    不再导致 非路由更新整树 remount（测：`component-rerun-guard`）。
   - **Context：** `useContext` 对 Signal getter 经 Proxy 按属性重读，对象型
     `value={signal}` 在 setup `untrack` 后仍细粒度更新（不再依赖整树 remount）。
-  - **示例：** context／control-flow 在 jsx-runtime 下改用 `{() => user.name}`，setup `untrack` 后 Context 仍细粒度更新。
+  - **Context Proxy：** 无 Observer（setup `untrack`）时数据字段 get 返回
+    `__VIEW_SIGNAL` thunk，jsx-runtime 急切 `{user.name}` 仍细粒度。
 
   - `@dreamer/view/devtools`：`noteComponentSetup`／`detectComponentRerun`／
     `clearComponentSetupNotes`；detect／enable oversubscribe 支持 `setupKeys`。
-  - 新警告种类 `component-rerun`；wide-subscription／remount-churn 文案点明失焦与
-    顶层裸 `fetch` 重发。
+  - 新警告种类 `component-rerun`；wide-subscription／remount-churn
+    文案点明失焦与 顶层裸 `fetch` 重发。
   - 文档：[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)；P0-4
     「勿顶层裸 fetch」。
-  - 薄配套：切页取消用 `createResource` 外层 `options.signal` 文档钉清
-    （Owner dispose 与 Suspense fallback 冲突，不作默认 abort）。
+  - 薄配套：切页取消用 `createResource` 外层 `options.signal` 文档钉清 （Owner
+    dispose 与 Suspense fallback 冲突，不作默认 abort）。
 
 ### 变更
 
@@ -40,24 +41,26 @@
 ### 变更
 
 - **3.0 首刀：主入口瘦身（破坏性，策略 A 落地）**
-  - `@dreamer/view` 主 barrel **不再** re-export 路由／表单／Resource。
-    请改用 `@dreamer/view/router`、`/form`、`/resource`。
-  - 主入口保留核心 CSR（响应式、mount／hydrate、控制流、Suspense、调度、portal、HMR）。
+  - `@dreamer/view` 主 barrel **不再** re-export 路由／表单／Resource。 请改用
+    `@dreamer/view/router`、`/form`、`/resource`。
+  - 主入口保留核心
+    CSR（响应式、mount／hydrate、控制流、Suspense、调度、portal、HMR）。
   - 迁移：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／
     [`../en-US/MIGRATION-3.0.md`](../en-US/MIGRATION-3.0.md)。
   - 包版本在 `dev` 标为 **3.0.0**（**JSR 仍 HOLD**，等战役绿＋用户令）。
   - 水合默认 `mismatchMode` 仍为 **`continue`**（R1 不进本刀）。
-  - 原经主入口拉集成的 consumer-bundle 夹具改走子路径；刷新 size／consumer 基线。
-  - 库主入口 minify **约 44.3 KiB → 约 31.6 KiB**（已刷 size 基线）；`export *` 相对 `/reactivity` 溢价约 **3.0×** minify。
-
+  - 原经主入口拉集成的 consumer-bundle 夹具改走子路径；刷新 size／consumer
+    基线。
+  - 库主入口 minify **约 44.3 KiB → 约 31.6 KiB**（已刷 size 基线）；`export *`
+    相对 `/reactivity` 溢价约 **3.0×** minify。
 
 ### 新增
 
 - **P2：SSR 静态属性折叠对齐 CSR template（非破坏）**
-  - `generate: "ssr"` 对 `isStaticExpression` 属性（`+`／三元／`&&`／`||`／`??`／
-    `typeof`／`void`／`satisfies`／静态 style 对象等）用与 CSR 同源的
-    `serializeStaticAttrValue` 折进字符串，避免运行期拼接与 style 的
-    `[object Object]`。
+  - `generate: "ssr"` 对 `isStaticExpression`
+    属性（`+`／三元／`&&`／`||`／`??`／ `typeof`／`void`／`satisfies`／静态
+    style 对象等）用与 CSR 同源的 `serializeStaticAttrValue`
+    折进字符串，避免运行期拼接与 style 的 `[object Object]`。
   - 动态属性（如 `class={color()}`）仍保留表达式。
   - 语料 32→**35**；`staticDomOpFreeRatio` 约 **0.7429**（26/35）。
 
@@ -75,8 +78,10 @@
 ### 新增
 
 - **P2：SSR 静态子文本折叠对齐 CSR template（非破坏）**
-  - `generate: "ssr"` 对可提升静态子文本（`+`／模板串／三元／数字等）折成字面量并
-    `escapeForText`，与 CSR `template()` 同 helper（`serializeLiftableStaticTextChild`）。
+  - `generate: "ssr"`
+    对可提升静态子文本（`+`／模板串／三元／数字等）折成字面量并
+    `escapeForText`，与 CSR `template()` 同
+    helper（`serializeLiftableStaticTextChild`）。
   - SSR Fragment 也走字符串拼接路径（不再误用 `createDocumentFragment`）。
   - **仍不提升**：`&&`／`||`／`??`、null／boolean、空串 `""`。
   - 语料 26→**28**（`ssr-static-text-concat`／`ssr-static-text-escape`）；
@@ -86,9 +91,10 @@
 
 - **P2：编译器静态子文本 `+` 拼接提升进 template（非破坏）**
   - `{"hello" + " world"}`／静态模板串／静态三元／数字字面量等子文本写入
-    `template(...)`，省 `walk`+`insert`（及由此产生的 Effect）；`escapeForText` 转义 `&<>`。
-  - **不**提升：`&&`／`||`／`??`、null／boolean、空串 `""`（与 `insert` 空 Text／占位
-    路径保持一致，避免 DOM 分叉）。
+    `template(...)`，省 `walk`+`insert`（及由此产生的 Effect）；`escapeForText`
+    转义 `&<>`。
+  - **不**提升：`&&`／`||`／`??`、null／boolean、空串 `""`（与 `insert` 空
+    Text／占位 路径保持一致，避免 DOM 分叉）。
   - 语料 23→**26**（`static-text-concat`／`static-text-template-ternary`／
     `static-text-mixed`）；`staticDomOpFreeRatio` 基线约 **0.6538**（17/26）。
 
@@ -105,40 +111,46 @@
 
 - **P0-3 续：编译器静态语料／golden 扩面（度量锁，非破坏）**
   - 语料 19→**23**：补 `static-and-or`／`static-typeof-void`／`static-nullish`／
-    `static-satisfies`，锁定已有 `&&`／`||`／`typeof`／`void`／`satisfies` 与修复后的
-    `??` 提升；`staticDomOpFreeRatio` 基线约 **0.6522**（15/23）。
+    `static-satisfies`，锁定已有 `&&`／`||`／`typeof`／`void`／`satisfies`
+    与修复后的 `??` 提升；`staticDomOpFreeRatio` 基线约 **0.6522**（15/23）。
   - 刷新 `compiler-coverage-baseline.json` 与 goldens；单测断言语料条数与静态无
     `walk`／`setAttribute`。
 
 ### 新增
 
 - **P2：DevTools Owner 树点击高亮 DOM（非破坏）**
-  - 点击「树」节点（或 `selectNode`）会标出选中态（`aria-selected`＋左侧强调条），
-    并在页面上画出该 Owner 对应 DOM 的轮廓。
-  - 仅 `VIEW_DEV`：`createRootTracked`／`mountDevtoolsOverlay` 安装 Owner→元素钩子，
-    `jsx()` 在调用时读取。未安装则不记录、不改应用 DOM。overlay 仍不引用 `src/i18n.ts`。
+  - 点击「树」节点（或
+    `selectNode`）会标出选中态（`aria-selected`＋左侧强调条）， 并在页面上画出该
+    Owner 对应 DOM 的轮廓。
+  - 仅 `VIEW_DEV`：`createRootTracked`／`mountDevtoolsOverlay` 安装
+    Owner→元素钩子， `jsx()` 在调用时读取。未安装则不记录、不改应用 DOM。overlay
+    仍不引用 `src/i18n.ts`。
   - 关闭面板或卸载会去掉轮廓。纯 Signal 节点显示「没有已连接的 DOM」。
 
 - **P2：DevTools overlay DX+（examples Owner dogfood，非破坏）**
   - `examples/src/main.tsx` 在 `VIEW_DEV` 下用 `createRootTracked` 挂载，打开
-    overlay「树」可见真实 Owner 节点（普通 `mount`／`createRoot` 不会自动登记）。
-  - 空树文案说明 `createRootTracked`／`trackRoot`／`mountDevtoolsOverlay({ owner })`
+    overlay「树」可见真实 Owner 节点（普通 `mount`／`createRoot`
+    不会自动登记）。
+  - 空树文案说明
+    `createRootTracked`／`trackRoot`／`mountDevtoolsOverlay({ owner })`
     （中英跟页面 lang）；过滤无匹配与无根文案区分。
   - 浮动按钮 HMR 绿点用稳定的 ok／warn／err／off class + title。
 
 ### 修复
 
 - **DevTools：路由 loading→页面扩张不再误报 REMOUNT-CHURN（非破坏）**
-  - `detectOwnerRemountChurn` 豁免一次性「小占位 → 大页面」扩张（路由首屏 loading 壳→页面）。
-  - examples layout 把 `path()`／`theme()` 收到属性 getter，避免顶层订阅导致切主题整树 remount。
+  - `detectOwnerRemountChurn` 豁免一次性「小占位 → 大页面」扩张（路由首屏
+    loading 壳→页面）。
+  - examples layout 把 `path()`／`theme()` 收到属性
+    getter，避免顶层订阅导致切主题整树 remount。
   - 等大壳重建仍告警（预期）。
 
-- **JSR slow types**：`noteRemount`／`detectRemountChurn` 的 `now` 参数补显式 `number`，通过 `deno publish` 公共 API 检查。
+- **JSR slow types**：`noteRemount`／`detectRemountChurn` 的 `now` 参数补显式
+  `number`，通过 `deno publish` 公共 API 检查。
 
-
-- **DevTools overlay 顶栏**：加强 `.head { justify-content: space-between;
+- **DevTools overlay 顶栏**：加强
+  `.head { justify-content: space-between;
   width: 100% }`，刷新／关闭在各种布局下仍靠右。
-
 
 ### Fixed
 
@@ -150,7 +162,8 @@
 - **P2：DevTools overlay 中英双语（跟页面语言，非破坏）**
   - 浏览器安全：`src/devtools/overlay-l10n.ts` +
     `src/devtools/locales/{en,zh}.json` 提供面板文案。
-  - 跟 `document.documentElement.lang`／`html[lang]`（MutationObserver＋refresh）；
+  - 跟
+    `document.documentElement.lang`／`html[lang]`（MutationObserver＋refresh）；
     **无**语言切换 UI。
   - **不** import `src/i18n.ts`／`$tr`／`@dreamer/runtime-adapter`（避免
     `node:*` 打进浏览器打包）。
@@ -165,15 +178,17 @@
 
 - **P2：DevTools overlay 并入 HMR 状态（非破坏）**
   - Overlay 检测 `globalThis.__DREAMER_HMR__`（`@dreamer/server` DEV 客户端），
-    `claimUi` 隐藏独立 HMR 胶囊；Overview → HMR 展示连接／更新统计；卸载释放 claim。
+    `claimUi` 隐藏独立 HMR 胶囊；Overview → HMR 展示连接／更新统计；卸载释放
+    claim。
   - 无桥时降级提示，不影响胶囊。仍仅 `VIEW_DEV`；基线**未**抬。
   - 单测 mock 桥；联调使用 `@dreamer/server@^1.3.0`（JSR 已含桥）。
 
 - **P2：DevTools 浮动面板加码（多 tab 探查，非破坏）**
-  - 面板 tab：Overview／Tree／Signals／Warnings／Settings；Owner 树展开＋节点详情；
-    警告点击跳转 Tree path；Signals 搜索；`⌘/Ctrl+Shift+D`、Esc、拖拽贴边、
-    localStorage 记忆。
-  - `/devtools` 探针：`inspectOwnerIndexed`／`flattenIndexedOwner`／`getOwnerByPath`；
+  - 面板 tab：Overview／Tree／Signals／Warnings／Settings；Owner
+    树展开＋节点详情； 警告点击跳转 Tree path；Signals
+    搜索；`⌘/Ctrl+Shift+D`、Esc、拖拽贴边、 localStorage 记忆。
+  - `/devtools`
+    探针：`inspectOwnerIndexed`／`flattenIndexedOwner`／`getOwnerByPath`；
     警告可选 `path` 深链。
   - 仍仅 `VIEW_DEV`；基线**未**抬；文档已更新。
   - 禁 JSR／npm；运行时默认语义不变。
@@ -181,9 +196,10 @@
 - **P2：DEV 浮动 DevTools 面板（对齐 Next 指示器，非破坏）**
   - 新子路径 `@dreamer/view/devtools/overlay`：`mountDevtoolsOverlay`／
     `unmountDevtoolsOverlay`／`getDevtoolsOverlay`——角标＋毛玻璃面板
-   （Overview／Warnings／Sources）。需 `VIEW_DEV`，否则不建 DOM。
+    （Overview／Warnings／Sources）。需 `VIEW_DEV`，否则不建 DOM。
   - 仅复用 `/devtools` API；**不**进主 barrel／size／consumer-bundle 测量入口
-   （基线**未**抬）。examples 在 `examples/src/main.tsx` 的 `if (VIEW_DEV)` 下挂载。
+    （基线**未**抬）。examples 在 `examples/src/main.tsx` 的 `if (VIEW_DEV)`
+    下挂载。
   - 文档 [`P2-devtools-overlay-ui.md`](./P2-devtools-overlay-ui.md)／
     [`../en-US/P2-devtools-overlay-ui.md`](../en-US/P2-devtools-overlay-ui.md)；
     单测 `tests/unit/devtools/overlay.test.ts`。
@@ -192,8 +208,8 @@
 - **P2：DEV-only 过订阅／卸挂再挂警告（§5.1，非破坏）**
   - 扩展 `@dreamer/view/devtools`：`detectWideSubscriptions`／
     `detectOversubscribe`、`noteRemount`／`detectRemountChurn`、
-    `detectOwnerRemountChurn`、`enableOversubscribeWarnings`（显式 opt-in；
-    emit 需 `VIEW_DEV`）。
+    `detectOwnerRemountChurn`、`enableOversubscribeWarnings`（显式 opt-in； emit
+    需 `VIEW_DEV`）。
   - **无** `createSignal`／`createRoot`／`insert` 挂钩；size／consumer-bundle
     **未**抬基线（仍不进测量入口）。
   - 文档 [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md)／
@@ -206,8 +222,8 @@
     `getTrackedRoots`、`getSignalObserverCount`、`snapshotRegistrySources`、
     `countUpstream`／`countDownstream`（无浏览器扩展／UI 壳）。
   - **无** `createSignal`／`createRoot` 热路径挂钩（探针 Observer＋可选
-    `trackRoot`／`createRootTracked`）；**不**从主 barrel／`/reactivity` re-export，
-    故 size／consumer-bundle **未**抬高基线数字。
+    `trackRoot`／`createRootTracked`）；**不**从主 barrel／`/reactivity`
+    re-export， 故 size／consumer-bundle **未**抬高基线数字。
   - 文档 [`P2-4-devtools.md`](./P2-4-devtools.md)／
     [`../en-US/P2-4-devtools.md`](../en-US/P2-4-devtools.md)；单测
     `tests/unit/devtools/`。
@@ -216,9 +232,10 @@
 ### 变更
 
 - **P2：examples 子路径 dogfood（非破坏）**
-  - 路由 codegen／`generateHydrationScript` 改走 `@dreamer/view/router`／`/csr`；
-    examples 手写源优先 `/reactivity`／`/control-flow`／`/csr`／`/form`／`/resource`／`/ssr`；
-    Bun `examples/package.json` 补齐子路径 `imports`。
+  - 路由 codegen／`generateHydrationScript` 改走
+    `@dreamer/view/router`／`/csr`； examples 手写源优先
+    `/reactivity`／`/control-flow`／`/csr`／`/form`／`/resource`／`/ssr`； Bun
+    `examples/package.json` 补齐子路径 `imports`。
   - 锁测：`examples-subpath-dogfood`＋codegen／hydrate 断言；文档
     [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)／
     [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)。
@@ -229,9 +246,10 @@
 - **P1-4：Router 拆 match／history／Link + SSR 同构加强（非破坏）**
   - 源码边界：`src/integrations/router/{types,match,history,link}.ts`；
     `src/integrations/router.ts` 仍为 barrel，公开 API／行为不变。
-  - SSR：补测 `matchRoute` ↔ `createRouter({ssr:true}).match`（splat／notFound）、
-    `start()` 可在 SSR 实例上显式开启、`renderRouterToString` 与 match 同 pattern；
-    文档 [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)／
+  - SSR：补测 `matchRoute` ↔
+    `createRouter({ssr:true}).match`（splat／notFound）、 `start()` 可在 SSR
+    实例上显式开启、`renderRouterToString` 与 match 同 pattern； 文档
+    [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)／
     [`../en-US/P1-4-router-split-ssr.md`](../en-US/P1-4-router-split-ssr.md)。
   - 禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`／E2E 断言。
 
@@ -239,16 +257,19 @@
 
 - **P0-hotfix：gallery E2E 缩放点击被放大预览拦截（CI）**
   - 根因：先点 `＋` 后，Playwright 命中测试把 transform 后的预览
-    （`cursor-grab`／img）当成挡住 `－`（ubuntu CI 视口；`subtree intercepts
+    （`cursor-grab`／img）当成挡住 `－`（ubuntu CI
+    视口；`subtree intercepts
     pointer events`，60s）。本地常绿。
   - 修复：examples 控制条 `relative z-10`＋列 `overflow-hidden`；E2E 先 `－` 再
-    `＋`（仍覆盖两按钮；断言 % 离开／回到 100），限定在预览层内。**未**放宽断言；
-    禁 JSR／npm。
+    `＋`（仍覆盖两按钮；断言 % 离开／回到
+    100），限定在预览层内。**未**放宽断言； 禁 JSR／npm。
 
 - **P0-hotfix：`e2e-examples` 钉 ubuntu-24.04（Playwright 1.59.1）**
-  - CI 红因：`ubuntu-latest` 已是 **26.04**；`playwright@1.59.1 install --with-deps chromium`
-    报 `does not support chromium on ubuntu26.04-x64`。job 改钉 **`ubuntu-24.04`**；
-    deno cache 去掉 `examples/`（`routers.tsx` 由 E2E `beforeAll` 生成）。
+  - CI 红因：`ubuntu-latest` 已是
+    **26.04**；`playwright@1.59.1 install --with-deps chromium` 报
+    `does not support chromium on ubuntu26.04-x64`。job 改钉
+    **`ubuntu-24.04`**； deno cache 去掉 `examples/`（`routers.tsx` 由 E2E
+    `beforeAll` 生成）。
   - 断言未放宽；禁 JSR／npm。
 
 - **P0：examples 浏览器 E2E 入 CI（非破坏）**
@@ -262,77 +283,93 @@
     TEST_REPORT 写清本地 `deno task test:e2e`／`deno test -A tests` 与 CI 关系。
   - 禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`。
 
-
 ### 文档
 
 - **P1-2：水合质量 opt-in 试点（`mismatchMode` · 2.x 加法，非破坏）**
   - 新增 [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md)／
     [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)：
-    文档化 `continue`／`assert`／`remount` 与推荐用法；说明渐进／分片水合钩子**尚未**提供。
-  - `/csr` 加法导出类型 `HydrationMismatchMode` 与 `resolveMismatchMode`（主入口本已
-    `export *` hydration）；单测锁死默认 **`continue`**；examples `/runtime` 三档试点。
+    文档化 `continue`／`assert`／`remount`
+    与推荐用法；说明渐进／分片水合钩子**尚未**提供。
+  - `/csr` 加法导出类型 `HydrationMismatchMode` 与
+    `resolveMismatchMode`（主入口本已 `export *` hydration）；单测锁死默认
+    **`continue`**；examples `/runtime` 三档试点。
   - **未**改生产默认 `mismatchMode`（仍 `continue`）；禁 JSR／npm；**未**放宽
     `size:check`／`consumer:bundle:check`／E2E 断言。
-
 
 ### 修复
 
 - **P0-hotfix：examples form E2E `page.evaluate` 宿主超时（非破坏）**
-  - 根因：`/form` 示例 `createForm` 规则要求勾选 `agree`；E2E 未勾选即点「立即提交」，
-    `handleSubmit` 不进入 onValid → 「提交成功」永不出现。`t.browser.waitFor` 宿主 timeout
-    与 Playwright `waitForFunction` 同值，条件不成立时易误报 `page.evaluate` 宿主超时
+  - 根因：`/form` 示例 `createForm` 规则要求勾选 `agree`；E2E
+    未勾选即点「立即提交」， `handleSubmit` 不进入 onValid →
+    「提交成功」永不出现。`t.browser.waitFor` 宿主 timeout 与 Playwright
+    `waitForFunction` 同值，条件不成立时易误报 `page.evaluate` 宿主超时
     （非业务主线程卡死／非 CDP 必挂）。
-  - 修复：勾选「我已阅读并同意服务条款」后再提交；用 Playwright heading locator 等待
-    「提交成功」；重置后断言用户名恢复为初始值 `dreamer`。**未**放宽断言；E2E **未**入 CI 矩阵。
+  - 修复：勾选「我已阅读并同意服务条款」后再提交；用 Playwright heading locator
+    等待 「提交成功」；重置后断言用户名恢复为初始值
+    `dreamer`。**未**放宽断言；E2E **未**入 CI 矩阵。
   - 禁 JSR／npm。
 
 ### 修复
 
 - **P0-hotfix：examples 从 `/reactivity` 导入 `batch` 失败（非破坏）**
-  - 根因：`batch` 实现在 `scheduler/batch`，主入口／`/scheduler`／`/csr` 已导出，但
-    `src/reactivity/mod.ts` **未** re-export；README §7.4 与 `examples/.../signal` 却从
-    `@dreamer/view/reactivity` 导入 → `deno task dev` 报 `No matching export ... "batch"`。
-  - 修复：在 `/reactivity` **便利 re-export** `batch`（规范入口仍为 `/scheduler`）；同步
-    README（根／zh／en）子路径表说明。
-  - **无**运行时语义变更；禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`。
+  - 根因：`batch` 实现在 `scheduler/batch`，主入口／`/scheduler`／`/csr`
+    已导出，但 `src/reactivity/mod.ts` **未** re-export；README §7.4 与
+    `examples/.../signal` 却从 `@dreamer/view/reactivity` 导入 → `deno task dev`
+    报 `No matching export ... "batch"`。
+  - 修复：在 `/reactivity` **便利 re-export** `batch`（规范入口仍为
+    `/scheduler`）；同步 README（根／zh／en）子路径表说明。
+  - **无**运行时语义变更；禁 JSR／npm；**未**放宽
+    `size:check`／`consumer:bundle:check`。
 
 ### 文档
 
 - **P1-1：主入口 barrel 弃用预告（策略 A · 2.x 加法，非破坏）**
-  - 新增 [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)／
+  - 新增
+    [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)／
     [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)：
-    子路径优先、迁移步骤、与 P0／P0-2 体积关系；**不**删 export、**不**改运行时默认。
+    子路径优先、迁移步骤、与 P0／P0-2 体积关系；**不**删
+    export、**不**改运行时默认。
   - `src/mod.ts` 模块级 JSDoc `@deprecated`（**无**运行时 `warn`／副作用）。
-  - README（根／zh／en）「便捷全家桶」与架构 § 标明弃用预告并互链；分析索引更新。
-  - **未**放宽 `size:check`／`consumer:bundle:check` 基线；禁 JSR／npm；**非** 3.0 瘦身落地。
+  - README（根／zh／en）「便捷全家桶」与架构 §
+    标明弃用预告并互链；分析索引更新。
+  - **未**放宽 `size:check`／`consumer:bundle:check` 基线；禁 JSR／npm；**非**
+    3.0 瘦身落地。
 
 ### 新增
 
 - **P0-2：消费方／examples bundle analyze + 独立体积预算（非破坏）**
-  - 新增 `scripts/consumer-bundle/`：夹具覆盖具名导入、`export *`／namespace、examples 主入口镜像与 API 并集；
-    `measure.mjs --write` → `consumer-bundle-baseline.json`；
-    `check.mjs`／`deno task consumer:bundle:check` 默认 **+5%**；CI ubuntu `consumer-bundle-check`。
-  - 关键结论（esbuild）：具名从主入口 vs 子路径 minify **Δ≈0**；`export *` 主入口相对 `/reactivity` 约 **+34 KiB minify（~4.26×）**／**+12 KiB gzip**。
+  - 新增
+    `scripts/consumer-bundle/`：夹具覆盖具名导入、`export *`／namespace、examples
+    主入口镜像与 API 并集； `measure.mjs --write` →
+    `consumer-bundle-baseline.json`；
+    `check.mjs`／`deno task consumer:bundle:check` 默认 **+5%**；CI ubuntu
+    `consumer-bundle-check`。
+  - 关键结论（esbuild）：具名从主入口 vs 子路径 minify **Δ≈0**；`export *`
+    主入口相对 `/reactivity` 约 **+34 KiB minify（~4.26×）**／**+12 KiB gzip**。
   - 文档：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md)／
     [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)。
-  - **未**放宽既有 `size:check`／`bundle-size-baseline.json`；**无**运行时语义变更；禁 JSR／npm。
-
+  - **未**放宽既有
+    `size:check`／`bundle-size-baseline.json`；**无**运行时语义变更；禁
+    JSR／npm。
 
 ### 文档
 
 - **P0-4：组件作者指南（Memo／ref／订阅边界，非破坏）**
   - 新增 [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md)／
     [`../en-US/P0-4-component-author-guide.md`](../en-US/P0-4-component-author-guide.md)：
-    心智模型（setup 一次）、**勿顶层读 Signal 致整段替换**、Memo 何时用／勿当稳定仓库、
-    `ref(null)` 瞬态与 `isConnected`、Effect 订阅边界、`Context` 勿传裸函数 value、
-    受控 props 传 Signal／getter；沉淀自分析 P0-4 与 ui-view 踩坑注释。
+    心智模型（setup 一次）、**勿顶层读 Signal 致整段替换**、Memo
+    何时用／勿当稳定仓库、 `ref(null)` 瞬态与 `isConnected`、Effect
+    订阅边界、`Context` 勿传裸函数 value、 受控 props 传
+    Signal／getter；沉淀自分析 P0-4 与 ui-view 踩坑注释。
   - README §二十二／§二十五互链；**无**运行时语义变更；禁 JSR／npm。
 
 ### 修复
 
 - **CI：消除 Node 20 动作在 Node 24 runner 上的弃用警告**
-  - `actions/checkout@v4` → `@v5`，`actions/setup-node@v4` → `@v5`（均 `runs.using: node24`）。
-  - 去掉 workflow 级 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`（升版后不再需要强制）。
+  - `actions/checkout@v4` → `@v5`，`actions/setup-node@v4` → `@v5`（均
+    `runs.using: node24`）。
+  - 去掉 workflow 级
+    `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`（升版后不再需要强制）。
   - **未**改业务测 Node 矩阵（仍为 22）；禁 JSR／npm。
 
 ### 新增
@@ -341,9 +378,11 @@
   - `scripts/compiler-coverage/`：19 条 JSX 语料；`measure.ts --write` →
     `compiler-coverage-baseline.json` + `goldens/*.out.txt`；
     `check.ts`／`deno task compiler:coverage:check` 精确对齐指标与 golden 全文。
-  - 指标（compile body）：`template`／`walk`／`insert`／`setAttribute`／`setProperty`／
+  - 指标（compile
+    body）：`template`／`walk`／`insert`／`setAttribute`／`setProperty`／
     `spread`／`memo`／path；`staticDomOpFreeRatio` 基线约 **0.5789**（11/19）。
-  - 单测 `tests/unit/compiler/golden.test.ts`；CI ubuntu `compiler-coverage-check`。
+  - 单测 `tests/unit/compiler/golden.test.ts`；CI ubuntu
+    `compiler-coverage-check`。
   - 文档：[`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md)／
     [`../en-US/P0-3-compiler-static-coverage-and-golden.md`](../en-US/P0-3-compiler-static-coverage-and-golden.md)。
   - **无**默认编译／运行时语义变更；禁 JSR／npm。
@@ -351,47 +390,59 @@
 ### 修复
 
 - **P0-3 CI：golden 单测跨 Deno／Bun／Node**
-  - `tests/unit/compiler/golden.test.ts` 不再使用 `jsr:@std/path`／`Deno.readTextFile`；
-    改为 `@dreamer/runtime-adapter` 的 `dirname`／`fromFileUrl`／`join`／`readTextFile`，
-    与既有 unit（如 `version.test.ts`／`routers-codegen.test.ts`）一致。断言与覆盖率指标不变。
-
+  - `tests/unit/compiler/golden.test.ts` 不再使用
+    `jsr:@std/path`／`Deno.readTextFile`； 改为 `@dreamer/runtime-adapter` 的
+    `dirname`／`fromFileUrl`／`join`／`readTextFile`， 与既有 unit（如
+    `version.test.ts`／`routers-codegen.test.ts`）一致。断言与覆盖率指标不变。
 
 ### 新增
 
-- **P0-1：真实页 Profiling 对照 + Signal／Effect／For／insert bench 入 CI（非破坏）**
-  - 新增 `tests/bench/insert.bench.ts`（静态文本／Signal thunk／数组子节点）；既有
-    `signal.bench.ts`（含 Effect）与 `for.bench.ts` 一并纳入门禁。
+- **P0-1：真实页 Profiling 对照 + Signal／Effect／For／insert bench 入
+  CI（非破坏）**
+  - 新增 `tests/bench/insert.bench.ts`（静态文本／Signal
+    thunk／数组子节点）；既有 `signal.bench.ts`（含 Effect）与 `for.bench.ts`
+    一并纳入门禁。
   - `scripts/bench-baseline/`：`measure.mjs --write` → `bench-baseline.json`；
-    `check.mjs`／`deno task bench:check` 按 **avgNs ≤ 基线 +100%**（可调）；
-    CI ubuntu `bench-check` 使用 `BENCH_BUDGET_PCT=300` 防数量级回退、减 flake。
+    `check.mjs`／`deno task bench:check` 按 **avgNs ≤ 基线 +100%**（可调）； CI
+    ubuntu `bench-check` 使用 `BENCH_BUDGET_PCT=300` 防数量级回退、减 flake。
   - 文档：[`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md)／
     [`../en-US/P0-1-profiling-and-bench-ci.md`](../en-US/P0-1-profiling-and-bench-ci.md)；
-    可选本地探针 `scripts/profiling/local-probe-example.ts`（**不进** `src/` 热路径）。
+    可选本地探针 `scripts/profiling/local-probe-example.ts`（**不进** `src/`
+    热路径）。
   - **无**运行时默认语义变更；禁 JSR／npm。
-
 
 ### 文档
 
 - **分析文档治理（P1-6，仅文档）**
-  - 入库现行 [`view-framework-analysis.md`](./view-framework-analysis.md)（v2.2.0／2026-11-03）。
-  - 新增 [`分析文档状态.md`](./分析文档状态.md)／[`../en-US/analysis-doc-status.md`](../en-US/analysis-doc-status.md)：标明本地 `analysis/`（gitignore）中 v1／早期架构文为过时／漂移，并指向现行分析与 README。
-  - 本地 `analysis/` 对应旧文加水印；修订 [`3.0.0-规划分析.md`](./3.0.0-规划分析.md) 相关链接；中英 README §25 增加入口。
+  - 入库现行
+    [`view-framework-analysis.md`](./view-framework-analysis.md)（v2.2.0／2026-11-03）。
+  - 新增
+    [`分析文档状态.md`](./分析文档状态.md)／[`../en-US/analysis-doc-status.md`](../en-US/analysis-doc-status.md)：标明本地
+    `analysis/`（gitignore）中 v1／早期架构文为过时／漂移，并指向现行分析与
+    README。
+  - 本地 `analysis/` 对应旧文加水印；修订
+    [`3.0.0-规划分析.md`](./3.0.0-规划分析.md) 相关链接；中英 README §25
+    增加入口。
   - **无**运行时／导出变更；禁 JSR／npm。
-
 
 ### 修复
 
 - **体积门禁：压 `/form` 入口（不改阈值、不刷基线）**
-  - Form `field(as)`／`messageFromSafeParse` 胶水保留；收紧 `field` 实现（统一 `onChange`、省略默认 `"text"` 字面量等），使 `@dreamer/view/form` minify／gzip 回到基线 **+5%** 内。
-  - **未**放宽 `size:check` 阈值、**未**改 CI job、**未**刷新 `bundle-size-baseline.json`；禁 JSR／npm。
+  - Form `field(as)`／`messageFromSafeParse` 胶水保留；收紧 `field` 实现（统一
+    `onChange`、省略默认 `"text"` 字面量等），使 `@dreamer/view/form`
+    minify／gzip 回到基线 **+5%** 内。
+  - **未**放宽 `size:check` 阈值、**未**改 CI job、**未**刷新
+    `bundle-size-baseline.json`；禁 JSR／npm。
 
 ### 新增
 
-
 - **Form checkbox／select／schema 桥（2.x 加法）**
-  - `field(name, { as? })`：可选 `checkbox`／`select`／`textarea`／`number`；省略第二参时与旧版文本绑定兼容。
-  - 导出 `messageFromSafeParse`：把类 Zod `safeParse` 结果映射为 `rules` 文案（无 schema 运行时依赖）。
-  - 示例页 `examples/src/views/form` 覆盖 checkbox／select／schema 桥；中英 README §16 同步。
+  - `field(name, { as? })`：可选
+    `checkbox`／`select`／`textarea`／`number`；省略第二参时与旧版文本绑定兼容。
+  - 导出 `messageFromSafeParse`：把类 Zod `safeParse` 结果映射为 `rules`
+    文案（无 schema 运行时依赖）。
+  - 示例页 `examples/src/views/form` 覆盖 checkbox／select／schema 桥；中英
+    README §16 同步。
   - 单测补 checkbox／select／`messageFromSafeParse`。**禁** JSR／npm 发版。
 
 ### 新增
@@ -399,42 +450,49 @@
 - **体积 CI 门禁（2.x 非破坏）**
   - `scripts/size-baseline/check.mjs`＋`deno task size:check`：对照已提交
     `bundle-size-baseline.json`，主入口与关键子路径的 **minify／gzip(min)**
-    不得超过基线 **+5%**（`Math.ceil`）；超限非 0 退出，可供 CI／本地 preflight。
+    不得超过基线 **+5%**（`Math.ceil`）；超限非 0 退出，可供 CI／本地
+    preflight。
   - 阈值可用 `--budget-pct` 或 `SIZE_BUDGET_PCT` 覆盖；故意涨包则
     `deno task size:baseline` 刷新 JSON 并入库。
-  - 基线已按 Resource Abort（`b0c8786`）后的当前体积重打（resource／主入口等随之更新）。
-  - CI 增加 ubuntu `size-check` job。**无**运行时默认行为变更；禁 JSR／npm 发版。
-
+  - 基线已按 Resource
+    Abort（`b0c8786`）后的当前体积重打（resource／主入口等随之更新）。
+  - CI 增加 ubuntu `size-check` job。**无**运行时默认行为变更；禁 JSR／npm
+    发版。
 
 ### 新增
 
 - **Resource 可选 AbortSignal＋inflight 去重文档（2.x 加法）**
   - `createResource` 每次 load 向 fetcher 传入第二参 `{ signal: AbortSignal }`；
-    source 变化／`refetch` 会 abort 上一趟；可选第三参
-    `{ signal }` 供路由离开等外层取消。不传／不用 signal 时默认行为与现网一致；
-    abort **不**写入 `error`。
-  - 导出 `createInflightDedupe()`（按 key 复用 in-flight Promise；**非** HTTP 缓存）。
+    source 变化／`refetch` 会 abort 上一趟；可选第三参 `{ signal }`
+    供路由离开等外层取消。不传／不用 signal 时默认行为与现网一致； abort
+    **不**写入 `error`。
+  - 导出 `createInflightDedupe()`（按 key 复用 in-flight Promise；**非** HTTP
+    缓存）。
   - 中英 README §11 同步 Abort／去重用法；补 `resource-abort` 单测。
 
 ### 文档
 
 - **强推子路径导入（2.x 非破坏）**
   - 中英 README／入门默认示例改为优先
-    `@dreamer/view/reactivity`／`/csr`／`/ssr`／`/router`／`/form`／`/resource` 等；
-    主入口仅保留「便捷全家桶」小节，并引用 P0 体积数字（minify 主入口 ~43.5 KiB vs
-    `/reactivity` ~10.5 KiB）。
-  - 修正架构说明中「不存在 /router／/csr」的过时表述；同步 `docs/en-US/README.md`。
-  - 仓库 `examples/` 与 `view-cli init` 脚手架导入改为子路径；**无**运行时／导出破坏。
+    `@dreamer/view/reactivity`／`/csr`／`/ssr`／`/router`／`/form`／`/resource`
+    等； 主入口仅保留「便捷全家桶」小节，并引用 P0 体积数字（minify 主入口 ~43.5
+    KiB vs `/reactivity` ~10.5 KiB）。
+  - 修正架构说明中「不存在 /router／/csr」的过时表述；同步
+    `docs/en-US/README.md`。
+  - 仓库 `examples/` 与 `view-cli init`
+    脚手架导入改为子路径；**无**运行时／导出破坏。
 
 ### 新增
 
 - **P0 工程基线（体积／性能，非破坏）**
   - `scripts/size-baseline/`：用本仓库 esbuild 测量主入口与子路径
-    （`reactivity`／`csr`／`ssr`／`router`／`form`／`resource`）的 raw／minify／gzip；
-    命令 `node scripts/size-baseline/measure.mjs --write` 或 `deno task size:baseline`。
+    （`reactivity`／`csr`／`ssr`／`router`／`form`／`resource`）的
+    raw／minify／gzip； 命令 `node scripts/size-baseline/measure.mjs --write` 或
+    `deno task size:baseline`。
   - `scripts/size-baseline/bundle-size-baseline.json`、`docs/zh-CN/P0-bench-baseline.md`、
-    `analysis/P0-基线-体积与性能.md`（gitignore 工作副本）／`docs/zh-CN/P0-基线-体积与性能.md`（入库）：可复现数字与「下一条 2.x 优化」建议
-    （文档强推子路径导入）。
+    `analysis/P0-基线-体积与性能.md`（gitignore
+    工作副本）／`docs/zh-CN/P0-基线-体积与性能.md`（入库）：可复现数字与「下一条
+    2.x 优化」建议 （文档强推子路径导入）。
   - `deno task size:baseline`／`bench:baseline` 任务入口。
 
 ### 说明
@@ -446,9 +504,10 @@
 
 ### 本版刻意 SKIP（交刀说明）
 
-- **编译器续作（更多静态化／少 Effect）**：P0-3 已锁覆盖率＋golden；再动 analyzer／transformer 属 C1 级语义风险，无把握的小步可测绿改动，**SKIP**。
-- **HOLD P2-1／P2-2／P2-3**：P2-1／3 为主入口破坏或改严默认水合；P2-2 默认时间分片仍禁；均无法做成 2.x 小步加法，**SKIP**。
-
+- **编译器续作（更多静态化／少 Effect）**：P0-3 已锁覆盖率＋golden；再动
+  analyzer／transformer 属 C1 级语义风险，无把握的小步可测绿改动，**SKIP**。
+- **HOLD P2-1／P2-2／P2-3**：P2-1／3 为主入口破坏或改严默认水合；P2-2
+  默认时间分片仍禁；均无法做成 2.x 小步加法，**SKIP**。
 
 ## [2.2.0] - 2026-07-23
 
@@ -462,22 +521,22 @@
     问题。排除 E2E 与 Deno 专属集成测试。
   - `tsconfig.json`：Bundler 模块解析 + `dom` lib，跨运行时类型一致。
   - CI：9-job 矩阵（3 Deno v2.9 + 3 Bun + 3 Node 22，无 Chromium）。
-- **CLI Node 支持**：`upgrade` 命令在 Node 上用 `npx jsr run`；`update` 命令
-  在 Node 上用 `npm update`。`getRuntime()` 不再对 Node 抛错。
+- **CLI Node 支持**：`upgrade` 命令在 Node 上用 `npx jsr run`；`update` 命令 在
+  Node 上用 `npm update`。`getRuntime()` 不再对 Node 抛错。
 
 ### 变更
 
-- **deno.json**：全部 `@dreamer/*` 依赖升至 Node 兼容版本
-  （runtime-adapter ^1.2.2、i18n ^1.1.2、console ^1.1.0、esbuild ^1.3.0 等）；
+- **deno.json**：全部 `@dreamer/*` 依赖升至 Node 兼容版本 （runtime-adapter
+  ^1.2.2、i18n ^1.1.2、console ^1.1.0、esbuild ^1.3.0 等）；
   `compilerOptions.lib` 加 `deno.ns` 以在 `nodeModulesDir: "auto"` 加载
   `@types/node` 时保留 `import.meta.main`；`minimumDependencyAge: "0"`。
-- **publish.yml**：移除 `deno check` 门槛（JSR 发布内部用 `--no-check`）；
-  Deno 升至 v2.9。
+- **publish.yml**：移除 `deno check` 门槛（JSR 发布内部用 `--no-check`）； Deno
+  升至 v2.9。
 
 ### 测试
 
-- **Deno** 单元+集成 **394** / **Bun** **326** / **Node.js 22** **65/65 文件**
-  — 三端 0 失败。
+- **Deno** 单元+集成 **394** / **Bun** **326** / **Node.js 22** **65/65 文件** —
+  三端 0 失败。
 - 排除 `tests/integration/dweb-import-ssr.test.ts` 于 Node CI（起 Deno 子进程，
   依赖 dweb 项目的 `deno.json`）。
 

@@ -23,13 +23,13 @@ function DeepChild() {
         <p className="text-sm font-bold dark:text-slate-300">
           用户名:{" "}
           <span className="text-indigo-600 dark:text-indigo-400">
-            {() => user.name}
+            {user.name}
           </span>
         </p>
         <p className="text-sm font-bold dark:text-slate-300">
           角色:{" "}
           <span className="text-indigo-600 dark:text-indigo-400">
-            {() => user.role}
+            {user.role}
           </span>
         </p>
       </div>
