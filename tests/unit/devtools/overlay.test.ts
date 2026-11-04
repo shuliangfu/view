@@ -5,8 +5,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
   getDevtoolsOverlay,
+  getDreamerHmrBridge,
   mountDevtoolsOverlay,
   unmountDevtoolsOverlay,
+  type DreamerHmrBridge,
+  type DreamerHmrSnapshot,
 } from "@dreamer/view/devtools/overlay";
 import {
   clearTrackedRoots,
@@ -177,6 +180,117 @@ describe("devtools overlay (P2)", () => {
     handle.unmount();
     expect(getDevtoolsOverlay()).toBeNull();
     expect(document.querySelector("[data-dreamer-view-devtools]")).toBeNull();
+  });
+});
+
+
+describe("devtools overlay HMR bridge integration", () => {
+  let prevDev: boolean | undefined;
+  const gAny = globalThis as Record<string, unknown>;
+
+  const installMockBridge = () => {
+    let snap: DreamerHmrSnapshot = {
+      connection: "connected",
+      updateCount: 3,
+      successCount: 2,
+      failureCount: 1,
+      lastUpdateTime: Date.now(),
+      updating: false,
+      lastProgressPath: null,
+    };
+    const listeners = new Set<(s: DreamerHmrSnapshot) => void>();
+    const claimers = new Set<string>();
+    const bridge: DreamerHmrBridge = {
+      version: 1,
+      getSnapshot: () => ({ ...snap }),
+      subscribe: (listener) => {
+        listeners.add(listener);
+        listener({ ...snap });
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+      claimUi: (id = "test") => {
+        claimers.add(id);
+        return () => {
+          claimers.delete(id);
+        };
+      },
+      isUiClaimed: () => claimers.size > 0,
+    };
+    gAny.__DREAMER_HMR__ = bridge;
+    return {
+      bridge,
+      claimers,
+      push(partial: Partial<DreamerHmrSnapshot>) {
+        snap = { ...snap, ...partial };
+        for (const l of listeners) l({ ...snap });
+      },
+    };
+  };
+
+  beforeEach(() => {
+    prevDev = g.VIEW_DEV;
+    g.VIEW_DEV = true;
+    resetRegistry();
+    clearTrackedRoots();
+    unmountDevtoolsOverlay();
+    delete gAny.__DREAMER_HMR__;
+    try {
+      globalThis.localStorage?.removeItem("dreamer-view-devtools-overlay");
+    } catch {
+      /* ignore */
+    }
+  });
+
+  afterEach(() => {
+    unmountDevtoolsOverlay();
+    clearTrackedRoots();
+    delete gAny.__DREAMER_HMR__;
+    if (prevDev === undefined) delete g.VIEW_DEV;
+    else g.VIEW_DEV = prevDev;
+  });
+
+  it("getDreamerHmrBridge returns null without bridge", () => {
+    expect(getDreamerHmrBridge()).toBeNull();
+  });
+
+  it("claims HMR UI on mount and releases on unmount", () => {
+    const mock = installMockBridge();
+    expect(mock.bridge.isUiClaimed()).toBe(false);
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    expect(mock.bridge.isUiClaimed()).toBe(true);
+    expect(mock.claimers.has("view-devtools-overlay")).toBe(true);
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent).toContain(
+      "Connected",
+    );
+    expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
+      "3",
+    );
+    handle.unmount();
+    expect(mock.bridge.isUiClaimed()).toBe(false);
+  });
+
+  it("live-updates HMR card via subscribe", () => {
+    const mock = installMockBridge();
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    mock.push({
+      connection: "reconnecting",
+      updateCount: 9,
+      successCount: 8,
+      failureCount: 1,
+    });
+    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent).toContain(
+      "Reconnecting",
+    );
+    expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
+      "9",
+    );
+    handle.unmount();
   });
 });
 

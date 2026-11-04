@@ -12,6 +12,14 @@ and this project adheres to
 
 ### Added
 
+- **P2: DevTools overlay absorbs HMR status (non-breaking)**
+  - Overlay detects `globalThis.__DREAMER_HMR__` (from `@dreamer/server` DEV
+    client), `claimUi` hides the standalone HMR capsule; Overview → HMR shows
+    connection / update stats; unmount releases the claim.
+  - Degrades gracefully with no bridge. Still `VIEW_DEV` only; baselines **not**
+    raised. Unit tests mock the bridge; local dogfood should map `@dreamer/server`
+    to the sibling checkout (do not exercise this slice via JSR).
+
 - **P2: DevTools overlay upgrade (multi-tab inspector, non-breaking)**
   - Overlay tabs: Overview / Tree / Signals / Warnings / Settings; expandable
     Owner forest with node detail; warning click → Tree path; Signals search;

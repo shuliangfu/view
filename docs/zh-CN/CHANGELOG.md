@@ -11,6 +11,12 @@
 
 ### 新增
 
+- **P2：DevTools overlay 并入 HMR 状态（非破坏）**
+  - Overlay 检测 `globalThis.__DREAMER_HMR__`（`@dreamer/server` DEV 客户端），
+    `claimUi` 隐藏独立 HMR 胶囊；Overview → HMR 展示连接／更新统计；卸载释放 claim。
+  - 无桥时降级提示，不影响胶囊。仍仅 `VIEW_DEV`；基线**未**抬。
+  - 单测 mock 桥；联调请将 `@dreamer/server` 指本地仓（禁 JSR 测本刀）。
+
 - **P2：DevTools 浮动面板加码（多 tab 探查，非破坏）**
   - 面板 tab：Overview／Tree／Signals／Warnings／Settings；Owner 树展开＋节点详情；
     警告点击跳转 Tree path；Signals 搜索；`⌘/Ctrl+Shift+D`、Esc、拖拽贴边、

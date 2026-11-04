@@ -9,6 +9,10 @@
  * Reuses / extends `@dreamer/view/devtools` (indexed Owner tree, registry
  * sources, oversubscribe warnings with path deep-links). Does **not** patch
  * createSignal / createRoot / insert.
+ *
+ * When `@dreamer/server` DEV HMR publishes `globalThis.__DREAMER_HMR__`, the
+ * overlay claims that UI (`claimUi`) so the standalone “HMR Connected” capsule
+ * is hidden and status is shown under Overview → HMR.
  */
 
 import type { Owner } from "../reactivity/owner.ts";
@@ -27,6 +31,73 @@ import {
   summarizeOwnerTree,
   type OwnerTreeSummary,
 } from "../devtools.ts";
+
+/** Connection status mirrored from `@dreamer/server` HMR client bridge. */
+export type DreamerHmrConnection =
+  | "connected"
+  | "disconnected"
+  | "reconnecting"
+  | "error";
+
+/** Snapshot shape of `globalThis.__DREAMER_HMR__` (server hmr-browser). */
+export interface DreamerHmrSnapshot {
+  connection: DreamerHmrConnection;
+  updateCount: number;
+  successCount: number;
+  failureCount: number;
+  lastUpdateTime: number | null;
+  updating: boolean;
+  lastProgressPath: string | null;
+}
+
+/** Public HMR bridge published by `@dreamer/server` DEV HMR client. */
+export interface DreamerHmrBridge {
+  readonly version: 1;
+  getSnapshot(): DreamerHmrSnapshot;
+  subscribe(listener: (snap: DreamerHmrSnapshot) => void): () => void;
+  claimUi(claimerId?: string): () => void;
+  isUiClaimed(): boolean;
+}
+
+const HMR_BRIDGE_KEY = "__DREAMER_HMR__";
+
+/** Read the live HMR bridge if the DEV server client has published it. */
+export function getDreamerHmrBridge(): DreamerHmrBridge | null {
+  const raw = (globalThis as Record<string, unknown>)[HMR_BRIDGE_KEY];
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Partial<DreamerHmrBridge>;
+  if (b.version !== 1) return null;
+  if (typeof b.getSnapshot !== "function") return null;
+  if (typeof b.subscribe !== "function") return null;
+  if (typeof b.claimUi !== "function") return null;
+  return b as DreamerHmrBridge;
+}
+
+function hmrLabel(c: DreamerHmrConnection): string {
+  switch (c) {
+    case "connected":
+      return "Connected";
+    case "disconnected":
+      return "Disconnected";
+    case "reconnecting":
+      return "Reconnecting…";
+    case "error":
+      return "Error";
+  }
+}
+
+function hmrDotClass(c: DreamerHmrConnection): string {
+  switch (c) {
+    case "connected":
+      return "hmr-dot ok";
+    case "reconnecting":
+      return "hmr-dot warn";
+    case "error":
+      return "hmr-dot err";
+    default:
+      return "hmr-dot off";
+  }
+}
 
 export type DevtoolsOverlayCorner =
   | "bottom-left"
@@ -371,6 +442,34 @@ const CSS = /* css */ `
 }
 .hint { font-size: 11px; color: rgba(236,236,241,0.42); line-height: 1.45; margin: 4px 0 0; }
 
+.hmr-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 11px; border-radius: 11px;
+  background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
+}
+.hmr-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+}
+.hmr-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: #71717a; box-shadow: 0 0 0 3px rgba(113,113,122,0.2);
+}
+.hmr-dot.ok { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.2); }
+.hmr-dot.warn { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.22); }
+.hmr-dot.err { background: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.22); }
+.hmr-dot.off { background: #71717a; }
+.hmr-title { font-weight: 650; color: #f4f4f5; }
+.hmr-meta { margin-left: auto; color: rgba(236,236,241,0.45); font-variant-numeric: tabular-nums; font-size: 11px; }
+.hmr-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.hmr-stat {
+  text-align: center; padding: 7px 4px; border-radius: 8px; background: rgba(255,255,255,0.04);
+}
+.hmr-stat b { display: block; font-size: 13px; font-weight: 700; color: #ececf1; font-variant-numeric: tabular-nums; }
+.hmr-stat span { display: block; margin-top: 2px; font-size: 10px; color: rgba(236,236,241,0.45); }
+.hmr-missing { color: rgba(236,236,241,0.42); font-size: 11.5px; line-height: 1.45; }
+
 .indicator {
   pointer-events: auto; width: 44px; height: 44px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.14);
@@ -576,6 +675,28 @@ export function mountDevtoolsOverlay(
           <p class="hint" data-el="health-hint">No misuse warnings in the current scan.</p>
         </section>
         <section class="section">
+          <div class="section-h">
+            <h3 class="section-title">HMR</h3>
+            <span class="badge" data-el="hmr-badge">—</span>
+          </div>
+          <div class="hmr-card" data-el="hmr-card">
+            <p class="hmr-missing" data-el="hmr-missing">Waiting for DEV HMR client (@dreamer/server)…</p>
+            <div class="hmr-live" data-el="hmr-live" hidden>
+              <div class="hmr-row">
+                <span class="hmr-dot off" data-el="hmr-dot"></span>
+                <span class="hmr-title" data-el="hmr-status">—</span>
+                <span class="hmr-meta" data-el="hmr-progress"></span>
+              </div>
+              <div class="hmr-stats">
+                <div class="hmr-stat"><b data-el="hmr-updates">0</b><span>updates</span></div>
+                <div class="hmr-stat"><b data-el="hmr-ok">0</b><span>ok</span></div>
+                <div class="hmr-stat"><b data-el="hmr-fail">0</b><span>failed</span></div>
+              </div>
+              <p class="hint" data-el="hmr-last">Last update: none</p>
+            </div>
+          </div>
+        </section>
+        <section class="section">
           <div class="section-h"><h3 class="section-title">Top sources</h3></div>
           <ul class="list" data-el="overview-sources"></ul>
         </section>
@@ -622,7 +743,11 @@ export function mountDevtoolsOverlay(
           <label>Shortcut</label>
           <span><span class="kbd">⌘/Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">D</span></span>
         </div>
-        <p class="hint">Drag the header or the floating button to reposition. Position & prefs persist in localStorage (<code>${storageKey}</code>). Esc closes. Production builds never mount this overlay.</p>
+        <div class="settings-row">
+          <label>HMR UI</label>
+          <span data-el="hmr-claim-note">Capsule hidden while this overlay is mounted (claimUi).</span>
+        </div>
+        <p class="hint">Drag the header or the floating button to reposition. Position & prefs persist in localStorage (<code>${storageKey}</code>). Esc closes. Production builds never mount this overlay. When the DEV HMR bridge is present, its status appears under Overview → HMR and the standalone server capsule is suppressed.</p>
         <div class="settings-row">
           <button type="button" class="ghost" data-action="reset-pos">Reset position</button>
           <button type="button" class="ghost" data-action="clear-warns">Clear warnings</button>
@@ -656,6 +781,10 @@ export function mountDevtoolsOverlay(
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let stopWatch: (() => void) | null = null;
   let dragMoved = false;
+  let releaseHmrUi: (() => void) | null = null;
+  let unsubHmr: (() => void) | null = null;
+  let hmrPoll: ReturnType<typeof setInterval> | null = null;
+  let lastHmrSnap: DreamerHmrSnapshot | null = null;
 
   const persist = () => {
     const tf = wrap.style.transform.match(
@@ -895,6 +1024,95 @@ export function mountDevtoolsOverlay(
     if (warnings.length > 60) warnings.splice(0, warnings.length - 60);
   };
 
+  const renderHmr = (snap: DreamerHmrSnapshot | null) => {
+    lastHmrSnap = snap;
+    const badge = el("[data-el='hmr-badge']");
+    const missing = el("[data-el='hmr-missing']");
+    const live = el("[data-el='hmr-live']");
+    const claimNote = el("[data-el='hmr-claim-note']");
+    const statusDot = el("[data-el='status-dot']");
+    if (!snap) {
+      if (badge) {
+        badge.textContent = "offline";
+        badge.className = "badge";
+      }
+      if (missing) missing.hidden = false;
+      if (live) live.hidden = true;
+      if (claimNote) {
+        claimNote.textContent =
+          "No HMR bridge yet — standalone capsule (if any) stays visible.";
+      }
+      if (statusDot) statusDot.classList.add("hidden");
+      return;
+    }
+    if (missing) missing.hidden = true;
+    if (live) live.hidden = false;
+    if (badge) {
+      badge.textContent = hmrLabel(snap.connection);
+      badge.className = snap.connection === "connected"
+        ? "badge ok"
+        : snap.connection === "error"
+        ? "badge warn"
+        : "badge";
+    }
+    const dot = el("[data-el='hmr-dot']");
+    if (dot) dot.className = hmrDotClass(snap.connection);
+    const status = el("[data-el='hmr-status']");
+    if (status) status.textContent = `HMR · ${hmrLabel(snap.connection)}`;
+    const prog = el("[data-el='hmr-progress']");
+    if (prog) {
+      prog.textContent = snap.updating
+        ? (snap.lastProgressPath
+          ? `updating ${snap.lastProgressPath}`
+          : "updating…")
+        : "";
+    }
+    const setT = (sel: string, v: string) => {
+      const n = el(sel);
+      if (n) n.textContent = v;
+    };
+    setT("[data-el='hmr-updates']", String(snap.updateCount));
+    setT("[data-el='hmr-ok']", String(snap.successCount));
+    setT("[data-el='hmr-fail']", String(snap.failureCount));
+    const last = el("[data-el='hmr-last']");
+    if (last) {
+      last.textContent = snap.lastUpdateTime
+        ? `Last update: ${new Date(snap.lastUpdateTime).toLocaleTimeString()}`
+        : "Last update: none";
+    }
+    if (claimNote) {
+      claimNote.textContent =
+        "Capsule hidden while this overlay is mounted (claimUi).";
+    }
+    if (statusDot) {
+      statusDot.classList.remove("hidden");
+      statusDot.style.background = snap.connection === "connected"
+        ? "#4ade80"
+        : snap.connection === "reconnecting"
+        ? "#fbbf24"
+        : snap.connection === "error"
+        ? "#f87171"
+        : "#71717a";
+    }
+  };
+
+  const attachHmrBridge = () => {
+    const bridge = getDreamerHmrBridge();
+    if (!bridge) {
+      renderHmr(null);
+      return false;
+    }
+    if (!releaseHmrUi) {
+      releaseHmrUi = bridge.claimUi("view-devtools-overlay");
+    }
+    if (!unsubHmr) {
+      unsubHmr = bridge.subscribe((snap) => renderHmr(snap));
+    } else {
+      renderHmr(bridge.getSnapshot());
+    }
+    return true;
+  };
+
   const renderOverview = () => {
     const parts: OwnerTreeSummary[] = [];
     for (const { root } of collectRoots(primaryOwner)) {
@@ -922,6 +1140,8 @@ export function mountDevtoolsOverlay(
       pill.textContent = on ? "VIEW_DEV · on" : "VIEW_DEV · off";
       pill.className = on ? "pill" : "pill off";
     }
+    // Keep HMR card in sync on refresh ticks (bridge may appear late).
+    if (!attachHmrBridge()) renderHmr(lastHmrSnap);
   };
 
   const refresh = () => {
@@ -1154,6 +1374,23 @@ export function mountDevtoolsOverlay(
     }
   }
 
+  // Claim HMR capsule ASAP; poll briefly if the server client is still booting.
+  if (!attachHmrBridge()) {
+    hmrPoll = setInterval(() => {
+      if (attachHmrBridge() && hmrPoll != null) {
+        clearInterval(hmrPoll);
+        hmrPoll = null;
+      }
+    }, 200);
+    // Stop polling after ~10s — leave "waiting" UI if no bridge.
+    setTimeout(() => {
+      if (hmrPoll != null) {
+        clearInterval(hmrPoll);
+        hmrPoll = null;
+      }
+    }, 10_000);
+  }
+
   applyCorner();
   setTab(tab);
   if (open) setOpen(true);
@@ -1192,6 +1429,18 @@ export function mountDevtoolsOverlay(
       if (refreshTimer != null) {
         clearInterval(refreshTimer);
         refreshTimer = null;
+      }
+      if (hmrPoll != null) {
+        clearInterval(hmrPoll);
+        hmrPoll = null;
+      }
+      if (unsubHmr) {
+        unsubHmr();
+        unsubHmr = null;
+      }
+      if (releaseHmrUi) {
+        releaseHmrUi();
+        releaseHmrUi = null;
       }
       if (stopWatch) {
         stopWatch();

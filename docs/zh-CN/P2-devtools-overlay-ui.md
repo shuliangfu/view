@@ -38,3 +38,7 @@
 - `deno test -A tests`（含 E2E）绿
 - size／consumer-bundle 绿且未改基线
 - CI 含 `e2e-examples` 全绿
+
+## HMR
+
+有 `@dreamer/server` DEV HMR 时：overlay `claimUi` 藏独立胶囊，Overview → HMR 展示状态；无桥则降级。生产绝不出。

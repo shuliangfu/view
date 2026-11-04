@@ -52,3 +52,7 @@ Probe helpers used by the overlay (also public on `/devtools`):
 - `deno test -A tests` green (incl. E2E)
 - size / consumer-bundle green without rewriting baselines
 - CI green including `e2e-examples`
+
+## HMR
+
+With `@dreamer/server` DEV HMR: overlay `claimUi` hides the capsule and Overview → HMR shows status; degrades without a bridge. Never in production.
