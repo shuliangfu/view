@@ -10,6 +10,7 @@ import {
   mount as mainMount,
 } from "@dreamer/view";
 import {
+  batch as reactivityBatch,
   createEffect as subEffect,
   createMemo as subMemo,
   createRoot as subRoot,
@@ -39,6 +40,11 @@ describe("subpaths（按需导出）", () => {
     expect(get()).toBe(2);
     expect(typeof subMemo).toBe("function");
     expect(typeof subRoot).toBe("function");
+  });
+
+  it("reactivity：便利 re-export 的 batch 与主入口／scheduler 同一引用", () => {
+    expect(reactivityBatch).toBe(mainBatch);
+    expect(reactivityBatch).toBe(subBatch);
   });
 
   it("scheduler：batch 与主入口同一引用", () => {

@@ -10,6 +10,18 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **P0-hotfix: examples import of `batch` from `/reactivity` failed (non-breaking)**
+  - Root cause: `batch` lives in `scheduler/batch` and was exported from the main entry,
+    `/scheduler`, and `/csr`, but **not** re-exported from `src/reactivity/mod.ts`, while
+    README §7.4 and `examples/.../signal` import it from `@dreamer/view/reactivity` →
+    `deno task dev` failed with `No matching export ... "batch"`.
+  - Fix: convenience **re-export** of `batch` from `/reactivity` (canonical entry remains
+    `/scheduler`); README (root / zh / en) subpath table notes the re-export.
+  - **No** runtime semantics change; no JSR / npm; does **not** relax `size:check` /
+    `consumer:bundle:check`.
+
 ### Documentation
 
 - **P1-1: main-entry barrel deprecation preview (Strategy A · 2.x additive, non-breaking)**

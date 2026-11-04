@@ -107,7 +107,7 @@ npx jsr add @dreamer/view
 | `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`**, etc.                                                                                      |
 | `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                   |
 | `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                     |
-| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** (no router/form; better tree-shake)                                        |
+| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + convenience **`batch`** re-export (no router/form; better tree-shake)   |
 | `jsr:@dreamer/view/scheduler`       | **`batch` / priority scheduler**                                                                                                |
 | `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` / …**                                                                                  |
 | `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                                |

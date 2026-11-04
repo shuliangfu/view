@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **P0-hotfix：examples 从 `/reactivity` 导入 `batch` 失败（非破坏）**
+  - 根因：`batch` 实现在 `scheduler/batch`，主入口／`/scheduler`／`/csr` 已导出，但
+    `src/reactivity/mod.ts` **未** re-export；README §7.4 与 `examples/.../signal` 却从
+    `@dreamer/view/reactivity` 导入 → `deno task dev` 报 `No matching export ... "batch"`。
+  - 修复：在 `/reactivity` **便利 re-export** `batch`（规范入口仍为 `/scheduler`）；同步
+    README（根／zh／en）子路径表说明。
+  - **无**运行时语义变更；禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`。
+
 ### 文档
 
 - **P1-1：主入口 barrel 弃用预告（策略 A · 2.x 加法，非破坏）**

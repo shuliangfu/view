@@ -95,7 +95,7 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`** 等与 TS 编译相关的 API                                                      |
 | `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** 构建期字符串压缩等                                                       |
 | `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**、`generateHydrationScript` 及 SSR 辅助符号       |
-| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context**（无 router/form，利于 tree-shake）                          |
+| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + 便利 **`batch`** re-export（无 router/form，利于 tree-shake） |
 | `jsr:@dreamer/view/scheduler`       | **`batch` / 优先级调度**                                                                                         |
 | `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` 等**                                                                    |
 | `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                 |
