@@ -1,77 +1,94 @@
 /**
  * @module @dreamer/view/devtools/overlay
- * @description DEV-only floating indicator + panel (Next.js Dev Overlay–inspired).
+ * @description DEV-only floating DevTools (Next.js Dev indicator / panel inspired).
  *
- * Opt-in: call {@link mountDevtoolsOverlay} from a DEV entry (examples / docs /
- * scaffold). **Never** auto-mounted by the framework. Requires
- * `globalThis.VIEW_DEV === true`; otherwise returns `null` and creates no DOM.
+ * Multi-tab inspector: Overview · Tree · Signals · Warnings · Settings.
+ * Opt-in via {@link mountDevtoolsOverlay}. Requires `VIEW_DEV`; otherwise
+ * returns `null` and creates no DOM. Not on measured size / consumer entries.
  *
- * Not re-exported from the main barrel, `/reactivity`, or even
- * `@dreamer/view/devtools` — so size / consumer-bundle measured entries stay
- * unchanged when apps do not import this subpath.
- *
- * Reuses `@dreamer/view/devtools` APIs only (Owner summary, registry sources,
- * oversubscribe / remount warnings). Does **not** patch createSignal /
- * createRoot / insert.
+ * Reuses / extends `@dreamer/view/devtools` (indexed Owner tree, registry
+ * sources, oversubscribe warnings with path deep-links). Does **not** patch
+ * createSignal / createRoot / insert.
  */
 
 import type { Owner } from "../reactivity/owner.ts";
 import {
   detectOversubscribe,
+  detectOwnerRemountChurn,
   disableOversubscribeWarnings,
   enableOversubscribeWarnings,
+  flattenIndexedOwner,
   getTrackedRoots,
+  inspectOwnerIndexed,
   isViewDev,
+  type IndexedOwnerNode,
   type OversubscribeWarning,
   snapshotRegistrySources,
   summarizeOwnerTree,
   type OwnerTreeSummary,
 } from "../devtools.ts";
 
-export type DevtoolsOverlayCorner = "bottom-left" | "bottom-right";
+export type DevtoolsOverlayCorner =
+  | "bottom-left"
+  | "bottom-right"
+  | "top-left"
+  | "top-right";
+
+export type DevtoolsOverlayTab =
+  | "overview"
+  | "tree"
+  | "signals"
+  | "warnings"
+  | "settings";
 
 export interface MountDevtoolsOverlayOptions {
-  /** Indicator corner. Default `bottom-left` (Next-like). */
+  /** Initial corner. Default `bottom-left`. Overridden by stored position when present. */
   corner?: DevtoolsOverlayCorner;
-  /** Primary Owner to summarize; otherwise aggregates {@link getTrackedRoots}. */
+  /** Primary Owner; otherwise aggregates {@link getTrackedRoots}. */
   owner?: Owner | null;
-  /**
-   * Live refresh interval (ms). Default `1000`.
-   * Set `0` for manual refresh only.
-   */
+  /** Live refresh interval (ms). Default `1000`. `0` = manual only. */
   refreshMs?: number;
-  /**
-   * Wire {@link enableOversubscribeWarnings} into the Warnings section.
-   * Default `true`. Still requires `VIEW_DEV`.
-   */
+  /** Wire misuse watcher into Warnings. Default `true`. */
   watchMisuse?: boolean;
   /** Mount parent. Default `document.body`. */
   parent?: HTMLElement;
-  /** z-index for the host. Default `2147483000`. */
+  /** z-index. Default `2147483000`. */
   zIndex?: number;
+  /** localStorage key for position / prefs. Default `dreamer-view-devtools-overlay`. */
+  storageKey?: string;
+  /** Initial tab. Default `overview`. */
+  tab?: DevtoolsOverlayTab;
 }
 
 export interface DevtoolsOverlayHandle {
-  /** Re-scan Owners / sources / warnings. */
   refresh(): void;
-  /** Expand the panel. */
   open(): void;
-  /** Collapse the panel. */
   close(): void;
-  /** Toggle open/closed. */
   toggle(): void;
-  /** Remove indicator + panel and stop watchers. */
+  /** Switch active tab (also opens the panel). */
+  setTab(tab: DevtoolsOverlayTab): void;
+  /** Select an Owner path in the Tree tab (`inspectOwnerIndexed` id). */
+  selectNode(path: string | null): void;
   unmount(): void;
-  /** Host element attached to the document (open shadow root inside). */
   readonly root: HTMLElement;
-  /** Whether the detail panel is expanded. */
   readonly isOpen: boolean;
+  readonly tab: DevtoolsOverlayTab;
 }
 
 const HOST_ATTR = "data-dreamer-view-devtools";
-const STYLE_ID = "dreamer-view-devtools-overlay-css";
+const DEFAULT_STORAGE = "dreamer-view-devtools-overlay";
 
 let active: DevtoolsOverlayHandle | null = null;
+
+interface StoredPrefs {
+  corner?: DevtoolsOverlayCorner;
+  open?: boolean;
+  tab?: DevtoolsOverlayTab;
+  refreshMs?: number;
+  /** Free-drag offset from the snapped corner (px). */
+  offsetX?: number;
+  offsetY?: number;
+}
 
 const CSS = /* css */ `
 :host {
@@ -87,48 +104,41 @@ const CSS = /* css */ `
   z-index: var(--dv-z, 2147483000);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 10px;
   pointer-events: none;
-  bottom: 16px;
-  left: 16px;
-  right: auto;
+  --pad: 16px;
 }
-.wrap.corner-br {
-  left: auto;
-  right: 16px;
-  align-items: flex-end;
-}
+.wrap.corner-bl { bottom: var(--pad); left: var(--pad); align-items: flex-start; }
+.wrap.corner-br { bottom: var(--pad); right: var(--pad); align-items: flex-end; }
+.wrap.corner-tl { top: var(--pad); left: var(--pad); align-items: flex-start; }
+.wrap.corner-tr { top: var(--pad); right: var(--pad); align-items: flex-end; }
+.wrap.corner-bl, .wrap.corner-br { flex-direction: column; }
+.wrap.corner-tl, .wrap.corner-tr { flex-direction: column-reverse; }
 
 .panel {
   pointer-events: auto;
-  width: min(380px, calc(100vw - 32px));
-  max-height: min(70vh, 560px);
+  width: min(520px, calc(100vw - 32px));
+  height: min(640px, calc(100vh - 88px));
   display: none;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.10);
-  background: linear-gradient(
-      165deg,
-      rgba(28, 28, 32, 0.92) 0%,
-      rgba(14, 14, 18, 0.94) 100%
-    );
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  background: linear-gradient(165deg, rgba(24,24,28,0.94), rgba(10,10,14,0.96));
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.35),
-    0 18px 48px rgba(0, 0, 0, 0.45),
-    0 2px 8px rgba(0, 0, 0, 0.35);
-  color: #e8e8ec;
+    0 0 0 1px rgba(0,0,0,0.4),
+    0 24px 64px rgba(0,0,0,0.55),
+    0 2px 8px rgba(0,0,0,0.35);
+  color: #ececf1;
   opacity: 0;
-  transform: translateY(8px) scale(0.98);
-  transform-origin: bottom left;
-  transition:
-    opacity 140ms ease,
-    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: translateY(8px) scale(0.985);
+  transition: opacity 140ms ease, transform 160ms cubic-bezier(0.2,0.8,0.2,1);
 }
-.wrap.corner-br .panel { transform-origin: bottom right; }
+.wrap.corner-tl .panel, .wrap.corner-tr .panel {
+  transform: translateY(-8px) scale(0.985);
+}
 .panel.open {
   display: flex;
   opacity: 1;
@@ -139,286 +149,252 @@ const CSS = /* css */ `
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 12px 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  cursor: grab;
+  user-select: none;
 }
+.head:active { cursor: grabbing; }
 .head-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: -0.02em;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, #60a5fa, #2563eb);
+  color: #fff; font-weight: 750; font-size: 13px;
+  letter-spacing: -0.03em;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.4);
   flex-shrink: 0;
 }
 .head-text { flex: 1; min-width: 0; }
-.head-title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-.head-sub {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: rgba(232, 232, 236, 0.55);
-  letter-spacing: 0.01em;
-}
+.head-title { margin: 0; font-size: 13.5px; font-weight: 650; letter-spacing: -0.015em; }
+.head-sub { margin: 2px 0 0; font-size: 11px; color: rgba(236,236,241,0.5); }
 .icon-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: rgba(232, 232, 236, 0.65);
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
+  appearance: none; border: 0; background: transparent;
+  color: rgba(236,236,241,0.6); width: 30px; height: 30px;
+  border-radius: 8px; display: grid; place-items: center; cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+.icon-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.icon-btn:focus-visible { outline: 2px solid rgba(59,130,246,0.75); outline-offset: 1px; }
+
+.tabs {
+  display: flex; gap: 2px; padding: 8px 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  overflow-x: auto; scrollbar-width: none;
 }
-.icon-btn:focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.7);
-  outline-offset: 1px;
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  appearance: none; border: 0; background: transparent;
+  color: rgba(236,236,241,0.5); font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.01em; padding: 7px 10px 9px; border-radius: 8px 8px 0 0;
+  cursor: pointer; white-space: nowrap; position: relative;
+  transition: color 120ms ease, background 120ms ease;
 }
+.tab:hover { color: rgba(236,236,241,0.85); background: rgba(255,255,255,0.04); }
+.tab.active {
+  color: #fff; background: rgba(255,255,255,0.06);
+}
+.tab.active::after {
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: 0;
+  height: 2px; border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+}
+.tab .count {
+  display: inline-block; margin-left: 5px; min-width: 16px; padding: 0 5px;
+  border-radius: 999px; font-size: 10px; font-weight: 700;
+  background: rgba(255,255,255,0.08); color: rgba(236,236,241,0.7);
+  font-variant-numeric: tabular-nums;
+}
+.tab .count.warn { background: rgba(245,158,11,0.22); color: #fbbf24; }
 
 .body {
-  flex: 1;
-  overflow: auto;
-  padding: 10px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.2) transparent;
+  flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;
 }
+.pane {
+  display: none; flex: 1; min-height: 0; overflow: auto;
+  padding: 12px; flex-direction: column; gap: 10px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent;
+}
+.pane.active { display: flex; }
 
 .section {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 10px 10px 8px;
+  border-radius: 11px; border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03); padding: 10px;
 }
 .section-h {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; gap: 8px;
 }
 .section-title {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(232, 232, 236, 0.55);
+  margin: 0; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: rgba(236,236,241,0.48);
 }
 .badge {
-  font-size: 10px;
-  font-weight: 650;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(232, 232, 236, 0.75);
+  font-size: 10px; font-weight: 650; padding: 2px 7px; border-radius: 999px;
+  background: rgba(255,255,255,0.08); color: rgba(236,236,241,0.7);
 }
-.badge.warn {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-}
-.badge.ok {
-  background: rgba(34, 197, 94, 0.16);
-  color: #4ade80;
-}
+.badge.warn { background: rgba(245,158,11,0.18); color: #fbbf24; }
+.badge.ok { background: rgba(34,197,94,0.16); color: #4ade80; }
 
 .stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
 }
 .stat {
-  text-align: center;
-  padding: 8px 4px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+  text-align: center; padding: 10px 4px; border-radius: 9px;
+  background: rgba(0,0,0,0.25);
 }
 .stat-n {
-  display: block;
-  font-size: 16px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: #f4f4f5;
-  line-height: 1.15;
+  display: block; font-size: 17px; font-weight: 720;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: #f4f4f5;
 }
 .stat-l {
-  display: block;
-  margin-top: 3px;
-  font-size: 10px;
-  color: rgba(232, 232, 236, 0.5);
-  letter-spacing: 0.02em;
+  display: block; margin-top: 3px; font-size: 10px;
+  color: rgba(236,236,241,0.48); letter-spacing: 0.02em;
 }
 
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 140px;
-  overflow: auto;
+.toolbar {
+  display: flex; gap: 8px; align-items: center;
 }
+.search {
+  flex: 1; appearance: none; border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.28); color: #ececf1; border-radius: 9px;
+  padding: 7px 10px; font-size: 12px; outline: none;
+}
+.search:focus { border-color: rgba(96,165,250,0.55); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.search::placeholder { color: rgba(236,236,241,0.35); }
+
+.tree-layout {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; flex: 1;
+}
+@media (max-width: 420px) {
+  .tree-layout { grid-template-columns: 1fr; }
+}
+.tree-pane, .detail-pane {
+  border-radius: 11px; border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.22); min-height: 180px; overflow: auto;
+  padding: 6px;
+}
+.detail-pane { padding: 10px; }
+.tree-row {
+  display: flex; align-items: center; gap: 4px; width: 100%;
+  appearance: none; border: 0; background: transparent; color: inherit;
+  text-align: left; font-size: 12px; padding: 4px 6px; border-radius: 7px;
+  cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.tree-row:hover { background: rgba(255,255,255,0.06); }
+.tree-row.selected { background: rgba(59,130,246,0.22); color: #dbeafe; }
+.tree-twist {
+  width: 16px; height: 16px; display: grid; place-items: center;
+  color: rgba(236,236,241,0.45); font-size: 9px; flex-shrink: 0;
+}
+.tree-twist.empty { visibility: hidden; }
+.kind {
+  font-size: 9.5px; font-weight: 750; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 1px 5px; border-radius: 4px;
+  margin-right: 6px; flex-shrink: 0;
+}
+.kind.root { background: rgba(168,85,247,0.2); color: #d8b4fe; }
+.kind.effect { background: rgba(59,130,246,0.2); color: #93c5fd; }
+.kind.memo { background: rgba(34,197,94,0.18); color: #86efac; }
+.kind.owner { background: rgba(255,255,255,0.08); color: rgba(236,236,241,0.65); }
+.meta { margin-left: auto; font-size: 10px; color: rgba(236,236,241,0.4); font-variant-numeric: tabular-nums; }
+
+.kv { display: grid; grid-template-columns: 96px 1fr; gap: 6px 8px; font-size: 12px; }
+.kv dt { margin: 0; color: rgba(236,236,241,0.45); font-size: 11px; }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; word-break: break-all; }
+.detail-empty { margin: 24px 8px; text-align: center; color: rgba(236,236,241,0.4); font-size: 12px; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.18);
-  font-size: 12px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 7px 9px; border-radius: 8px; background: rgba(0,0,0,0.2); font-size: 12px;
+  border: 1px solid transparent; cursor: default;
 }
+.row.buttonish { cursor: pointer; appearance: none; border: 1px solid transparent; width: 100%; color: inherit; text-align: left; font: inherit; background: rgba(0,0,0,0.2); }
+.row.buttonish:hover { border-color: rgba(96,165,250,0.35); background: rgba(59,130,246,0.1); }
 .row-k {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(232, 232, 236, 0.85);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px;
+  color: rgba(236,236,241,0.88);
 }
-.row-v {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  color: rgba(232, 232, 236, 0.55);
-  font-size: 11px;
-}
+.row-v { flex-shrink: 0; font-variant-numeric: tabular-nums; color: rgba(236,236,241,0.5); font-size: 11px; }
+
 .warn-item {
-  padding: 8px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  background: rgba(245, 158, 11, 0.08);
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: rgba(253, 230, 138, 0.95);
+  display: block; width: 100%; text-align: left; appearance: none; cursor: pointer;
+  padding: 9px 10px; border-radius: 9px;
+  border: 1px solid rgba(245,158,11,0.28); background: rgba(245,158,11,0.08);
+  font-size: 11.5px; line-height: 1.45; color: rgba(253,230,138,0.95);
+  transition: border-color 120ms ease, background 120ms ease;
 }
+.warn-item:hover { border-color: rgba(251,191,36,0.55); background: rgba(245,158,11,0.14); }
 .warn-kind {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #fbbf24;
-  margin-bottom: 3px;
+  display: inline-block; font-size: 10px; font-weight: 750; text-transform: uppercase;
+  letter-spacing: 0.04em; color: #fbbf24; margin-bottom: 3px;
 }
-.empty {
-  margin: 0;
-  padding: 8px;
-  text-align: center;
-  font-size: 12px;
-  color: rgba(232, 232, 236, 0.45);
+.warn-path {
+  display: block; margin-top: 5px; font-size: 10.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: rgba(147,197,253,0.9);
 }
+.empty { margin: 0; padding: 14px 8px; text-align: center; font-size: 12px; color: rgba(236,236,241,0.4); }
 
 .foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px 10px; border-top: 1px solid rgba(255,255,255,0.08);
 }
 .ghost {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(232, 232, 236, 0.85);
-  font-size: 11.5px;
-  font-weight: 550;
-  padding: 5px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  appearance: none; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04); color: rgba(236,236,241,0.85);
+  font-size: 11.5px; font-weight: 550; padding: 5px 10px; border-radius: 8px; cursor: pointer;
 }
-.ghost:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
-}
+.ghost:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
 .pill {
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(34, 197, 94, 0.14);
-  color: #4ade80;
-  letter-spacing: 0.02em;
+  font-size: 10.5px; font-weight: 600; padding: 4px 8px; border-radius: 999px;
+  background: rgba(34,197,94,0.14); color: #4ade80; letter-spacing: 0.02em;
 }
-.pill.off {
-  background: rgba(248, 113, 113, 0.14);
-  color: #f87171;
+.pill.off { background: rgba(248,113,113,0.14); color: #f87171; }
+.kbd {
+  font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 2px 5px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.25); color: rgba(236,236,241,0.55);
 }
 
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12.5px;
+}
+.settings-row:last-child { border-bottom: 0; }
+.settings-row label { color: rgba(236,236,241,0.75); }
+.settings-row select, .settings-row input[type="number"] {
+  appearance: none; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.28); color: #ececf1; border-radius: 8px;
+  padding: 5px 8px; font-size: 12px; min-width: 120px;
+}
+.hint { font-size: 11px; color: rgba(236,236,241,0.42); line-height: 1.45; margin: 4px 0 0; }
+
 .indicator {
-  pointer-events: auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(
-    160deg,
-    rgba(32, 32, 38, 0.92),
-    rgba(12, 12, 16, 0.95)
-  );
+  pointer-events: auto; width: 44px; height: 44px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(160deg, rgba(32,32,38,0.94), rgba(10,10,14,0.96));
   backdrop-filter: blur(14px) saturate(1.3);
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(0, 0, 0, 0.25);
-  color: #fff;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  position: relative;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25);
+  color: #fff; cursor: grab; display: grid; place-items: center; position: relative;
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 .indicator:hover {
   transform: translateY(-1px) scale(1.03);
-  border-color: rgba(96, 165, 250, 0.45);
-  box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(59, 130, 246, 0.25);
+  border-color: rgba(96,165,250,0.45);
 }
-.indicator:focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.8);
-  outline-offset: 2px;
-}
+.indicator:active { cursor: grabbing; }
+.indicator:focus-visible { outline: 2px solid rgba(59,130,246,0.8); outline-offset: 2px; }
 .indicator-mark {
-  font-weight: 750;
-  font-size: 15px;
-  letter-spacing: -0.04em;
+  font-weight: 780; font-size: 15px; letter-spacing: -0.04em;
   background: linear-gradient(180deg, #93c5fd, #3b82f6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(12, 12, 16, 0.95);
-  background: #22c55e;
+  position: absolute; top: 3px; right: 3px; width: 9px; height: 9px;
+  border-radius: 999px; border: 1.5px solid rgba(10,10,14,0.95); background: #22c55e;
 }
 .dot.warn { background: #f59e0b; }
 .dot.hidden { display: none; }
@@ -452,24 +428,6 @@ function mergeSummaries(parts: OwnerTreeSummary[]): OwnerTreeSummary {
   return out;
 }
 
-function collectSummary(primary: Owner | null | undefined): OwnerTreeSummary {
-  const parts: OwnerTreeSummary[] = [];
-  const seen = new Set<Owner>();
-  if (primary) {
-    const s = summarizeOwnerTree(primary);
-    if (s) {
-      parts.push(s);
-      seen.add(primary);
-    }
-  }
-  for (const root of getTrackedRoots()) {
-    if (seen.has(root)) continue;
-    const s = summarizeOwnerTree(root);
-    if (s) parts.push(s);
-  }
-  return parts.length ? mergeSummaries(parts) : emptySummary();
-}
-
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -478,10 +436,56 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function readStore(key: string): StoredPrefs {
+  try {
+    const raw = globalThis.localStorage?.getItem(key);
+    if (!raw) return {};
+    return JSON.parse(raw) as StoredPrefs;
+  } catch {
+    return {};
+  }
+}
+
+function writeStore(key: string, prefs: StoredPrefs): void {
+  try {
+    globalThis.localStorage?.setItem(key, JSON.stringify(prefs));
+  } catch {
+    /* private mode / SSR */
+  }
+}
+
+function cornerClass(c: DevtoolsOverlayCorner): string {
+  switch (c) {
+    case "bottom-right":
+      return "corner-br";
+    case "top-left":
+      return "corner-tl";
+    case "top-right":
+      return "corner-tr";
+    default:
+      return "corner-bl";
+  }
+}
+
+function collectRoots(primary: Owner | null): { root: Owner; id: string }[] {
+  const out: { root: Owner; id: string }[] = [];
+  const seen = new Set<Owner>();
+  if (primary) {
+    out.push({ root: primary, id: "0" });
+    seen.add(primary);
+  }
+  let i = primary ? 1 : 0;
+  for (const r of getTrackedRoots()) {
+    if (seen.has(r)) continue;
+    out.push({ root: r, id: String(i++) });
+    seen.add(r);
+  }
+  return out;
+}
+
 /**
- * Mount the Next-inspired DEV floating indicator + panel.
- * Returns `null` when `VIEW_DEV` is off or there is no `document` (SSR / prod).
- * Calling again replaces any previous overlay.
+ * Mount the Next-inspired DEV floating DevTools.
+ * Returns `null` when `VIEW_DEV` is off or there is no `document`.
  */
 export function mountDevtoolsOverlay(
   options?: MountDevtoolsOverlayOptions,
@@ -491,12 +495,23 @@ export function mountDevtoolsOverlay(
 
   if (active) active.unmount();
 
-  const corner = options?.corner ?? "bottom-left";
-  const refreshMs = options?.refreshMs ?? 1000;
+  const storageKey = options?.storageKey ?? DEFAULT_STORAGE;
+  const stored = readStore(storageKey);
+  let corner: DevtoolsOverlayCorner = stored.corner ?? options?.corner ?? "bottom-left";
+  let refreshMs = stored.refreshMs ?? options?.refreshMs ?? 1000;
   const watchMisuse = options?.watchMisuse !== false;
   const parent = options?.parent ?? document.body;
   const zIndex = options?.zIndex ?? 2_147_483_000;
   const primaryOwner: Owner | null = options?.owner ?? null;
+
+  let tab: DevtoolsOverlayTab = stored.tab ?? options?.tab ?? "overview";
+  let open = stored.open === true;
+  let selectedPath: string | null = null;
+  let signalQuery = "";
+  const expanded = new Set<string>();
+  const warnings: OversubscribeWarning[] = [];
+  let forest: IndexedOwnerNode[] = [];
+  let flatIndex = new Map<string, IndexedOwnerNode>();
 
   const host = document.createElement("div");
   host.setAttribute(HOST_ATTR, "overlay");
@@ -505,59 +520,117 @@ export function mountDevtoolsOverlay(
   const shadow = host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
-  style.id = STYLE_ID;
   style.textContent = CSS;
   shadow.appendChild(style);
 
   const wrap = document.createElement("div");
-  wrap.className = `wrap${corner === "bottom-right" ? " corner-br" : ""}`;
+  wrap.className = `wrap ${cornerClass(corner)}`;
   wrap.style.setProperty("--dv-z", String(zIndex));
+  if (stored.offsetX || stored.offsetY) {
+    wrap.style.transform =
+      `translate(${stored.offsetX ?? 0}px, ${stored.offsetY ?? 0}px)`;
+  }
 
   const panel = document.createElement("div");
   panel.className = "panel";
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", "View DevTools");
   panel.innerHTML = `
-    <div class="head">
+    <div class="head" data-el="drag-handle">
       <div class="head-mark" aria-hidden="true">V</div>
       <div class="head-text">
         <p class="head-title">View DevTools</p>
-        <p class="head-sub">Development overlay</p>
+        <p class="head-sub">Owner · signals · misuse · <span class="kbd">⌘/Ctrl⇧D</span></p>
       </div>
+      <button type="button" class="icon-btn" data-action="refresh" title="Refresh" aria-label="Refresh">↻</button>
       <button type="button" class="icon-btn" data-action="close" aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" data-tab="overview" role="tab">Overview</button>
+      <button type="button" class="tab" data-tab="tree" role="tab">Tree</button>
+      <button type="button" class="tab" data-tab="signals" role="tab">Signals <span class="count" data-el="sig-count">0</span></button>
+      <button type="button" class="tab" data-tab="warnings" role="tab">Warnings <span class="count" data-el="warn-count">0</span></button>
+      <button type="button" class="tab" data-tab="settings" role="tab">Settings</button>
+    </div>
     <div class="body">
-      <section class="section" data-sec="overview">
-        <div class="section-h">
-          <h3 class="section-title">Overview</h3>
-          <span class="badge" data-el="roots-badge">0 roots</span>
+      <div class="pane" data-pane="overview">
+        <section class="section">
+          <div class="section-h">
+            <h3 class="section-title">Reactive overview</h3>
+            <span class="badge" data-el="roots-badge">0 roots</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="stat-n" data-el="n-effects">0</span><span class="stat-l">effects</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-memos">0</span><span class="stat-l">memos</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-nodes">0</span><span class="stat-l">nodes</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-edges">0</span><span class="stat-l">up edges</span></div>
+          </div>
+        </section>
+        <section class="section">
+          <div class="section-h">
+            <h3 class="section-title">Health</h3>
+            <span class="badge ok" data-el="health-badge">ok</span>
+          </div>
+          <p class="hint" data-el="health-hint">No misuse warnings in the current scan.</p>
+        </section>
+        <section class="section">
+          <div class="section-h"><h3 class="section-title">Top sources</h3></div>
+          <ul class="list" data-el="overview-sources"></ul>
+        </section>
+      </div>
+      <div class="pane" data-pane="tree">
+        <div class="toolbar">
+          <input class="search" data-el="tree-filter" placeholder="Filter by kind or path…" />
         </div>
-        <div class="stats">
-          <div class="stat"><span class="stat-n" data-el="n-effects">0</span><span class="stat-l">effects</span></div>
-          <div class="stat"><span class="stat-n" data-el="n-memos">0</span><span class="stat-l">memos</span></div>
-          <div class="stat"><span class="stat-n" data-el="n-nodes">0</span><span class="stat-l">nodes</span></div>
-          <div class="stat"><span class="stat-n" data-el="n-edges">0</span><span class="stat-l">up edges</span></div>
+        <div class="tree-layout">
+          <div class="tree-pane" data-el="tree-list" role="tree"></div>
+          <div class="detail-pane" data-el="tree-detail">
+            <p class="detail-empty">Select a node to inspect subscriptions.</p>
+          </div>
         </div>
-      </section>
-      <section class="section" data-sec="warnings">
-        <div class="section-h">
-          <h3 class="section-title">Warnings</h3>
+      </div>
+      <div class="pane" data-pane="signals">
+        <div class="toolbar">
+          <input class="search" data-el="sig-filter" placeholder="Search registry sources…" />
+        </div>
+        <ul class="list" data-el="sig-list"></ul>
+      </div>
+      <div class="pane" data-pane="warnings">
+        <div class="section-h" style="margin:0 0 8px">
+          <h3 class="section-title">Misuse scan</h3>
           <span class="badge ok" data-el="warn-badge">0</span>
         </div>
         <div data-el="warn-list"></div>
-      </section>
-      <section class="section" data-sec="sources">
-        <div class="section-h">
-          <h3 class="section-title">Sources</h3>
-          <span class="badge" data-el="src-badge">top</span>
+      </div>
+      <div class="pane" data-pane="settings">
+        <div class="settings-row">
+          <label for="dv-corner">Corner</label>
+          <select id="dv-corner" data-el="opt-corner">
+            <option value="bottom-left">Bottom left</option>
+            <option value="bottom-right">Bottom right</option>
+            <option value="top-left">Top left</option>
+            <option value="top-right">Top right</option>
+          </select>
         </div>
-        <ul class="list" data-el="src-list"></ul>
-      </section>
+        <div class="settings-row">
+          <label for="dv-refresh">Refresh (ms)</label>
+          <input id="dv-refresh" data-el="opt-refresh" type="number" min="0" step="100" />
+        </div>
+        <div class="settings-row">
+          <label>Shortcut</label>
+          <span><span class="kbd">⌘/Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">D</span></span>
+        </div>
+        <p class="hint">Drag the header or the floating button to reposition. Position & prefs persist in localStorage (<code>${storageKey}</code>). Esc closes. Production builds never mount this overlay.</p>
+        <div class="settings-row">
+          <button type="button" class="ghost" data-action="reset-pos">Reset position</button>
+          <button type="button" class="ghost" data-action="clear-warns">Clear warnings</button>
+        </div>
+      </div>
     </div>
     <div class="foot">
-      <button type="button" class="ghost" data-action="refresh">↻ Refresh</button>
+      <button type="button" class="ghost" data-action="refresh-foot">↻ Refresh</button>
       <span class="pill" data-el="dev-pill">VIEW_DEV · on</span>
     </div>
   `;
@@ -580,10 +653,29 @@ export function mountDevtoolsOverlay(
   const el = (sel: string): HTMLElement | null =>
     shadow.querySelector(sel) as HTMLElement | null;
 
-  let open = false;
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let stopWatch: (() => void) | null = null;
-  const warnings: OversubscribeWarning[] = [];
+  let dragMoved = false;
+
+  const persist = () => {
+    const tf = wrap.style.transform.match(
+      /translate\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/,
+    );
+    writeStore(storageKey, {
+      corner,
+      open,
+      tab,
+      refreshMs,
+      offsetX: tf ? Number(tf[1]) : 0,
+      offsetY: tf ? Number(tf[2]) : 0,
+    });
+  };
+
+  const applyCorner = () => {
+    wrap.className = `wrap ${cornerClass(corner)}`;
+    const opt = el("[data-el='opt-corner']") as HTMLSelectElement | null;
+    if (opt) opt.value = corner;
+  };
 
   const setOpen = (next: boolean) => {
     open = next;
@@ -593,42 +685,228 @@ export function mountDevtoolsOverlay(
       "aria-label",
       open ? "Close View DevTools" : "Open View DevTools",
     );
+    persist();
+  };
+
+  const setTab = (next: DevtoolsOverlayTab) => {
+    tab = next;
+    shadow.querySelectorAll(".tab").forEach((n) => {
+      n.classList.toggle("active", (n as HTMLElement).dataset.tab === tab);
+    });
+    shadow.querySelectorAll(".pane").forEach((n) => {
+      n.classList.toggle("active", (n as HTMLElement).dataset.pane === tab);
+    });
+    persist();
+  };
+
+  const renderDetail = () => {
+    const detail = el("[data-el='tree-detail']");
+    if (!detail) return;
+    if (!selectedPath) {
+      detail.innerHTML =
+        `<p class="detail-empty">Select a node to inspect subscriptions.</p>`;
+      return;
+    }
+    const node = flatIndex.get(selectedPath);
+    if (!node) {
+      detail.innerHTML =
+        `<p class="detail-empty">Node <code>${escapeHtml(selectedPath)}</code> is stale — refresh.</p>`;
+      return;
+    }
+    detail.innerHTML = `
+      <div class="section-h" style="margin-bottom:10px">
+        <h3 class="section-title">Node detail</h3>
+        <span class="kind ${node.kind}">${node.kind}</span>
+      </div>
+      <dl class="kv">
+        <dt>path</dt><dd>${escapeHtml(node.id)}</dd>
+        <dt>depth</dt><dd>${node.depth}</dd>
+        <dt>children</dt><dd>${node.children}</dd>
+        <dt>disposables</dt><dd>${node.disposables}</dd>
+        <dt>upstream</dt><dd>${node.upstream}</dd>
+        <dt>downstream</dt><dd>${node.downstream}</dd>
+      </dl>
+      <p class="hint">Upstream = Observer→Source edges on Effects/Memos. Downstream = Source→Observer edges on Memos.</p>
+    `;
+  };
+
+  const renderTree = () => {
+    const list = el("[data-el='tree-list']");
+    if (!list) return;
+    const filter =
+      (el("[data-el='tree-filter']") as HTMLInputElement | null)?.value
+        .trim()
+        .toLowerCase() ?? "";
+
+    const rows: string[] = [];
+    const walk = (node: IndexedOwnerNode) => {
+      const label = `${node.kind} ${node.id}`;
+      if (
+        filter &&
+        !label.toLowerCase().includes(filter) &&
+        !node.id.toLowerCase().includes(filter)
+      ) {
+        // still walk children in case nested match
+        for (const c of node.childNodes) walk(c);
+        return;
+      }
+      const hasKids = node.childNodes.length > 0;
+      const isOpen = expanded.has(node.id) || !!filter;
+      const pad = 6 + node.depth * 12;
+      rows.push(`
+        <button type="button" class="tree-row${selectedPath === node.id ? " selected" : ""}"
+          data-path="${escapeHtml(node.id)}" style="padding-left:${pad}px" role="treeitem"
+          ${hasKids ? `aria-expanded="${isOpen ? "true" : "false"}"` : ""}>
+          <span class="tree-twist${hasKids ? "" : " empty"}" data-twist="${escapeHtml(node.id)}">${hasKids ? (isOpen ? "▼" : "▶") : "·"}</span>
+          <span class="kind ${node.kind}">${node.kind}</span>
+          <span>${escapeHtml(node.id)}</span>
+          <span class="meta">↑${node.upstream} ↓${node.downstream}</span>
+        </button>
+      `);
+      if (hasKids && isOpen) {
+        for (const c of node.childNodes) walk(c);
+      } else if (hasKids && filter) {
+        for (const c of node.childNodes) walk(c);
+      }
+    };
+    for (const root of forest) walk(root);
+    list.innerHTML = rows.length
+      ? rows.join("")
+      : `<p class="empty">No Owner roots — call createRootTracked / trackRoot, or pass owner.</p>`;
+    renderDetail();
+  };
+
+  const renderSignals = () => {
+    const sources = snapshotRegistrySources()
+      .slice()
+      .sort((a, b) => b.observers - a.observers);
+    const q = signalQuery.trim().toLowerCase();
+    const filtered = q
+      ? sources.filter((s) => s.id.toLowerCase().includes(q))
+      : sources;
+    const countEl = el("[data-el='sig-count']");
+    if (countEl) countEl.textContent = String(sources.length);
+    const list = el("[data-el='sig-list']");
+    if (!list) return;
+    if (!filtered.length) {
+      list.innerHTML = `<p class="empty">${sources.length ? "No sources match filter" : "No registry sources yet"}</p>`;
+      return;
+    }
+    list.innerHTML = filtered
+      .map(
+        (s) =>
+          `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${escapeHtml(s.id)}</span><span class="row-v">${s.observers} obs</span></li>`,
+      )
+      .join("");
+
+    const overview = el("[data-el='overview-sources']");
+    if (overview) {
+      const top = sources.slice(0, 5);
+      overview.innerHTML = top.length
+        ? top
+          .map(
+            (s) =>
+              `<li class="row"><span class="row-k">${escapeHtml(s.id)}</span><span class="row-v">${s.observers}</span></li>`,
+          )
+          .join("")
+        : `<p class="empty">No sources</p>`;
+    }
   };
 
   const renderWarnings = () => {
     const list = el("[data-el='warn-list']");
     const badge = el("[data-el='warn-badge']");
+    const count = el("[data-el='warn-count']");
+    const health = el("[data-el='health-badge']");
+    const healthHint = el("[data-el='health-hint']");
     const dot = el("[data-el='status-dot']");
-    if (!list || !badge || !dot) return;
     const n = warnings.length;
-    badge.textContent = String(n);
-    badge.className = n > 0 ? "badge warn" : "badge ok";
-    if (n > 0) {
-      dot.className = "dot warn";
-      list.innerHTML = warnings
-        .slice(0, 8)
-        .map(
-          (w) =>
-            `<div class="warn-item"><div class="warn-kind">${escapeHtml(w.kind)}</div>${escapeHtml(w.message)}</div>`,
-        )
-        .join("");
-    } else {
-      dot.className = "dot";
+    if (badge) {
+      badge.textContent = String(n);
+      badge.className = n > 0 ? "badge warn" : "badge ok";
+    }
+    if (count) {
+      count.textContent = String(n);
+      count.className = n > 0 ? "count warn" : "count";
+    }
+    if (health) {
+      health.textContent = n > 0 ? `${n} warning${n === 1 ? "" : "s"}` : "ok";
+      health.className = n > 0 ? "badge warn" : "badge ok";
+    }
+    if (healthHint) {
+      healthHint.textContent = n > 0
+        ? "Click a warning to jump to the Owner path in Tree."
+        : "No misuse warnings in the current scan.";
+    }
+    if (dot) {
+      dot.className = n > 0 ? "dot warn" : "dot";
+    }
+    if (!list) return;
+    if (!n) {
       list.innerHTML = `<p class="empty">No issues detected</p>`;
+      return;
+    }
+    list.innerHTML = warnings
+      .slice()
+      .reverse()
+      .slice(0, 40)
+      .map((w, idx) => {
+        const i = warnings.length - 1 - idx;
+        return `
+        <button type="button" class="warn-item" data-warn="${i}">
+          <span class="warn-kind">${escapeHtml(w.kind)}</span>
+          <span>${escapeHtml(w.message)}</span>
+          ${w.path ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>` : ""}
+        </button>`;
+      })
+      .join("");
+  };
+
+  const rebuildForest = () => {
+    const roots = collectRoots(primaryOwner);
+    forest = [];
+    flatIndex = new Map();
+    for (const { root, id } of roots) {
+      const snap = inspectOwnerIndexed(root, { rootId: id, maxDepth: 48 });
+      if (snap) {
+        forest.push(snap);
+        for (const n of flattenIndexedOwner(snap)) flatIndex.set(n.id, n);
+        if (!expanded.has(id)) expanded.add(id);
+      }
     }
   };
 
-  const render = () => {
-    const summary = collectSummary(primaryOwner);
-    const tracked = getTrackedRoots();
-    const rootCount = new Set(
-      [primaryOwner, ...tracked].filter(Boolean) as Owner[],
-    ).size;
+  const scanWarnings = () => {
+    const roots = collectRoots(primaryOwner);
+    const scanned: OversubscribeWarning[] = [];
+    for (const { root, id } of roots) {
+      scanned.push(...detectOversubscribe(root, { rootId: id }));
+      const churn = detectOwnerRemountChurn(root, { rootId: id });
+      if (churn) scanned.push(churn);
+    }
+    const seen = new Set(warnings.map((w) => `${w.kind}:${w.path ?? ""}:${w.message}`));
+    for (const w of scanned) {
+      const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        warnings.push(w);
+      }
+    }
+    if (warnings.length > 60) warnings.splice(0, warnings.length - 60);
+  };
+
+  const renderOverview = () => {
+    const parts: OwnerTreeSummary[] = [];
+    for (const { root } of collectRoots(primaryOwner)) {
+      const s = summarizeOwnerTree(root);
+      if (s) parts.push(s);
+    }
+    const summary = parts.length ? mergeSummaries(parts) : emptySummary();
+    const rootCount = collectRoots(primaryOwner).length;
     const rootsBadge = el("[data-el='roots-badge']");
     if (rootsBadge) {
-      const label = rootCount === 1 ? "root" : "roots";
       rootsBadge.textContent =
-        `${rootCount} ${label} · depth ${summary.maxDepth}`;
+        `${rootCount} root${rootCount === 1 ? "" : "s"} · depth ${summary.maxDepth}`;
     }
     const setN = (key: string, v: number) => {
       const n = el(`[data-el='${key}']`);
@@ -638,47 +916,6 @@ export function mountDevtoolsOverlay(
     setN("n-memos", summary.memos);
     setN("n-nodes", summary.nodes);
     setN("n-edges", summary.upstreamEdges);
-
-    // One-shot detect into warnings (dedupe by message)
-    const scanned = detectOversubscribe(primaryOwner, {
-      remountKeys: [],
-    });
-    for (const root of getTrackedRoots()) {
-      if (root === primaryOwner) continue;
-      scanned.push(...detectOversubscribe(root));
-    }
-    const seen = new Set(warnings.map((w) => w.message));
-    for (const w of scanned) {
-      if (!seen.has(w.message)) {
-        seen.add(w.message);
-        warnings.push(w);
-      }
-    }
-    // Cap stored warnings
-    if (warnings.length > 24) warnings.splice(0, warnings.length - 24);
-    renderWarnings();
-
-    const sources = snapshotRegistrySources()
-      .slice()
-      .sort((a, b) => b.observers - a.observers)
-      .slice(0, 8);
-    const srcList = el("[data-el='src-list']");
-    const srcBadge = el("[data-el='src-badge']");
-    if (srcBadge) srcBadge.textContent = sources.length ? "by observers" : "—";
-    if (srcList) {
-      if (!sources.length) {
-        srcList.innerHTML =
-          `<li class="empty" style="list-style:none">No registry sources yet</li>`;
-      } else {
-        srcList.innerHTML = sources
-          .map(
-            (s) =>
-              `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${escapeHtml(s.id)}</span><span class="row-v">${s.observers} obs</span></li>`,
-          )
-          .join("");
-      }
-    }
-
     const pill = el("[data-el='dev-pill']");
     if (pill) {
       const on = isViewDev();
@@ -687,34 +924,221 @@ export function mountDevtoolsOverlay(
     }
   };
 
+  const refresh = () => {
+    rebuildForest();
+    scanWarnings();
+    renderOverview();
+    renderTree();
+    renderSignals();
+    renderWarnings();
+  };
+
+  const selectNode = (path: string | null) => {
+    selectedPath = path;
+    if (path) {
+      // expand ancestors
+      const parts = path.split("/");
+      for (let i = 1; i <= parts.length; i++) {
+        expanded.add(parts.slice(0, i).join("/"));
+      }
+      setTab("tree");
+      setOpen(true);
+    }
+    renderTree();
+  };
+
   const onWarn = (w: OversubscribeWarning) => {
-    if (warnings.some((x) => x.message === w.message)) return;
+    const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
+    if (warnings.some((x) => `${x.kind}:${x.path ?? ""}:${x.message}` === key)) {
+      return;
+    }
     warnings.push(w);
     renderWarnings();
   };
 
-  const refresh = () => {
-    render();
+  const restartTimer = () => {
+    if (refreshTimer != null) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+    if (refreshMs > 0) refreshTimer = setInterval(refresh, refreshMs);
   };
 
+  // Events
+  indicator.addEventListener("click", () => {
+    if (dragMoved) {
+      dragMoved = false;
+      return;
+    }
+    setOpen(!open);
+    if (open) refresh();
+  });
+
+  panel.querySelectorAll("[data-action='close']").forEach((n) =>
+    n.addEventListener("click", () => setOpen(false))
+  );
+  panel.querySelectorAll("[data-action='refresh'], [data-action='refresh-foot']")
+    .forEach((n) => n.addEventListener("click", () => refresh()));
+  panel.querySelector("[data-action='clear-warns']")?.addEventListener(
+    "click",
+    () => {
+      warnings.length = 0;
+      renderWarnings();
+    },
+  );
+  panel.querySelector("[data-action='reset-pos']")?.addEventListener(
+    "click",
+    () => {
+      wrap.style.transform = "";
+      persist();
+    },
+  );
+
+  shadow.querySelectorAll(".tab").forEach((n) => {
+    n.addEventListener("click", () => {
+      const t = (n as HTMLElement).dataset.tab as DevtoolsOverlayTab;
+      setTab(t);
+    });
+  });
+
+  el("[data-el='tree-list']")?.addEventListener("click", (ev) => {
+    const t = ev.target as HTMLElement | null;
+    if (!t) return;
+    const twist = t.closest("[data-twist]") as HTMLElement | null;
+    if (twist?.dataset.twist) {
+      const id = twist.dataset.twist;
+      if (expanded.has(id)) expanded.delete(id);
+      else expanded.add(id);
+      renderTree();
+      ev.stopPropagation();
+      return;
+    }
+    const row = t.closest("[data-path]") as HTMLElement | null;
+    if (row?.dataset.path) selectNode(row.dataset.path);
+  });
+
+  el("[data-el='warn-list']")?.addEventListener("click", (ev) => {
+    const btn = (ev.target as HTMLElement | null)?.closest("[data-warn]") as
+      | HTMLElement
+      | null;
+    if (!btn) return;
+    const idx = Number(btn.dataset.warn);
+    const w = warnings[idx];
+    if (w?.path) selectNode(w.path);
+    else {
+      setTab("warnings");
+      setOpen(true);
+    }
+  });
+
+  const treeFilter = el("[data-el='tree-filter']") as HTMLInputElement | null;
+  treeFilter?.addEventListener("input", () => renderTree());
+  const sigFilter = el("[data-el='sig-filter']") as HTMLInputElement | null;
+  sigFilter?.addEventListener("input", () => {
+    signalQuery = sigFilter.value;
+    renderSignals();
+  });
+
+  const cornerSel = el("[data-el='opt-corner']") as HTMLSelectElement | null;
+  if (cornerSel) {
+    cornerSel.value = corner;
+    cornerSel.addEventListener("change", () => {
+      corner = cornerSel.value as DevtoolsOverlayCorner;
+      wrap.style.transform = "";
+      applyCorner();
+      persist();
+    });
+  }
+  const refreshInput = el("[data-el='opt-refresh']") as HTMLInputElement | null;
+  if (refreshInput) {
+    refreshInput.value = String(refreshMs);
+    refreshInput.addEventListener("change", () => {
+      const v = Number(refreshInput.value);
+      refreshMs = Number.isFinite(v) && v >= 0 ? v : 1000;
+      restartTimer();
+      persist();
+    });
+  }
+
+  // Drag (header + indicator) with corner snap on release near edges
+  const bindDrag = (handleEl: HTMLElement) => {
+    let sx = 0;
+    let sy = 0;
+    let ox = 0;
+    let oy = 0;
+    let dragging = false;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!dragging) return;
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
+      if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+      wrap.style.transform = `translate(${ox + dx}px, ${oy + dy}px)`;
+    };
+    const onUp = (ev: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      handleEl.releasePointerCapture?.(ev.pointerId);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      // snap to nearest corner if close to viewport edge
+      const rect = wrap.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const midX = globalThis.innerWidth / 2;
+      const midY = globalThis.innerHeight / 2;
+      const near = 72;
+      const nearL = rect.left < near;
+      const nearR = globalThis.innerWidth - rect.right < near;
+      const nearT = rect.top < near;
+      const nearB = globalThis.innerHeight - rect.bottom < near;
+      if (nearL || nearR || nearT || nearB) {
+        const next: DevtoolsOverlayCorner = nearT
+          ? (cx < midX ? "top-left" : "top-right")
+          : nearB
+          ? (cx < midX ? "bottom-left" : "bottom-right")
+          : (cy < midY
+            ? (cx < midX ? "top-left" : "top-right")
+            : (cx < midX ? "bottom-left" : "bottom-right"));
+        corner = next;
+        wrap.style.transform = "";
+        applyCorner();
+      }
+      persist();
+    };
+    handleEl.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      dragging = true;
+      dragMoved = false;
+      sx = ev.clientX;
+      sy = ev.clientY;
+      const m = wrap.style.transform.match(
+        /translate\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/,
+      );
+      ox = m ? Number(m[1]) : 0;
+      oy = m ? Number(m[2]) : 0;
+      handleEl.setPointerCapture?.(ev.pointerId);
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    });
+  };
+  const dragHandle = el("[data-el='drag-handle']");
+  if (dragHandle) bindDrag(dragHandle);
+  bindDrag(indicator);
+
   const onKey = (ev: KeyboardEvent) => {
+    const mod = ev.metaKey || ev.ctrlKey;
+    if (mod && ev.shiftKey && (ev.key === "d" || ev.key === "D")) {
+      ev.preventDefault();
+      setOpen(!open);
+      if (open) refresh();
+      return;
+    }
     if (ev.key === "Escape" && open) {
       ev.stopPropagation();
       setOpen(false);
     }
   };
-
-  indicator.addEventListener("click", () => {
-    setOpen(!open);
-    if (open) refresh();
-  });
-  panel.querySelector('[data-action="close"]')?.addEventListener("click", () => {
-    setOpen(false);
-  });
-  panel.querySelector('[data-action="refresh"]')?.addEventListener(
-    "click",
-    () => refresh(),
-  );
   document.addEventListener("keydown", onKey, true);
 
   if (watchMisuse) {
@@ -726,14 +1150,15 @@ export function mountDevtoolsOverlay(
         onWarn,
       });
     } catch {
-      // VIEW_DEV race — ignore
+      /* ignore */
     }
   }
 
+  applyCorner();
+  setTab(tab);
+  if (open) setOpen(true);
   refresh();
-  if (refreshMs > 0) {
-    refreshTimer = setInterval(refresh, refreshMs);
-  }
+  restartTimer();
 
   const handle: DevtoolsOverlayHandle = {
     get root() {
@@ -741,6 +1166,9 @@ export function mountDevtoolsOverlay(
     },
     get isOpen() {
       return open;
+    },
+    get tab() {
+      return tab;
     },
     refresh,
     open() {
@@ -754,6 +1182,12 @@ export function mountDevtoolsOverlay(
       setOpen(!open);
       if (open) refresh();
     },
+    setTab(next) {
+      setTab(next);
+      setOpen(true);
+      refresh();
+    },
+    selectNode,
     unmount() {
       if (refreshTimer != null) {
         clearInterval(refreshTimer);

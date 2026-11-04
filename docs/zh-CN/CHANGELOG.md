@@ -11,6 +11,15 @@
 
 ### 新增
 
+- **P2：DevTools 浮动面板加码（多 tab 探查，非破坏）**
+  - 面板 tab：Overview／Tree／Signals／Warnings／Settings；Owner 树展开＋节点详情；
+    警告点击跳转 Tree path；Signals 搜索；`⌘/Ctrl+Shift+D`、Esc、拖拽贴边、
+    localStorage 记忆。
+  - `/devtools` 探针：`inspectOwnerIndexed`／`flattenIndexedOwner`／`getOwnerByPath`；
+    警告可选 `path` 深链。
+  - 仍仅 `VIEW_DEV`；基线**未**抬；文档已更新。
+  - 禁 JSR／npm；运行时默认语义不变。
+
 - **P2：DEV 浮动 DevTools 面板（对齐 Next 指示器，非破坏）**
   - 新子路径 `@dreamer/view/devtools/overlay`：`mountDevtoolsOverlay`／
     `unmountDevtoolsOverlay`／`getDevtoolsOverlay`——角标＋毛玻璃面板

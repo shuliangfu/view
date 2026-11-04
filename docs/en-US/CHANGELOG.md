@@ -12,6 +12,15 @@ and this project adheres to
 
 ### Added
 
+- **P2: DevTools overlay upgrade (multi-tab inspector, non-breaking)**
+  - Overlay tabs: Overview / Tree / Signals / Warnings / Settings; expandable
+    Owner forest with node detail; warning click → Tree path; Signals search;
+    `⌘/Ctrl+Shift+D`, Esc, drag + corner snap, localStorage prefs.
+  - `/devtools` probes: `inspectOwnerIndexed` / `flattenIndexedOwner` /
+    `getOwnerByPath`; misuse warnings gain optional `path` for deep-links.
+  - Still `VIEW_DEV`-gated; baselines **not** raised; docs updated.
+  - No JSR / npm; runtime defaults unchanged.
+
 - **P2: DEV floating DevTools overlay (Next-inspired, non-breaking)**
   - New subpath `@dreamer/view/devtools/overlay`: `mountDevtoolsOverlay` /
     `unmountDevtoolsOverlay` / `getDevtoolsOverlay` — corner indicator + glass

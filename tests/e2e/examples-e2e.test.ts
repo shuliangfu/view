@@ -379,7 +379,7 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     }
   }, { timeout: E2E_TIMEOUT_MS });
 
-  it("[devtools-overlay] DEV 角标可开面板并以 Esc 关闭", async (t) => {
+  it("[devtools-overlay] DEV 角标多 tab 面板、Tree、Esc 关闭", async (t) => {
     assertBrowserE2E(t);
     await gotoExamplesPath(t, "/");
     await t.browser.waitFor(
@@ -396,13 +396,20 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
       const panel = shadow.querySelector(".panel");
       if (!indicator || !panel) return { ok: false, reason: "missing-ui" };
       indicator.click();
+      const tabs = ["overview", "tree", "signals", "warnings", "settings"]
+        .map((name) => !!shadow.querySelector(`[data-tab="${name}"]`));
+      (shadow.querySelector('[data-tab="tree"]') as HTMLButtonElement | null)?.click();
       return {
         ok: panel.classList.contains("open"),
         title: shadow.querySelector(".head-title")?.textContent ?? "",
+        tabsOk: tabs.every(Boolean),
+        treeActive: shadow.querySelector('[data-pane="tree"]')?.classList.contains("active") === true,
       };
     });
     expect(opened.ok).toBe(true);
     expect(opened.title).toContain("View DevTools");
+    expect(opened.tabsOk).toBe(true);
+    expect(opened.treeActive).toBe(true);
 
     await t.browser.evaluate(() => {
       document.dispatchEvent(

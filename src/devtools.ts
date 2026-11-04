@@ -159,6 +159,83 @@ export function inspectOwner(
   return walk(owner, 0);
 }
 
+export interface IndexedOwnerNode extends OwnerNodeSnapshot {
+  /** Stable path id within the walk, e.g. `0` / `0/1/2`. */
+  id: string;
+  /** Child nodes with ids (same maxDepth rules as {@link inspectOwner}). */
+  childNodes: IndexedOwnerNode[];
+}
+
+/**
+ * Like {@link inspectOwner}, but every node carries a stable `id` path for
+ * overlay selection / warning deep-links. Does not patch the reactive kernel.
+ */
+export function inspectOwnerIndexed(
+  owner: Owner | null,
+  options?: { maxDepth?: number; rootId?: string },
+): IndexedOwnerNode | null {
+  if (!owner) return null;
+  const maxDepth = options?.maxDepth ?? 32;
+  const rootId = options?.rootId ?? "0";
+
+  const walk = (node: Owner, depth: number, id: string): IndexedOwnerNode => {
+    const asHybrid = node as Owner & Partial<Observer> & Partial<Source<unknown>>;
+    const childList = node.children ?? [];
+    const childNodes = depth >= maxDepth
+      ? []
+      : childList.map((c, i) => walk(c, depth + 1, `${id}/${i}`));
+    return {
+      id,
+      kind: classify(node),
+      children: childList.length,
+      disposables: node.disposables?.length ?? 0,
+      upstream: asHybrid.sources ? countUpstream(asHybrid as Observer) : 0,
+      downstream: asHybrid.observers
+        ? countDownstream(asHybrid as Source<unknown>)
+        : 0,
+      depth,
+      childNodes,
+    };
+  };
+
+  return walk(owner, 0, rootId);
+}
+
+/**
+ * Resolve an Owner by {@link IndexedOwnerNode.id} path under `root`.
+ * Returns `null` when the path is stale / out of range.
+ */
+export function getOwnerByPath(
+  root: Owner | null,
+  path: string,
+): Owner | null {
+  if (!root || !path) return null;
+  const parts = path.split("/").filter((p) => p.length > 0);
+  // First segment is the forest root id (numeric); skip it when walking children.
+  if (parts.length === 0) return null;
+  let node: Owner = root;
+  for (let i = 1; i < parts.length; i++) {
+    const idx = Number(parts[i]);
+    if (!Number.isInteger(idx) || idx < 0) return null;
+    const kids = node.children;
+    if (!kids || idx >= kids.length) return null;
+    node = kids[idx]!;
+  }
+  return node;
+}
+
+/**
+ * Flatten indexed tree into a list (pre-order) for search / selection.
+ */
+export function flattenIndexedOwner(
+  node: IndexedOwnerNode | null,
+): IndexedOwnerNode[] {
+  if (!node) return [];
+  const out: IndexedOwnerNode[] = [node];
+  for (const c of node.childNodes) out.push(...flattenIndexedOwner(c));
+  return out;
+}
+
 export interface OwnerTreeSummary {
   nodes: number;
   effects: number;
@@ -333,6 +410,11 @@ export interface OversubscribeWarning {
   ownerKind?: OwnerKind;
   /** Logical remount key when kind is remount-churn. */
   key?: string;
+  /**
+   * Indexed Owner path (`inspectOwnerIndexed` id) when the warning was found
+   * while walking a tree — used by the overlay to select the node.
+   */
+  path?: string;
 }
 
 export interface OversubscribeWarnOptions {
@@ -395,13 +477,14 @@ function emitWarning(
  */
 export function detectWideSubscriptions(
   owner: Owner | null,
-  options?: OversubscribeWarnOptions,
+  options?: OversubscribeWarnOptions & { rootId?: string },
 ): OversubscribeWarning[] {
   if (!owner) return [];
   const opts = resolveOpts(options);
   const out: OversubscribeWarning[] = [];
+  const rootId = options?.rootId ?? "0";
 
-  const walk = (node: Owner, depth: number) => {
+  const walk = (node: Owner, depth: number, path: string) => {
     const kind = classify(node);
     if (kind === "effect") {
       const asObs = node as Owner & Partial<Observer>;
@@ -416,6 +499,7 @@ export function detectWideSubscriptions(
           upstream,
           depth,
           ownerKind: kind,
+          path,
         };
         out.push(warning);
         if (opts.emit && !warnedWide.has(node as object)) {
@@ -426,11 +510,13 @@ export function detectWideSubscriptions(
     }
     const kids = node.children;
     if (kids) {
-      for (let i = 0; i < kids.length; i++) walk(kids[i]!, depth + 1);
+      for (let i = 0; i < kids.length; i++) {
+        walk(kids[i]!, depth + 1, `${path}/${i}`);
+      }
     }
   };
 
-  walk(owner, 0);
+  walk(owner, 0, rootId);
   return out;
 }
 
@@ -485,6 +571,8 @@ export function detectRemountChurn(
 export interface DetectOversubscribeOptions extends OversubscribeWarnOptions {
   /** Also check these remount keys. */
   remountKeys?: string[];
+  /** Root id prefix for {@link IndexedOwnerNode} paths. Default `"0"`. */
+  rootId?: string;
 }
 
 /**
@@ -529,13 +617,14 @@ function subtreeNodeCount(owner: Owner): number {
  */
 export function detectOwnerRemountChurn(
   owner: Owner | null,
-  options?: OversubscribeWarnOptions,
+  options?: OversubscribeWarnOptions & { rootId?: string },
 ): OversubscribeWarning | null {
   if (!owner) return null;
   const opts = resolveOpts(options);
   let found: OversubscribeWarning | null = null;
+  const rootId = options?.rootId ?? "0";
 
-  const walk = (node: Owner, depth: number) => {
+  const walk = (node: Owner, depth: number, path: string) => {
     const kids = (node.children ?? []) as object[];
     const next: OwnerNodeSnap = {
       childIds: kids,
@@ -570,6 +659,7 @@ export function detectOwnerRemountChurn(
           depth,
           ownerKind: classify(node),
           key,
+          path,
         };
         if (opts.emit && !warnedRemountKeys.has(key)) {
           warnedRemountKeys.add(key);
@@ -580,11 +670,13 @@ export function detectOwnerRemountChurn(
 
     const list = node.children;
     if (list) {
-      for (let i = 0; i < list.length; i++) walk(list[i]!, depth + 1);
+      for (let i = 0; i < list.length; i++) {
+        walk(list[i]!, depth + 1, `${path}/${i}`);
+      }
     }
   };
 
-  walk(owner, 0);
+  walk(owner, 0, rootId);
   return found;
 }
 
