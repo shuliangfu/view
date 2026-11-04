@@ -42,10 +42,14 @@ export { Priority, scheduleTask } from "./scheduler/priority.ts";
 
 // Browser / DOM runtime
 export { hydrate, mount } from "./runtime/browser.ts";
-export type { HydrateOptions } from "./runtime/hydration.ts";
+export type {
+  HydrateOptions,
+  HydrationMismatchMode,
+} from "./runtime/hydration.ts";
 export {
   getHydrationMismatches,
   isHydrating,
+  resolveMismatchMode,
   stopHydration,
   useHydratedNode,
 } from "./runtime/hydration.ts";

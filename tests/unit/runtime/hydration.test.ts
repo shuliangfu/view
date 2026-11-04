@@ -4,6 +4,7 @@ import {
   getHydrationMismatches,
   hydrate,
   internalHydrate,
+  resolveMismatchMode,
   stopHydration,
   useHydratedNode,
 } from "@dreamer/view";
@@ -95,6 +96,48 @@ describe("runtime/hydration", () => {
     expect(root.querySelector("#csr")?.textContent).toBe("new");
     dispose();
     expect(root.querySelector("#csr")).toBeNull();
+    stopHydration();
+  });
+
+  it("P1-2 default continue：省略 mismatchMode 须为 continue", () => {
+    expect(resolveMismatchMode()).toBe("continue");
+    expect(resolveMismatchMode({})).toBe("continue");
+    expect(resolveMismatchMode({ warnMismatch: false })).toBe("continue");
+  });
+
+  it("P1-2 mismatchMode 优先于弃用布尔开关", () => {
+    expect(
+      resolveMismatchMode({ mismatchMode: "continue", assertMismatch: true }),
+    ).toBe("continue");
+    expect(
+      resolveMismatchMode({ mismatchMode: "assert", remountOnMismatch: true }),
+    ).toBe("assert");
+    expect(resolveMismatchMode({ assertMismatch: true })).toBe("assert");
+    expect(resolveMismatchMode({ remountOnMismatch: true })).toBe("remount");
+  });
+
+  it("P1-2 default continue：错位不抛错且保留 SSR 节点", () => {
+    const root = document.createElement("div");
+    root.innerHTML = "<span id='ssr'>keep</span>";
+    const dispose = hydrate(
+      () => {
+        const el = document.createElement("div");
+        el.id = "client";
+        el.textContent = "extra";
+        return el;
+      },
+      root,
+      {
+        bindings: [[[99], "missing"]],
+        warnMismatch: false,
+        // 故意不传 mismatchMode → continue
+      },
+    );
+    expect(root.querySelector("#ssr")?.textContent).toBe("keep");
+    expect(getHydrationMismatches().length).toBe(1);
+    dispose();
+    // continue 的 dispose 仅回收 Owner，默认保留 SSR 子树
+    expect(root.querySelector("#ssr")?.textContent).toBe("keep");
     stopHydration();
   });
 }, { sanitizeOps: false, sanitizeResources: false });

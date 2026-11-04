@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+### 文档
+
+- **P1-2：水合质量 opt-in 试点（`mismatchMode` · 2.x 加法，非破坏）**
+  - 新增 [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md)／
+    [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)：
+    文档化 `continue`／`assert`／`remount` 与推荐用法；说明渐进／分片水合钩子**尚未**提供。
+  - `/csr` 加法导出类型 `HydrationMismatchMode` 与 `resolveMismatchMode`（主入口本已
+    `export *` hydration）；单测锁死默认 **`continue`**；examples `/runtime` 三档试点。
+  - **未**改生产默认 `mismatchMode`（仍 `continue`）；禁 JSR／npm；**未**放宽
+    `size:check`／`consumer:bundle:check`／E2E 断言。
+
+
 ### 修复
 
 - **P0-hotfix：examples form E2E `page.evaluate` 宿主超时（非破坏）**

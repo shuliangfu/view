@@ -10,6 +10,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Documentation
+
+- **P1-2: hydration quality opt-in pilot (`mismatchMode` · 2.x additive, non-breaking)**
+  - Add [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) /
+    [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md):
+    document `continue` / `assert` / `remount` and recommended usage; note progressive /
+    chunked hydration hooks are **not** shipped yet.
+  - `/csr` additively exports `HydrationMismatchMode` and `resolveMismatchMode` (main
+    entry already `export *` hydration); unit tests lock default **`continue`**;
+    examples `/runtime` demos all three modes.
+  - Does **not** change the production default (`continue`); no JSR / npm; does **not**
+    relax `size:check` / `consumer:bundle:check` / E2E assertions.
+
+
 ### Fixed
 
 - **P0-hotfix: examples form E2E `page.evaluate` host timeout (non-breaking)**

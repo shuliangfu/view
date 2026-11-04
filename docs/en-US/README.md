@@ -280,14 +280,27 @@ const stop = createRoot((dispose) => {
   internally; if you only use `mount` and need unload, prefer **`createRoot` +
   `insert`** so you can hold **`dispose`**.
 
-### 6.2 `hydrate(fn, container, bindings?)`
+### 6.2 `hydrate(fn, container, bindingsOrOptions?)`
 
 - **`fn`**: same UI factory as on the client when activating.
 - **`container`**: node that already contains server HTML.
-- **`bindings`**: optional **`[number[], string][]`** hydration binding table
-  from compiled output; omit for hand-written CSR.
-- Calls **`stopHydration()`**, then **`internalHydrate(container, bindings)`**,
-  then **`insert`**.
+- **`bindingsOrOptions`**: optional
+  - legacy: `[number[], string][]` binding table; or
+  - **`HydrateOptions`**: `{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
+- Calls **`stopHydration()`**, then **`internalHydrate`** with options, then
+  **`insert`**.
+
+#### `mismatchMode` (additive · **default `continue`**)
+
+| Value | Behavior | Use |
+|-------|----------|-----|
+| **`continue`** (default) | Record mismatches; do not abort; keep SSR nodes | Production hybrid; **do not flip the 2.x library default** |
+| **`assert`** | Throw on any mismatch | CI / strict gates — pass **explicitly** |
+| **`remount`** | Clear container and CSR-remount on mismatch | Prefer a clean remount — pass **explicitly** |
+
+Guide: [P1-2 hydration opt-in pilot](./P1-2-hydration-opt-in-pilot.md) /
+[ZH](../zh-CN/P1-2-hydration-opt-in-pilot.md). examples `/runtime` demos all
+three modes. Progressive / chunked hydration hooks are **not** shipped yet.
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -297,7 +310,9 @@ function RootView() {
 }
 
 const container = document.getElementById("root")!;
+// default continue (mismatchMode may be omitted)
 hydrate(() => <RootView />, container /* , bindingMap */);
+// CI: hydrate(() => <RootView />, container, { bindings, mismatchMode: "assert" });
 ```
 
 ---
@@ -1372,6 +1387,7 @@ function ModalHost() {
 - **P0-1 profiling / bench CI**: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) · [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
 - **P0-2: consumer / examples bundle analyze**: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
 - **P1-1: main-entry barrel deprecation preview (Strategy A)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
+- **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
 - **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)

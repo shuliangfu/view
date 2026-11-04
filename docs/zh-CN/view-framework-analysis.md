@@ -188,7 +188,7 @@ ui-view（组件：DataPanel／Modal／Dropdown／图标…）
 | ID | 项 | 预期收益 | 工作量 | 风险 |
 |----|----|----------|--------|------|
 | P1-1 | **主入口弃用预告 → 3.0 瘦身（策略 A）** | 默认包体 | 中（迁移） | 中；需 codemod |
-| P1-2 | **水合：生产默认更严／分片恢复；渐进水合试点** | Hybrid 质量 | 高 | 中–高 |
+| P1-2 | **水合：生产默认更严／分片恢复；渐进水合试点** — 2.x 已落地文档＋opt-in 试点见 [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md)（**默认仍 continue**；改严属 3.0） | Hybrid 质量 | 高 | 中–高 |
 | P1-3 | **Resource：`AbortSignal` + 文档化去重** | 减重复请求 | 中 | 低（加法） |
 | P1-4 | **Router 拆分 + SSR 同构加强** | 可维护／Hybrid | 中–高 | 中 |
 | P1-5 | **Form：checkbox／select／schema 桥示例** | DX | 低–中 | 低 |
@@ -237,6 +237,7 @@ ui-view（组件：DataPanel／Modal／Dropdown／图标…）
 | 主入口 | `view/src/mod.ts` |
 | Signal／Effect／Owner | `view/src/reactivity/*` |
 | insert／props／水合／SSR | `view/src/runtime/*` |
+| 水合 mismatchMode 试点 | [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) |
 | For LIS | `view/src/runtime/control-flow.ts` |
 | Resource／Form／Router | `view/src/integrations/*` |
 | 安全转义 | `view/src/utils/escape.ts`、`analysis/SECURITY.md` |

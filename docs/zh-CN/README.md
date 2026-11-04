@@ -259,15 +259,25 @@ const stop = createRoot((dispose) => {
 - 卸载：当前实现通过 **`createRoot`** 返回的清理逻辑在内部关联；若你只用 `mount`
   且需卸载，请改用 **`createRoot` + `insert`** 模式以便拿到 **`dispose`**。
 
-### 6.2 `hydrate(fn, container, bindings?)`
+### 6.2 `hydrate(fn, container, bindingsOrOptions?)`
 
 - **`fn`**: 与客户端激活时一致的 UI 工厂。
 - **`container`**: 已含服务端 HTML 的节点。
-- **`bindings`**:
-  可选，**`[number[], string][]`**，与编译产物中的水合绑定表一致时使用；手写 CSR
-  可省略。
-- 会先 **`stopHydration()`** 再 **`internalHydrate(container, bindings)`**，然后
-  **`insert`**。
+- **`bindingsOrOptions`**: 可选
+  - 历史形态：`[number[], string][]` 绑定表；或
+  - **`HydrateOptions`**：`{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
+- 会先 **`stopHydration()`**，再按选项 **`internalHydrate`**，然后 **`insert`**。
+
+#### `mismatchMode`（加法 · **默认 `continue`**）
+
+| 值 | 行为 | 推荐 |
+|----|------|------|
+| **`continue`**（默认） | 记录 mismatch，不中断；保留 SSR 节点 | 生产 hybrid；**2.x 勿改库默认** |
+| **`assert`** | 有 mismatch 则抛错 | CI／严格门 — **显式**传入 |
+| **`remount`** | 有 mismatch 则清空容器并 CSR 重挂 | 宁可整树重挂 — **显式**传入 |
+
+指南：[P1-2 水合 opt-in 试点](./P1-2-hydration-opt-in-pilot.md)／[EN](../en-US/P1-2-hydration-opt-in-pilot.md)。
+examples `/runtime` 有三档演示。渐进／分片水合钩子**尚未**提供。
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -277,7 +287,9 @@ function RootView() {
 }
 
 const container = document.getElementById("root")!;
+// 默认 continue（可省略 mismatchMode）
 hydrate(() => <RootView />, container /* , bindingMap */);
+// CI：hydrate(() => <RootView />, container, { bindings, mismatchMode: "assert" });
 ```
 
 ---
@@ -1336,6 +1348,7 @@ function ModalHost() {
 - **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
 - **P0-2：消费方／examples bundle analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
 - **P1-1：主入口 barrel 弃用预告（策略 A）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
+- **P1-2：水合 opt-in 试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)
 - **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
