@@ -64,7 +64,7 @@ createRootTracked((dispose) => {
 
 ## 4. 不在范围
 
-- 浏览器扩展、浮层 UI、网络协议
+- 浏览器扩展或网络协议（浮动面板见 [P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md)）
 - 改默认运行时语义／订阅链表实现
 - 抬高 size／consumer-bundle 基线 JSON
 

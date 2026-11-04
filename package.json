@@ -26,7 +26,8 @@
     "./resource": "./src/resource.ts",
     "./control-flow": "./src/control-flow.ts",
     "./csr": "./src/csr.ts",
-    "./devtools": "./src/devtools.ts"
+    "./devtools": "./src/devtools.ts",
+    "./devtools/overlay": "./src/devtools/overlay.ts"
   },
   "sideEffects": false,
   "scripts": {

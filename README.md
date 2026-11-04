@@ -118,6 +118,7 @@ npx jsr add @dreamer/view
 | `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                             |
 | `jsr:@dreamer/view/csr`             | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                |
 | `jsr:@dreamer/view/devtools`      | **DEV-only** Owner tree / subscription inspection + opt-in oversubscribe warnings (`VIEW_DEV`; not for production bundles)      |
+| `jsr:@dreamer/view/devtools/overlay` | **DEV-only** Next-inspired floating indicator + panel (`mountDevtoolsOverlay`; requires `VIEW_DEV`; opt-in) |
 
 **Recommended imports (prefer these in new code):**
 
@@ -1403,6 +1404,7 @@ function ModalHost() {
 - **P0: examples browser E2E into CI**: [`docs/en-US/P0-e2e-into-ci.md`](./docs/en-US/P0-e2e-into-ci.md) · [`docs/zh-CN/P0-e2e-into-ci.md`](./docs/zh-CN/P0-e2e-into-ci.md)
 - **P2: examples subpath dogfood**: [`docs/en-US/P2-examples-subpath-dogfood.md`](./docs/en-US/P2-examples-subpath-dogfood.md) · [`docs/zh-CN/P2-examples-subpath-dogfood.md`](./docs/zh-CN/P2-examples-subpath-dogfood.md)
 - **P2-4 DEV-only DevTools** (Owner / subscriptions): [P2-4-devtools.md](./docs/en-US/P2-4-devtools.md) / [zh](./docs/zh-CN/P2-4-devtools.md)
+- **P2 DEV floating overlay** (Next-inspired): [P2-devtools-overlay-ui.md](./docs/en-US/P2-devtools-overlay-ui.md) / [zh](./docs/zh-CN/P2-devtools-overlay-ui.md)
 - **P2 DEV oversubscribe / remount warnings** (§5.1 opt-in): [P2-dev-warn-oversubscribe.md](./docs/en-US/P2-dev-warn-oversubscribe.md) / [zh](./docs/zh-CN/P2-dev-warn-oversubscribe.md)
 - **P0-3 compiler static coverage / golden**: [`docs/en-US/P0-3-compiler-static-coverage-and-golden.md`](./docs/en-US/P0-3-compiler-static-coverage-and-golden.md) · [`docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md`](./docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 planning memo** (Chinese): [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)

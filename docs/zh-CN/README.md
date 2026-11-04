@@ -1359,6 +1359,7 @@ function ModalHost() {
 - **P0-2：消费方／examples bundle analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
 - **P2：examples 子路径 dogfood**：[`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)
 - **P2-4 DEV-only DevTools**（Owner／订阅数）：[P2-4-devtools.md](./P2-4-devtools.md)／[en](../en-US/P2-4-devtools.md)
+- **P2 DEV 浮动面板**（对齐 Next）：[P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md)／[en](../en-US/P2-devtools-overlay-ui.md)
 - **P2 DEV 过订阅／卸挂再挂警告**（§5.1 opt-in）：[P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md)／[en](../en-US/P2-dev-warn-oversubscribe.md)
 - **P1-1：主入口 barrel 弃用预告（策略 A）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
 - **P1-2：水合 opt-in 试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)

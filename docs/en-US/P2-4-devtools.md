@@ -66,7 +66,7 @@ Opt-in §5.1 warnings live in the same subpath: [`P2-dev-warn-oversubscribe.md`]
 
 ## 4. Out of scope
 
-- Browser extension, overlay UI, or network protocol
+- Browser extension or network protocol (floating overlay: see [P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md))
 - Changing default runtime semantics / subscription list implementation
 - Raising size or consumer-bundle baseline JSON
 

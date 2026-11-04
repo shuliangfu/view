@@ -379,6 +379,46 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     }
   }, { timeout: E2E_TIMEOUT_MS });
 
+  it("[devtools-overlay] DEV 角标可开面板并以 Esc 关闭", async (t) => {
+    assertBrowserE2E(t);
+    await gotoExamplesPath(t, "/");
+    await t.browser.waitFor(
+      () => document.querySelector("[data-dreamer-view-devtools='overlay']") != null,
+      { timeout: 30_000 },
+    );
+    const opened = await t.browser.evaluate(() => {
+      const host = document.querySelector(
+        "[data-dreamer-view-devtools='overlay']",
+      ) as HTMLElement & { shadowRoot: ShadowRoot | null };
+      const shadow = host?.shadowRoot;
+      if (!shadow) return { ok: false, reason: "no-shadow" };
+      const indicator = shadow.querySelector(".indicator") as HTMLButtonElement | null;
+      const panel = shadow.querySelector(".panel");
+      if (!indicator || !panel) return { ok: false, reason: "missing-ui" };
+      indicator.click();
+      return {
+        ok: panel.classList.contains("open"),
+        title: shadow.querySelector(".head-title")?.textContent ?? "",
+      };
+    });
+    expect(opened.ok).toBe(true);
+    expect(opened.title).toContain("View DevTools");
+
+    await t.browser.evaluate(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    const closed = await t.browser.evaluate(() => {
+      const host = document.querySelector(
+        "[data-dreamer-view-devtools='overlay']",
+      ) as HTMLElement & { shadowRoot: ShadowRoot | null };
+      return host?.shadowRoot?.querySelector(".panel")?.classList.contains("open") ===
+        false;
+    });
+    expect(closed).toBe(true);
+  }, { timeout: E2E_TIMEOUT_MS });
+
   it("[首页→导航] 顶栏「示例」下拉进入 Gallery", async (t) => {
     assertBrowserE2E(t);
     await gotoExamplesPath(t, "/");

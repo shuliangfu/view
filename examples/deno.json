@@ -26,7 +26,8 @@
     "@dreamer/view/resource": "../src/resource.ts",
     "@dreamer/view/control-flow": "../src/control-flow.ts",
     "@dreamer/view/csr": "../src/csr.ts",
-    "@dreamer/view/devtools": "../src/devtools.ts"
+    "@dreamer/view/devtools": "../src/devtools.ts",
+    "@dreamer/view/devtools/overlay": "../src/devtools/overlay.ts"
   },
   "lint": {
     "include": [

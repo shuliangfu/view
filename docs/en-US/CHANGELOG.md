@@ -12,6 +12,18 @@ and this project adheres to
 
 ### Added
 
+- **P2: DEV floating DevTools overlay (Next-inspired, non-breaking)**
+  - New subpath `@dreamer/view/devtools/overlay`: `mountDevtoolsOverlay` /
+    `unmountDevtoolsOverlay` / `getDevtoolsOverlay` — corner indicator + glass
+    panel (Overview / Warnings / Sources). Requires `VIEW_DEV`; otherwise no DOM.
+  - Reuses `/devtools` APIs only; **not** on main barrel / measured size /
+    consumer-bundle entries (baselines **not** raised). Examples mount under
+    `if (VIEW_DEV)` in `examples/src/main.tsx`.
+  - Docs [`P2-devtools-overlay-ui.md`](./P2-devtools-overlay-ui.md) /
+    [`../zh-CN/P2-devtools-overlay-ui.md`](../zh-CN/P2-devtools-overlay-ui.md);
+    unit locks `tests/unit/devtools/overlay.test.ts`.
+  - No JSR / npm; does **not** change runtime default semantics.
+
 - **P2: DEV-only oversubscribe / remount warnings (§5.1, non-breaking)**
   - Extends `@dreamer/view/devtools`: `detectWideSubscriptions` /
     `detectOversubscribe`, `noteRemount` / `detectRemountChurn`,

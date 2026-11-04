@@ -25,7 +25,8 @@
     "./resource": "./src/resource.ts",
     "./control-flow": "./src/control-flow.ts",
     "./csr": "./src/csr.ts",
-    "./devtools": "./src/devtools.ts"
+    "./devtools": "./src/devtools.ts",
+    "./devtools/overlay": "./src/devtools/overlay.ts"
   },
   "publish": {
     "include": [
@@ -75,6 +76,7 @@
     "@dreamer/view/control-flow": "./src/control-flow.ts",
     "@dreamer/view/csr": "./src/csr.ts",
     "@dreamer/view/devtools": "./src/devtools.ts",
+    "@dreamer/view/devtools/overlay": "./src/devtools/overlay.ts",
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.2.2",
     "@dreamer/console": "jsr:@dreamer/console@^1.1.0",
     "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.3.0",

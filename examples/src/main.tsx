@@ -24,3 +24,15 @@ const router = createRouter({
  * HMR 将由编译器注入 createHMRProxy 自动处理局部重绘。
  */
 mountWithRouter("#root", router);
+
+/**
+ * DEV-only floating DevTools overlay (Next-inspired indicator).
+ * Opt-in: gated on VIEW_DEV (injected by `view dev`); production build/start
+ * never mounts. Framework does not auto-attach this.
+ */
+if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV === true) {
+  void import("@dreamer/view/devtools/overlay").then(({ mountDevtoolsOverlay }) => {
+    mountDevtoolsOverlay({ corner: "bottom-left" });
+  });
+}
+

@@ -11,6 +11,17 @@
 
 ### 新增
 
+- **P2：DEV 浮动 DevTools 面板（对齐 Next 指示器，非破坏）**
+  - 新子路径 `@dreamer/view/devtools/overlay`：`mountDevtoolsOverlay`／
+    `unmountDevtoolsOverlay`／`getDevtoolsOverlay`——角标＋毛玻璃面板
+   （Overview／Warnings／Sources）。需 `VIEW_DEV`，否则不建 DOM。
+  - 仅复用 `/devtools` API；**不**进主 barrel／size／consumer-bundle 测量入口
+   （基线**未**抬）。examples 在 `examples/src/main.tsx` 的 `if (VIEW_DEV)` 下挂载。
+  - 文档 [`P2-devtools-overlay-ui.md`](./P2-devtools-overlay-ui.md)／
+    [`../en-US/P2-devtools-overlay-ui.md`](../en-US/P2-devtools-overlay-ui.md)；
+    单测 `tests/unit/devtools/overlay.test.ts`。
+  - 禁 JSR／npm；**未**改运行时默认语义。
+
 - **P2：DEV-only 过订阅／卸挂再挂警告（§5.1，非破坏）**
   - 扩展 `@dreamer/view/devtools`：`detectWideSubscriptions`／
     `detectOversubscribe`、`noteRemount`／`detectRemountChurn`、
