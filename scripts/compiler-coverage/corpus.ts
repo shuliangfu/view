@@ -43,6 +43,34 @@ export const FIXTURES: Fixture[] = [
     note: "Static ternary + template literal attrs lifted",
   },
   {
+    id: "static-and-or",
+    fileName: "static-and-or.tsx",
+    source:
+      `export const App = () => <div class={"btn" && "btn-primary"} data-x={"" || "fallback"}></div>;`,
+    note: "Static && / || attrs folded into template",
+  },
+  {
+    id: "static-typeof-void",
+    fileName: "static-typeof-void.tsx",
+    source:
+      `export const App = () => <div data-t={typeof "x"} data-v={void 0}></div>;`,
+    note: "Static typeof / void attrs lifted into template",
+  },
+  {
+    id: "static-nullish",
+    fileName: "static-nullish.tsx",
+    source:
+      `export const App = () => <div class={null ?? "fallback"} title={"" ?? "keep-empty"}></div>;`,
+    note: "Static ?? : nullish left → right; empty string kept (not nullish)",
+  },
+  {
+    id: "static-satisfies",
+    fileName: "static-satisfies.tsx",
+    source:
+      `export const App = () => <div class={"ok" satisfies string}></div>;`,
+    note: "satisfies wrapper stripped; literal lifted into template",
+  },
+  {
     id: "dyn-text",
     fileName: "dyn-text.tsx",
     source: `export const App = () => <div>{count()}</div>;`,

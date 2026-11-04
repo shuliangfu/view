@@ -172,6 +172,17 @@ describe("compiler/transformer", () => {
     expect(out7).toContain('data-x=\\"fallback\\"');
     const codePart7 = out7.split("\n").slice(1).join("\n");
     expect(codePart7).not.toContain("setAttribute(");
+
+    // 8. 静态 ??：nullish → 右侧；空串保留（勿与 null 混淆）
+    const code8 =
+      `export const App = () => <div class={null ?? "fallback"} title={"" ?? "keep"}></div>;`;
+    const out8 = compileSource(code8, "test.tsx");
+    expect(out8).toContain('class=\\"fallback\\"');
+    expect(out8).toContain('title=\\"\\"');
+    expect(out8).not.toContain("null ??");
+    const codePart8 = out8.split("\n").slice(1).join("\n");
+    expect(codePart8).not.toContain("setAttribute(");
+    expect(codePart8).not.toContain("setProperty(");
   });
 
   it("极致优化：应当提升静态 style 对象", () => {

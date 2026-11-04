@@ -187,6 +187,36 @@ export function isStaticExpression(expr: ts.Expression): boolean {
   return false;
 }
 
+
+/**
+ * 静态可判定为 null / undefined（含括号、断言、void 包装）。
+ * 用于 `??` 折叠：不能靠序列化字符串区分 `null` 与 `""`。
+ */
+function isStaticallyNullish(expr: ts.Expression): boolean {
+  if (expr == null) return false;
+  if (
+    expr.kind === ts.SyntaxKind.NullKeyword ||
+    expr.kind === ts.SyntaxKind.UndefinedKeyword
+  ) return true;
+  if (ts.isVoidExpression(expr)) return true;
+  if (ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr)) {
+    return isStaticallyNullish(expr.expression);
+  }
+  if (ts.isNonNullExpression(expr)) {
+    return isStaticallyNullish(expr.expression);
+  }
+  if (ts.isParenthesizedExpression(expr)) {
+    return isStaticallyNullish(expr.expression);
+  }
+  if (
+    typeof ts.isSatisfiesExpression === "function" &&
+    ts.isSatisfiesExpression(expr)
+  ) {
+    return isStaticallyNullish(expr.expression);
+  }
+  return false;
+}
+
 /**
  * 将静态表达式序列化为字符串（用于属性提升）。
  */
@@ -309,6 +339,14 @@ function serializeStaticValue(expr: ts.Expression): string {
       const l = serializeStaticValue(expr.left);
       if (l !== "" && l !== "false" && l !== "0" && l !== "null") return l;
       return serializeStaticValue(expr.right);
+    }
+    // 静态空值合并：`null ?? "x"` / `void 0 ?? "x"` → 右侧；`"" ?? "x"` 仍为 ""
+    // 必须看 AST（isStaticallyNullish），因 NullKeyword 序列化为 "" 会与空串混淆
+    if (op === ts.SyntaxKind.QuestionQuestionToken) {
+      if (isStaticallyNullish(expr.left)) {
+        return serializeStaticValue(expr.right);
+      }
+      return serializeStaticValue(expr.left);
     }
   }
   if (ts.isObjectLiteralExpression(expr)) {

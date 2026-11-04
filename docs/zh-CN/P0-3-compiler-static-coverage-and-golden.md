@@ -11,7 +11,7 @@
 
 ## 1. 指标含义
 
-在固定 JSX 语料（`scripts/compiler-coverage/corpus.ts`，19 条）上调用
+在固定 JSX 语料（`scripts/compiler-coverage/corpus.ts`，23 条）上调用
 `compileSource()`，对**注入 import 之后的 body**计数：
 
 | 指标 | 含义 |
@@ -23,7 +23,7 @@
 | `setProperty` | 一次性属性写（不包 Effect） |
 | `spread` / `memo` | spread 与三元内联 memo |
 | `zeroReactiveDomOps` | body 中无 walk／setAttribute／setProperty／spread |
-| `staticDomOpFreeRatio` | 语料中 `zeroReactiveDomOps` 占比（基线约 **0.5789**＝11/19） |
+| `staticDomOpFreeRatio` | 语料中 `zeroReactiveDomOps` 占比（基线约 **0.6522**＝15/23） |
 
 **本刀是基线**：把「当前编译器已经吃到的静态提升」锁住，防止静默回退；
 **不是**立刻把覆盖率吃满到「默认产物几乎零通用 Effect」。
@@ -51,7 +51,7 @@ CI：ubuntu job `compiler-coverage-check` 跑 `deno task compiler:coverage:check
 | `scripts/compiler-coverage/goldens/<id>.out.txt` | 规范化后的完整 `compileSource` 输出 |
 | `tests/unit/compiler/golden.test.ts` | 对语料逐条 `toBe`；另断言静态／响应式关键模式 |
 
-语料覆盖：全静态子树、静态属性／style／三元提升、动态文本、响应式／Identifier／store
+语料覆盖：全静态子树、静态属性／style／三元／&&／||／??／typeof／void／satisfies 提升、动态文本、响应式／Identifier／store
 属性、多位点 path、组件 props、三元 JSX＋memo、Fragment、事件／ref、spread、
 hydration `_bindingMap`、SSR、HMR。
 

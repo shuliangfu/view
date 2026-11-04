@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T01:58:29.358Z",
+  "measuredAt": "2026-11-04T13:23:54.259Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -103,6 +103,98 @@
         "zeroReactiveDomOps": true
       },
       "goldenRel": "scripts/compiler-coverage/goldens/static-ternary-attr.out.txt"
+    },
+    {
+      "id": "static-and-or",
+      "fileName": "static-and-or.tsx",
+      "note": "Static && / || attrs folded into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 257,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-and-or.out.txt"
+    },
+    {
+      "id": "static-typeof-void",
+      "fileName": "static-typeof-void.tsx",
+      "note": "Static typeof / void attrs lifted into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 245,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-typeof-void.out.txt"
+    },
+    {
+      "id": "static-nullish",
+      "fileName": "static-nullish.tsx",
+      "note": "Static ?? : nullish left → right; empty string kept (not nullish)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 245,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-nullish.out.txt"
+    },
+    {
+      "id": "static-satisfies",
+      "fileName": "static-satisfies.tsx",
+      "note": "satisfies wrapper stripped; literal lifted into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 228,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-satisfies.out.txt"
     },
     {
       "id": "dyn-text",
@@ -459,7 +551,7 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 19,
+    "fixtureCount": 23,
     "totalSetAttribute": 4,
     "totalSetProperty": 1,
     "totalWalk": 4,
@@ -467,7 +559,7 @@
     "totalMemo": 1,
     "totalSpread": 1,
     "totalPathConsts": 4,
-    "zeroReactiveDomOpsCount": 11,
-    "staticDomOpFreeRatio": 0.5789
+    "zeroReactiveDomOpsCount": 15,
+    "staticDomOpFreeRatio": 0.6522
   }
 }

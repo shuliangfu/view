@@ -9,6 +9,24 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **编译器：静态 `??` 属性折叠进模板（非破坏）**
+  - `null ?? "x"`／`void 0 ?? "x"` 等可静态判定的空值合并，正确序列化为右侧值进
+    `template(...)`，不再把 `null ?? …` 原文写进 HTML。
+  - `"" ?? "x"` 仍保留空串（`??` 不把空串当 nullish）；用 AST 判定，避免与
+    `NullKeyword`→`""` 的序列化混淆。
+  - 不改响应式属性路径；Identifier `undefined` 仍走既有非静态路径。
+
+### 新增
+
+- **P0-3 续：编译器静态语料／golden 扩面（度量锁，非破坏）**
+  - 语料 19→**23**：补 `static-and-or`／`static-typeof-void`／`static-nullish`／
+    `static-satisfies`，锁定已有 `&&`／`||`／`typeof`／`void`／`satisfies` 与修复后的
+    `??` 提升；`staticDomOpFreeRatio` 基线约 **0.6522**（15/23）。
+  - 刷新 `compiler-coverage-baseline.json` 与 goldens；单测断言语料条数与静态无
+    `walk`／`setAttribute`。
+
 ### 新增
 
 - **P2：DevTools Owner 树点击高亮 DOM（非破坏）**

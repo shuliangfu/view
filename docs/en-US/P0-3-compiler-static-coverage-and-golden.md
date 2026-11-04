@@ -12,7 +12,7 @@
 ## 1. Metrics
 
 Run `compileSource()` over a fixed JSX corpus
-(`scripts/compiler-coverage/corpus.ts`, 19 fixtures). Count call sites in the
+(`scripts/compiler-coverage/corpus.ts`, 23 fixtures). Count call sites in the
 **body after injected imports**:
 
 | Metric | Meaning |
@@ -24,7 +24,7 @@ Run `compileSource()` over a fixed JSX corpus
 | `setProperty` | One-shot property writes (no Effect) |
 | `spread` / `memo` | Spreads and inline ternary `memo` |
 | `zeroReactiveDomOps` | No walk / setAttribute / setProperty / spread in body |
-| `staticDomOpFreeRatio` | Share of fixtures with `zeroReactiveDomOps` (baseline ≈ **0.5789** = 11/19) |
+| `staticDomOpFreeRatio` | Share of fixtures with `zeroReactiveDomOps` (baseline ≈ **0.6522** = 15/23) |
 
 **This knife is a baseline**: lock what static lifting the compiler already does
 so silent regressions fail the gate. It is **not** “max out compiler opts until
@@ -54,7 +54,7 @@ why in CHANGELOG.
 | `scripts/compiler-coverage/goldens/<id>.out.txt` | Normalized full `compileSource` output |
 | `tests/unit/compiler/golden.test.ts` | Per-fixture `toBe`; plus static vs reactive pattern asserts |
 
-Corpus covers: fully static subtrees, static attr / style / ternary lift, dynamic
+Corpus covers: fully static subtrees, static attr / style / ternary / && / || / ?? / typeof / void / satisfies lift, dynamic
 text, reactive / identifier / store attrs, multi-site paths, component props,
 ternary JSX + memo, Fragment, event / ref, spread, hydration `_bindingMap`,
 SSR, HMR.

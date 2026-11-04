@@ -10,6 +10,28 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **Compiler: fold static `??` attrs into templates (non-breaking)**
+  - Statically nullish left sides (`null ?? "x"`, `void 0 ?? "x"`, …) serialize to
+    the right-hand value inside `template(...)` instead of embedding raw
+    `null ?? …` text in HTML.
+  - `"" ?? "x"` keeps the empty string (`??` does not treat `""` as nullish);
+    nullishness is decided on the AST so it is not confused with
+    `NullKeyword` → `""` serialization.
+  - Reactive attr paths unchanged; identifier `undefined` still follows the
+    existing non-static path.
+
+### Added
+
+- **P0-3 follow-up: widen compiler static corpus / goldens (measurement lock, non-breaking)**
+  - Corpus 19→**23**: add `static-and-or` / `static-typeof-void` /
+    `static-nullish` / `static-satisfies`, locking existing `&&` / `||` /
+    `typeof` / `void` / `satisfies` lifts and the fixed `??` lift;
+    `staticDomOpFreeRatio` baseline ≈ **0.6522** (15/23).
+  - Refresh `compiler-coverage-baseline.json` + goldens; unit tests assert
+    fixture count and static bodies without `walk` / `setAttribute`.
+
 ### Added
 
 - **P2: DevTools Owner-tree inspect highlight (non-breaking)**
