@@ -20,6 +20,11 @@ parent `insert` Effect, so a non-route state change does **not** `cleanNode` +
 Fine-grained updates still go through nested `insert` / `createRenderEffect` /
 `createEffect`.
 
+**Context:** `useContext` must keep Signal getters behind its Proxy (re-read on
+each property access). Eager unwrap made object-valued `value={signal}` depend
+on whole-tree remount; with setup `untrack` that path went stale. Fixed in the
+same knife.
+
 **Still remounts (allowed):** parent Effect re-runs (e.g. route switch, explicit
 parent thunk that re-reads a page Signal), hydration `mismatchMode: "remount"`,
 author-triggered remounts.
@@ -80,8 +85,8 @@ focus loss and bare-fetch re-fire.
 
 `createResource` already passes `{ signal }` per load; **source change** /
 `refetch` / outer **`options.signal`** abort in-flight. Prefer
-`{ signal: routeAbort.signal }` on page leave — do **not** rely on Owner
-dispose (Suspense fallback also disposes child Owners).
+`{ signal: routeAbort.signal }` on page leave — do **not** rely on Owner dispose
+(Suspense fallback also disposes child Owners).
 
 Abort does not fix a setup that re-creates the Resource every re-run — that is
 what the untrack + DEV warnings target.

@@ -6,7 +6,7 @@
  * - ✅ createContext() - 创建上下文对象
  * - ✅ Provider - 提供上下文值 (支持 value 是函数或信号)
  * - ✅ useContext() - 消费上下文 (支持 Proxy 响应式访问)
- * - ✅ 支持信号作为上下文值 (value={signal})
+ * - ✅ 支持信号作为上下文值 (value={signal}；Proxy 每次访问重读 getter)
  * - ✅ 透明 Provider (不创建新的 Owner)
  *
  * **核心机制：**
@@ -26,6 +26,7 @@
  */
 
 import { getOwner } from "./owner.ts";
+import { untrack } from "./signal.ts";
 
 /**
  * 跨组件树传递数据的上下文：含 `Provider` 与可选 `defaultValue`。
@@ -97,46 +98,25 @@ export function useContext<T>(context: Context<T>): T {
 
   while (current) {
     if (current.contexts && current.contexts.has(id)) {
-      let value = current.contexts.get(id);
+      const value = current.contexts.get(id);
 
-      // 如果 value 是函数，执行它获取实际值
+      // Signal／getter：勿在此一次性 unwrap 成快照。组件 setup 已在 untrack 下运行
+      // （P1-view-rerun-fetch-guard）；若这里 unwrap，订阅丢失后只能靠整树 remount 刷新。
+      // 对象／函数结果：Proxy 包住 getter，每次属性访问再读并追踪（细粒度）。
+      // 原始值：在当前 Observer 下读一次，供 insert(() => useContext(...)) 订阅。
       if (typeof value === "function") {
-        value = value();
+        const peeked = untrack(() => (value as () => unknown)());
+        if (
+          peeked != null &&
+          (typeof peeked === "object" || typeof peeked === "function")
+        ) {
+          return new Proxy(value, contextProxyHandler) as T;
+        }
+        return (value as () => T)();
       }
 
       if (value && (typeof value === "object" || typeof value === "function")) {
-        return new Proxy(value, {
-          get(target, prop) {
-            let data = target;
-            if (typeof target === "function") {
-              data = target();
-            }
-
-            if (data == null) return undefined;
-
-            const res = Reflect.get(data, prop);
-
-            if (typeof res === "function") {
-              if ((res as any).__VIEW_SIGNAL) {
-                (res as any)(); // 显式追踪
-                return res;
-              }
-              return res.bind(data);
-            }
-            return res;
-          },
-          set(target, prop, val) {
-            let data = target;
-            if (typeof target === "function") {
-              data = target();
-            }
-            if (data && typeof data === "object") {
-              data[prop] = val;
-              return true;
-            }
-            return false;
-          },
-        }) as T;
+        return new Proxy(value, contextProxyHandler) as T;
       }
       return value;
     }
@@ -145,3 +125,34 @@ export function useContext<T>(context: Context<T>): T {
 
   return context.defaultValue as T;
 }
+
+/** Shared Proxy handler: re-read function targets on each get/set for fine-grained track. */
+const contextProxyHandler: ProxyHandler<
+  object | ((...args: never[]) => unknown)
+> = {
+  get(target, prop) {
+    const data = typeof target === "function"
+      ? (target as () => unknown)()
+      : target;
+    if (data == null) return undefined;
+    const res = Reflect.get(data as object, prop);
+    if (typeof res === "function") {
+      if ((res as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL) {
+        (res as () => unknown)(); // 显式追踪
+        return res;
+      }
+      return (res as (...args: unknown[]) => unknown).bind(data);
+    }
+    return res;
+  },
+  set(target, prop, val) {
+    const data = typeof target === "function"
+      ? (target as () => unknown)()
+      : target;
+    if (data && typeof data === "object") {
+      (data as Record<PropertyKey, unknown>)[prop] = val;
+      return true;
+    }
+    return false;
+  },
+};

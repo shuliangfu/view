@@ -14,6 +14,8 @@
 - **P1：组件重跑／裸 fetch DEV 防护（非破坏 DX）**
   - **运行时：** `jsx` 函数组件 setup 在 `untrack` 下执行，顶层读 Signal 不再导致
     非路由更新整树 remount（测：`component-rerun-guard`）。
+  - **Context：** `useContext` 对 Signal getter 经 Proxy 按属性重读，对象型
+    `value={signal}` 在 setup `untrack` 后仍细粒度更新（不再依赖整树 remount）。
 
   - `@dreamer/view/devtools`：`noteComponentSetup`／`detectComponentRerun`／
     `clearComponentSetupNotes`；detect／enable oversubscribe 支持 `setupKeys`。

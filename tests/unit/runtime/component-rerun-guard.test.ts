@@ -4,9 +4,14 @@
  */
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal } from "@dreamer/view/reactivity";
+import {
+  createContext,
+  createSignal,
+  useContext,
+} from "@dreamer/view/reactivity";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { mount } from "@dreamer/view/csr";
+import { insert } from "../../../src/runtime/insert.ts";
 import { flushPendingSync } from "../../../src/scheduler/batch.ts";
 
 describe("runtime/component-rerun-guard (P1)", () => {
@@ -75,6 +80,51 @@ describe("runtime/component-rerun-guard (P1)", () => {
     // Parent thunk re-ran → Child remount (route-like) — setups increased
     expect(childSetups).toBeGreaterThanOrEqual(2);
     expect(second).not.toBe(first);
+
+    dispose();
+    root.remove();
+  });
+
+  it("signal-of-object Context updates via Proxy without remounting consumer", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const UserContext = createContext({ name: "Guest", role: "none" });
+    let setups = 0;
+    let setUser!: (v: { name: string; role: string }) => void;
+
+    function UserProfile() {
+      setups++;
+      const user = useContext(UserContext) as { name: string; role: string };
+      // Compiler-style: insert(() => user.name) so Proxy re-reads the getter.
+      const el = document.createElement("div");
+      el.id = "profile";
+      const nameSpan = document.createElement("span");
+      nameSpan.id = "name";
+      el.appendChild(nameSpan);
+      insert(nameSpan, () => user.name);
+      return el;
+    }
+
+    function Demo() {
+      const [user, set] = createSignal({ name: "Guest", role: "none" });
+      setUser = set;
+      return jsx(UserContext.Provider as never, {
+        value: user,
+        children: jsx(UserProfile as never, {}),
+      });
+    }
+
+    const dispose = mount(() => jsx(Demo as never, {}), root);
+    const profile = root.querySelector("#profile");
+    expect(root.querySelector("#name")?.textContent).toBe("Guest");
+    expect(setups).toBe(1);
+
+    setUser({ name: "Admin", role: "superuser" });
+    flushPendingSync();
+
+    expect(root.querySelector("#profile")).toBe(profile); // no remount
+    expect(root.querySelector("#name")?.textContent).toBe("Admin");
+    expect(setups).toBe(1);
 
     dispose();
     root.remove();

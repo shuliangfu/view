@@ -16,6 +16,9 @@ and this project adheres to
   - **Runtime:** `jsx` function components run setup under `untrack` so
     top-level Signal reads do not whole-tree remount on non-route updates
     (test: `component-rerun-guard`).
+  - **Context:** `useContext` keeps Signal getters behind its Proxy (re-read on
+    each property access) so object-valued `value={signal}` stays fine-grained
+    after setup `untrack` (no remount-only refresh).
 
   - `@dreamer/view/devtools`: `noteComponentSetup` / `detectComponentRerun` /
     `clearComponentSetupNotes`; `setupKeys` on detect/enable oversubscribe.

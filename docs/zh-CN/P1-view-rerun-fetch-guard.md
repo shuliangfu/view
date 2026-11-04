@@ -18,6 +18,10 @@
 **不会**再 `cleanNode`＋整段 `replaceChild`（失焦／裸 `fetch`
 重发）。细粒度更新仍走 子树内 `insert`／`createRenderEffect`／`createEffect`。
 
+**Context：** `useContext` 对 Signal getter 必须经 Proxy
+在每次属性访问时重读；若一次性 unwrap 成快照，对象型 `value={signal}` 只能靠整树
+remount 刷新，与 setup `untrack` 冲突。同刀已修。
+
 **仍会重建（允许）：** 父级 Effect 重跑（路由切换、父 thunk 显式重读页面
 Signal）、 水合 `mismatchMode: "remount"`、业务主动 remount。
 
@@ -74,4 +78,5 @@ detectComponentRerun("Page", { emit: true });
 **`options.signal`** 会 abort。切页请传 `{ signal: routeAbort.signal }`——
 **不要**指望 Owner dispose（Suspense 切 fallback 也会 dispose 子 Owner）。
 
-Abort **治不好**「setup 每次重跑又 new 一个 Resource」——根因仍靠 untrack＋DEV 警告。
+Abort **治不好**「setup 每次重跑又 new 一个 Resource」——根因仍靠 untrack＋DEV
+警告。
