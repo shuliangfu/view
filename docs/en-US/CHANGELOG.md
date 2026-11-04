@@ -10,6 +10,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI: clear Node 20 action deprecation warnings on Node 24 runners**
+  - Bump `actions/checkout@v4` → `@v5` and `actions/setup-node@v4` → `@v5`
+    (both `runs.using: node24`).
+  - Drop workflow-level `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` (no longer needed).
+  - Product test matrix stays on Node **22**; no JSR / npm publish.
+
 ### Added
 
 - **P0-3: compiler static-subtree coverage baseline + goldens (non-breaking)**

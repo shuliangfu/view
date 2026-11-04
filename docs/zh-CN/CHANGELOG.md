@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **CI：消除 Node 20 动作在 Node 24 runner 上的弃用警告**
+  - `actions/checkout@v4` → `@v5`，`actions/setup-node@v4` → `@v5`（均 `runs.using: node24`）。
+  - 去掉 workflow 级 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`（升版后不再需要强制）。
+  - **未**改业务测 Node 矩阵（仍为 22）；禁 JSR／npm。
+
 ### 新增
 
 - **P0-3：编译器静态子树覆盖率基线 + golden（非破坏）**
