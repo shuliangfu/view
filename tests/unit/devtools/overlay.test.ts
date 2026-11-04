@@ -74,6 +74,43 @@ describe("devtools overlay (P2)", () => {
     expect(handle!.isOpen).toBe(false);
   });
 
+  it("head-actions keeps refresh/close clickable and brand flexes", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    const head = shadow.querySelector(".head")!;
+    const brand = shadow.querySelector(".head-brand")!;
+    const actions = shadow.querySelector(".head-actions")!;
+    const refresh = shadow.querySelector(
+      '[data-action="refresh"]',
+    ) as HTMLButtonElement;
+    const close = shadow.querySelector(
+      '[data-action="close"]',
+    ) as HTMLButtonElement;
+    expect(brand).not.toBeNull();
+    expect(actions).not.toBeNull();
+    expect(refresh).not.toBeNull();
+    expect(close).not.toBeNull();
+    // brand before actions in DOM order
+    expect(
+      brand.compareDocumentPosition(actions) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(actions.contains(refresh)).toBe(true);
+    expect(actions.contains(close)).toBe(true);
+    // CSS: brand flexes so actions sit on the trailing edge
+    const css = shadow.querySelector("style")!.textContent!;
+    expect(css).toMatch(/\.head-brand\s*\{[^}]*flex:\s*1/);
+    expect(css).toMatch(/\.head-actions\s*\{/);
+
+    expect(handle.isOpen).toBe(true);
+    close.click();
+    expect(handle.isOpen).toBe(false);
+    handle.open();
+    expect(() => refresh.click()).not.toThrow();
+    expect(handle.isOpen).toBe(true);
+  });
+
   it("tabs: Overview / Tree / Signals / Warnings / Settings", () => {
     createRootTracked(() => {
       const a = createSignal(1);

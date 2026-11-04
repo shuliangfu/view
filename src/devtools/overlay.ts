@@ -231,7 +231,7 @@ const CSS = /* css */ `
   user-select: none;
 }
 .head:active { cursor: grabbing; }
-.head-mark {
+.head-mark, .logo {
   width: 30px; height: 30px; border-radius: 9px;
   display: grid; place-items: center;
   background: linear-gradient(145deg, #60a5fa, #2563eb);
@@ -240,7 +240,22 @@ const CSS = /* css */ `
   box-shadow: 0 4px 14px rgba(37,99,235,0.4);
   flex-shrink: 0;
 }
+.logo::before { content: "V"; }
 .head-text { flex: 1; min-width: 0; }
+.head-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
 .head-title { margin: 0; font-size: 13.5px; font-weight: 650; letter-spacing: -0.015em; }
 .head-sub { margin: 2px 0 0; font-size: 11px; color: rgba(236,236,241,0.5); }
 .icon-btn {
@@ -654,14 +669,16 @@ export function mountDevtoolsOverlay(
   }</span> <span class="kbd">⌘/Ctrl⇧D</span></p>
         </div>
       </div>
-      <button type="button" class="icon-btn" data-action="refresh" data-i18n-title="refresh" data-i18n-aria="refresh" title="${
+      <div class="head-actions">
+        <button type="button" class="icon-btn" data-action="refresh" data-i18n-title="refresh" data-i18n-aria="refresh" title="${
     ot("refresh")
   }" aria-label="${ot("refresh")}">↻</button>
-      <button type="button" class="icon-btn" data-action="close" data-i18n-aria="close" aria-label="${
+        <button type="button" class="icon-btn" data-action="close" data-i18n-aria="close" aria-label="${
     ot("close")
   }">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
     </div>
     <div class="tabs" role="tablist">
       <button type="button" class="tab" data-tab="overview" role="tab" data-i18n="tabOverview">${
@@ -1485,6 +1502,14 @@ export function mountDevtoolsOverlay(
     };
     handleEl.addEventListener("pointerdown", (ev) => {
       if (ev.button !== 0) return;
+      const t = ev.target as Element | null;
+      if (
+        t?.closest?.(
+          "button, a, input, select, textarea, label, [data-action]",
+        )
+      ) {
+        return;
+      }
       dragging = true;
       dragMoved = false;
       sx = ev.clientX;

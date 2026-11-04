@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **DevTools overlay 顶栏**：补 `.head-brand`／`.head-actions`，刷新／关闭靠右；
+  `bindDrag` 排除 `button`／表单控件，避免 pointer capture 吞掉点击。
+
 ### Added
 
 - **P2：DevTools overlay 中英双语（跟页面语言，非破坏）**

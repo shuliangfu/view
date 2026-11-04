@@ -10,6 +10,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- **DevTools overlay header**: `.head-brand` / `.head-actions` so refresh/close
+  sit on the trailing edge; `bindDrag` ignores `button`/inputs so header icon
+  clicks are not swallowed by pointer capture.
+
 ### Added
 
 - **P2: DevTools overlay i18n (zh/en, follows page language, non-breaking)**
