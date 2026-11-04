@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T13:29:26.893Z",
+  "measuredAt": "2026-11-04T13:38:08.835Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -551,7 +551,7 @@
         "generate": "ssr"
       },
       "metrics": {
-        "outputBytes": 115,
+        "outputBytes": 105,
         "templateCalls": 0,
         "walkCalls": 0,
         "insertCalls": 0,
@@ -594,6 +594,56 @@
       "goldenRel": "scripts/compiler-coverage/goldens/ssr-dyn.out.txt"
     },
     {
+      "id": "ssr-static-text-concat",
+      "fileName": "ssr-static-text-concat.tsx",
+      "note": "SSR: static + concat child folded into one string (CSR template parity)",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 89,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-text-concat.out.txt"
+    },
+    {
+      "id": "ssr-static-text-escape",
+      "fileName": "ssr-static-text-escape.tsx",
+      "note": "SSR: static text child HTML-escaped like CSR escapeForText",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 94,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-text-escape.out.txt"
+    },
+    {
       "id": "hmr-export",
       "fileName": "hmr-export.tsx",
       "note": "HMR wraps export const component",
@@ -620,7 +670,7 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 26,
+    "fixtureCount": 28,
     "totalSetAttribute": 4,
     "totalSetProperty": 1,
     "totalWalk": 5,
@@ -628,7 +678,7 @@
     "totalMemo": 1,
     "totalSpread": 1,
     "totalPathConsts": 5,
-    "zeroReactiveDomOpsCount": 17,
-    "staticDomOpFreeRatio": 0.6538
+    "zeroReactiveDomOpsCount": 19,
+    "staticDomOpFreeRatio": 0.6786
   }
 }

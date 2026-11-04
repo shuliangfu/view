@@ -1,2 +1,2 @@
 import { memo } from "@dreamer/view";
-export const App = () => "<div class=\"x\">" + "<span>Hi</span>" + "</div>";
+export const App = () => "<div class=\"x\"><span>Hi</span></div>";

@@ -28,6 +28,7 @@ import ts from "typescript";
 import {
   getTagName,
   isStaticExpression,
+  serializeLiftableStaticTextChild,
   serializeToTemplate,
 } from "./analyzer.ts";
 
@@ -141,14 +142,27 @@ function rewriteToSSR(
           parts.push(text);
         } else if (ts.isJsxExpression(child)) {
           if (child.expression) {
-            parts.push(
-              ts.visitNode(child.expression, visitor) as ts.Expression,
-            );
+            // 与 CSR template 对齐：可提升静态子文本折进字符串（含 escape）
+            const lifted = serializeLiftableStaticTextChild(child.expression);
+            if (lifted !== undefined) {
+              parts.push(lifted);
+            } else {
+              parts.push(
+                ts.visitNode(child.expression, visitor) as ts.Expression,
+              );
+            }
           }
         } else {
           // 通过 visitor 递归，以支持组件和片段
           const visited = ts.visitNode(child, visitor);
-          if (visited) parts.push(visited as ts.Expression);
+          if (!visited) {
+            // skip
+          } else if (ts.isStringLiteral(visited as ts.Expression)) {
+            // 嵌套静态子树已折成字面量 → 并入相邻静态串
+            parts.push((visited as ts.StringLiteral).text);
+          } else {
+            parts.push(visited as ts.Expression);
+          }
         }
       });
       parts.push(`</${tagName}>`);
@@ -189,17 +203,59 @@ function rewriteToSSR(
   }
 
   if (ts.isJsxFragment(node)) {
-    let expr: ts.Expression = factory.createStringLiteral("");
+    const parts: (string | ts.Expression)[] = [];
     node.children.forEach((child) => {
-      const childExpr = ts.isJsxText(child)
-        ? factory.createStringLiteral(child.text)
-        : ts.visitNode(child, visitor) as ts.Expression;
+      if (ts.isJsxText(child)) {
+        if (child.text.trim() === "" && child.text.includes("\n")) return;
+        const text = child.text.replace(/\s+/g, " ");
+        if (text === "") return;
+        parts.push(text);
+      } else if (ts.isJsxExpression(child) && child.expression) {
+        const lifted = serializeLiftableStaticTextChild(child.expression);
+        if (lifted !== undefined) {
+          parts.push(lifted);
+        } else {
+          parts.push(
+            ts.visitNode(child.expression, visitor) as ts.Expression,
+          );
+        }
+      } else {
+        const visited = ts.visitNode(child, visitor);
+        if (!visited) return;
+        if (ts.isStringLiteral(visited as ts.Expression)) {
+          parts.push((visited as ts.StringLiteral).text);
+        } else {
+          parts.push(visited as ts.Expression);
+        }
+      }
+    });
+    if (parts.length === 0) return factory.createStringLiteral("");
+    const optimizedParts: (string | ts.Expression)[] = [];
+    parts.forEach((p) => {
+      const last = optimizedParts[optimizedParts.length - 1];
+      if (typeof p === "string" && typeof last === "string") {
+        optimizedParts[optimizedParts.length - 1] = last + p;
+      } else {
+        optimizedParts.push(p);
+      }
+    });
+    if (optimizedParts.length === 1 && typeof optimizedParts[0] === "string") {
+      return factory.createStringLiteral(optimizedParts[0]);
+    }
+    let expr: ts.Expression = typeof optimizedParts[0] === "string"
+      ? factory.createStringLiteral(optimizedParts[0])
+      : (optimizedParts[0] as ts.Expression);
+    for (let i = 1; i < optimizedParts.length; i++) {
+      const p = optimizedParts[i];
+      const nextExpr = typeof p === "string"
+        ? factory.createStringLiteral(p)
+        : (p as ts.Expression);
       expr = factory.createBinaryExpression(
         expr,
         ts.SyntaxKind.PlusToken,
-        childExpr,
+        nextExpr,
       );
-    });
+    }
     return expr;
   }
 
@@ -396,6 +452,10 @@ export function transformJSX(
       }
 
       if (ts.isJsxFragment(node)) {
+        // SSR：与元素相同走字符串拼接（含静态子文本折叠）
+        if (options.generate === "ssr") {
+          return rewriteToSSR(factory, node, visitor);
+        }
         // Fragment 处理：直接返回子节点数组或 DocumentFragment
         const children = node.children.map((child) =>
           ts.visitNode(child, visitor) as ts.Expression

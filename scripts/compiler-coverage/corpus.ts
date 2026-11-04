@@ -184,6 +184,20 @@ export const FIXTURES: Fixture[] = [
     note: "SSR generate: dynamic child expression",
   },
   {
+    id: "ssr-static-text-concat",
+    fileName: "ssr-static-text-concat.tsx",
+    source: `export const App = () => <div>{"hello" + " world"}</div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: static + concat child folded into one string (CSR template parity)",
+  },
+  {
+    id: "ssr-static-text-escape",
+    fileName: "ssr-static-text-escape.tsx",
+    source: `export const App = () => <div>{"a&b" + "<c>"}</div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: static text child HTML-escaped like CSR escapeForText",
+  },
+  {
     id: "hmr-export",
     fileName: "hmr-export.tsx",
     source: `export const App = () => <div>Hi</div>;`,

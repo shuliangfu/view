@@ -247,6 +247,18 @@ export function isLiftableStaticTextChild(expr: ts.Expression): boolean {
   return serializeStaticValue(expr) !== "";
 }
 
+/**
+ * 可提升静态子文本的 HTML 转义结果；不可提升返回 undefined。
+ * CSR template 与 SSR 字符串拼接共用，保证 escape／语义一致。
+ */
+export function serializeLiftableStaticTextChild(
+  expr: ts.Expression,
+): string | undefined {
+  if (!isLiftableStaticTextChild(expr)) return undefined;
+  return escapeForText(serializeStaticValue(expr));
+}
+
+
 
 /**
  * 静态可判定为 null / undefined（含括号、断言、void 包装）。
@@ -516,8 +528,11 @@ export function serializeToTemplate(
           } else if (ts.isJsxExpression(child)) {
             if (!child.expression) return; // 忽略空表达式（如 {/* comment */}）
             // 静态字符串／数字／+ 拼接等：写入模板文本，省 walk+insert（及 Effect）
-            if (isLiftableStaticTextChild(child.expression)) {
-              html += escapeForText(serializeStaticValue(child.expression));
+            const liftedText = serializeLiftableStaticTextChild(
+              child.expression,
+            );
+            if (liftedText !== undefined) {
+              html += liftedText;
               childIndex++;
               return;
             }

@@ -12,6 +12,18 @@ and this project adheres to
 
 ### Added
 
+- **P2: SSR static text-child fold parity with CSR templates (non-breaking)**
+  - `generate: "ssr"` folds liftable static text children (`+` / template /
+    ternary / numbers, …) into literals with `escapeForText`, sharing
+    `serializeLiftableStaticTextChild` with CSR `template()`.
+  - SSR Fragments use the string-concat path (no accidental
+    `createDocumentFragment`).
+  - **Still not lifted**: `&&` / `||` / `??`, null / boolean, empty `""`.
+  - Corpus 26→**28** (`ssr-static-text-concat` / `ssr-static-text-escape`);
+    `staticDomOpFreeRatio` ≈ **0.6786** (19/28).
+
+### Added
+
 - **P2: compiler lifts static text-child `+` concat into templates (non-breaking)**
   - `{"hello" + " world"}` / static template literals / static ternaries / numeric
     literals land in `template(...)`, skipping `walk`+`insert` (and Effects from

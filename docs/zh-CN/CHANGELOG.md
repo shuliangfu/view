@@ -11,6 +11,16 @@
 
 ### 新增
 
+- **P2：SSR 静态子文本折叠对齐 CSR template（非破坏）**
+  - `generate: "ssr"` 对可提升静态子文本（`+`／模板串／三元／数字等）折成字面量并
+    `escapeForText`，与 CSR `template()` 同 helper（`serializeLiftableStaticTextChild`）。
+  - SSR Fragment 也走字符串拼接路径（不再误用 `createDocumentFragment`）。
+  - **仍不提升**：`&&`／`||`／`??`、null／boolean、空串 `""`。
+  - 语料 26→**28**（`ssr-static-text-concat`／`ssr-static-text-escape`）；
+    `staticDomOpFreeRatio` 约 **0.6786**（19/28）。
+
+### 新增
+
 - **P2：编译器静态子文本 `+` 拼接提升进 template（非破坏）**
   - `{"hello" + " world"}`／静态模板串／静态三元／数字字面量等子文本写入
     `template(...)`，省 `walk`+`insert`（及由此产生的 Effect）；`escapeForText` 转义 `&<>`。
