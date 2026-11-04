@@ -12,6 +12,16 @@ and this project adheres to
 
 ### Changed
 
+- **3.0 R1/R3: stricter hydration defaults (BREAKING)**
+  - Omitting `mismatchMode` → **`assert`** when `VIEW_DEV === true`, else
+    **`remount`** (was always `continue` in 2.x).
+  - Removed deprecated `HydrateOptions.assertMismatch` /
+    `remountOnMismatch`. Use `mismatchMode` only.
+  - Opt back into 2.x tolerance with explicit `mismatchMode: "continue"`.
+  - Docs: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md); tests lock the new defaults.
+
+### Changed
+
 - **3.0 first knife: slim main entry (BREAKING, Strategy A landed)**
   - `@dreamer/view` main barrel **no longer** re-exports router / form / resource.
     Use `@dreamer/view/router`, `/form`, `/resource`.

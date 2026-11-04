@@ -1,5 +1,7 @@
 # P1-2：水合质量 opt-in 试点（`mismatchMode` · 2.x 加法）
 
+> **默认已由 3.0 取代：** `R1`／`R3` 起省略 `mismatchMode` 不再是 `continue` — 见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)。本文保留 2.x opt-in 试点记录。
+
 | 项 | 值 |
 |----|-----|
 | 对象 | `@dreamer/view` **v2.2.0**，分支 `dev` |

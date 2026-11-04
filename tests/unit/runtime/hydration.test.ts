@@ -11,17 +11,14 @@ import {
 
 describe("runtime/hydration", () => {
   it("零注释水合：应当基于路径准确寻址并注册节点", () => {
-    // 模拟 SSR 生成的 DOM
     const root = document.createElement("div");
     root.innerHTML = "<ul><li>Item 1</li><li>Item 2</li></ul>";
 
-    // 编译器生成的路径映射
     const bindingMap: [number[], string][] = [
       [[0], "ul-id"],
       [[0, 1], "li2-id"],
     ];
 
-    // 使用内部注册函数进行测试 (因为它是纯逻辑，不涉及 Thunk 执行)
     internalHydrate(root, bindingMap);
 
     const ul = useHydratedNode("ul-id");
@@ -32,7 +29,6 @@ describe("runtime/hydration", () => {
     expect(li2?.textContent).toBe("Item 2");
     expect(getHydrationMismatches().length).toBe(0);
 
-    // 清理
     stopHydration();
   });
 
@@ -40,8 +36,10 @@ describe("runtime/hydration", () => {
     const root = document.createElement("div");
     root.innerHTML = "<p>only</p>";
     const seen: string[] = [];
+    // 显式 continue：只记录、不抛错（测诊断路径）
     internalHydrate(root, [[[9, 9], "missing-id"]], {
       warnMismatch: false,
+      mismatchMode: "continue",
       onMismatch: (info) => seen.push(info.id),
     });
     expect(useHydratedNode("missing-id")).toBeUndefined();
@@ -57,6 +55,7 @@ describe("runtime/hydration", () => {
     const dispose = hydrate(() => null, root, {
       bindings: [[[0], "span-id"]],
       warnMismatch: false,
+      mismatchMode: "continue",
     });
     expect(useHydratedNode("span-id")?.nodeName).toBe("SPAN");
     dispose();
@@ -99,24 +98,64 @@ describe("runtime/hydration", () => {
     stopHydration();
   });
 
-  it("P1-2 default continue：省略 mismatchMode 须为 continue", () => {
-    expect(resolveMismatchMode()).toBe("continue");
-    expect(resolveMismatchMode({})).toBe("continue");
-    expect(resolveMismatchMode({ warnMismatch: false })).toBe("continue");
+  it("3.0 default：省略 mismatchMode → 生产 remount／VIEW_DEV assert", () => {
+    const g = globalThis as { VIEW_DEV?: boolean };
+    const prev = g.VIEW_DEV;
+    try {
+      delete g.VIEW_DEV;
+      expect(resolveMismatchMode()).toBe("remount");
+      expect(resolveMismatchMode({})).toBe("remount");
+      expect(resolveMismatchMode({ warnMismatch: false })).toBe("remount");
+
+      g.VIEW_DEV = true;
+      expect(resolveMismatchMode()).toBe("assert");
+      expect(resolveMismatchMode({})).toBe("assert");
+
+      // 显式仍优先
+      expect(resolveMismatchMode({ mismatchMode: "continue" })).toBe(
+        "continue",
+      );
+      expect(
+        resolveMismatchMode({ mismatchMode: "remount" }),
+      ).toBe("remount");
+    } finally {
+      if (prev === undefined) delete g.VIEW_DEV;
+      else g.VIEW_DEV = prev;
+    }
   });
 
-  it("P1-2 mismatchMode 优先于弃用布尔开关", () => {
-    expect(
-      resolveMismatchMode({ mismatchMode: "continue", assertMismatch: true }),
-    ).toBe("continue");
-    expect(
-      resolveMismatchMode({ mismatchMode: "assert", remountOnMismatch: true }),
-    ).toBe("assert");
-    expect(resolveMismatchMode({ assertMismatch: true })).toBe("assert");
-    expect(resolveMismatchMode({ remountOnMismatch: true })).toBe("remount");
+  it("3.0 生产默认 remount：错位清空 SSR 并 CSR 挂载", () => {
+    const g = globalThis as { VIEW_DEV?: boolean };
+    const prev = g.VIEW_DEV;
+    try {
+      delete g.VIEW_DEV;
+      const root = document.createElement("div");
+      root.innerHTML = "<span id='ssr'>old</span>";
+      const dispose = hydrate(
+        () => {
+          const el = document.createElement("div");
+          el.id = "csr";
+          el.textContent = "new";
+          return el;
+        },
+        root,
+        {
+          bindings: [[[99], "missing"]],
+          warnMismatch: false,
+          // 故意不传 mismatchMode → remount
+        },
+      );
+      expect(root.querySelector("#ssr")).toBeNull();
+      expect(root.querySelector("#csr")?.textContent).toBe("new");
+      dispose();
+      stopHydration();
+    } finally {
+      if (prev === undefined) delete g.VIEW_DEV;
+      else g.VIEW_DEV = prev;
+    }
   });
 
-  it("P1-2 default continue：错位不抛错且保留 SSR 节点", () => {
+  it("3.0 显式 continue：错位不抛错且保留 SSR 节点", () => {
     const root = document.createElement("div");
     root.innerHTML = "<span id='ssr'>keep</span>";
     const dispose = hydrate(
@@ -130,13 +169,12 @@ describe("runtime/hydration", () => {
       {
         bindings: [[[99], "missing"]],
         warnMismatch: false,
-        // 故意不传 mismatchMode → continue
+        mismatchMode: "continue",
       },
     );
     expect(root.querySelector("#ssr")?.textContent).toBe("keep");
     expect(getHydrationMismatches().length).toBe(1);
     dispose();
-    // continue 的 dispose 仅回收 Owner，默认保留 SSR 子树
     expect(root.querySelector("#ssr")?.textContent).toBe("keep");
     stopHydration();
   });

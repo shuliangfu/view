@@ -1,5 +1,7 @@
 # P1-2: Hydration quality opt-in pilot (`mismatchMode` · 2.x additive)
 
+> **Superseded for defaults:** as of **3.0** (`R1`/`R3`), omitting `mismatchMode` is no longer `continue` — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md). This P1-2 page remains the 2.x opt-in pilot record.
+
 | Item | Value |
 |------|-------|
 | Package | `@dreamer/view` **v2.2.0** (`dev`) |

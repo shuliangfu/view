@@ -11,6 +11,16 @@
 
 ### 变更
 
+- **3.0 R1／R3：更严水合默认（破坏性）**
+  - 省略 `mismatchMode` → `VIEW_DEV === true` 时为 **`assert`**，否则
+    **`remount`**（2.x 恒为 `continue`）。
+  - 删除弃用字段 `HydrateOptions.assertMismatch`／`remountOnMismatch`，只保留
+    `mismatchMode`。
+  - 要 2.x 容忍错位：显式 `mismatchMode: "continue"`。
+  - 文档：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)；单测锁新默认。
+
+### 变更
+
 - **3.0 首刀：主入口瘦身（破坏性，策略 A 落地）**
   - `@dreamer/view` 主 barrel **不再** re-export 路由／表单／Resource。
     请改用 `@dreamer/view/router`、`/form`、`/resource`。

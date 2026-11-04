@@ -1,7 +1,7 @@
 /**
  * @module views/runtime
  * @description 展示 @dreamer/view 核心运行时 API：SSR、插入与动态 DOM；
- * P1-2：客户端水合 `mismatchMode` opt-in 试点（默认 continue 不变）。
+ * 3.0：客户端水合 `mismatchMode`（默认 assert@VIEW_DEV／remount@prod；continue 须显式）。
  */
 import { createSignal } from "@dreamer/view/reactivity";
 import {
@@ -17,7 +17,7 @@ export default function RuntimeDemo() {
   const [ssrSample, setSsrSample] = createSignal("梦幻框架演示");
   const [html, setHtml] = createSignal("");
   const [hydrateLog, setHydrateLog] = createSignal(
-    "选择 mismatchMode 后点「试水合」；默认 continue 与省略选项等价。",
+    "选择 mismatchMode 后点「试水合」；省略选项 ≡ 3.0 默认（DEV assert／prod remount）。",
   );
   const [lastMode, setLastMode] = createSignal<HydrationMismatchMode | "">("");
 
@@ -130,7 +130,7 @@ export default function RuntimeDemo() {
 
       <div className="p-8 border border-slate-200 dark:border-slate-700 rounded-3xl bg-white dark:bg-slate-800 shadow-sm space-y-6 transition-colors">
         <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-50 dark:border-slate-700/50 pb-4">
-          P1-2 水合 opt-in（mismatchMode）
+          3.0 水合 mismatchMode
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           故意传入无效 binding path。{" "}

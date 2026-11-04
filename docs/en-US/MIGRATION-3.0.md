@@ -22,6 +22,32 @@
 | `createForm`, `messageFromSafeParse`, form helpers                                                   | `@dreamer/view/form`     |
 | `createResource`, `createInflightDedupe`                                                             | `@dreamer/view/resource` |
 
+### R1 / R3 — Stricter hydration defaults (landed)
+
+**Breaking:** omitting `mismatchMode` no longer means `continue`.
+
+| Environment                    | Default when `mismatchMode` omitted         |
+| ------------------------------ | ------------------------------------------- |
+| `globalThis.VIEW_DEV === true` | **`assert`** (throw on binding mismatches)  |
+| Production (no `VIEW_DEV`)     | **`remount`** (clear container → CSR mount) |
+
+- Want 2.x “tolerate drift” behavior → **explicit** `mismatchMode: "continue"`.
+- Deprecated booleans **`assertMismatch`** / **`remountOnMismatch`** are
+  **removed** from `HydrateOptions`. Use `mismatchMode: "assert"` / `"remount"`.
+
+```ts
+import { hydrate } from "@dreamer/view/csr";
+
+// 3.0 production default ≡ remount on mismatch
+hydrate(() => <App />, root, { bindings });
+
+// Opt back into 2.x tolerance:
+hydrate(() => <App />, root, { bindings, mismatchMode: "continue" });
+
+// CI / strict (also the VIEW_DEV default):
+hydrate(() => <App />, root, { bindings, mismatchMode: "assert" });
+```
+
 ### Still on the main entry (core CSR barrel)
 
 Reactivity, scheduler, `mount` / `hydrate`, `insert` / props / `template`,
@@ -29,14 +55,14 @@ control-flow (`Show` / `For` / …), Suspense / `lazy` / `Dynamic`, portal, HMR.
 
 SSR remains **`@dreamer/view/ssr` only** (unchanged).
 
-### Not in this knife
+### Remaining candidates (not this knife)
 
-| Candidate                                                     | Status                                                                 |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| R1 — stricter default `mismatchMode`                          | **HOLD** — default still `continue`; use opt-in (`assert` / `remount`) |
-| R3 — remove deprecated `assertMismatch` / `remountOnMismatch` | **HOLD**                                                               |
-| R2 — require `key` on `For`                                   | **HOLD**                                                               |
-| Scheduler unification                                         | **HOLD**                                                               |
+| Candidate                                                     | Status                                                                                          |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| R1 — stricter default `mismatchMode`                          | **LANDED** — omit → `assert` when `VIEW_DEV`, else `remount`; pass `continue` for 2.x tolerance |
+| R3 — remove deprecated `assertMismatch` / `remountOnMismatch` | **LANDED** — use `mismatchMode` only                                                            |
+| R2 — require `key` on `For`                                   | **HOLD**                                                                                        |
+| Scheduler unification                                         | **HOLD**                                                                                        |
 
 ---
 

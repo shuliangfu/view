@@ -22,6 +22,32 @@
 | `createForm`、`messageFromSafeParse` 等表单                                                      | `@dreamer/view/form`     |
 | `createResource`、`createInflightDedupe`                                                         | `@dreamer/view/resource` |
 
+### R1／R3 — 更严水合默认（已落地）
+
+**破坏：** 省略 `mismatchMode` **不再**等于 `continue`。
+
+| 环境                           | 省略 `mismatchMode` 时的默认         |
+| ------------------------------ | ------------------------------------ |
+| `globalThis.VIEW_DEV === true` | **`assert`**（绑定错位抛错）         |
+| 生产（无 `VIEW_DEV`）          | **`remount`**（清空容器 → CSR 重挂） |
+
+- 需要 2.x「容忍错位」→ **显式** `mismatchMode: "continue"`。
+- 弃用布尔 **`assertMismatch`**／**`remountOnMismatch`** 已从 `HydrateOptions`
+  **删除**。改用 `mismatchMode: "assert"`／`"remount"`。
+
+```ts
+import { hydrate } from "@dreamer/view/csr";
+
+// 3.0 生产默认 ≡ 错位 remount
+hydrate(() => <App />, root, { bindings });
+
+// 回到 2.x 容忍：
+hydrate(() => <App />, root, { bindings, mismatchMode: "continue" });
+
+// CI／严格（亦为 VIEW_DEV 默认）：
+hydrate(() => <App />, root, { bindings, mismatchMode: "assert" });
+```
+
 ### 主入口仍保留（核心 CSR barrel）
 
 响应式、调度、`mount`／`hydrate`、`insert`／props／`template`、控制流
@@ -29,14 +55,14 @@
 
 SSR 仍 **仅** `@dreamer/view/ssr`（不变）。
 
-### 本刀不做
+### 其余候选（未进本刀）
 
-| 候选                                                    | 状态                                        |
-| ------------------------------------------------------- | ------------------------------------------- |
-| R1 — 改严默认 `mismatchMode`                            | **HOLD** — 默认仍 `continue`；请显式 opt-in |
-| R3 — 删除弃用布尔 `assertMismatch`／`remountOnMismatch` | **HOLD**                                    |
-| R2 — `For` 强制 key                                     | **HOLD**                                    |
-| 调度模型统一                                            | **HOLD**                                    |
+| 候选                                                    | 状态                                                                                     |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| R1 — 改严默认 `mismatchMode`                            | **已落地** — 省略 → `VIEW_DEV` 时 `assert`，否则 `remount`；要 2.x 容忍请显式 `continue` |
+| R3 — 删除弃用布尔 `assertMismatch`／`remountOnMismatch` | **已落地** — 只用 `mismatchMode`                                                         |
+| R2 — `For` 强制 key                                     | **HOLD**                                                                                 |
+| 调度模型统一                                            | **HOLD**                                                                                 |
 
 ---
 

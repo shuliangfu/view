@@ -5,7 +5,7 @@
  * **支持的功能：**
  * - ✅ mount() - 将组件挂载到 DOM 容器
  * - ✅ hydrate() - 服务端渲染内容的水合 (客户端激活)
- * - ✅ mismatch 策略：continue / assert / remount
+ * - ✅ mismatch 策略：continue / assert / remount（3.0 默认 assert@DEV／remount@prod）
  * - ✅ 自动清理 loading 骨架屏 (data-view-cloak 处理)
  *
  * @usage
@@ -90,6 +90,8 @@ function resolveHydrateBindings(
  * 在已有 SSR 标记的 `container` 上启用水合并插入 `fn()`。
  *
  * @param bindingsOrOptions 可选绑定表数组，或 {@link HydrateOptions}
+ *   - 省略 `mismatchMode`：**VIEW_DEV → assert**／生产 → **remount**（3.0）
+ *   - `mismatchMode: "continue"`：旧 2.x 容忍错位行为（须显式）
  *   - `mismatchMode: "assert"`：绑定失败抛错
  *   - `mismatchMode: "remount"`：清空容器后按 CSR 重挂（放弃 SSR 节点复用）
  * @returns dispose；remount 时卸载会清空容器（与 mount 一致）
@@ -136,7 +138,7 @@ export function hydrate(
     const content = fn();
     insert(container, content);
 
-    // 默认：保留容器内 SSR 节点；仅 dispose Owner
+    // continue／assert 成功路径：保留容器内 SSR 节点；仅 dispose Owner
     return dispose;
   });
 }
