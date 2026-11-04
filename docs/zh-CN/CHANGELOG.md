@@ -11,6 +11,17 @@
 
 ### 新增
 
+- **P2：编译期折叠静态 `true && <JSX>`／假值短路（非破坏）**
+  - `true && <JSX>`／非空串／非 0 数字 `&& <JSX>` → 直接 JSX；`false`／`null`／
+    `undefined` `&& <JSX>` → 省略；`false`／`0`／`""`／`null` `|| <JSX>` → JSX；
+    `true || <JSX>` → 省略（对齐 `insert` 跳过 boolean）。
+  - 静态三元 `true ? <A> : <B>` 取分支（无 `memo`）；全静态分支并入 `template`。
+  - CSR／SSR 同规则；SSR omit 不写 `+ null`（避免拼出 `"null"` 文本）。
+  - **不**折叠：`0 &&`／`"" &&`（运行时为文本节点）、动态条件、`cond() &&`。
+  - 语料 28→**32**；`staticDomOpFreeRatio` 约 **0.7188**（23/32）。
+
+### 新增
+
 - **P2：SSR 静态子文本折叠对齐 CSR template（非破坏）**
   - `generate: "ssr"` 对可提升静态子文本（`+`／模板串／三元／数字等）折成字面量并
     `escapeForText`，与 CSR `template()` 同 helper（`serializeLiftableStaticTextChild`）。

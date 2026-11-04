@@ -12,6 +12,20 @@ and this project adheres to
 
 ### Added
 
+- **P2: compile-time fold for static `true && <JSX>` / falsy short-circuit (non-breaking)**
+  - `true && <JSX>` / non-empty string / non-zero number `&& <JSX>` → JSX;
+    `false` / `null` / `undefined` `&& <JSX>` → omit; `false` / `0` / `""` /
+    `null` `|| <JSX>` → JSX; `true || <JSX>` → omit (matches `insert` skipping
+    booleans).
+  - Static ternaries `true ? <A> : <B>` pick a branch (no `memo`); fully static
+    branches merge into `template`.
+  - Same rules for CSR / SSR; SSR omit does not emit `+ null` (avoids `"null"`
+    text).
+  - **Not** folded: `0 &&` / `"" &&` (runtime text nodes), dynamic conditions.
+  - Corpus 28→**32**; `staticDomOpFreeRatio` ≈ **0.7188** (23/32).
+
+### Added
+
 - **P2: SSR static text-child fold parity with CSR templates (non-breaking)**
   - `generate: "ssr"` folds liftable static text children (`+` / template /
     ternary / numbers, …) into literals with `escapeForText`, sharing

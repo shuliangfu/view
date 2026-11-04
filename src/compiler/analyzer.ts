@@ -47,7 +47,14 @@ export function isFullyStatic(node: ts.Node): boolean {
   if (ts.isJsxExpression(node)) {
     // 空 {/* */} 视为静态；可提升的非空静态文本子节点亦然（与 processChild 对齐）
     if (!node.expression) return true;
-    return isLiftableStaticTextChild(node.expression);
+    if (isLiftableStaticTextChild(node.expression)) return true;
+    // true && <static/> / false && … 等可折叠静态逻辑 JSX
+    const folded = foldStaticLogicJsxChild(node.expression);
+    if (folded?.type === "omit") return true;
+    if (folded?.type === "jsx") {
+      return isFullyStatic(folded.jsx);
+    }
+    return false;
   }
   if (
     ts.isJsxAttribute(node) && node.initializer &&
@@ -257,6 +264,113 @@ export function serializeLiftableStaticTextChild(
   if (!isLiftableStaticTextChild(expr)) return undefined;
   return escapeForText(serializeStaticValue(expr));
 }
+
+
+/** 静态短路左侧：truthy / omit（null·false·undefined）/ zero / empty；不可判定为 null */
+export type StaticShortCircuitKind = "truthy" | "omit" | "zero" | "empty";
+
+function unwrapStaticWrappers(expr: ts.Expression): ts.Expression {
+  let cur = expr;
+  for (let i = 0; i < 8; i++) {
+    if (ts.isParenthesizedExpression(cur)) {
+      cur = cur.expression;
+      continue;
+    }
+    if (ts.isAsExpression(cur) || ts.isTypeAssertionExpression(cur)) {
+      cur = cur.expression;
+      continue;
+    }
+    if (ts.isNonNullExpression(cur)) {
+      cur = cur.expression;
+      continue;
+    }
+    if (
+      typeof ts.isSatisfiesExpression === "function" &&
+      ts.isSatisfiesExpression(cur)
+    ) {
+      cur = cur.expression;
+      continue;
+    }
+    break;
+  }
+  return cur;
+}
+
+/**
+ * 判定 && / || 左侧是否编译期可短路（不含 Identifier，避免影子绑定）。
+ */
+export function classifyStaticShortCircuitLeft(
+  expr: ts.Expression,
+): StaticShortCircuitKind | null {
+  const cur = unwrapStaticWrappers(expr);
+  if (cur.kind === ts.SyntaxKind.TrueKeyword) return "truthy";
+  if (
+    cur.kind === ts.SyntaxKind.FalseKeyword ||
+    cur.kind === ts.SyntaxKind.NullKeyword ||
+    cur.kind === ts.SyntaxKind.UndefinedKeyword
+  ) return "omit";
+  if (ts.isVoidExpression(cur)) return "omit";
+  if (ts.isNumericLiteral(cur)) {
+    return Number(cur.text) === 0 ? "zero" : "truthy";
+  }
+  if (ts.isStringLiteral(cur) || ts.isNoSubstitutionTemplateLiteral(cur)) {
+    return cur.text === "" ? "empty" : "truthy";
+  }
+  return null;
+}
+
+function isJsxLikeNode(
+  node: ts.Node,
+): node is ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment {
+  return ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) ||
+    ts.isJsxFragment(node);
+}
+
+export type FoldedStaticLogicJsx =
+  | { type: "jsx"; jsx: ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment }
+  | { type: "omit" };
+
+/**
+ * 折叠 `true && <JSX>` / `false && <JSX>` / `null || <JSX>` 等。
+ * 对齐 insert：boolean/null/undefined 省略；0/"" 不在此刀折叠（避免与文本节点分叉）。
+ */
+export function foldStaticLogicJsxChild(
+  expr: ts.Expression,
+): FoldedStaticLogicJsx | undefined {
+  const cur = unwrapStaticWrappers(expr);
+  if (!ts.isBinaryExpression(cur)) return undefined;
+  const op = cur.operatorToken.kind;
+  if (
+    op !== ts.SyntaxKind.AmpersandAmpersandToken &&
+    op !== ts.SyntaxKind.BarBarToken
+  ) return undefined;
+  if (!isJsxLikeNode(cur.right)) return undefined;
+
+  const leftKind = classifyStaticShortCircuitLeft(cur.left);
+  if (leftKind == null) return undefined;
+
+  if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
+    // true/非空串/非0 && JSX → JSX；false/null/undefined && → omit
+    // 0/"" && JSX 运行时是文本 0/""，本刀不折叠
+    if (leftKind === "truthy") return { type: "jsx", jsx: cur.right };
+    if (leftKind === "omit") return { type: "omit" };
+    return undefined;
+  }
+
+  // || ：假值左侧 → JSX；true || JSX → omit（insert(true) 跳过）
+  // 非空串/非0 || JSX 运行时是该文本，本刀不折叠
+  if (leftKind === "omit" || leftKind === "zero" || leftKind === "empty") {
+    return { type: "jsx", jsx: cur.right };
+  }
+  if (
+    leftKind === "truthy" &&
+    unwrapStaticWrappers(cur.left).kind === ts.SyntaxKind.TrueKeyword
+  ) {
+    return { type: "omit" };
+  }
+  return undefined;
+}
+
 
 
 
@@ -535,6 +649,75 @@ export function serializeToTemplate(
               html += liftedText;
               childIndex++;
               return;
+            }
+            // true && <static/> → 并入模板；false/null && → 省略
+            const logicFold = foldStaticLogicJsxChild(child.expression);
+            if (logicFold?.type === "omit") {
+              return;
+            }
+            if (logicFold?.type === "jsx") {
+              const jsx = logicFold.jsx;
+              const opening = ts.isJsxFragment(jsx)
+                ? null
+                : (ts.isJsxElement(jsx) ? jsx.openingElement : jsx);
+              const tag = opening ? getTagName(opening.tagName) : "";
+              const isComp = tag !== "" &&
+                (tag[0] === tag[0].toUpperCase() || tag.includes("."));
+              if (!isComp && isFullyStatic(jsx)) {
+                html += serializeStatic(jsx);
+                childIndex++;
+                return;
+              }
+              // 非全静态：仍走 insert，但表达式改为折叠后的 JSX
+              dynamics.push({
+                id: `v-${idCounter++}`,
+                path: [...path, childIndex + 1],
+                expression: jsx as unknown as ts.Expression,
+                type: "child",
+              });
+              html += "<!--[--><!--]-->";
+              childIndex += 2;
+              return;
+            }
+            // 静态三元 ? <JSX> : <JSX>：全静态分支并入模板
+            {
+              const tern = unwrapStaticWrappers(child.expression);
+              if (ts.isConditionalExpression(tern)) {
+                const ck = classifyStaticShortCircuitLeft(tern.condition);
+                const pick = ck === "truthy"
+                  ? tern.whenTrue
+                  : (ck === "omit" || ck === "zero" || ck === "empty")
+                  ? tern.whenFalse
+                  : null;
+                if (
+                  pick &&
+                  (ts.isJsxElement(pick) || ts.isJsxSelfClosingElement(pick) ||
+                    ts.isJsxFragment(pick))
+                ) {
+                  const opening = ts.isJsxFragment(pick)
+                    ? null
+                    : (ts.isJsxElement(pick) ? pick.openingElement : pick);
+                  const tag = opening ? getTagName(opening.tagName) : "";
+                  const isComp = tag !== "" &&
+                    (tag[0] === tag[0].toUpperCase() || tag.includes("."));
+                  if (!isComp && isFullyStatic(pick)) {
+                    html += serializeStatic(pick);
+                    childIndex++;
+                    return;
+                  }
+                  if (!isComp) {
+                    dynamics.push({
+                      id: `v-${idCounter++}`,
+                      path: [...path, childIndex + 1],
+                      expression: pick as unknown as ts.Expression,
+                      type: "child",
+                    });
+                    html += "<!--[--><!--]-->";
+                    childIndex += 2;
+                    return;
+                  }
+                }
+              }
             }
             dynamics.push({
               id: `v-${idCounter++}`,

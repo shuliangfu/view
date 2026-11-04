@@ -220,6 +220,43 @@ describe("compiler/transformer", () => {
     );
   });
 
+  it("优化：true && <JSX> / false && 应编译期折叠", () => {
+    const t = compileSource(
+      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+      "test.tsx",
+    );
+    expect(t).toContain('template("<div><span>A</span></div>")');
+    expect(t.split("\n").slice(1).join("\n")).not.toContain("walk(");
+
+    const f = compileSource(
+      `export const App = () => <div>{false && <span>A</span>}</div>;`,
+      "test.tsx",
+    );
+    expect(f).toContain('template("<div></div>")');
+    expect(f).not.toContain("insert(");
+
+    const keep = compileSource(
+      `export const App = () => <div>{0 && <span>A</span>}</div>;`,
+      "test.tsx",
+    );
+    expect(keep).toContain("insert(");
+    expect(keep).toContain("0 &&");
+
+    const ssr = compileSource(
+      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+      "test.tsx",
+      { generate: "ssr" },
+    );
+    expect(ssr).toContain('"<div><span>A</span></div>"');
+    const ssrF = compileSource(
+      `export const App = () => <div>{false && <span>A</span>}</div>;`,
+      "test.tsx",
+      { generate: "ssr" },
+    );
+    expect(ssrF).toContain('"<div></div>"');
+    expect(ssrF).not.toContain("null");
+  });
+
   it("优化：静态子文本 + 拼接应提升进 template，无 walk/insert", () => {
     const out = compileSource(
       `export const App = () => <div>{"hello" + " world"}</div>;`,

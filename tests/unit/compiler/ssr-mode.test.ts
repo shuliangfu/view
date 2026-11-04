@@ -49,17 +49,27 @@ describe("compiler/ssr-mode", () => {
     expect(ssr).not.toContain('"<c>"');
   });
 
-  it("SSR：&&／null／空串仍不提升（与 CSR 动态路径对齐）", () => {
-    const andCode =
+  it("SSR：0 && / \"\" && 仍不提升；null && 省略为空壳", () => {
+    const textAnd =
       `export const App = () => <div>{"a" && "b"}</div>;`;
-    const nullCode = `export const App = () => <div>{null}</div>;`;
-    const emptyCode = `export const App = () => <div>{""}</div>;`;
-    const andOut = compileSource(andCode, "t.tsx", { generate: "ssr" });
-    const nullOut = compileSource(nullCode, "t.tsx", { generate: "ssr" });
-    const emptyOut = compileSource(emptyCode, "t.tsx", { generate: "ssr" });
-    expect(andOut).toContain("&&");
-    expect(nullOut).toContain("null");
-    expect(emptyOut).toMatch(/\+\s*""/);
+    const zeroAnd =
+      `export const App = () => <div>{0 && <span>A</span>}</div>;`;
+    const emptyAnd =
+      `export const App = () => <div>{"" && <span>A</span>}</div>;`;
+    const nullAnd =
+      `export const App = () => <div>{null && <span>A</span>}</div>;`;
+    expect(compileSource(textAnd, "t.tsx", { generate: "ssr" })).toContain(
+      "&&",
+    );
+    expect(compileSource(zeroAnd, "t.tsx", { generate: "ssr" })).toContain(
+      "0 &&",
+    );
+    expect(compileSource(emptyAnd, "t.tsx", { generate: "ssr" })).toContain(
+      "&&",
+    );
+    const nullOut = compileSource(nullAnd, "t.tsx", { generate: "ssr" });
+    expect(nullOut).toContain('"<div></div>"');
+    expect(nullOut).not.toContain("+ null");
   });
 
   it("SSR Fragment：静态子文本折叠", () => {

@@ -1,0 +1,2 @@
+import { memo } from "@dreamer/view";
+export const App = () => "<div><span>A</span></div>";

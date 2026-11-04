@@ -12,7 +12,7 @@
 ## 1. Metrics
 
 Run `compileSource()` over a fixed JSX corpus
-(`scripts/compiler-coverage/corpus.ts`, 28 fixtures). Count call sites in the
+(`scripts/compiler-coverage/corpus.ts`, 32 fixtures). Count call sites in the
 **body after injected imports**:
 
 | Metric | Meaning |
@@ -24,7 +24,7 @@ Run `compileSource()` over a fixed JSX corpus
 | `setProperty` | One-shot property writes (no Effect) |
 | `spread` / `memo` | Spreads and inline ternary `memo` |
 | `zeroReactiveDomOps` | No walk / setAttribute / setProperty / spread in body |
-| `staticDomOpFreeRatio` | Share of fixtures with `zeroReactiveDomOps` (baseline ≈ **0.6786** = 19/28) |
+| `staticDomOpFreeRatio` | Share of fixtures with `zeroReactiveDomOps` (baseline ≈ **0.7188** = 23/32) |
 
 **This knife is a baseline**: lock what static lifting the compiler already does
 so silent regressions fail the gate. It is **not** “max out compiler opts until

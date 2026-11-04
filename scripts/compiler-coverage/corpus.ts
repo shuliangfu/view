@@ -92,6 +92,35 @@ export const FIXTURES: Fixture[] = [
     note: "Static concat lifted beside dynamic child; one walk+insert remains",
   },
   {
+    id: "static-true-and-jsx",
+    fileName: "static-true-and-jsx.tsx",
+    source:
+      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+    note: "true && <JSX> folded into template (no walk/insert)",
+  },
+  {
+    id: "static-false-and-jsx",
+    fileName: "static-false-and-jsx.tsx",
+    source:
+      `export const App = () => <div>{false && <span>A</span>}</div>;`,
+    note: "false && <JSX> omitted from template",
+  },
+  {
+    id: "static-false-or-jsx",
+    fileName: "static-false-or-jsx.tsx",
+    source:
+      `export const App = () => <div>{false || <span>A</span>}</div>;`,
+    note: "false || <JSX> folded into template",
+  },
+  {
+    id: "ssr-static-true-and-jsx",
+    fileName: "ssr-static-true-and-jsx.tsx",
+    source:
+      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: true && <JSX> folded like CSR",
+  },
+  {
     id: "dyn-text",
     fileName: "dyn-text.tsx",
     source: `export const App = () => <div>{count()}</div>;`,

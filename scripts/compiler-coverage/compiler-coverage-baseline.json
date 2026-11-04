@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T13:38:08.835Z",
+  "measuredAt": "2026-11-04T13:43:39.975Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -264,6 +264,100 @@
         "zeroReactiveDomOps": false
       },
       "goldenRel": "scripts/compiler-coverage/goldens/static-text-mixed.out.txt"
+    },
+    {
+      "id": "static-true-and-jsx",
+      "fileName": "static-true-and-jsx.tsx",
+      "note": "true && <JSX> folded into template (no walk/insert)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 229,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-true-and-jsx.out.txt"
+    },
+    {
+      "id": "static-false-and-jsx",
+      "fileName": "static-false-and-jsx.tsx",
+      "note": "false && <JSX> omitted from template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 215,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-false-and-jsx.out.txt"
+    },
+    {
+      "id": "static-false-or-jsx",
+      "fileName": "static-false-or-jsx.tsx",
+      "note": "false || <JSX> folded into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 229,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-false-or-jsx.out.txt"
+    },
+    {
+      "id": "ssr-static-true-and-jsx",
+      "fileName": "ssr-static-true-and-jsx.tsx",
+      "note": "SSR: true && <JSX> folded like CSR",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 92,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-true-and-jsx.out.txt"
     },
     {
       "id": "dyn-text",
@@ -670,7 +764,7 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 28,
+    "fixtureCount": 32,
     "totalSetAttribute": 4,
     "totalSetProperty": 1,
     "totalWalk": 5,
@@ -678,7 +772,7 @@
     "totalMemo": 1,
     "totalSpread": 1,
     "totalPathConsts": 5,
-    "zeroReactiveDomOpsCount": 19,
-    "staticDomOpFreeRatio": 0.6786
+    "zeroReactiveDomOpsCount": 23,
+    "staticDomOpFreeRatio": 0.7188
   }
 }

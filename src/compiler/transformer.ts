@@ -26,6 +26,8 @@
 
 import ts from "typescript";
 import {
+  classifyStaticShortCircuitLeft,
+  foldStaticLogicJsxChild,
   getTagName,
   isStaticExpression,
   serializeLiftableStaticTextChild,
@@ -142,14 +144,35 @@ function rewriteToSSR(
           parts.push(text);
         } else if (ts.isJsxExpression(child)) {
           if (child.expression) {
-            // 与 CSR template 对齐：可提升静态子文本折进字符串（含 escape）
-            const lifted = serializeLiftableStaticTextChild(child.expression);
-            if (lifted !== undefined) {
-              parts.push(lifted);
+            // true && <JSX> / false && …：与 CSR 对齐；omit 不写入（避免 +null → "null"）
+            const logicFold = foldStaticLogicJsxChild(child.expression);
+            if (logicFold?.type === "omit") {
+              // skip
+            } else if (logicFold?.type === "jsx") {
+              const visited = ts.visitNode(logicFold.jsx, visitor);
+              if (!visited) {
+                // skip
+              } else if (ts.isStringLiteral(visited as ts.Expression)) {
+                parts.push((visited as ts.StringLiteral).text);
+              } else {
+                parts.push(visited as ts.Expression);
+              }
             } else {
-              parts.push(
-                ts.visitNode(child.expression, visitor) as ts.Expression,
-              );
+              // 与 CSR template 对齐：可提升静态子文本折进字符串（含 escape）
+              const lifted = serializeLiftableStaticTextChild(child.expression);
+              if (lifted !== undefined) {
+                parts.push(lifted);
+              } else {
+                const visited = ts.visitNode(
+                  child.expression,
+                  visitor,
+                ) as ts.Expression;
+                if (visited && ts.isStringLiteral(visited)) {
+                  parts.push(visited.text);
+                } else if (visited) {
+                  parts.push(visited);
+                }
+              }
             }
           }
         } else {
@@ -211,13 +234,33 @@ function rewriteToSSR(
         if (text === "") return;
         parts.push(text);
       } else if (ts.isJsxExpression(child) && child.expression) {
-        const lifted = serializeLiftableStaticTextChild(child.expression);
-        if (lifted !== undefined) {
-          parts.push(lifted);
+        const logicFold = foldStaticLogicJsxChild(child.expression);
+        if (logicFold?.type === "omit") {
+          // skip
+        } else if (logicFold?.type === "jsx") {
+          const visited = ts.visitNode(logicFold.jsx, visitor);
+          if (!visited) {
+            // skip
+          } else if (ts.isStringLiteral(visited as ts.Expression)) {
+            parts.push((visited as ts.StringLiteral).text);
+          } else {
+            parts.push(visited as ts.Expression);
+          }
         } else {
-          parts.push(
-            ts.visitNode(child.expression, visitor) as ts.Expression,
-          );
+          const lifted = serializeLiftableStaticTextChild(child.expression);
+          if (lifted !== undefined) {
+            parts.push(lifted);
+          } else {
+            const visitedExpr = ts.visitNode(
+              child.expression,
+              visitor,
+            ) as ts.Expression;
+            if (visitedExpr && ts.isStringLiteral(visitedExpr)) {
+              parts.push(visitedExpr.text);
+            } else if (visitedExpr) {
+              parts.push(visitedExpr);
+            }
+          }
         }
       } else {
         const visited = ts.visitNode(child, visitor);
@@ -308,11 +351,20 @@ export function transformJSX(
 
   return (sourceFile: ts.SourceFile) => {
     function visitor(node: ts.Node): ts.Node {
-      // 极致优化：三元运算符内联化
+      // 静态 true/false ? JSX : JSX → 直接取分支（无 memo）
       if (
         ts.isConditionalExpression(node) &&
         (isJsxLike(node.whenTrue) || isJsxLike(node.whenFalse))
       ) {
+        const condKind = classifyStaticShortCircuitLeft(node.condition);
+        if (condKind === "truthy") {
+          return ts.visitNode(node.whenTrue, visitor) as ts.Expression;
+        }
+        if (
+          condKind === "omit" || condKind === "zero" || condKind === "empty"
+        ) {
+          return ts.visitNode(node.whenFalse, visitor) as ts.Expression;
+        }
         return factory.createCallExpression(
           factory.createIdentifier("memo"),
           undefined,
@@ -333,6 +385,17 @@ export function transformJSX(
             ),
           ],
         );
+      }
+
+      // true && <JSX> / false && <JSX> / null || <JSX> 等编译期短路
+      if (ts.isBinaryExpression(node)) {
+        const folded = foldStaticLogicJsxChild(node);
+        if (folded?.type === "omit") {
+          return factory.createNull();
+        }
+        if (folded?.type === "jsx") {
+          return ts.visitNode(folded.jsx, visitor) as ts.Expression;
+        }
       }
 
       if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
