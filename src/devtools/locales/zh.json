@@ -25,8 +25,6 @@
   "hmrUpdates": "更新",
   "hmrOk": "成功",
   "hmrFailed": "失败",
-  "hmrLastNone": "最近更新：无",
-  "hmrLast": "最近更新：{time}",
   "hmrOffline": "离线",
   "hmrUpdating": "更新中…",
   "hmrUpdatingPath": "更新中 {path}",

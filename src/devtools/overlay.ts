@@ -27,6 +27,7 @@ import {
   getTrackedRoots,
   type IndexedOwnerNode,
   inspectOwnerIndexed,
+  installComponentSetupTracking,
   installOwnerDomTracking,
   isViewDev,
   type OversubscribeWarning,
@@ -627,6 +628,7 @@ export function mountDevtoolsOverlay(
   if (typeof document === "undefined" || !document.body) return null;
 
   installOwnerDomTracking();
+  installComponentSetupTracking();
 
   if (active) active.unmount();
 
@@ -770,7 +772,6 @@ export function mountDevtoolsOverlay(
     ot("hmrFailed")
   }</span></div>
               </div>
-              <p class="hint" data-el="hmr-last">${ot("hmrLastNone")}</p>
             </div>
           </div>
         </div>
@@ -1365,14 +1366,6 @@ export function mountDevtoolsOverlay(
     setT("[data-el='hmr-updates']", String(snap.updateCount));
     setT("[data-el='hmr-ok']", String(snap.successCount));
     setT("[data-el='hmr-fail']", String(snap.failureCount));
-    const last = el("[data-el='hmr-last']");
-    if (last) {
-      last.textContent = snap.lastUpdateTime
-        ? ot("hmrLast", {
-          time: new Date(snap.lastUpdateTime).toLocaleTimeString(),
-        })
-        : ot("hmrLastNone");
-    }
     if (claimNote) {
       claimNote.textContent = ot("hmrClaimed");
     }

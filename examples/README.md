@@ -33,7 +33,7 @@ serve）。切换页面使用顶部导航或首页链接；在任意路由下刷
 | 2    | Store    | createStore（getters、actions、persist）                                                                                                           |
 | 3    | Boundary | ErrorBoundary、Suspense                                                                                                                            |
 | 4    | 表单     | createForm（`/form`）；`createSelector`+createForm 见 `/performance`                                                                               |
-| 5    | Resource | createResource（无/有 source）、Suspense                                                                                                           |
+| 5    | Resource | createResource（无/有 source）、Suspense、AbortSignal（fetcher `{ signal }`＋页级 abort）                                                          |
 | 6    | Context  | createContext、Provider、useContext                                                                                                                |
 | 7    | Runtime  | createRoot、render、renderToString、generateHydrationScript                                                                                        |
 | 8    | 控制流   | `For` / `Index` / `Show` / `Switch` / `Dynamic`；手写 JSX 传 **`SignalRef`**（如 `each={items}`）或 **`() => ref.value`**，勿 `each={items.value}` |

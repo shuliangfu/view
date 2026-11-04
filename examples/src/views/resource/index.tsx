@@ -3,16 +3,32 @@
  * @description 展示 @dreamer/view 异步资源加载与数据获取。
  */
 
-import { createSignal } from "@dreamer/view/reactivity";
+import { createSignal, onCleanup } from "@dreamer/view/reactivity";
 import { ErrorBoundary } from "@dreamer/view/control-flow";
 import { Suspense } from "@dreamer/view/csr";
-import { createResource, type Resource } from "@dreamer/view/resource";
+import {
+  createResource,
+  type Resource,
+  type ResourceFetcherInfo,
+} from "@dreamer/view/resource";
 
 /**
- * 模拟一个异步数据获取 API。
+ * 模拟异步 API：第二参接收 createResource 注入的 `{ signal }`。
+ * source 切换／refetch／页级 AbortController 会 abort，清掉定时器（dogfood AbortSignal）。
  */
-async function fakeApi(id: number) {
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+async function fakeApi(id: number, { signal }: ResourceFetcherInfo) {
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(), 1500);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
   if (id === 3) throw new Error("模拟的网络请求错误 (ID: 3)");
   return { id, name: `用户 ${id}`, bio: "致力于构建极致性能的前端框架" };
 }
@@ -47,10 +63,12 @@ function UserLoaded(props: { user: Resource<UserRecord> }) {
 export default function ResourceDemo() {
   const [userId, setUserId] = createSignal(1);
   /**
-   * 与 Suspense 配合须在边界外创建：同一 resource 在 fallback/内容切换时不应重复 new，
-   * register 会先同步再微任务绑定最近 Suspense 栈。
+   * 页级 AbortController：离开本页 onCleanup → abort in-flight（P1 AbortSignal dogfood）。
+   * 与 Suspense 配合须在边界外创建：同一 resource 在 fallback/内容切换时不应重复 new。
    */
-  const user = createResource(userId, fakeApi);
+  const pageAbort = new AbortController();
+  onCleanup(() => pageAbort.abort());
+  const user = createResource(userId, fakeApi, { signal: pageAbort.signal });
 
   return (
     <section className="space-y-8">
@@ -60,7 +78,8 @@ export default function ResourceDemo() {
         </h2>
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
           通过 createResource 实现响应式数据获取。当 userId
-          改变时，数据会自动重新加载。Suspense 会在加载过程中显示 fallback。
+          改变时，数据会自动重新加载（上一趟经 AbortSignal 取消）。Suspense
+          会在加载过程中显示 fallback；离开本页会 abort 进行中的请求。
         </p>
       </header>
 

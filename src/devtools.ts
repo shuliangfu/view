@@ -16,7 +16,10 @@
  * {@link enableOversubscribeWarnings} (require `VIEW_DEV` to emit).
  * DOM inspect ({@link installOwnerDomTracking}) is a separate `VIEW_DEV` hook
  * read by `jsx()` — absent unless devtools installs it, and it does not mutate
- * application nodes.
+ * application nodes. Component-setup auto-note
+ * ({@link installComponentSetupTracking} → `globalThis.__DREAMER_COMPONENT_SETUP__`)
+ * likewise lets `jsx()` call {@link noteComponentSetup} for named components
+ * without app code — production has no hook → no-op.
  *
  * Prefer enabling `globalThis.VIEW_DEV = true` in development (dev server already
  * injects it for HMR) so registry snapshots include anonymous Signals.
@@ -334,12 +337,17 @@ export function clearTrackedRoots(): void {
  * `createRoot` wrapper that auto {@link trackRoot} / {@link untrackRoot} on dispose.
  * Does not change the underlying `createRoot` implementation.
  * When `VIEW_DEV` is on, also {@link installOwnerDomTracking} **before** `fn`
- * so the first JSX render is included in inspect highlight.
+ * so the first JSX render is included in inspect highlight, and
+ * {@link installComponentSetupTracking} so named function components auto-note
+ * setup re-runs.
  */
 export function createRootTracked<T>(
   fn: (dispose: () => void) => T,
 ): T {
-  if (isViewDev()) installOwnerDomTracking();
+  if (isViewDev()) {
+    installOwnerDomTracking();
+    installComponentSetupTracking();
+  }
   return createRoot((dispose) => {
     const owner = getOwner();
     trackRoot(owner);
@@ -595,14 +603,15 @@ export function clearComponentSetupNotes(): void {
 }
 
 /**
- * Opt-in DEV bookkeeping: call once at the top of a component / page setup.
+ * DEV bookkeeping: call once at the top of a component / page setup
+ * (or let `jsx()` do it via {@link installComponentSetupTracking}).
  *
  * A **second** call for the same `key` (without clearing) means the setup body
  * re-ran — usually from a too-wide Effect / whole-tree replace. That re-run is
  * what re-fires **top-level bare `fetch`** and drops focus; put IO in
  * `createEffect` / `createResource` instead (P0-4).
  *
- * Does **not** hook the runtime. Emitting requires `VIEW_DEV` + `emit: true`
+ * Emitting requires `VIEW_DEV` + `emit: true`
  * (via {@link detectComponentRerun} or the return value when `emit` is set).
  *
  * @returns current setup count for `key`
@@ -611,6 +620,42 @@ export function noteComponentSetup(key: string): number {
   const n = (componentSetupCounts.get(key) ?? 0) + 1;
   componentSetupCounts.set(key, n);
   return n;
+}
+
+const COMPONENT_SETUP_HOOK_KEY = "__DREAMER_COMPONENT_SETUP__";
+
+function componentSetupHook(key: string): void {
+  noteComponentSetup(key);
+}
+
+/**
+ * Install the JSX auto-`noteComponentSetup` hook. No-op unless `VIEW_DEV`.
+ * Safe to call more than once. `jsx()` / `jsxs()` / `jsxDEV` then note
+ * `displayName` or `name` on each function-component setup (anonymous skipped).
+ */
+export function installComponentSetupTracking(): void {
+  if (!isViewDev()) return;
+  (globalThis as Record<string, unknown>)[COMPONENT_SETUP_HOOK_KEY] =
+    componentSetupHook;
+}
+
+/** Remove the JSX setup hook if it still points at this module. */
+export function uninstallComponentSetupTracking(): void {
+  const g = globalThis as Record<string, unknown>;
+  if (g[COMPONENT_SETUP_HOOK_KEY] === componentSetupHook) {
+    delete g[COMPONENT_SETUP_HOOK_KEY];
+  }
+}
+
+/** `true` when the JSX setup hook is the tracker from this module. */
+export function isComponentSetupTracking(): boolean {
+  return (globalThis as Record<string, unknown>)[COMPONENT_SETUP_HOOK_KEY] ===
+    componentSetupHook;
+}
+
+/** Keys currently tracked by {@link noteComponentSetup} (tests / tooling). */
+export function listComponentSetupKeys(): string[] {
+  return [...componentSetupCounts.keys()];
 }
 
 /**
@@ -678,7 +723,10 @@ export function detectRemountChurn(
 export interface DetectOversubscribeOptions extends OversubscribeWarnOptions {
   /** Also check these remount keys. */
   remountKeys?: string[];
-  /** Also check these {@link noteComponentSetup} keys for re-runs. */
+  /**
+   * Extra {@link noteComponentSetup} keys for re-runs.
+   * All currently noted keys are always included.
+   */
   setupKeys?: string[];
   /** Root id prefix for {@link IndexedOwnerNode} paths. Default `"0"`. */
   rootId?: string;
@@ -697,7 +745,9 @@ export function detectOversubscribe(
     const hit = detectRemountChurn(key, options);
     if (hit) out.push(hit);
   }
-  for (const key of options?.setupKeys ?? []) {
+  const setupKeys = new Set(options?.setupKeys ?? []);
+  for (const k of componentSetupCounts.keys()) setupKeys.add(k);
+  for (const key of setupKeys) {
     const hit = detectComponentRerun(key, options);
     if (hit) out.push(hit);
   }
@@ -810,7 +860,11 @@ export interface EnableOversubscribeWarningsOptions
   includeTrackedRoots?: boolean;
   /** Remount keys to check each tick. */
   remountKeys?: string[];
-  /** {@link noteComponentSetup} keys to check each tick. */
+  /**
+   * Extra {@link noteComponentSetup} keys to check each tick.
+   * Auto-noted keys (via {@link installComponentSetupTracking}) are always
+   * scanned; this list only adds names not yet counted.
+   */
   setupKeys?: string[];
 }
 
@@ -855,7 +909,9 @@ export function enableOversubscribeWarnings(
     for (const key of remountKeys) {
       detectRemountChurn(key, { ...opts, emit: true, onWarn: opts.onWarn });
     }
-    for (const key of setupKeys) {
+    const keys = new Set(setupKeys);
+    for (const k of componentSetupCounts.keys()) keys.add(k);
+    for (const key of keys) {
       detectComponentRerun(key, { ...opts, emit: true, onWarn: opts.onWarn });
     }
   };

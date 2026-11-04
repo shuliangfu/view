@@ -4,8 +4,8 @@
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | 包     | `@dreamer/view` **3.0.0**（`dev`）                                                                                                      |
 | 性质   | **DEV／opt-in DX**＋文档 — setup 体被多余重跑时警告（失焦＋裸 `fetch` 重发）                                                            |
-| 入口   | `@dreamer/view/devtools`（`noteComponentSetup`／`detectComponentRerun`；扩展 oversubscribe）                                            |
-| 范围外 | 重写响应式内核；改 Effect 默认微任务；自动挂钩每个组件；发 JSR                                                                          |
+| 入口   | `@dreamer/view/devtools`（`noteComponentSetup`／`installComponentSetupTracking`／`detectComponentRerun`；扩展 oversubscribe）          |
+| 范围外 | 重写响应式内核；改 Effect 默认微任务；发 JSR（DEV 下 jsx 自动 note 已落地，见 §2.1）                                                    |
 | EN     | [`../en-US/P1-view-rerun-fetch-guard.md`](../en-US/P1-view-rerun-fetch-guard.md)                                                        |
 | 相关   | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) |
 
@@ -26,6 +26,11 @@ remount 刷新，与 setup `untrack` 冲突。同刀已修。
 Context Proxy 的数据字段访问返回 `__VIEW_SIGNAL` thunk，急切
 `{user.name}`／属性仍经 `insert`／`createRenderEffect` 细粒度更新；setup
 本身不订父级 insert Effect。
+
+**props Signal thunk：** 经 `jsx()` 传入的函数组件 props，若字段为 Signal／
+Signal-of-object，经 `wrapComponentProps` 与 Context 同路径；急切
+`{props.user.name}`／`{user.name}`（`const user = props.user`）在 setup
+`untrack` 下仍细粒度。
 
 **仍会重建（允许）：** 父级 Effect 重跑（路由切换、父 thunk 显式重读页面
 Signal）、 水合 `mismatchMode: "remount"`、业务主动 remount。
@@ -74,6 +79,16 @@ detectComponentRerun("Page", { emit: true });
 ```
 
 既有 **wide-subscription**／**remount-churn** 文案已点明失焦与裸 fetch 重发。
+
+### 2.1 DEV 自动 note（jsx）
+
+`VIEW_DEV` 下调用 `installComponentSetupTracking()`（`createRootTracked`／
+`mountDevtoolsOverlay` 会顺带安装）后，经 `jsx`／`jsxs`／`jsxDEV` 的**具名**
+函数组件（`displayName` 或 `name`）会自动 `noteComponentSetup`，无需业务手写。
+匿名组件跳过。生产未装钩子 → `jsx` 只读一次 `globalThis`，零行为。
+
+`detectOversubscribe`／`enableOversubscribeWarnings` 会扫全部已 note 的 key
+（不必再列 `setupKeys`，该字段仅作补充）。
 
 ---
 

@@ -4,8 +4,8 @@
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Package      | `@dreamer/view` **3.0.0** (`dev`)                                                                                                       |
 | Nature       | **DEV / opt-in DX** + docs — warn when a setup body re-runs (focus loss + bare `fetch` re-fire)                                         |
-| Entry        | `@dreamer/view/devtools` (`noteComponentSetup` / `detectComponentRerun`; extends oversubscribe)                                         |
-| Out of scope | Rewriting the reactive kernel; changing Effect microtask defaults; auto-hooking every component; JSR publish                            |
+| Entry        | `@dreamer/view/devtools` (`noteComponentSetup` / `installComponentSetupTracking` / `detectComponentRerun`; extends oversubscribe)       |
+| Out of scope | Rewriting the reactive kernel; changing Effect microtask defaults; JSR publish (DEV jsx auto-note landed — see §2.1)                    |
 | ZH           | [`../zh-CN/P1-view-rerun-fetch-guard.md`](../zh-CN/P1-view-rerun-fetch-guard.md)                                                        |
 | Related      | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) |
 
@@ -29,6 +29,11 @@ same knife.
 `untrack`), property access on a Context Proxy returns a `__VIEW_SIGNAL` thunk
 for data fields so eager `{user.name}` / attrs still fine-grain via `insert` /
 `createRenderEffect`. Setup itself does not subscribe the parent insert Effect.
+
+**props Signal thunk:** function-component props passed through `jsx()` wrap
+Signal / Signal-of-object fields via `wrapComponentProps` (same path as
+Context). Eager `{props.user.name}` / `{user.name}` (`const user = props.user`)
+stays fine-grained under setup `untrack`.
 
 **Still remounts (allowed):** parent Effect re-runs (e.g. route switch, explicit
 parent thunk that re-reads a page Signal), hydration `mismatchMode: "remount"`,
@@ -83,6 +88,18 @@ detectComponentRerun("Page", { emit: true });
 
 Existing **wide-subscription** / **remount-churn** messages now also mention
 focus loss and bare-fetch re-fire.
+
+### 2.1 DEV auto-note via jsx
+
+With `VIEW_DEV` and `installComponentSetupTracking()` (also installed by
+`createRootTracked` / `mountDevtoolsOverlay`), **named** function components
+invoked through `jsx` / `jsxs` / `jsxDEV` (`displayName` or `name`) call
+`noteComponentSetup` automatically — no manual note in app code. Anonymous
+components are skipped. Production installs no hook → `jsx` only reads
+`globalThis` once and no-ops.
+
+`detectOversubscribe` / `enableOversubscribeWarnings` scan every noted key
+(`setupKeys` is optional extra only).
 
 ---
 

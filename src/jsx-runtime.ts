@@ -6,10 +6,15 @@
  * **3.0／P1-view-rerun-fetch-guard：** 函数组件在 `untrack` 下执行 setup，避免顶层读
  * Signal 订到父级 `insert` Effect → 非路由更新整树 `replaceChild`。细粒度更新仍靠
  * 子树内 `insert`／`createRenderEffect`／`createEffect`。路由切换等父级合法重跑仍会重建。
+ * DEV：若已安装 `globalThis.__DREAMER_COMPONENT_SETUP__`，具名函数组件自动
+ * `noteComponentSetup`（见 `@dreamer/view/devtools`），便于检出多余 setup 重跑。
+ * props 上 Signal／Signal-of-object 经 `wrapComponentProps`，急切字段读与 Context
+ * Proxy 同为 `__VIEW_SIGNAL` thunk（setup untrack 仍细粒度）。
  */
 
 import { createRenderEffect } from "./reactivity/effect.ts";
 import { untrack } from "./reactivity/signal.ts";
+import { wrapComponentProps } from "./reactivity/signal-value-proxy.ts";
 import {
   adoptChild,
   createOwner,
@@ -78,6 +83,27 @@ function captureOwnerDom(): {
 }
 
 /**
+ * DEV：`@dreamer/view/devtools` 在 `VIEW_DEV` 下安装
+ * `globalThis.__DREAMER_COMPONENT_SETUP__`，对具名／`displayName` 函数组件
+ * 自动 `noteComponentSetup`，无需业务手写。未安装时只读一次 global，生产 no-op。
+ * 匿名（无 name／displayName）跳过，避免共用 `"Anonymous"` 误报。
+ */
+function noteJsxComponentSetup(type: (...args: never[]) => unknown): void {
+  const note = (globalThis as {
+    __DREAMER_COMPONENT_SETUP__?: (key: string) => void;
+  }).__DREAMER_COMPONENT_SETUP__;
+  if (typeof note !== "function") return;
+  const meta = type as { displayName?: string; name?: string };
+  const key = (meta.displayName || meta.name || "").trim();
+  if (!key) return;
+  try {
+    note(key);
+  } catch {
+    /* DEV bookkeeping must not break render */
+  }
+}
+
+/**
  * 将 JSX 元素编译为延迟求值的 {@link VNode}（Thunk）：执行时才创建 Owner、插入 DOM。
  * @param type 标签名字符串或组件函数
  * @param props 元素/组件属性（含 `children`、`ref` 等）
@@ -98,10 +124,17 @@ export function jsx(
 
     // 1. 处理函数组件 (Component)
     if (typeof type === "function") {
+      // DEV：自动 noteComponentSetup（具名／displayName）；生产无钩子则 no-op
+      noteJsxComponentSetup(type as (...args: never[]) => unknown);
+
+      // props 上 Signal／Signal-of-object：与 Context Proxy 对齐，急切
+      // `{props.user.name}` 在 setup untrack 下仍细粒度（__VIEW_SIGNAL thunk）
+      const componentProps = wrapComponentProps(props);
+
       // 透明组件（如 Provider）不创建新的 Owner，直接在当前作用域执行
       if ((type as ViewTransparentProviderMeta).__IS_TRANSPARENT_PROVIDER) {
         // untrack：Provider setup 读 Signal 不订到外层 insert Effect
-        return untrack(() => type(props));
+        return untrack(() => type(componentProps));
       }
 
       const owner = createOwner();
@@ -110,7 +143,7 @@ export function jsx(
       // untrack setup：组件顶层读 Signal／Memo 不泄漏到父级 insert Effect，
       // 否则非路由状态一变会 cleanNode＋整段 replaceChild（失焦／裸 fetch 重发）。
       // 子树响应式仍由 insert／createRenderEffect／createEffect 负责。
-      return runWithOwner(owner, () => untrack(() => type(props)));
+      return runWithOwner(owner, () => untrack(() => type(componentProps)));
     }
 
     // 2. 处理原生元素 (Host Element)

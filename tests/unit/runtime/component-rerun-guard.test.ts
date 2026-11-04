@@ -3,7 +3,7 @@
  * whose setup merely reads Signals (those reads are untracked at the component boundary).
  */
 import "../dom-setup.ts";
-import { describe, expect, it } from "@dreamer/test";
+import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
   createContext,
   createSignal,
@@ -11,6 +11,15 @@ import {
 } from "@dreamer/view/reactivity";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { mount } from "@dreamer/view/csr";
+import {
+  clearComponentSetupNotes,
+  detectComponentRerun,
+  detectOversubscribe,
+  installComponentSetupTracking,
+  isComponentSetupTracking,
+  listComponentSetupKeys,
+  uninstallComponentSetupTracking,
+} from "@dreamer/view/devtools";
 import { insert } from "../../../src/runtime/insert.ts";
 import { flushPendingSync } from "../../../src/scheduler/batch.ts";
 
@@ -168,6 +177,203 @@ describe("runtime/component-rerun-guard (P1)", () => {
     flushPendingSync();
     expect(root.querySelector("#profile")).toBe(profile);
     expect(root.querySelector("#name")?.textContent).toBe("Admin");
+    expect(setups).toBe(1);
+    dispose();
+    root.remove();
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+
+describe("runtime/jsx-dev-rerun-note (P1)", () => {
+  const g = globalThis as { VIEW_DEV?: boolean };
+  let prevDev: boolean | undefined;
+
+  beforeEach(() => {
+    prevDev = g.VIEW_DEV;
+    g.VIEW_DEV = true;
+    clearComponentSetupNotes();
+    uninstallComponentSetupTracking();
+  });
+
+  afterEach(() => {
+    clearComponentSetupNotes();
+    uninstallComponentSetupTracking();
+    if (prevDev === undefined) delete g.VIEW_DEV;
+    else g.VIEW_DEV = prevDev;
+  });
+
+  it("installComponentSetupTracking is VIEW_DEV-gated", () => {
+    g.VIEW_DEV = false;
+    installComponentSetupTracking();
+    expect(isComponentSetupTracking()).toBe(false);
+    g.VIEW_DEV = true;
+    installComponentSetupTracking();
+    expect(isComponentSetupTracking()).toBe(true);
+  });
+
+  it("jsx auto-notes named function components without manual noteComponentSetup", () => {
+    installComponentSetupTracking();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const [page, setPage] = createSignal("a");
+
+    function TrackedChild(props: { page: string }) {
+      return jsx("div", { id: "child", "data-page": props.page });
+    }
+
+    function Parent() {
+      // Parent thunk re-reads page → Child remounts (route-like)
+      return () => jsx(TrackedChild, { page: page() });
+    }
+
+    const dispose = mount(() => jsx(Parent, {}), root);
+    expect(listComponentSetupKeys()).toContain("TrackedChild");
+    expect(listComponentSetupKeys()).toContain("Parent");
+    expect(detectComponentRerun("TrackedChild")).toBeNull();
+
+    setPage("b");
+    flushPendingSync();
+
+    const hit = detectComponentRerun("TrackedChild");
+    expect(hit).not.toBeNull();
+    expect(hit!.kind).toBe("component-rerun");
+    expect(hit!.setups).toBeGreaterThanOrEqual(2);
+
+    // detectOversubscribe picks auto-noted keys without setupKeys
+    const owner = null; // wide scan N/A; still merges setup map
+    const warnings = detectOversubscribe(owner, {});
+    expect(warnings.some((w) => w.kind === "component-rerun" && w.key === "TrackedChild"))
+      .toBe(true);
+
+    dispose();
+    root.remove();
+  });
+
+  it("anonymous components are not auto-noted (avoid Anonymous collisions)", () => {
+    installComponentSetupTracking();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+
+    const Anon = () => jsx("div", { id: "anon" });
+    // Wipe engine-assigned name if any — force empty for the assertion.
+    Object.defineProperty(Anon, "name", { value: "" });
+
+    const dispose = mount(() => jsx(Anon, {}), root);
+    expect(listComponentSetupKeys()).not.toContain("Anonymous");
+    expect(listComponentSetupKeys()).not.toContain("");
+    expect(root.querySelector("#anon")).toBeTruthy();
+
+    dispose();
+    root.remove();
+  });
+
+  it("production path: no hook → jsx does not note", () => {
+    // VIEW_DEV on but hook not installed
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    function Named() {
+      return jsx("span", { id: "n" });
+    }
+    const dispose = mount(() => jsx(Named, {}), root);
+    expect(listComponentSetupKeys()).toEqual([]);
+    dispose();
+    root.remove();
+  });
+}, { sanitizeOps: false, sanitizeResources: false });
+
+
+describe("runtime/props-signal-thunk (P1)", () => {
+  it("eager {props.user.name} stays fine-grained for Signal-of-object props", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    let setups = 0;
+    let setUser!: (v: { name: string; role: string }) => void;
+
+    function UserCard(props: { user: { name: string; role: string } }) {
+      setups++;
+      // Same as Context: esbuild evaluates props.user.name before jsx/insert.
+      // wrapComponentProps must return __VIEW_SIGNAL thunk under setup untrack.
+      return jsx("div", {
+        id: "card",
+        children: jsx("span", {
+          id: "name",
+          children: props.user.name,
+        }),
+      });
+    }
+
+    function Demo() {
+      const [user, set] = createSignal({ name: "Guest", role: "none" });
+      setUser = set;
+      return jsx(UserCard as never, { user });
+    }
+
+    const dispose = mount(() => jsx(Demo as never, {}), root);
+    const card = root.querySelector("#card");
+    expect(root.querySelector("#name")?.textContent).toBe("Guest");
+    expect(setups).toBe(1);
+
+    setUser({ name: "Admin", role: "superuser" });
+    flushPendingSync();
+
+    expect(root.querySelector("#card")).toBe(card);
+    expect(root.querySelector("#name")?.textContent).toBe("Admin");
+    expect(setups).toBe(1);
+
+    dispose();
+    root.remove();
+  });
+
+  it("eager {user.name} via const user = props.user also fine-grains", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    let setUser!: (v: { name: string }) => void;
+    let setups = 0;
+
+    function Profile(props: { user: { name: string } }) {
+      setups++;
+      const user = props.user;
+      return jsx("span", { id: "n", children: user.name });
+    }
+
+    function Demo() {
+      const [user, set] = createSignal({ name: "A" });
+      setUser = set;
+      return jsx(Profile as never, { user });
+    }
+
+    const dispose = mount(() => jsx(Demo as never, {}), root);
+    expect(root.querySelector("#n")?.textContent).toBe("A");
+    setUser({ name: "B" });
+    flushPendingSync();
+    expect(root.querySelector("#n")?.textContent).toBe("B");
+    expect(setups).toBe(1);
+    dispose();
+    root.remove();
+  });
+
+  it("primitive Signal prop stays as getter for insert children", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    let setN!: (v: number) => void;
+    let setups = 0;
+
+    function Counter(props: { n: number }) {
+      setups++;
+      return jsx("span", { id: "c", children: props.n as unknown as never });
+    }
+
+    function Demo() {
+      const [n, set] = createSignal(0);
+      setN = set;
+      return jsx(Counter as never, { n });
+    }
+
+    const dispose = mount(() => jsx(Demo as never, {}), root);
+    expect(root.querySelector("#c")?.textContent).toBe("0");
+    setN(2);
+    flushPendingSync();
+    expect(root.querySelector("#c")?.textContent).toBe("2");
     expect(setups).toBe(1);
     dispose();
     root.remove();

@@ -26,7 +26,7 @@
  */
 
 import { getOwner } from "./owner.ts";
-import { getCurrentObserver, untrack } from "./signal.ts";
+import { wrapSignalValue } from "./signal-value-proxy.ts";
 
 /**
  * 跨组件树传递数据的上下文：含 `Provider` 与可选 `defaultValue`。
@@ -100,95 +100,12 @@ export function useContext<T>(context: Context<T>): T {
     if (current.contexts && current.contexts.has(id)) {
       const value = current.contexts.get(id);
 
-      // Signal／getter：勿在此一次性 unwrap 成快照。组件 setup 已在 untrack 下运行
-      // （P1-view-rerun-fetch-guard）；若这里 unwrap，订阅丢失后只能靠整树 remount 刷新。
-      // 对象／函数结果：Proxy 包住 getter，每次属性访问再读并追踪（细粒度）。
-      // 原始值：在当前 Observer 下读一次，供 insert(() => useContext(...)) 订阅。
-      if (typeof value === "function") {
-        const peeked = untrack(() => (value as () => unknown)());
-        if (
-          peeked != null &&
-          (typeof peeked === "object" || typeof peeked === "function")
-        ) {
-          return new Proxy(value, contextProxyHandler) as T;
-        }
-        return (value as () => T)();
-      }
-
-      if (value && (typeof value === "object" || typeof value === "function")) {
-        return new Proxy(value, contextProxyHandler) as T;
-      }
-      return value;
+      // Signal／getter／对象：经共享 Proxy（signal-value-proxy）包装，勿一次性 unwrap。
+      // 无 Observer（setup untrack）时字段急切读返回 `__VIEW_SIGNAL` thunk。
+      return wrapSignalValue<T>(value);
     }
     current = current.owner;
   }
 
   return context.defaultValue as T;
 }
-
-/**
- * Shared Proxy handler for Context values.
- *
- * With component setup under `untrack` (P1-view-rerun-fetch-guard), esbuild
- * `react-jsx` evaluates `{user.name}` **before** `jsx()` / `insert`. If we
- * returned a plain string there, children would stay stale. When there is
- * **no current Observer**, property gets that are data fields return a
- * `__VIEW_SIGNAL` thunk so `insert` / attr `createRenderEffect` can subscribe
- * fine-grained — while setup still does not subscribe the parent insert Effect.
- */
-const contextProxyHandler: ProxyHandler<
-  object | ((...args: never[]) => unknown)
-> = {
-  get(target, prop) {
-    const readData = (): unknown =>
-      typeof target === "function" ? (target as () => unknown)() : target;
-
-    // Symbols / internals: never defer
-    if (typeof prop === "symbol") {
-      const data = untrack(readData);
-      if (data == null) return undefined;
-      return Reflect.get(data as object, prop);
-    }
-
-    if (!getCurrentObserver()) {
-      const data = untrack(readData);
-      if (data == null) return undefined;
-      const res = Reflect.get(data as object, prop);
-      if (typeof res === "function") {
-        // Nested Signal field: hand the getter to insert as-is
-        if ((res as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL) return res;
-        return (res as (...args: unknown[]) => unknown).bind(data);
-      }
-      // Primitive / plain field from signal-of-object: deferred read for jsx children/attrs
-      const accessor = () => {
-        const latest = readData();
-        if (latest == null) return undefined;
-        return Reflect.get(latest as object, prop);
-      };
-      (accessor as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL = true;
-      return accessor;
-    }
-
-    const data = readData();
-    if (data == null) return undefined;
-    const res = Reflect.get(data as object, prop);
-    if (typeof res === "function") {
-      if ((res as { __VIEW_SIGNAL?: boolean }).__VIEW_SIGNAL) {
-        (res as () => unknown)(); // 显式追踪
-        return res;
-      }
-      return (res as (...args: unknown[]) => unknown).bind(data);
-    }
-    return res;
-  },
-  set(target, prop, val) {
-    const data = typeof target === "function"
-      ? (target as () => unknown)()
-      : target;
-    if (data && typeof data === "object") {
-      (data as Record<PropertyKey, unknown>)[prop] = val;
-      return true;
-    }
-    return false;
-  },
-};
