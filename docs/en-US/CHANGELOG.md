@@ -10,6 +10,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P2-4: DEV-only DevTools (Owner tree / subscriptions, non-breaking)**
+  - New subpath `@dreamer/view/devtools`: `inspectOwner` / `summarizeOwnerTree`,
+    `getTrackedRoots`, `getSignalObserverCount`, `snapshotRegistrySources`,
+    `countUpstream` / `countDownstream` (no browser extension / UI shell).
+  - **No** `createSignal` / `createRoot` hot-path hooks (probe Observer +
+    opt-in `trackRoot` / `createRootTracked`); module is **not** re-exported from
+    the main barrel or `/reactivity`, so measured size / consumer-bundle baselines
+    are **not** raised.
+  - Docs [`P2-4-devtools.md`](./P2-4-devtools.md) /
+    [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md); unit locks under
+    `tests/unit/devtools/`.
+  - No JSR / npm; does **not** change runtime default semantics.
+
 ### Changed
 
 - **P2: examples subpath dogfood (non-breaking)**

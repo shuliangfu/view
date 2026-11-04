@@ -24,6 +24,7 @@
 | [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md) | Hydration `mismatchMode` opt-in pilot (default remains continue) |
 - [P1-4-router-split-ssr.md](./P1-4-router-split-ssr.md) — Router split + SSR isomorphism
 | [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md) | examples subpath dogfood (codegen / Bun import map) |
+| [`P2-4-devtools.md`](./P2-4-devtools.md) · [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md) | DEV-only DevTools (Owner / subscriptions) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---

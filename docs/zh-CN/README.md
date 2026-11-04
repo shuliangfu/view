@@ -104,6 +104,7 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                             |
 | `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` 等**                                                               |
 | `jsr:@dreamer/view/csr`             | **CSR 聚合**：signal + mount/hydrate + 控制流 + Suspense（无 SSR/router）                                        |
+| `jsr:@dreamer/view/devtools`      | **仅 DEV**：Owner 树／订阅数观察（需 `VIEW_DEV`；勿进生产包）                                                                      |
 
 **推荐导入（新代码请优先用子路径）：**
 
@@ -1357,6 +1358,7 @@ function ModalHost() {
 - **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
 - **P0-2：消费方／examples bundle analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
 - **P2：examples 子路径 dogfood**：[`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)
+- **P2-4 DEV-only DevTools**（Owner／订阅数）：[P2-4-devtools.md](./P2-4-devtools.md)／[en](../en-US/P2-4-devtools.md)
 - **P1-1：主入口 barrel 弃用预告（策略 A）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
 - **P1-2：水合 opt-in 试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)
 - **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)

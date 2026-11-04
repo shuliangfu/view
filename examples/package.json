@@ -23,7 +23,8 @@
     "@dreamer/view/form": "../src/form.ts",
     "@dreamer/view/resource": "../src/resource.ts",
     "@dreamer/view/control-flow": "../src/control-flow.ts",
-    "@dreamer/view/csr": "../src/csr.ts"
+    "@dreamer/view/csr": "../src/csr.ts",
+    "@dreamer/view/devtools": "../src/devtools.ts"
   },
   "dependencies": {
     "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",

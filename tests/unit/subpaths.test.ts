@@ -73,4 +73,11 @@ describe("subpaths（按需导出）", () => {
     expect(CsrFor).toBe(MainFor);
     expect(csrMount).toBe(mainMount);
   });
+
+  it("devtools：子路径可导入（DEV 辅助，不进主 barrel）", async () => {
+    const mod = await import("@dreamer/view/devtools");
+    expect(typeof mod.isViewDev).toBe("function");
+    expect(typeof mod.summarizeOwnerTree).toBe("function");
+    expect(typeof mod.getTrackedRoots).toBe("function");
+  });
 });

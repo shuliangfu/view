@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P2-4：DEV-only DevTools（Owner 树／订阅数，非破坏）**
+  - 新子路径 `@dreamer/view/devtools`：`inspectOwner`／`summarizeOwnerTree`、
+    `getTrackedRoots`、`getSignalObserverCount`、`snapshotRegistrySources`、
+    `countUpstream`／`countDownstream`（无浏览器扩展／UI 壳）。
+  - **无** `createSignal`／`createRoot` 热路径挂钩（探针 Observer＋可选
+    `trackRoot`／`createRootTracked`）；**不**从主 barrel／`/reactivity` re-export，
+    故 size／consumer-bundle **未**抬高基线数字。
+  - 文档 [`P2-4-devtools.md`](./P2-4-devtools.md)／
+    [`../en-US/P2-4-devtools.md`](../en-US/P2-4-devtools.md)；单测
+    `tests/unit/devtools/`。
+  - 禁 JSR／npm；**未**改运行时默认语义。
+
 ### 变更
 
 - **P2：examples 子路径 dogfood（非破坏）**
