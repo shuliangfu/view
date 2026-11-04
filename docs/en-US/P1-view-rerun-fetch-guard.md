@@ -25,6 +25,11 @@ each property access). Eager unwrap made object-valued `value={signal}` depend
 on whole-tree remount; with setup `untrack` that path went stale. Fixed in the
 same knife.
 
+When the app is compiled with **esbuild `react-jsx` / `jsx-runtime` only** (no
+`@dreamer/view` JSX compiler), write `{() => user.name}` — not `{user.name}` —
+so `insert` receives a thunk. Eager `{user.name}` was fine only while setup
+subscribed the parent Effect (whole-tree remount).
+
 **Still remounts (allowed):** parent Effect re-runs (e.g. route switch, explicit
 parent thunk that re-reads a page Signal), hydration `mismatchMode: "remount"`,
 author-triggered remounts.

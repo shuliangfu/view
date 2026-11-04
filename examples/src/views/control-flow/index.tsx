@@ -2,14 +2,12 @@
  * @module views/control-flow
  * @description 展示 @dreamer/view 核心控制流组件。
  */
-import { createContext, createSignal, useContext } from "@dreamer/view/reactivity";
 import {
-  For,
-  Index,
-  Match,
-  Show,
-  Switch,
-} from "@dreamer/view/control-flow";
+  createContext,
+  createSignal,
+  useContext,
+} from "@dreamer/view/reactivity";
+import { For, Index, Match, Show, Switch } from "@dreamer/view/control-flow";
 import { Dynamic } from "@dreamer/view/csr";
 
 const UserContext = createContext({ name: "Guest", role: "none" });
@@ -25,13 +23,13 @@ function DeepChild() {
         <p className="text-sm font-bold dark:text-slate-300">
           用户名:{" "}
           <span className="text-indigo-600 dark:text-indigo-400">
-            {user.name}
+            {() => user.name}
           </span>
         </p>
         <p className="text-sm font-bold dark:text-slate-300">
           角色:{" "}
           <span className="text-indigo-600 dark:text-indigo-400">
-            {user.role}
+            {() => user.role}
           </span>
         </p>
       </div>

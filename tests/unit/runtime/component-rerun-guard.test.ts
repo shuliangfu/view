@@ -129,4 +129,40 @@ describe("runtime/component-rerun-guard (P1)", () => {
     dispose();
     root.remove();
   });
+
+  it("jsx-runtime-style Context needs () => user.name under setup untrack", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const UserContext = createContext({ name: "Guest", role: "none" });
+    let setUser!: (v: { name: string; role: string }) => void;
+
+    function UserProfile() {
+      const user = useContext(UserContext) as { name: string; role: string };
+      return jsx("div", {
+        id: "profile",
+        children: jsx("span", {
+          id: "name",
+          // esbuild react-jsx path: must be a thunk, not eager user.name
+          children: () => user.name,
+        }),
+      });
+    }
+
+    function Demo() {
+      const [user, set] = createSignal({ name: "Guest", role: "none" });
+      setUser = set;
+      return jsx(UserContext.Provider as never, {
+        value: user,
+        children: jsx(UserProfile as never, {}),
+      });
+    }
+
+    const dispose = mount(() => jsx(Demo as never, {}), root);
+    expect(root.querySelector("#name")?.textContent).toBe("Guest");
+    setUser({ name: "Admin", role: "superuser" });
+    flushPendingSync();
+    expect(root.querySelector("#name")?.textContent).toBe("Admin");
+    dispose();
+    root.remove();
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

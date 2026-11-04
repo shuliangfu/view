@@ -19,6 +19,7 @@ and this project adheres to
   - **Context:** `useContext` keeps Signal getters behind its Proxy (re-read on
     each property access) so object-valued `value={signal}` stays fine-grained
     after setup `untrack` (no remount-only refresh).
+  - **Examples:** context / control-flow use `{() => user.name}` under jsx-runtime so Context updates stay fine-grained after setup `untrack`.
 
   - `@dreamer/view/devtools`: `noteComponentSetup` / `detectComponentRerun` /
     `clearComponentSetupNotes`; `setupKeys` on detect/enable oversubscribe.

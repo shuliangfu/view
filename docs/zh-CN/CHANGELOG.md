@@ -16,6 +16,7 @@
     非路由更新整树 remount（测：`component-rerun-guard`）。
   - **Context：** `useContext` 对 Signal getter 经 Proxy 按属性重读，对象型
     `value={signal}` 在 setup `untrack` 后仍细粒度更新（不再依赖整树 remount）。
+  - **示例：** context／control-flow 在 jsx-runtime 下改用 `{() => user.name}`，setup `untrack` 后 Context 仍细粒度更新。
 
   - `@dreamer/view/devtools`：`noteComponentSetup`／`detectComponentRerun`／
     `clearComponentSetupNotes`；detect／enable oversubscribe 支持 `setupKeys`。
