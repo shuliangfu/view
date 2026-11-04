@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **P2：DevTools overlay 中英双语（跟页面语言，非破坏）**
+  - 浏览器安全：`src/devtools/overlay-l10n.ts` +
+    `src/devtools/locales/{en,zh}.json` 提供面板文案。
+  - 跟 `document.documentElement.lang`／`html[lang]`（MutationObserver＋refresh）；
+    **无**语言切换 UI。
+  - **不** import `src/i18n.ts`／`$tr`／`@dreamer/runtime-adapter`（避免
+    `node:*` 打进浏览器打包）。
+  - 仍仅 `VIEW_DEV`；size／consumer-bundle **基线不抬**。
+
 ### 变更
 
 - **依赖**：`@dreamer/server` 升至 `^1.3.0`（JSR／npm:@jsr），以使用

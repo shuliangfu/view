@@ -383,7 +383,9 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     assertBrowserE2E(t);
     await gotoExamplesPath(t, "/");
     await t.browser.waitFor(
-      () => document.querySelector("[data-dreamer-view-devtools='overlay']") != null,
+      () =>
+        document.querySelector("[data-dreamer-view-devtools='overlay']") !=
+          null,
       { timeout: 30_000 },
     );
     const opened = await t.browser.evaluate(() => {
@@ -392,22 +394,31 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
       ) as HTMLElement & { shadowRoot: ShadowRoot | null };
       const shadow = host?.shadowRoot;
       if (!shadow) return { ok: false, reason: "no-shadow" };
-      const indicator = shadow.querySelector(".indicator") as HTMLButtonElement | null;
+      const indicator = shadow.querySelector(".indicator") as
+        | HTMLButtonElement
+        | null;
       const panel = shadow.querySelector(".panel");
       if (!indicator || !panel) return { ok: false, reason: "missing-ui" };
       indicator.click();
       const tabs = ["overview", "tree", "signals", "warnings", "settings"]
         .map((name) => !!shadow.querySelector(`[data-tab="${name}"]`));
-      (shadow.querySelector('[data-tab="tree"]') as HTMLButtonElement | null)?.click();
+      (shadow.querySelector('[data-tab="tree"]') as HTMLButtonElement | null)
+        ?.click();
       return {
         ok: panel.classList.contains("open"),
         title: shadow.querySelector(".head-title")?.textContent ?? "",
         tabsOk: tabs.every(Boolean),
-        treeActive: shadow.querySelector('[data-pane="tree"]')?.classList.contains("active") === true,
+        treeActive:
+          shadow.querySelector('[data-pane="tree"]')?.classList.contains(
+            "active",
+          ) === true,
       };
     });
     expect(opened.ok).toBe(true);
-    expect(opened.title).toContain("View DevTools");
+    // examples html lang=zh-CN → overlay follows page language
+    expect(
+      /View DevTools|View 开发工具/.test(opened.title ?? ""),
+    ).toBe(true);
     expect(opened.tabsOk).toBe(true);
     expect(opened.treeActive).toBe(true);
 
@@ -420,7 +431,9 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
       const host = document.querySelector(
         "[data-dreamer-view-devtools='overlay']",
       ) as HTMLElement & { shadowRoot: ShadowRoot | null };
-      return host?.shadowRoot?.querySelector(".panel")?.classList.contains("open") ===
+      return host?.shadowRoot?.querySelector(".panel")?.classList.contains(
+        "open",
+      ) ===
         false;
     });
     expect(closed).toBe(true);
@@ -470,8 +483,14 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
        * (TimeoutError / "subtree intercepts pointer events"). Shrinking first keeps
        * peak scale ≤ 100% while still exercising both buttons. Assertions unchanged.
        */
-      const zoomOut = previewLayer.getByRole("button", { name: "－", exact: true });
-      const zoomIn = previewLayer.getByRole("button", { name: "＋", exact: true });
+      const zoomOut = previewLayer.getByRole("button", {
+        name: "－",
+        exact: true,
+      });
+      const zoomIn = previewLayer.getByRole("button", {
+        name: "＋",
+        exact: true,
+      });
       await zoomOut.click({ timeout: E2E_ACTION_TIMEOUT_MS });
       await t.browser.waitFor(
         () => {
@@ -563,10 +582,12 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     }).check({ timeout: E2E_ACTION_TIMEOUT_MS });
     await pw(t).getByRole("button", { name: "立即提交" }).click();
     // Playwright locator：断言强度不变，避免 waitForFunction 宿主 race 误导
-    await pw(t).getByRole("heading", { name: "提交成功", exact: true }).waitFor({
-      state: "visible",
-      timeout: 15_000,
-    });
+    await pw(t).getByRole("heading", { name: "提交成功", exact: true }).waitFor(
+      {
+        state: "visible",
+        timeout: 15_000,
+      },
+    );
     await pw(t).getByRole("button", { name: "重置" }).click();
     await pw(t).getByPlaceholder("请输入用户名...").waitFor({
       state: "visible",

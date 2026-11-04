@@ -23,14 +23,19 @@ import {
   enableOversubscribeWarnings,
   flattenIndexedOwner,
   getTrackedRoots,
+  type IndexedOwnerNode,
   inspectOwnerIndexed,
   isViewDev,
-  type IndexedOwnerNode,
   type OversubscribeWarning,
+  type OwnerTreeSummary,
   snapshotRegistrySources,
   summarizeOwnerTree,
-  type OwnerTreeSummary,
 } from "../devtools.ts";
+import {
+  getOverlayLocale,
+  ot,
+  syncOverlayLocaleFromPage,
+} from "./overlay-l10n.ts";
 
 /** Connection status mirrored from `@dreamer/server` HMR client bridge. */
 export type DreamerHmrConnection =
@@ -76,13 +81,13 @@ export function getDreamerHmrBridge(): DreamerHmrBridge | null {
 function hmrLabel(c: DreamerHmrConnection): string {
   switch (c) {
     case "connected":
-      return "Connected";
+      return ot("hmrConnected");
     case "disconnected":
-      return "Disconnected";
+      return ot("hmrDisconnected");
     case "reconnecting":
-      return "Reconnecting…";
+      return ot("hmrReconnecting");
     case "error":
-      return "Error";
+      return ot("hmrError");
   }
 }
 
@@ -596,7 +601,8 @@ export function mountDevtoolsOverlay(
 
   const storageKey = options?.storageKey ?? DEFAULT_STORAGE;
   const stored = readStore(storageKey);
-  let corner: DevtoolsOverlayCorner = stored.corner ?? options?.corner ?? "bottom-left";
+  let corner: DevtoolsOverlayCorner = stored.corner ?? options?.corner ??
+    "bottom-left";
   let refreshMs = stored.refreshMs ?? options?.refreshMs ?? 1000;
   const watchMisuse = options?.watchMisuse !== false;
   const parent = options?.parent ?? document.body;
@@ -626,61 +632,95 @@ export function mountDevtoolsOverlay(
   wrap.className = `wrap ${cornerClass(corner)}`;
   wrap.style.setProperty("--dv-z", String(zIndex));
   if (stored.offsetX || stored.offsetY) {
-    wrap.style.transform =
-      `translate(${stored.offsetX ?? 0}px, ${stored.offsetY ?? 0}px)`;
+    wrap.style.transform = `translate(${stored.offsetX ?? 0}px, ${
+      stored.offsetY ?? 0
+    }px)`;
   }
 
   const panel = document.createElement("div");
   panel.className = "panel";
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-label", "View DevTools");
+  syncOverlayLocaleFromPage();
+  panel.setAttribute("aria-label", ot("title"));
+  panel.setAttribute("data-locale", getOverlayLocale());
   panel.innerHTML = `
     <div class="head" data-el="drag-handle">
-      <div class="head-mark" aria-hidden="true">V</div>
-      <div class="head-text">
-        <p class="head-title">View DevTools</p>
-        <p class="head-sub">Owner · signals · misuse · <span class="kbd">⌘/Ctrl⇧D</span></p>
+      <div class="head-brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <p class="head-title" data-i18n="title">${ot("title")}</p>
+          <p class="head-sub"><span data-i18n="subtitle">${
+    ot("subtitle")
+  }</span> <span class="kbd">⌘/Ctrl⇧D</span></p>
+        </div>
       </div>
-      <button type="button" class="icon-btn" data-action="refresh" title="Refresh" aria-label="Refresh">↻</button>
-      <button type="button" class="icon-btn" data-action="close" aria-label="Close">
+      <button type="button" class="icon-btn" data-action="refresh" data-i18n-title="refresh" data-i18n-aria="refresh" title="${
+    ot("refresh")
+  }" aria-label="${ot("refresh")}">↻</button>
+      <button type="button" class="icon-btn" data-action="close" data-i18n-aria="close" aria-label="${
+    ot("close")
+  }">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
     <div class="tabs" role="tablist">
-      <button type="button" class="tab" data-tab="overview" role="tab">Overview</button>
-      <button type="button" class="tab" data-tab="tree" role="tab">Tree</button>
-      <button type="button" class="tab" data-tab="signals" role="tab">Signals <span class="count" data-el="sig-count">0</span></button>
-      <button type="button" class="tab" data-tab="warnings" role="tab">Warnings <span class="count" data-el="warn-count">0</span></button>
-      <button type="button" class="tab" data-tab="settings" role="tab">Settings</button>
+      <button type="button" class="tab" data-tab="overview" role="tab" data-i18n="tabOverview">${
+    ot("tabOverview")
+  }</button>
+      <button type="button" class="tab" data-tab="tree" role="tab" data-i18n="tabTree">${
+    ot("tabTree")
+  }</button>
+      <button type="button" class="tab" data-tab="signals" role="tab"><span data-i18n="tabSignals">${
+    ot("tabSignals")
+  }</span> <span class="count" data-el="sig-count">0</span></button>
+      <button type="button" class="tab" data-tab="warnings" role="tab"><span data-i18n="tabWarnings">${
+    ot("tabWarnings")
+  }</span> <span class="count" data-el="warn-count">0</span></button>
+      <button type="button" class="tab" data-tab="settings" role="tab" data-i18n="tabSettings">${
+    ot("tabSettings")
+  }</button>
     </div>
     <div class="body">
       <div class="pane" data-pane="overview">
-        <section class="section">
+        <div class="section">
           <div class="section-h">
-            <h3 class="section-title">Reactive overview</h3>
-            <span class="badge" data-el="roots-badge">0 roots</span>
+            <h3 class="section-title" data-i18n="reactiveOverview">${
+    ot("reactiveOverview")
+  }</h3>
+            <span class="badge" data-el="roots-badge">—</span>
           </div>
           <div class="stats">
-            <div class="stat"><span class="stat-n" data-el="n-effects">0</span><span class="stat-l">effects</span></div>
-            <div class="stat"><span class="stat-n" data-el="n-memos">0</span><span class="stat-l">memos</span></div>
-            <div class="stat"><span class="stat-n" data-el="n-nodes">0</span><span class="stat-l">nodes</span></div>
-            <div class="stat"><span class="stat-n" data-el="n-edges">0</span><span class="stat-l">up edges</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-effects">0</span><span class="stat-l" data-i18n="effects">${
+    ot("effects")
+  }</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-memos">0</span><span class="stat-l" data-i18n="memos">${
+    ot("memos")
+  }</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-nodes">0</span><span class="stat-l" data-i18n="nodes">${
+    ot("nodes")
+  }</span></div>
+            <div class="stat"><span class="stat-n" data-el="n-edges">0</span><span class="stat-l" data-i18n="edges">${
+    ot("edges")
+  }</span></div>
           </div>
-        </section>
-        <section class="section">
-          <div class="section-h">
-            <h3 class="section-title">Health</h3>
-            <span class="badge ok" data-el="health-badge">ok</span>
+          <div class="section-h" style="margin-top:10px">
+            <span class="badge ok" data-el="health-badge">${
+    ot("healthOkBadge")
+  }</span>
           </div>
-          <p class="hint" data-el="health-hint">No misuse warnings in the current scan.</p>
-        </section>
-        <section class="section">
+          <p class="hint" data-el="health-hint">${ot("healthOk")}</p>
+        </div>
+        <div class="section">
           <div class="section-h">
-            <h3 class="section-title">HMR</h3>
+            <h3 class="section-title" data-i18n="hmrTitle">${
+    ot("hmrTitle")
+  }</h3>
             <span class="badge" data-el="hmr-badge">—</span>
           </div>
           <div class="hmr-card" data-el="hmr-card">
-            <p class="hmr-missing" data-el="hmr-missing">Waiting for DEV HMR client (@dreamer/server)…</p>
+            <p class="hmr-missing" data-el="hmr-missing" data-i18n="hmrWaiting">${
+    ot("hmrWaiting")
+  }</p>
             <div class="hmr-live" data-el="hmr-live" hidden>
               <div class="hmr-row">
                 <span class="hmr-dot off" data-el="hmr-dot"></span>
@@ -688,82 +728,116 @@ export function mountDevtoolsOverlay(
                 <span class="hmr-meta" data-el="hmr-progress"></span>
               </div>
               <div class="hmr-stats">
-                <div class="hmr-stat"><b data-el="hmr-updates">0</b><span>updates</span></div>
-                <div class="hmr-stat"><b data-el="hmr-ok">0</b><span>ok</span></div>
-                <div class="hmr-stat"><b data-el="hmr-fail">0</b><span>failed</span></div>
+                <div class="hmr-stat"><b data-el="hmr-updates">0</b><span data-i18n="hmrUpdates">${
+    ot("hmrUpdates")
+  }</span></div>
+                <div class="hmr-stat"><b data-el="hmr-ok">0</b><span data-i18n="hmrOk">${
+    ot("hmrOk")
+  }</span></div>
+                <div class="hmr-stat"><b data-el="hmr-fail">0</b><span data-i18n="hmrFailed">${
+    ot("hmrFailed")
+  }</span></div>
               </div>
-              <p class="hint" data-el="hmr-last">Last update: none</p>
+              <p class="hint" data-el="hmr-last">${ot("hmrLastNone")}</p>
             </div>
           </div>
-        </section>
-        <section class="section">
-          <div class="section-h"><h3 class="section-title">Top sources</h3></div>
+        </div>
+        <div class="section">
+          <div class="section-h"><h3 class="section-title" data-i18n="topSources">${
+    ot("topSources")
+  }</h3></div>
           <ul class="list" data-el="overview-sources"></ul>
-        </section>
+        </div>
       </div>
       <div class="pane" data-pane="tree">
         <div class="toolbar">
-          <input class="search" data-el="tree-filter" placeholder="Filter by kind or path…" />
+          <input class="search" data-el="tree-filter" data-i18n-placeholder="treeFilterPh" placeholder="${
+    ot("treeFilterPh")
+  }" />
         </div>
         <div class="tree-layout">
           <div class="tree-pane" data-el="tree-list" role="tree"></div>
           <div class="detail-pane" data-el="tree-detail">
-            <p class="detail-empty">Select a node to inspect subscriptions.</p>
+            <p class="detail-empty" data-i18n="selectNode">${
+    ot("selectNode")
+  }</p>
           </div>
         </div>
       </div>
       <div class="pane" data-pane="signals">
         <div class="toolbar">
-          <input class="search" data-el="sig-filter" placeholder="Search registry sources…" />
+          <input class="search" data-el="sig-filter" data-i18n-placeholder="sigFilterPh" placeholder="${
+    ot("sigFilterPh")
+  }" />
         </div>
         <ul class="list" data-el="sig-list"></ul>
       </div>
       <div class="pane" data-pane="warnings">
         <div class="section-h" style="margin:0 0 8px">
-          <h3 class="section-title">Misuse scan</h3>
+          <h3 class="section-title" data-i18n="misuseScan">${
+    ot("misuseScan")
+  }</h3>
           <span class="badge ok" data-el="warn-badge">0</span>
         </div>
         <div data-el="warn-list"></div>
       </div>
       <div class="pane" data-pane="settings">
         <div class="settings-row">
-          <label for="dv-corner">Corner</label>
+          <label for="dv-corner" data-i18n="corner">${ot("corner")}</label>
           <select id="dv-corner" data-el="opt-corner">
-            <option value="bottom-left">Bottom left</option>
-            <option value="bottom-right">Bottom right</option>
-            <option value="top-left">Top left</option>
-            <option value="top-right">Top right</option>
+            <option value="bottom-left" data-i18n="cornerBL">${
+    ot("cornerBL")
+  }</option>
+            <option value="bottom-right" data-i18n="cornerBR">${
+    ot("cornerBR")
+  }</option>
+            <option value="top-left" data-i18n="cornerTL">${
+    ot("cornerTL")
+  }</option>
+            <option value="top-right" data-i18n="cornerTR">${
+    ot("cornerTR")
+  }</option>
           </select>
         </div>
         <div class="settings-row">
-          <label for="dv-refresh">Refresh (ms)</label>
+          <label for="dv-refresh" data-i18n="refreshMs">${
+    ot("refreshMs")
+  }</label>
           <input id="dv-refresh" data-el="opt-refresh" type="number" min="0" step="100" />
         </div>
         <div class="settings-row">
-          <label>Shortcut</label>
+          <label data-i18n="shortcut">${ot("shortcut")}</label>
           <span><span class="kbd">⌘/Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">D</span></span>
         </div>
         <div class="settings-row">
-          <label>HMR UI</label>
-          <span data-el="hmr-claim-note">Capsule hidden while this overlay is mounted (claimUi).</span>
+          <label data-i18n="hmrUi">${ot("hmrUi")}</label>
+          <span data-el="hmr-claim-note">${ot("hmrClaimed")}</span>
         </div>
-        <p class="hint">Drag the header or the floating button to reposition. Position & prefs persist in localStorage (<code>${storageKey}</code>). Esc closes. Production builds never mount this overlay. When the DEV HMR bridge is present, its status appears under Overview → HMR and the standalone server capsule is suppressed.</p>
+        <p class="hint" data-el="settings-hint">${
+    ot("settingsHint", { storageKey })
+  }</p>
         <div class="settings-row">
-          <button type="button" class="ghost" data-action="reset-pos">Reset position</button>
-          <button type="button" class="ghost" data-action="clear-warns">Clear warnings</button>
+          <button type="button" class="ghost" data-action="reset-pos" data-i18n="resetPos">${
+    ot("resetPos")
+  }</button>
+          <button type="button" class="ghost" data-action="clear-warns" data-i18n="clearWarns">${
+    ot("clearWarns")
+  }</button>
         </div>
       </div>
     </div>
     <div class="foot">
-      <button type="button" class="ghost" data-action="refresh-foot">↻ Refresh</button>
-      <span class="pill" data-el="dev-pill">VIEW_DEV · on</span>
+      <button type="button" class="ghost" data-action="refresh-foot">↻ <span data-i18n="refresh">${
+    ot("refresh")
+  }</span></button>
+      <span class="pill" data-el="dev-pill">${ot("devOn")}</span>
     </div>
   `;
 
   const indicator = document.createElement("button");
   indicator.type = "button";
   indicator.className = "indicator";
-  indicator.setAttribute("aria-label", "Open View DevTools");
+  indicator.setAttribute("aria-label", ot("openAria"));
   indicator.setAttribute("aria-expanded", "false");
   indicator.innerHTML = `
     <span class="indicator-mark" aria-hidden="true">V</span>
@@ -777,6 +851,38 @@ export function mountDevtoolsOverlay(
 
   const el = (sel: string): HTMLElement | null =>
     shadow.querySelector(sel) as HTMLElement | null;
+
+  /** Re-apply static chrome after page language changes (no language UI). */
+  const applyChromeI18n = () => {
+    panel.setAttribute("aria-label", ot("title"));
+    panel.setAttribute("data-locale", getOverlayLocale());
+    shadow.querySelectorAll("[data-i18n]").forEach((node) => {
+      const key = (node as HTMLElement).getAttribute("data-i18n");
+      if (key) node.textContent = ot(key);
+    });
+    shadow.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+      const key = (node as HTMLElement).getAttribute("data-i18n-placeholder");
+      if (key && node instanceof HTMLElement && node.tagName === "INPUT") {
+        (node as unknown as { placeholder: string }).placeholder = ot(key);
+      }
+    });
+    shadow.querySelectorAll("[data-i18n-aria]").forEach((node) => {
+      const key = (node as HTMLElement).getAttribute("data-i18n-aria");
+      if (key) (node as HTMLElement).setAttribute("aria-label", ot(key));
+    });
+    shadow.querySelectorAll("[data-i18n-title]").forEach((node) => {
+      const key = (node as HTMLElement).getAttribute("data-i18n-title");
+      if (key) (node as HTMLElement).setAttribute("title", ot(key));
+    });
+    const hint = el("[data-el='settings-hint']");
+    if (hint) hint.textContent = ot("settingsHint", { storageKey });
+    indicator.setAttribute(
+      "aria-label",
+      open ? ot("closeAria") : ot("openAria"),
+    );
+  };
+
+  let langObserver: MutationObserver | null = null;
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let stopWatch: (() => void) | null = null;
@@ -812,7 +918,7 @@ export function mountDevtoolsOverlay(
     indicator.setAttribute("aria-expanded", open ? "true" : "false");
     indicator.setAttribute(
       "aria-label",
-      open ? "Close View DevTools" : "Open View DevTools",
+      open ? ot("closeAria") : ot("openAria"),
     );
     persist();
   };
@@ -832,30 +938,30 @@ export function mountDevtoolsOverlay(
     const detail = el("[data-el='tree-detail']");
     if (!detail) return;
     if (!selectedPath) {
-      detail.innerHTML =
-        `<p class="detail-empty">Select a node to inspect subscriptions.</p>`;
+      detail.innerHTML = `<p class="detail-empty">${ot("selectNode")}</p>`;
       return;
     }
     const node = flatIndex.get(selectedPath);
     if (!node) {
-      detail.innerHTML =
-        `<p class="detail-empty">Node <code>${escapeHtml(selectedPath)}</code> is stale — refresh.</p>`;
+      detail.innerHTML = `<p class="detail-empty">${
+        ot("nodeStale", { path: selectedPath })
+      }</p>`;
       return;
     }
     detail.innerHTML = `
       <div class="section-h" style="margin-bottom:10px">
-        <h3 class="section-title">Node detail</h3>
+        <h3 class="section-title">${ot("nodeDetail")}</h3>
         <span class="kind ${node.kind}">${node.kind}</span>
       </div>
       <dl class="kv">
-        <dt>path</dt><dd>${escapeHtml(node.id)}</dd>
-        <dt>depth</dt><dd>${node.depth}</dd>
-        <dt>children</dt><dd>${node.children}</dd>
-        <dt>disposables</dt><dd>${node.disposables}</dd>
-        <dt>upstream</dt><dd>${node.upstream}</dd>
-        <dt>downstream</dt><dd>${node.downstream}</dd>
+        <dt>${ot("path")}</dt><dd>${escapeHtml(node.id)}</dd>
+        <dt>${ot("depth")}</dt><dd>${node.depth}</dd>
+        <dt>${ot("children")}</dt><dd>${node.children}</dd>
+        <dt>${ot("disposables")}</dt><dd>${node.disposables}</dd>
+        <dt>${ot("upstream")}</dt><dd>${node.upstream}</dd>
+        <dt>${ot("downstream")}</dt><dd>${node.downstream}</dd>
       </dl>
-      <p class="hint">Upstream = Observer→Source edges on Effects/Memos. Downstream = Source→Observer edges on Memos.</p>
+      <p class="hint">${ot("upstreamHint")}</p>
     `;
   };
 
@@ -883,10 +989,16 @@ export function mountDevtoolsOverlay(
       const isOpen = expanded.has(node.id) || !!filter;
       const pad = 6 + node.depth * 12;
       rows.push(`
-        <button type="button" class="tree-row${selectedPath === node.id ? " selected" : ""}"
-          data-path="${escapeHtml(node.id)}" style="padding-left:${pad}px" role="treeitem"
+        <button type="button" class="tree-row${
+        selectedPath === node.id ? " selected" : ""
+      }"
+          data-path="${
+        escapeHtml(node.id)
+      }" style="padding-left:${pad}px" role="treeitem"
           ${hasKids ? `aria-expanded="${isOpen ? "true" : "false"}"` : ""}>
-          <span class="tree-twist${hasKids ? "" : " empty"}" data-twist="${escapeHtml(node.id)}">${hasKids ? (isOpen ? "▼" : "▶") : "·"}</span>
+          <span class="tree-twist${hasKids ? "" : " empty"}" data-twist="${
+        escapeHtml(node.id)
+      }">${hasKids ? (isOpen ? "▼" : "▶") : "·"}</span>
           <span class="kind ${node.kind}">${node.kind}</span>
           <span>${escapeHtml(node.id)}</span>
           <span class="meta">↑${node.upstream} ↓${node.downstream}</span>
@@ -901,7 +1013,7 @@ export function mountDevtoolsOverlay(
     for (const root of forest) walk(root);
     list.innerHTML = rows.length
       ? rows.join("")
-      : `<p class="empty">No Owner roots — call createRootTracked / trackRoot, or pass owner.</p>`;
+      : `<p class="empty">${ot("noOwnerRoots")}</p>`;
     renderDetail();
   };
 
@@ -918,13 +1030,19 @@ export function mountDevtoolsOverlay(
     const list = el("[data-el='sig-list']");
     if (!list) return;
     if (!filtered.length) {
-      list.innerHTML = `<p class="empty">${sources.length ? "No sources match filter" : "No registry sources yet"}</p>`;
+      list.innerHTML = `<p class="empty">${
+        sources.length ? ot("noSourcesMatch") : ot("noSourcesYet")
+      }</p>`;
       return;
     }
     list.innerHTML = filtered
       .map(
         (s) =>
-          `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${escapeHtml(s.id)}</span><span class="row-v">${s.observers} obs</span></li>`,
+          `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${
+            escapeHtml(s.id)
+          }</span><span class="row-v">${
+            ot("obs", { n: s.observers })
+          }</span></li>`,
       )
       .join("");
 
@@ -935,10 +1053,12 @@ export function mountDevtoolsOverlay(
         ? top
           .map(
             (s) =>
-              `<li class="row"><span class="row-k">${escapeHtml(s.id)}</span><span class="row-v">${s.observers}</span></li>`,
+              `<li class="row"><span class="row-k">${
+                escapeHtml(s.id)
+              }</span><span class="row-v">${s.observers}</span></li>`,
           )
           .join("")
-        : `<p class="empty">No sources</p>`;
+        : `<p class="empty">${ot("noSources")}</p>`;
     }
   };
 
@@ -959,20 +1079,22 @@ export function mountDevtoolsOverlay(
       count.className = n > 0 ? "count warn" : "count";
     }
     if (health) {
-      health.textContent = n > 0 ? `${n} warning${n === 1 ? "" : "s"}` : "ok";
+      health.textContent = n > 0
+        ? (n === 1
+          ? ot("healthWarnBadge", { n })
+          : ot("healthWarnBadgePlural", { n }))
+        : ot("healthOkBadge");
       health.className = n > 0 ? "badge warn" : "badge ok";
     }
     if (healthHint) {
-      healthHint.textContent = n > 0
-        ? "Click a warning to jump to the Owner path in Tree."
-        : "No misuse warnings in the current scan.";
+      healthHint.textContent = n > 0 ? ot("healthWarnHint") : ot("healthOk");
     }
     if (dot) {
       dot.className = n > 0 ? "dot warn" : "dot";
     }
     if (!list) return;
     if (!n) {
-      list.innerHTML = `<p class="empty">No issues detected</p>`;
+      list.innerHTML = `<p class="empty">${ot("noIssues")}</p>`;
       return;
     }
     list.innerHTML = warnings
@@ -985,7 +1107,9 @@ export function mountDevtoolsOverlay(
         <button type="button" class="warn-item" data-warn="${i}">
           <span class="warn-kind">${escapeHtml(w.kind)}</span>
           <span>${escapeHtml(w.message)}</span>
-          ${w.path ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>` : ""}
+          ${
+          w.path ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>` : ""
+        }
         </button>`;
       })
       .join("");
@@ -1013,7 +1137,9 @@ export function mountDevtoolsOverlay(
       const churn = detectOwnerRemountChurn(root, { rootId: id });
       if (churn) scanned.push(churn);
     }
-    const seen = new Set(warnings.map((w) => `${w.kind}:${w.path ?? ""}:${w.message}`));
+    const seen = new Set(
+      warnings.map((w) => `${w.kind}:${w.path ?? ""}:${w.message}`),
+    );
     for (const w of scanned) {
       const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
       if (!seen.has(key)) {
@@ -1033,14 +1159,13 @@ export function mountDevtoolsOverlay(
     const statusDot = el("[data-el='status-dot']");
     if (!snap) {
       if (badge) {
-        badge.textContent = "offline";
+        badge.textContent = ot("hmrOffline");
         badge.className = "badge";
       }
       if (missing) missing.hidden = false;
       if (live) live.hidden = true;
       if (claimNote) {
-        claimNote.textContent =
-          "No HMR bridge yet — standalone capsule (if any) stays visible.";
+        claimNote.textContent = ot("hmrNoBridge");
       }
       if (statusDot) statusDot.classList.add("hidden");
       return;
@@ -1058,13 +1183,17 @@ export function mountDevtoolsOverlay(
     const dot = el("[data-el='hmr-dot']");
     if (dot) dot.className = hmrDotClass(snap.connection);
     const status = el("[data-el='hmr-status']");
-    if (status) status.textContent = `HMR · ${hmrLabel(snap.connection)}`;
+    if (status) {
+      status.textContent = ot("hmrStatus", {
+        status: hmrLabel(snap.connection),
+      });
+    }
     const prog = el("[data-el='hmr-progress']");
     if (prog) {
       prog.textContent = snap.updating
         ? (snap.lastProgressPath
-          ? `updating ${snap.lastProgressPath}`
-          : "updating…")
+          ? ot("hmrUpdatingPath", { path: snap.lastProgressPath })
+          : ot("hmrUpdating"))
         : "";
     }
     const setT = (sel: string, v: string) => {
@@ -1077,12 +1206,13 @@ export function mountDevtoolsOverlay(
     const last = el("[data-el='hmr-last']");
     if (last) {
       last.textContent = snap.lastUpdateTime
-        ? `Last update: ${new Date(snap.lastUpdateTime).toLocaleTimeString()}`
-        : "Last update: none";
+        ? ot("hmrLast", {
+          time: new Date(snap.lastUpdateTime).toLocaleTimeString(),
+        })
+        : ot("hmrLastNone");
     }
     if (claimNote) {
-      claimNote.textContent =
-        "Capsule hidden while this overlay is mounted (claimUi).";
+      claimNote.textContent = ot("hmrClaimed");
     }
     if (statusDot) {
       statusDot.classList.remove("hidden");
@@ -1123,8 +1253,9 @@ export function mountDevtoolsOverlay(
     const rootCount = collectRoots(primaryOwner).length;
     const rootsBadge = el("[data-el='roots-badge']");
     if (rootsBadge) {
-      rootsBadge.textContent =
-        `${rootCount} root${rootCount === 1 ? "" : "s"} · depth ${summary.maxDepth}`;
+      rootsBadge.textContent = rootCount === 1
+        ? ot("rootsBadge", { n: rootCount, depth: summary.maxDepth })
+        : ot("rootsBadgePlural", { n: rootCount, depth: summary.maxDepth });
     }
     const setN = (key: string, v: number) => {
       const n = el(`[data-el='${key}']`);
@@ -1137,7 +1268,7 @@ export function mountDevtoolsOverlay(
     const pill = el("[data-el='dev-pill']");
     if (pill) {
       const on = isViewDev();
-      pill.textContent = on ? "VIEW_DEV · on" : "VIEW_DEV · off";
+      pill.textContent = on ? ot("devOn") : ot("devOff");
       pill.className = on ? "pill" : "pill off";
     }
     // Keep HMR card in sync on refresh ticks (bridge may appear late).
@@ -1145,6 +1276,9 @@ export function mountDevtoolsOverlay(
   };
 
   const refresh = () => {
+    const before = panel.getAttribute("data-locale");
+    syncOverlayLocaleFromPage();
+    if (getOverlayLocale() !== before) applyChromeI18n();
     rebuildForest();
     scanWarnings();
     renderOverview();
@@ -1152,6 +1286,25 @@ export function mountDevtoolsOverlay(
     renderSignals();
     renderWarnings();
   };
+
+  try {
+    if (typeof MutationObserver !== "undefined" && document.documentElement) {
+      langObserver = new MutationObserver(() => {
+        const before = panel.getAttribute("data-locale");
+        syncOverlayLocaleFromPage();
+        if (getOverlayLocale() !== before) {
+          applyChromeI18n();
+          refresh();
+        }
+      });
+      langObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["lang"],
+      });
+    }
+  } catch {
+    langObserver = null;
+  }
 
   const selectNode = (path: string | null) => {
     selectedPath = path;
@@ -1169,7 +1322,9 @@ export function mountDevtoolsOverlay(
 
   const onWarn = (w: OversubscribeWarning) => {
     const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
-    if (warnings.some((x) => `${x.kind}:${x.path ?? ""}:${x.message}` === key)) {
+    if (
+      warnings.some((x) => `${x.kind}:${x.path ?? ""}:${x.message}` === key)
+    ) {
       return;
     }
     warnings.push(w);
@@ -1197,7 +1352,9 @@ export function mountDevtoolsOverlay(
   panel.querySelectorAll("[data-action='close']").forEach((n) =>
     n.addEventListener("click", () => setOpen(false))
   );
-  panel.querySelectorAll("[data-action='refresh'], [data-action='refresh-foot']")
+  panel.querySelectorAll(
+    "[data-action='refresh'], [data-action='refresh-foot']",
+  )
     .forEach((n) => n.addEventListener("click", () => refresh()));
   panel.querySelector("[data-action='clear-warns']")?.addEventListener(
     "click",
@@ -1445,6 +1602,10 @@ export function mountDevtoolsOverlay(
       if (stopWatch) {
         stopWatch();
         stopWatch = null;
+      }
+      if (langObserver) {
+        langObserver.disconnect();
+        langObserver = null;
       }
       disableOversubscribeWarnings();
       document.removeEventListener("keydown", onKey, true);

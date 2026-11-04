@@ -53,6 +53,13 @@ Probe helpers used by the overlay (also public on `/devtools`):
 - size / consumer-bundle green without rewriting baselines
 - CI green including `e2e-examples`
 
+## i18n (zh / en, browser-safe)
+
+Overlay chrome follows the **page language** (`html[lang]` /
+`document.documentElement.lang`) via `overlay-l10n.ts` +
+`devtools/locales/{en,zh}.json`. **No** language switcher. Does **not** import
+`src/i18n.ts` (keeps `node:*` out of the client bundle). Still `VIEW_DEV` only.
+
 ## HMR
 
 With `@dreamer/server` DEV HMR: overlay `claimUi` hides the capsule and Overview → HMR shows status; degrades without a bridge. Never in production.

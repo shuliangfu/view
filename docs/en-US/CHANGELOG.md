@@ -10,6 +10,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P2: DevTools overlay i18n (zh/en, follows page language, non-breaking)**
+  - Browser-safe `@dreamer/view/devtools` overlay chrome via
+    `src/devtools/overlay-l10n.ts` + `src/devtools/locales/{en,zh}.json`.
+  - Follows `document.documentElement.lang` / `html[lang]` (MutationObserver +
+    refresh); **no** language switcher UI.
+  - Does **not** import `src/i18n.ts` / `$tr` / `@dreamer/runtime-adapter`
+    (avoids `node:*` in the client esbuild graph).
+  - Still `VIEW_DEV` only; size / consumer-bundle baselines **not** raised.
+
 ### Changed
 
 - **Dependencies**: bump `@dreamer/server` to `^1.3.0` (JSR / npm:@jsr) for

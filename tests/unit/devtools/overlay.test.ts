@@ -4,23 +4,19 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
+  type DreamerHmrBridge,
+  type DreamerHmrSnapshot,
   getDevtoolsOverlay,
   getDreamerHmrBridge,
   mountDevtoolsOverlay,
   unmountDevtoolsOverlay,
-  type DreamerHmrBridge,
-  type DreamerHmrSnapshot,
 } from "@dreamer/view/devtools/overlay";
 import {
   clearTrackedRoots,
   createRootTracked,
   inspectOwnerIndexed,
 } from "@dreamer/view/devtools";
-import {
-  createEffect,
-  createSignal,
-  getOwner,
-} from "@dreamer/view/reactivity";
+import { createEffect, createSignal, getOwner } from "@dreamer/view/reactivity";
 import { resetRegistry } from "../dom-setup.ts";
 
 const g = globalThis as { VIEW_DEV?: boolean };
@@ -31,6 +27,7 @@ describe("devtools overlay (P2)", () => {
   beforeEach(() => {
     prevDev = g.VIEW_DEV;
     g.VIEW_DEV = true;
+    document.documentElement.lang = "en-US";
     resetRegistry();
     clearTrackedRoots();
     unmountDevtoolsOverlay();
@@ -50,13 +47,15 @@ describe("devtools overlay (P2)", () => {
 
   it("mount returns null when VIEW_DEV is off (no DOM)", () => {
     g.VIEW_DEV = false;
-    const before = document.querySelectorAll("[data-dreamer-view-devtools]").length;
+    const before =
+      document.querySelectorAll("[data-dreamer-view-devtools]").length;
     const handle = mountDevtoolsOverlay();
     expect(handle).toBeNull();
     expect(getDevtoolsOverlay()).toBeNull();
-    expect(document.querySelectorAll("[data-dreamer-view-devtools]").length).toBe(
-      before,
-    );
+    expect(document.querySelectorAll("[data-dreamer-view-devtools]").length)
+      .toBe(
+        before,
+      );
   });
 
   it("mounts indicator in shadow root when VIEW_DEV is on", () => {
@@ -83,7 +82,9 @@ describe("devtools overlay (P2)", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     handle.open();
     const shadow = handle.root.shadowRoot!;
-    for (const name of ["overview", "tree", "signals", "warnings", "settings"]) {
+    for (
+      const name of ["overview", "tree", "signals", "warnings", "settings"]
+    ) {
       expect(shadow.querySelector(`[data-tab="${name}"]`)).not.toBeNull();
       expect(shadow.querySelector(`[data-pane="${name}"]`)).not.toBeNull();
     }
@@ -117,7 +118,8 @@ describe("devtools overlay (P2)", () => {
     const selected = shadow.querySelector(".tree-row.selected");
     expect(selected).not.toBeNull();
     expect(selected!.getAttribute("data-path")).toBe(childPath);
-    const detail = shadow.querySelector("[data-el='tree-detail']")!.textContent!;
+    const detail = shadow.querySelector("[data-el='tree-detail']")!
+      .textContent!;
     expect(detail).toContain(childPath);
     expect(detail.toLowerCase()).toMatch(/upstream|downstream|depth/);
   });
@@ -182,7 +184,6 @@ describe("devtools overlay (P2)", () => {
     expect(document.querySelector("[data-dreamer-view-devtools]")).toBeNull();
   });
 });
-
 
 describe("devtools overlay HMR bridge integration", () => {
   let prevDev: boolean | undefined;
@@ -263,9 +264,10 @@ describe("devtools overlay HMR bridge integration", () => {
     expect(mock.claimers.has("view-devtools-overlay")).toBe(true);
     handle.open();
     const shadow = handle.root.shadowRoot!;
-    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent).toContain(
-      "Connected",
-    );
+    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent)
+      .toContain(
+        "Connected",
+      );
     expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
       "3",
     );
@@ -284,9 +286,10 @@ describe("devtools overlay HMR bridge integration", () => {
       successCount: 8,
       failureCount: 1,
     });
-    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent).toContain(
-      "Reconnecting",
-    );
+    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent)
+      .toContain(
+        "Reconnecting",
+      );
     expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
       "9",
     );
@@ -317,5 +320,84 @@ describe("devtools inspectOwnerIndexed", () => {
     const snap = inspectOwnerIndexed(owner, { rootId: "0" })!;
     expect(snap.id).toBe("0");
     expect(snap.childNodes[0]?.id.startsWith("0/")).toBe(true);
+  });
+});
+
+describe("devtools overlay i18n (page lang, no switcher)", () => {
+  let prevDev: boolean | undefined;
+  let prevLang: string;
+
+  beforeEach(() => {
+    prevDev = g.VIEW_DEV;
+    g.VIEW_DEV = true;
+    resetRegistry();
+    clearTrackedRoots();
+    unmountDevtoolsOverlay();
+    prevLang = document.documentElement.lang;
+    try {
+      globalThis.localStorage?.removeItem("dreamer-view-devtools-overlay");
+    } catch {
+      /* ignore */
+    }
+  });
+
+  afterEach(() => {
+    unmountDevtoolsOverlay();
+    clearTrackedRoots();
+    document.documentElement.lang = prevLang;
+    if (prevDev === undefined) delete g.VIEW_DEV;
+    else g.VIEW_DEV = prevDev;
+  });
+
+  it("follows documentElement.lang zh-CN → Chinese chrome (no locale UI)", () => {
+    document.documentElement.lang = "zh-CN";
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector(".head-title")!.textContent).toContain(
+      "开发工具",
+    );
+    expect(shadow.querySelector('[data-tab="overview"]')!.textContent)
+      .toContain(
+        "总览",
+      );
+    const settings = shadow.querySelector('[data-pane="settings"]')!
+      .textContent!;
+    expect(settings).not.toMatch(/Language|语言选择|locale switch/i);
+    expect(shadow.querySelector("#dv-locale, [data-el='opt-locale']"))
+      .toBeNull();
+  });
+
+  it("follows documentElement.lang en → English chrome", () => {
+    document.documentElement.lang = "en-US";
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector(".head-title")!.textContent).toContain(
+      "View DevTools",
+    );
+    expect(shadow.querySelector('[data-tab="overview"]')!.textContent)
+      .toContain(
+        "Overview",
+      );
+  });
+
+  it("updating html[lang] re-applies chrome without remount", () => {
+    document.documentElement.lang = "en";
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector(".head-title")!.textContent).toContain(
+      "View DevTools",
+    );
+    document.documentElement.lang = "zh-CN";
+    handle.refresh();
+    expect(shadow.querySelector(".head-title")!.textContent).toContain(
+      "开发工具",
+    );
+    expect(shadow.querySelector('[data-tab="settings"]')!.textContent)
+      .toContain(
+        "设置",
+      );
   });
 });

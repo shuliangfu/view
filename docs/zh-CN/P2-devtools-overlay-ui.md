@@ -39,6 +39,12 @@
 - size／consumer-bundle 绿且未改基线
 - CI 含 `e2e-examples` 全绿
 
+## 多语言（中／英，浏览器安全）
+
+面板文案跟**页面当前语言**（`html[lang]`／`document.documentElement.lang`），经
+`overlay-l10n.ts` + `devtools/locales/{en,zh}.json`。**无**语言切换 UI。**不**
+import `src/i18n.ts`（避免 `node:*` 进浏览器包）。仍仅 `VIEW_DEV`。
+
 ## HMR
 
 有 `@dreamer/server` DEV HMR 时：overlay `claimUi` 藏独立胶囊，Overview → HMR 展示状态；无桥则降级。生产绝不出。
