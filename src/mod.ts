@@ -1,6 +1,11 @@
 /**
  * @module mod
- * @description @dreamer/view 框架的主入口模块。
+ * @deprecated Prefer subpath imports (`@dreamer/view/reactivity`, `/csr`, `/router`, `/form`, `/resource`, `/control-flow`, `/scheduler`, `/ssr`, …).
+ * This main barrel remains a **full compatible re-export in 2.x** (Strategy A — deprecation preview only; **no** exports removed, **no** runtime warn).
+ * Migration: `docs/zh-CN/P1-1-main-entry-deprecation-preview.md` · `docs/en-US/P1-1-main-entry-deprecation-preview.md`.
+ * Cost context (P0-2): app-local `export *` from this entry ≈ +34 KiB minify vs `/reactivity` (~4.26×).
+ *
+ * @description @dreamer/view 框架的主入口模块（便捷全家桶）。
  *
  * **框架整体架构：**
  *
@@ -34,12 +39,17 @@
  * **5. Compiler (编译器)**
  * - ⚠️  compiler/ 目录 - JSX 转换和优化 (开发中)
  *
- * **使用方式：**
- * import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"
+ * **使用方式（推荐子路径）：**
+ * ```ts
+ * import { createSignal } from "@dreamer/view/reactivity";
+ * import { mount, For } from "@dreamer/view/csr";
+ * import { createRouter, mountWithRouter } from "@dreamer/view/router";
+ * ```
+ * 兼容（2.x 仍完整 re-export，但属弃用预告对象）：
+ * `import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"`
  * SSR：`renderToString` / `renderToStream` 等从 `@dreamer/view/ssr` 导入（主入口不打包 happy-dom，避免浏览器构建解析 `node:*`）。
- * 按需：`/reactivity` `/scheduler` `/router` `/form` `/resource` `/control-flow` `/csr`（主入口仍 re-export，兼容不变）。
  *
- * **当前状态：** 核心功能完整，测试覆盖较好，但部分高级特性还在优化中。
+ * **当前状态：** 核心功能完整；主入口为 2.x 弃用预告下的兼容全家桶，非 3.0 瘦身落地。
  */
 
 export * from "./reactivity/context.ts";

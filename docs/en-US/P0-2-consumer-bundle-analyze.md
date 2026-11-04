@@ -69,3 +69,8 @@ Override: `--budget-pct` or `CONSUMER_BUNDLE_BUDGET_PCT`.
 Keep app / examples on **subpaths**. Avoid app-local `export *` from the main
 barrel. Library entry size stays on `size:check`; consumer import style uses
 this gate.
+
+## Related
+
+- Main-entry deprecation preview (Strategy A): [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)
+- ZH canonical: [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)

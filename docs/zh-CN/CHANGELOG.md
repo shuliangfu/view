@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### 文档
+
+- **P1-1：主入口 barrel 弃用预告（策略 A · 2.x 加法，非破坏）**
+  - 新增 [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)／
+    [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)：
+    子路径优先、迁移步骤、与 P0／P0-2 体积关系；**不**删 export、**不**改运行时默认。
+  - `src/mod.ts` 模块级 JSDoc `@deprecated`（**无**运行时 `warn`／副作用）。
+  - README（根／zh／en）「便捷全家桶」与架构 § 标明弃用预告并互链；分析索引更新。
+  - **未**放宽 `size:check`／`consumer:bundle:check` 基线；禁 JSR／npm；**非** 3.0 瘦身落地。
+
 ### 新增
 
 - **P0-2：消费方／examples bundle analyze + 独立体积预算（非破坏）**

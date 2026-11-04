@@ -33,14 +33,16 @@
      **`createRenderEffect`**，用于 `className={() => ...}`、`value={() => ...}`
      等响应式属性。
 
-4. **优先子路径导入（2.x）**\
+4. **优先子路径导入（2.x · 主入口弃用预告）**\
    导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
    **`@dreamer/view/reactivity`**、**`/csr`**、**`/ssr`**、**`/router`**、
    **`/form`**、**`/resource`**、**`/control-flow`** 等。主入口
-   **`@dreamer/view`** 仍完整 re-export，仅作**便捷全家桶**（见该小节）；P0
-   基线 minify：主入口约 **43.5 KiB**，`/reactivity` 约 **10.5 KiB**（详见
-   [P0 基线报告](./P0-基线-体积与性能.md)／
-   [EN summary](../en-US/P0-baseline-bundle-and-perf.md)）。
+   **`@dreamer/view`** 仍完整 re-export（**策略 A**：2.x 不删 export），但属
+   **弃用预告**下的便捷全家桶（见该小节／
+   [P1-1](./P1-1-main-entry-deprecation-preview.md)）。P0 基线 minify：主入口约
+   **43.5 KiB**，`/reactivity` 约 **10.5 KiB**；P0-2 消费方 `export *` 溢价约
+   **+34 KiB**（详见 [P0 基线](./P0-基线-体积与性能.md)／
+   [P0-2](./P0-2-consumer-bundle-analyze.md)）。
 
 ---
 
@@ -123,16 +125,28 @@ import { renderToString } from "@dreamer/view/ssr";
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
-#### 便捷全家桶（`@dreamer/view`）
+#### 便捷全家桶（`@dreamer/view`）— **2.x 弃用预告**
 
-主入口仍完整 re-export，方便一行演示或旧项目。生产请优先子路径：P0 esbuild
-基线（minify）主入口约 **43.5 KiB**，`@dreamer/view/reactivity` 约 **10.5 KiB**
-（约 4.2 倍）。详见 [P0 基线](./P0-基线-体积与性能.md)／
-[EN](../en-US/P0-baseline-bundle-and-perf.md)。
+> **策略 A（加法）**：主入口仍 **完整 re-export**，行为不变；**不**删除 export、
+> **不**改默认运行时。新代码／生产请默认子路径。模块级 JSDoc 已标
+> `@deprecated`（**无**运行时 `warn`）。指南：
+> [P1-1 主入口弃用预告](./P1-1-main-entry-deprecation-preview.md)／
+> [EN](../en-US/P1-1-main-entry-deprecation-preview.md)。
+
+体积依据：
+
+- 库入口（P0）：minify 主入口约 **43.5 KiB** vs `/reactivity` 约 **10.5 KiB**（~4.2×）—
+  [P0 基线](./P0-基线-体积与性能.md)／[EN](../en-US/P0-baseline-bundle-and-perf.md)。
+- 消费方 `export *`（P0-2）：相对 reactivity 约 **+34.1 KiB minify（~4.26×）**／
+  **+11.9 KiB gzip** — [P0-2](./P0-2-consumer-bundle-analyze.md)。
 
 ```ts
-// 兼容，但会拉起便捷全家桶图：
+// 兼容（2.x），但属弃用预告对象；避免再 export * 包装：
 import { createRouter, createSignal } from "@dreamer/view";
+
+// 推荐：
+import { createSignal } from "@dreamer/view/reactivity";
+import { createRouter, mountWithRouter } from "@dreamer/view/router";
 ```
 
 ---
@@ -1321,6 +1335,7 @@ function ModalHost() {
 - **分析文档状态**（过时／漂移清单）：[分析文档状态.md](./分析文档状态.md)
 - **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
 - **P0-2：消费方／examples bundle analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
+- **P1-1：主入口 barrel 弃用预告（策略 A）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
 - **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)

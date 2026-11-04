@@ -33,14 +33,17 @@
      **`createRenderEffect`** (e.g. `className={() => ...}`,
      `value={() => ...}`).
 
-4. **Prefer subpath imports (2.x)** Export keys match `deno.json` / the table in
-   **Installation**. For app code, default to **`@dreamer/view/reactivity`**,
-   **`/csr`**, **`/ssr`**, **`/router`**, **`/form`**, **`/resource`**,
-   **`/control-flow`**, etc. The main **`@dreamer/view`** barrel remains a
-   compatible convenience re-export (see **Convenience barrel**); P0 baseline
-   minify size is ~**43.5 KiB** for the main entry vs ~**10.5 KiB** for
-   `/reactivity` ([P0 report](../zh-CN/P0-基线-体积与性能.md) /
-   [EN summary](./P0-baseline-bundle-and-perf.md)).
+4. **Prefer subpath imports (2.x · main-entry deprecation preview)** Export keys
+   match `deno.json` / the table in **Installation**. For app code, default to
+   **`@dreamer/view/reactivity`**, **`/csr`**, **`/ssr`**, **`/router`**,
+   **`/form`**, **`/resource`**, **`/control-flow`**, etc. The main
+   **`@dreamer/view`** barrel remains a **full compatible** re-export
+   (**Strategy A**: no export removals in 2.x) but is under a **deprecation
+   preview** (see **Convenience barrel** /
+   [P1-1](./P1-1-main-entry-deprecation-preview.md)). P0 minify ~**43.5 KiB**
+   main vs ~**10.5 KiB** `/reactivity`; P0-2 consumer `export *` premium ≈
+   **+34 KiB** ([P0](../zh-CN/P0-基线-体积与性能.md) /
+   [P0-2](./P0-2-consumer-bundle-analyze.md)).
 
 ---
 
@@ -134,17 +137,30 @@ import { renderToString } from "@dreamer/view/ssr";
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
-#### Convenience barrel (`@dreamer/view`)
+#### Convenience barrel (`@dreamer/view`) — **2.x deprecation preview**
 
-The main entry still re-exports the full public surface for one-line demos and
-older apps. Prefer subpaths in production: P0 esbuild baseline (minify) is about
-**43.5 KiB** for `@dreamer/view` vs **10.5 KiB** for `@dreamer/view/reactivity`
-(~4.2×). See [P0 baseline](../zh-CN/P0-基线-体积与性能.md) /
-[EN](./P0-baseline-bundle-and-perf.md).
+> **Strategy A (additive):** the main entry still **fully re-exports**; behavior
+> unchanged. **No** export removals and **no** runtime default changes. Prefer
+> subpaths for new / production code. Module JSDoc is `@deprecated` (**no**
+> runtime `warn`). Guide:
+> [P1-1 main-entry deprecation preview](./P1-1-main-entry-deprecation-preview.md) /
+> [ZH](../zh-CN/P1-1-main-entry-deprecation-preview.md).
+
+Size context:
+
+- Library entry (P0): minify ~**43.5 KiB** main vs ~**10.5 KiB** `/reactivity`
+  (~4.2×) — [P0 baseline](../zh-CN/P0-基线-体积与性能.md) /
+  [EN](./P0-baseline-bundle-and-perf.md).
+- Consumer `export *` (P0-2): ≈ **+34.1 KiB minify (~4.26×)** / **+11.9 KiB gzip**
+  vs reactivity — [P0-2](./P0-2-consumer-bundle-analyze.md).
 
 ```ts
-// Compatible, but pulls the convenience graph:
+// Compatible in 2.x, but under deprecation preview; avoid re-wrapping with export *:
 import { createRouter, createSignal } from "@dreamer/view";
+
+// Recommended:
+import { createSignal } from "@dreamer/view/reactivity";
+import { createRouter, mountWithRouter } from "@dreamer/view/router";
 ```
 
 ---
@@ -1355,6 +1371,7 @@ function ModalHost() {
 - **Analysis doc status** (obsolete / drifted index): [`analysis-doc-status.md`](./analysis-doc-status.md) · [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
 - **P0-1 profiling / bench CI**: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) · [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
 - **P0-2: consumer / examples bundle analyze**: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
+- **P1-1: main-entry barrel deprecation preview (Strategy A)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)

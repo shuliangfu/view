@@ -203,7 +203,7 @@ PullRefreshRoot（return 不读业务 Signal）
 - `jsr:@dreamer/view/csr` — mount + 控制流 + Suspense
 - 表单／路由／Resource 用对应子路径
 
-主入口 `@dreamer/view` 仍可用，但是 **convenience barrel**（包体更大）。完整表见 README §2.3；本指南不重做子路径专题。
+主入口 `@dreamer/view` 仍可用（2.x 完整兼容），但是 **convenience barrel**（包体更大），且属 **[P1-1 弃用预告](./P1-1-main-entry-deprecation-preview.md)**。完整表见 README §2.3；本指南不重做子路径专题。
 
 ---
 

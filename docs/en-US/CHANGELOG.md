@@ -10,6 +10,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Documentation
+
+- **P1-1: main-entry barrel deprecation preview (Strategy A · 2.x additive, non-breaking)**
+  - Add [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) /
+    [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md):
+    prefer subpaths, migration steps, link to P0 / P0-2 size numbers; **no** export
+    removals; **no** runtime default changes.
+  - Module-level JSDoc `@deprecated` on `src/mod.ts` (**no** runtime `warn` / side effect).
+  - README (root / zh / en) convenience-barrel + architecture sections mark the preview
+    and cross-link; analysis indexes updated.
+  - Does **not** relax `size:check` / `consumer:bundle:check` baselines; no JSR / npm;
+    **not** a 3.0 slim-barrel landing.
+
 ### Added
 
 - **P0-2: consumer / examples bundle analyze + independent size budget (non-breaking)**

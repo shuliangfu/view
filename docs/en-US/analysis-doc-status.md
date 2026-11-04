@@ -2,7 +2,7 @@
 
 | Item | Value |
 |------|-------|
-| Date | **2026-11-03** (Asia/Shanghai) |
+| Date | **2026-11-04** (Asia/Shanghai) |
 | Nature | **Docs governance**: mark obsolete / drifted analysis; point to current docs; **no** runtime changes |
 | Current analysis | [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) (Chinese; canonical) |
 | Getting started / API | [`README.md`](./README.md) · [`../zh-CN/README.md`](../zh-CN/README.md) |
@@ -20,6 +20,7 @@
 | [`P0-baseline-bundle-and-perf.md`](./P0-baseline-bundle-and-perf.md) | Bundle / bench baseline |
 | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md) | Component author guide (Memo / ref / subscription boundaries) |
 | [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md) | Consumer / examples bundle analyze + independent size gate |
+| [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md) | Main-entry barrel deprecation preview (Strategy A) |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---

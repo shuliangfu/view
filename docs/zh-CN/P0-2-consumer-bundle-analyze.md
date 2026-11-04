@@ -91,4 +91,5 @@ deno task consumer:bundle:check
 
 - 库入口体积：[`P0-基线-体积与性能.md`](./P0-基线-体积与性能.md) · `scripts/size-baseline/`
 - 组件作者指南：[`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md)
+- 主入口弃用预告（策略 A）：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)
 - EN：[`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)

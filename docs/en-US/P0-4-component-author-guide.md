@@ -220,7 +220,7 @@ Prefer for new component / app code:
 - `jsr:@dreamer/view/csr` — mount + control-flow + Suspense
 - Form / router / Resource via their subpaths
 
-Main `@dreamer/view` remains a **convenience barrel** (larger). Full map: README
+Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the [P1-1 deprecation preview](./P1-1-main-entry-deprecation-preview.md) (Strategy A; no export removals in 2.x). Full map: README
 §2.3. This guide does **not** redo the subpath migration doc.
 
 ---
