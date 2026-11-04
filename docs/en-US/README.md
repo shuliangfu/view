@@ -1191,6 +1191,11 @@ const form = createForm(
 
 ## 17. Router: `createRouter` / `mountWithRouter` / `Link` / `useRouter`
 
+> **Module boundaries (P1-4):** `match` (pure) / `history` (`createRouter`) / `Link`; see
+> [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md).
+> For SSR use `matchRoute` or `renderRouterToString` from `@dreamer/view/ssr`.
+
+
 ### 17.1 Creating a router
 
 ```tsx
@@ -1267,6 +1272,8 @@ export function Shell() {
 ---
 
 ## 18. SSR (`jsr:@dreamer/view/ssr`)
+
+- **`renderRouterToString({ routes, url })`**: one-shot router SSR (forces `ssr: true` + `destroy`); same match semantics as `matchRoute` (see P1-4).
 
 ### 18.1 `renderToString`
 

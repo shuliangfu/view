@@ -11,6 +11,17 @@
 
 ### 变更
 
+- **P1-4：Router 拆 match／history／Link + SSR 同构加强（非破坏）**
+  - 源码边界：`src/integrations/router/{types,match,history,link}.ts`；
+    `src/integrations/router.ts` 仍为 barrel，公开 API／行为不变。
+  - SSR：补测 `matchRoute` ↔ `createRouter({ssr:true}).match`（splat／notFound）、
+    `start()` 可在 SSR 实例上显式开启、`renderRouterToString` 与 match 同 pattern；
+    文档 [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)／
+    [`../en-US/P1-4-router-split-ssr.md`](../en-US/P1-4-router-split-ssr.md)。
+  - 禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`／E2E 断言。
+
+### 变更
+
 - **P0-hotfix：gallery E2E 缩放点击被放大预览拦截（CI）**
   - 根因：先点 `＋` 后，Playwright 命中测试把 transform 后的预览
     （`cursor-grab`／img）当成挡住 `－`（ubuntu CI 视口；`subtree intercepts

@@ -103,4 +103,75 @@ describe("integrations/router SSR 同构", () => {
       router.destroy();
     }
   });
+
+  it("matchRoute 与 createRouter.match 同构：splat / catch-all / notFound", () => {
+    const Home = () => null;
+    const Files = () => null;
+    const NotFound = () => null;
+    const routes: RouteConfig[] = [
+      { path: "/", component: Home },
+      { path: "/files/*", component: Files },
+    ];
+    const opts = { routes, notFound: { path: "*", component: NotFound } };
+
+    const cases = [
+      "/files/a/b?x=1",
+      "/missing-page",
+      "/",
+    ];
+    for (const url of cases) {
+      const pure = matchRoute(opts, url);
+      const router = createRouter({ ...opts, url, ssr: true });
+      try {
+        const live = router.match();
+        expect(live?.path).toBe(pure?.path);
+        expect(live?.pattern).toBe(pure?.pattern);
+        expect(live?.params).toEqual(pure?.params);
+        expect(live?.query).toEqual(pure?.query);
+        expect(live?.pathname).toBe(pure?.pathname);
+      } finally {
+        router.destroy();
+      }
+    }
+
+    const splat = matchRoute(opts, "/files/docs/readme.md");
+    expect(splat?.params["*"]).toBe("docs/readme.md");
+    expect(splat?.pattern).toBe("/files/*");
+  });
+
+  it("ssr: true 下 start() 可在 hydrate 后显式挂载监听（行为可测）", () => {
+    const Page = () => jsx("div", { children: "ssr-start" });
+    const router = createRouter({
+      routes: [{ path: "/", component: Page }],
+      url: "/",
+      ssr: true,
+    });
+    try {
+      expect(router.match()?.path).toBe("/");
+      // start 不应抛；SSR 创建时未挂委托，hydrate 后可显式开启
+      expect(() => router.start()).not.toThrow();
+      expect(() => router.stop()).not.toThrow();
+    } finally {
+      router.destroy();
+    }
+  });
+
+  it("renderRouterToString 与 matchRoute 对同一 url 指向同一 pattern", () => {
+    const Home = () => jsx("div", { children: "H" });
+    const User = (p: { params?: Record<string, string> }) =>
+      jsx("div", { children: `U-${p.params?.id ?? ""}` });
+    const routes: RouteConfig[] = [
+      { path: "/", component: Home },
+      { path: "/user/:id", component: User },
+    ];
+    const url = "/user/3?tab=bio#top";
+    const m = matchRoute(routes, url);
+    expect(m?.pattern).toBe("/user/:id");
+    expect(m?.params.id).toBe("3");
+    expect(m?.query.tab).toBe("bio");
+    const html = renderRouterToString({ routes, url });
+    expect(html).toContain("U-3");
+    expect(html).not.toContain(">H<");
+  });
+
 });

@@ -1151,6 +1151,11 @@ const form = createForm(
 
 ## 十七、路由：`createRouter` / `mountWithRouter` / `Link` / `useRouter`
 
+> **模块边界（P1-4）：** `match`（纯函数）／`history`（`createRouter`）／`Link`；详见
+> [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)。
+> SSR 请用 `matchRoute` 预匹配或 `@dreamer/view/ssr` 的 `renderRouterToString`。
+
+
 ### 17.1 创建路由器
 
 ```tsx
@@ -1227,6 +1232,8 @@ export function Shell() {
 ---
 
 ## 十八、SSR（`jsr:@dreamer/view/ssr`）
+
+- **`renderRouterToString({ routes, url })`**：路由 SSR 同构一站式入口（内部 `ssr: true` + `destroy`）；与 `matchRoute` 匹配语义一致（见 P1-4）。
 
 ### 18.1 `renderToString`
 

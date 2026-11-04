@@ -12,6 +12,17 @@ and this project adheres to
 
 ### Changed
 
+- **P1-4: Router split (match / history / Link) + SSR isomorphism (non-breaking)**
+  - Source boundaries: `src/integrations/router/{types,match,history,link}.ts`;
+    `src/integrations/router.ts` remains the barrel; public API / behavior unchanged.
+  - SSR: tests lock `matchRoute` ↔ `createRouter({ ssr: true }).match` (splat / notFound),
+    explicit `start()` on SSR instances, and `renderRouterToString` agreeing on pattern;
+    docs [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md) /
+    [`../zh-CN/P1-4-router-split-ssr.md`](../zh-CN/P1-4-router-split-ssr.md).
+  - No JSR / npm; does **not** relax `size:check` / `consumer:bundle:check` / E2E assertions.
+
+### Changed
+
 - **P0-hotfix: gallery E2E zoom click vs scaled preview (CI)**
   - Root cause: after clicking `＋`, Playwright hit-testing treated the transformed
     preview (`cursor-grab` / img) as intercepting `－` on ubuntu CI viewports

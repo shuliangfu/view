@@ -22,6 +22,7 @@
 | [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md) | Consumer / examples bundle analyze + independent size gate |
 | [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md) | Main-entry barrel deprecation preview (Strategy A) |
 | [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md) | Hydration `mismatchMode` opt-in pilot (default remains continue) |
+- [P1-4-router-split-ssr.md](./P1-4-router-split-ssr.md) — Router split + SSR isomorphism
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---
