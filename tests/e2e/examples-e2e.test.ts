@@ -416,9 +416,31 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
         () => document.body.innerText.includes("%"),
         { timeout: 15_000 },
       );
-      await pw(t).getByRole("button", { name: "＋", exact: true }).click();
-      await pw(t).getByRole("button", { name: "－", exact: true }).click();
-      await pw(t).getByRole("button", { name: "✕", exact: true }).click();
+      /**
+       * Zoom controls live under the preview layer. Click **－ then ＋** (not the reverse):
+       * after scale-up, Playwright hit-testing can treat the transformed preview
+       * (`cursor-grab` + img) as intercepting the － button on tight CI viewports
+       * (TimeoutError / "subtree intercepts pointer events"). Shrinking first keeps
+       * peak scale ≤ 100% while still exercising both buttons. Assertions unchanged.
+       */
+      const zoomOut = previewLayer.getByRole("button", { name: "－", exact: true });
+      const zoomIn = previewLayer.getByRole("button", { name: "＋", exact: true });
+      await zoomOut.click({ timeout: E2E_ACTION_TIMEOUT_MS });
+      await t.browser.waitFor(
+        () => {
+          const m = document.body.innerText.match(/(\d+)%/);
+          return !!m && m[1] !== "100";
+        },
+        { timeout: 10_000 },
+      );
+      await zoomIn.click({ timeout: E2E_ACTION_TIMEOUT_MS });
+      await t.browser.waitFor(
+        () => /100%/.test(document.body.innerText),
+        { timeout: 10_000 },
+      );
+      await previewLayer.getByRole("button", { name: "✕", exact: true }).click({
+        timeout: E2E_ACTION_TIMEOUT_MS,
+      });
       await previewLayer.waitFor({ state: "detached", timeout: 10_000 });
     }
   }, { timeout: E2E_TIMEOUT_MS });

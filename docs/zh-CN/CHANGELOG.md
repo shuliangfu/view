@@ -11,6 +11,14 @@
 
 ### 变更
 
+- **P0-hotfix：gallery E2E 缩放点击被放大预览拦截（CI）**
+  - 根因：先点 `＋` 后，Playwright 命中测试把 transform 后的预览
+    （`cursor-grab`／img）当成挡住 `－`（ubuntu CI 视口；`subtree intercepts
+    pointer events`，60s）。本地常绿。
+  - 修复：examples 控制条 `relative z-10`＋列 `overflow-hidden`；E2E 先 `－` 再
+    `＋`（仍覆盖两按钮；断言 % 离开／回到 100），限定在预览层内。**未**放宽断言；
+    禁 JSR／npm。
+
 - **P0-hotfix：`e2e-examples` 钉 ubuntu-24.04（Playwright 1.59.1）**
   - CI 红因：`ubuntu-latest` 已是 **26.04**；`playwright@1.59.1 install --with-deps chromium`
     报 `does not support chromium on ubuntu26.04-x64`。job 改钉 **`ubuntu-24.04`**；

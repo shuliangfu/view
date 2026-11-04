@@ -129,7 +129,7 @@ export default function GalleryDemo() {
             ✕
           </button>
 
-          <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-6 overflow-hidden">
             <div
               className="cursor-grab active:cursor-grabbing select-none"
               onMouseDown={onMouseDown}
@@ -141,7 +141,8 @@ export default function GalleryDemo() {
               />
             </div>
 
-            <div className="flex items-center gap-6 bg-white/10 p-4 rounded-full backdrop-blur-xl border border-white/20">
+            {/* relative z-10: scaled preview (transform) must not steal clicks from zoom controls */}
+            <div className="relative z-10 flex items-center gap-6 bg-white/10 p-4 rounded-full backdrop-blur-xl border border-white/20">
               <button
                 type="button"
                 onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}

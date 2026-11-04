@@ -12,6 +12,14 @@ and this project adheres to
 
 ### Changed
 
+- **P0-hotfix: gallery E2E zoom click vs scaled preview (CI)**
+  - Root cause: after clicking `＋`, Playwright hit-testing treated the transformed
+    preview (`cursor-grab` / img) as intercepting `－` on ubuntu CI viewports
+    (`subtree intercepts pointer events`, 60s). Local often passed.
+  - Fix: examples gallery controls `relative z-10` + column `overflow-hidden`;
+    E2E clicks `－` then `＋` (still exercises both; asserts % leaves/returns 100),
+    scoped to the preview layer. **No** assertion relaxation; no JSR / npm.
+
 - **P0-hotfix: pin `e2e-examples` to ubuntu-24.04 (Playwright 1.59.1)**
   - CI failure: `ubuntu-latest` is **26.04**; `playwright@1.59.1 install --with-deps chromium`
     errors with `does not support chromium on ubuntu26.04-x64`. Pin job to **`ubuntu-24.04`**;
