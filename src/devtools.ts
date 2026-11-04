@@ -1,7 +1,8 @@
 /**
  * @module @dreamer/view/devtools
  * @description DEV-only inspection helpers: Owner tree + subscription counts,
- * plus **explicit opt-in** oversubscribe / remount-churn warnings (§5.1).
+ * plus **explicit opt-in** oversubscribe / remount-churn / component-rerun
+ * warnings (§5.1 — focus loss + bare fetch re-fire).
  *
  * **Not** re-exported from the convenience main barrel or `/reactivity`, so
  * production / size / consumer-bundle measured entries stay unchanged.
@@ -413,8 +414,11 @@ export function snapshotRegistrySources(): RegistrySourceSnapshot[] {
 // P2-dev-warn-oversubscribe (§5.1): DEV / explicit opt-in misuse warnings
 // ---------------------------------------------------------------------------
 
-/** Misuse patterns from analysis §5.1 (wide top-level subscription / remount churn). */
-export type OversubscribeWarnKind = "wide-subscription" | "remount-churn";
+/** Misuse patterns from analysis §5.1 (wide top-level subscription / remount churn / setup re-run). */
+export type OversubscribeWarnKind =
+  | "wide-subscription"
+  | "remount-churn"
+  | "component-rerun";
 
 export interface OversubscribeWarning {
   kind: OversubscribeWarnKind;
@@ -423,6 +427,8 @@ export interface OversubscribeWarning {
   upstream?: number;
   /** Remount count in the window when kind is remount-churn. */
   remounts?: number;
+  /** Setup call count when kind is component-rerun. */
+  setups?: number;
   depth?: number;
   ownerKind?: OwnerKind;
   /** Logical remount key when kind is remount-churn. */
@@ -478,6 +484,9 @@ function isPlaceholderExpansion(prevNodes: number, nextNodes: number): boolean {
 }
 
 const remountLog = new Map<string, number[]>();
+/** Component / page setup call counts (opt-in via {@link noteComponentSetup}). */
+const componentSetupCounts = new Map<string, number>();
+const warnedComponentSetupKeys = new Set<string>();
 const warnedWide = new WeakSet<object>();
 const warnedRemountKeys = new Set<string>();
 let watchTimer: ReturnType<typeof setInterval> | null = null;
@@ -536,7 +545,9 @@ export function detectWideSubscriptions(
           message:
             `Effect at depth ${depth} has ${upstream} upstream subscriptions ` +
             `(threshold ${opts.maxUpstream}). Prefer narrower children / thunks ` +
-            `so the component shell is not re-run (see §5.1 / P0-4 guide).`,
+            `so the component shell is not re-run — whole-shell re-runs drop focus ` +
+            `and re-fire top-level bare fetch (put IO in createEffect / createResource; ` +
+            `see §5.1 / P0-4 / P1-view-rerun-fetch-guard).`,
           upstream,
           depth,
           ownerKind: kind,
@@ -577,6 +588,60 @@ export function clearRemountNotes(): void {
   warnedRemountKeys.clear();
 }
 
+/** Clear component-setup counters (tests). */
+export function clearComponentSetupNotes(): void {
+  componentSetupCounts.clear();
+  warnedComponentSetupKeys.clear();
+}
+
+/**
+ * Opt-in DEV bookkeeping: call once at the top of a component / page setup.
+ *
+ * A **second** call for the same `key` (without clearing) means the setup body
+ * re-ran — usually from a too-wide Effect / whole-tree replace. That re-run is
+ * what re-fires **top-level bare `fetch`** and drops focus; put IO in
+ * `createEffect` / `createResource` instead (P0-4).
+ *
+ * Does **not** hook the runtime. Emitting requires `VIEW_DEV` + `emit: true`
+ * (via {@link detectComponentRerun} or the return value when `emit` is set).
+ *
+ * @returns current setup count for `key`
+ */
+export function noteComponentSetup(key: string): number {
+  const n = (componentSetupCounts.get(key) ?? 0) + 1;
+  componentSetupCounts.set(key, n);
+  return n;
+}
+
+/**
+ * If {@link noteComponentSetup} was called ≥ 2 times for `key`, return a
+ * `component-rerun` warning. Emitting requires `VIEW_DEV` + `emit: true`.
+ */
+export function detectComponentRerun(
+  key: string,
+  options?: OversubscribeWarnOptions,
+): OversubscribeWarning | null {
+  const opts = resolveOpts(options);
+  const n = componentSetupCounts.get(key) ?? 0;
+  if (n < 2) return null;
+  const warning: OversubscribeWarning = {
+    kind: "component-rerun",
+    message:
+      `Setup "${key}" ran ${n} times. Component bodies should run once; ` +
+      `a re-run usually means a wide subscription remounted the shell — ` +
+      `top-level bare fetch will fire again and inputs may lose focus. ` +
+      `Move IO into createEffect / createResource; keep return paths free of ` +
+      `hot Signal reads (P0-4 / P1-view-rerun-fetch-guard).`,
+    setups: n,
+    key,
+  };
+  if (opts.emit && !warnedComponentSetupKeys.has(key)) {
+    warnedComponentSetupKeys.add(key);
+    emitWarning(warning, opts);
+  }
+  return warning;
+}
+
 /**
  * Check remount churn for one key against the sliding window.
  * Emitting requires `VIEW_DEV` + `emit: true`.
@@ -598,7 +663,8 @@ export function detectRemountChurn(
     message:
       `Key "${key}" remounted ${recent.length} times within ${opts.remountWindowMs}ms ` +
       `(threshold ${opts.maxRemounts}). Suspected whole-tree unmount/remount — ` +
-      `narrow subscriptions so the shell stays mounted (analysis §5.1).`,
+      `narrow subscriptions so the shell stays mounted; otherwise focus is lost and ` +
+      `top-level bare fetch re-fires (P0-4 / P1-view-rerun-fetch-guard).`,
     remounts: recent.length,
     key,
   };
@@ -612,6 +678,8 @@ export function detectRemountChurn(
 export interface DetectOversubscribeOptions extends OversubscribeWarnOptions {
   /** Also check these remount keys. */
   remountKeys?: string[];
+  /** Also check these {@link noteComponentSetup} keys for re-runs. */
+  setupKeys?: string[];
   /** Root id prefix for {@link IndexedOwnerNode} paths. Default `"0"`. */
   rootId?: string;
 }
@@ -627,6 +695,10 @@ export function detectOversubscribe(
   const keys = options?.remountKeys ?? [];
   for (const key of keys) {
     const hit = detectRemountChurn(key, options);
+    if (hit) out.push(hit);
+  }
+  for (const key of options?.setupKeys ?? []) {
+    const hit = detectComponentRerun(key, options);
     if (hit) out.push(hit);
   }
   return out;
@@ -701,7 +773,8 @@ export function detectOwnerRemountChurn(
             }) at depth ${depth} replaced all children ` +
             `(prev subtree=${prev.subtreeNodes}, next=${next.subtreeNodes}). ` +
             `Suspected whole-tree unmount/remount from a too-wide Effect — ` +
-            `narrow subscriptions (analysis §5.1 / P0-4).`,
+            `narrow subscriptions; focus loss + bare fetch re-fire (P0-4 / ` +
+            `P1-view-rerun-fetch-guard).`,
           remounts: 1,
           depth,
           ownerKind: classify(node),
@@ -737,6 +810,8 @@ export interface EnableOversubscribeWarningsOptions
   includeTrackedRoots?: boolean;
   /** Remount keys to check each tick. */
   remountKeys?: string[];
+  /** {@link noteComponentSetup} keys to check each tick. */
+  setupKeys?: string[];
 }
 
 /**
@@ -754,6 +829,7 @@ export function enableOversubscribeWarnings(
   const intervalMs = options?.intervalMs ?? 500;
   const includeTracked = options?.includeTrackedRoots !== false;
   const remountKeys = options?.remountKeys ?? [];
+  const setupKeys = options?.setupKeys ?? [];
   const primary = options?.owner ?? null;
 
   const tick = () => {
@@ -778,6 +854,9 @@ export function enableOversubscribeWarnings(
     }
     for (const key of remountKeys) {
       detectRemountChurn(key, { ...opts, emit: true, onWarn: opts.onWarn });
+    }
+    for (const key of setupKeys) {
+      detectComponentRerun(key, { ...opts, emit: true, onWarn: opts.onWarn });
     }
   };
 
@@ -809,6 +888,7 @@ export {
 /** Test helper: reset warn-once sets (does not clear remount timestamps). */
 export function clearOversubscribeWarnState(): void {
   warnedRemountKeys.clear();
+  warnedComponentSetupKeys.clear();
   // WeakSet cannot be cleared; tests should dispose Owners between cases.
   disableOversubscribeWarnings();
 }

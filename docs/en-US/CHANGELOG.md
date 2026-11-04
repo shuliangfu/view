@@ -10,6 +10,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P1: component re-run / bare-fetch DEV guard (non-breaking DX)**
+  - **Runtime:** `jsx` function components run setup under `untrack` so
+    top-level Signal reads do not whole-tree remount on non-route updates
+    (test: `component-rerun-guard`).
+
+  - `@dreamer/view/devtools`: `noteComponentSetup` / `detectComponentRerun` /
+    `clearComponentSetupNotes`; `setupKeys` on detect/enable oversubscribe.
+  - New warn kind `component-rerun`; wide-subscription / remount-churn messages
+    now call out focus loss + top-level bare `fetch` re-fire.
+  - Docs: [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md); P0-4
+    “no top-level bare fetch”.
+  - Thin companion: document route-leave cancel via `createResource` outer `options.signal`
+    (Owner dispose is unsafe with Suspense fallback).
+
 ### Changed
 
 - **3.0 R1/R3: stricter hydration defaults (BREAKING)**

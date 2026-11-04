@@ -622,6 +622,9 @@ function Page() {
 
 ## 11. `Suspense` and `createResource`
 
+> **Repeat requests?** Usually the component setup re-ran (wide subscription), not a Resource bug — avoid top-level bare `fetch`; see [P1-view-rerun-fetch-guard](./docs/en-US/P1-view-rerun-fetch-guard.md) and P0-4.
+
+
 ### 11.1 Basic usage
 
 ```tsx

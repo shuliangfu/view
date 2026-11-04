@@ -90,6 +90,11 @@ function Bad(props: { loading: () => boolean }) {
 
 ---
 
+
+### 2.3 No top-level bare `fetch` (the usual repeat-request culprit)
+
+When a too-wide subscription re-runs the whole setup, a bare `fetch` / `axios` at the top of the component fires **again**, often with focus loss. Put IO in `createEffect` or `createResource` (with `signal`). DEV: `noteComponentSetup` / oversubscribe warnings — [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
+
 ## 3. `createMemo`: when to use / when not
 
 | Use | Avoid |

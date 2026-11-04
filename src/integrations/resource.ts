@@ -17,7 +17,7 @@
  * - 信号状态管理 (loading/data/error)
  * - 依赖源 (source) 变化自动触发
  * - 与 Suspense 的 loading 状态同步
- * - loadGeneration + AbortController：丢弃过期结果，并可真正取消 in-flight 工作
+ * - loadGeneration + AbortController：丢弃过期结果，并可真正取消 in-flight 工作（切页请传 options.signal）
  *
  * **范围说明：**
  * - 重试／HTTP 缓存／跨 Resource 去重应在 fetch 层或用 {@link createInflightDedupe} 等上层策略实现；
@@ -25,7 +25,8 @@
  *
  * @usage
  * const user = createResource(userId, (id, { signal }) => fetchUser(id, signal))
- * // 放在 Suspense 外；勿在父组件 return 里直接 user()（会订阅 data 导致整组件重跑、重复 createResource）
+ * // 在模块／父级 setup 创建一次；切页请传 options.signal 取消 in-flight。
+ * // 勿在父组件 return 里直接 user()（会订阅 data → 整组件重跑 → 重复 createResource）。
  * <Suspense fallback={<Loading/>}>
  *   <UserCard user={user} />
  * </Suspense>
@@ -266,8 +267,8 @@ export function createResource<T, S>(
 
   // 核心优化：当依赖源 (source) 变化时，自动触发重新加载
   // 注意：无显式 source 的 overload（仅 fetcher，或 fetcher+options）不挂 effect
-  const hasExplicitSource =
-    arguments.length >= 2 && typeof maybeFetcherOrOptions === "function";
+  const hasExplicitSource = arguments.length >= 2 &&
+    typeof maybeFetcherOrOptions === "function";
   if (hasExplicitSource) {
     createEffect(() => {
       const s = _source(); // 追踪依赖

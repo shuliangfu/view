@@ -2,9 +2,14 @@
  * @module jsx-runtime
  * @description 为 @dreamer/view 提供 JSX 运行时。
  * 采用全量 Thunk 模型：每一个 JSX 节点都返回一个延迟评估的函数，以确保执行时 Owner 链条的绝对可靠。
+ *
+ * **3.0／P1-view-rerun-fetch-guard：** 函数组件在 `untrack` 下执行 setup，避免顶层读
+ * Signal 订到父级 `insert` Effect → 非路由更新整树 `replaceChild`。细粒度更新仍靠
+ * 子树内 `insert`／`createRenderEffect`／`createEffect`。路由切换等父级合法重跑仍会重建。
  */
 
 import { createRenderEffect } from "./reactivity/effect.ts";
+import { untrack } from "./reactivity/signal.ts";
 import {
   adoptChild,
   createOwner,
@@ -95,14 +100,17 @@ export function jsx(
     if (typeof type === "function") {
       // 透明组件（如 Provider）不创建新的 Owner，直接在当前作用域执行
       if ((type as ViewTransparentProviderMeta).__IS_TRANSPARENT_PROVIDER) {
-        return type(props);
+        // untrack：Provider setup 读 Signal 不订到外层 insert Effect
+        return untrack(() => type(props));
       }
 
       const owner = createOwner();
       if (parent) adoptChild(parent, owner);
 
-      // 执行组件并传递 props
-      return runWithOwner(owner, () => type(props));
+      // untrack setup：组件顶层读 Signal／Memo 不泄漏到父级 insert Effect，
+      // 否则非路由状态一变会 cleanNode＋整段 replaceChild（失焦／裸 fetch 重发）。
+      // 子树响应式仍由 insert／createRenderEffect／createEffect 负责。
+      return runWithOwner(owner, () => untrack(() => type(props)));
     }
 
     // 2. 处理原生元素 (Host Element)

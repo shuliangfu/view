@@ -588,6 +588,9 @@ function Page() {
 
 ## 十一、`Suspense` 与 `createResource`
 
+> **重复请求？** 多半是组件 setup 因过宽订阅重跑，不是 Resource 坏了——勿顶层裸 `fetch`；见 [P1-view-rerun-fetch-guard](./P1-view-rerun-fetch-guard.md) 与 P0-4。
+
+
 ### 11.1 基本用法
 
 ```tsx

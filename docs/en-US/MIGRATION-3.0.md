@@ -66,6 +66,11 @@ SSR remains **`@dreamer/view/ssr` only** (unchanged).
 
 ---
 
+
+### Component setup is untracked (behavior align with “run once”)
+
+`jsx()` function components run setup under `untrack`. Prefer reactive children / attrs as accessors (`() => …`) or compiled templates — eager `{signal()}` in setup is one-shot. See [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
+
 ## 2. Codemod-style steps
 
 1. Inventory `from "@dreamer/view"` / `from "jsr:@dreamer/view"`.

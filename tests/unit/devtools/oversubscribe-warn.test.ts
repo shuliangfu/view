@@ -4,10 +4,12 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
+  clearComponentSetupNotes,
   clearOversubscribeWarnState,
   clearRemountNotes,
   clearTrackedRoots,
   createRootTracked,
+  detectComponentRerun,
   detectOversubscribe,
   detectOwnerRemountChurn,
   detectRemountChurn,
@@ -16,6 +18,7 @@ import {
   enableOversubscribeWarnings,
   getTrackedRoots,
   inspectOwner,
+  noteComponentSetup,
   noteRemount,
   type OwnerNodeSnapshot,
 } from "@dreamer/view/devtools";
@@ -50,6 +53,7 @@ describe("devtools oversubscribe warn (P2)", () => {
     resetRegistry();
     clearTrackedRoots();
     clearRemountNotes();
+    clearComponentSetupNotes();
     clearOversubscribeWarnState();
     warned.length = 0;
   });
@@ -57,6 +61,7 @@ describe("devtools oversubscribe warn (P2)", () => {
   afterEach(() => {
     disableOversubscribeWarnings();
     clearRemountNotes();
+    clearComponentSetupNotes();
     clearOversubscribeWarnState();
     clearTrackedRoots();
     resetRegistry();
@@ -337,6 +342,38 @@ describe("devtools oversubscribe warn (P2)", () => {
     dispose();
     router.destroy();
   });
+
+  it("noteComponentSetup + detectComponentRerun flags second setup (bare fetch risk)", () => {
+    expect(noteComponentSetup("Page")).toBe(1);
+    expect(detectComponentRerun("Page")).toBeNull();
+
+    expect(noteComponentSetup("Page")).toBe(2);
+    const hit = detectComponentRerun("Page", {
+      emit: true,
+      onWarn: (w) => warned.push({ kind: w.kind, message: w.message }),
+    });
+    expect(hit?.kind).toBe("component-rerun");
+    expect(hit?.setups).toBe(2);
+    expect(hit?.message).toMatch(/bare fetch/i);
+    expect(warned.some((w) => w.kind === "component-rerun")).toBe(true);
+
+    // detectOversubscribe can include setupKeys
+    const combined = detectOversubscribe(null, { setupKeys: ["Page"] });
+    expect(combined.some((w) => w.kind === "component-rerun")).toBe(true);
+  });
+
+  it("wide-subscription message mentions bare fetch / focus", () => {
+    createRoot((dispose) => {
+      const sigs = Array.from({ length: 10 }, () => createSignal(0));
+      createEffect(() => {
+        for (const s of sigs) s();
+      });
+      const hits = detectWideSubscriptions(getOwner(), { maxUpstream: 8 });
+      expect(hits[0]!.message).toMatch(/bare fetch/i);
+      expect(hits[0]!.message).toMatch(/focus/i);
+      dispose();
+    });
+  });
 });
 
 describe("devtools oversubscribe production posture", () => {
@@ -354,6 +391,7 @@ describe("devtools oversubscribe production posture", () => {
   afterEach(() => {
     disableOversubscribeWarnings();
     clearRemountNotes();
+    clearComponentSetupNotes();
     clearOversubscribeWarnState();
     clearTrackedRoots();
     resetRegistry();

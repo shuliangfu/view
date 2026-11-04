@@ -66,6 +66,11 @@ SSR 仍 **仅** `@dreamer/view/ssr`（不变）。
 
 ---
 
+
+### 组件 setup 在 untrack 下执行（对齐「只跑一次」）
+
+`jsx()` 函数组件 setup 经 `untrack`。请用 accessor 子节点／属性（`() => …`）或编译模板；在 setup 里急切 `{signal()}` 只会读一次。见 [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)。
+
 ## 2. 迁移步骤
 
 1. 盘点 `from "@dreamer/view"`／`from "jsr:@dreamer/view"`。

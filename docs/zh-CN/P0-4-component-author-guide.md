@@ -85,6 +85,11 @@ function Bad(props: { loading: () => boolean }) {
 
 ---
 
+
+### 2.3 勿顶层裸 `fetch`（重复请求的真凶）
+
+组件因过宽订阅被整段重跑时，写在 setup／`return` 前的裸 `fetch`／`axios` 会**再发一次**，并常伴随失焦。副作用请放进 `createEffect` 或 `createResource`（带 `signal`）。DEV 可用 `@dreamer/view/devtools` 的 `noteComponentSetup`／过订阅警告（见 [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)）。
+
 ## 3. `createMemo`：何时用／勿滥用
 
 | 该用 | 不该用 |

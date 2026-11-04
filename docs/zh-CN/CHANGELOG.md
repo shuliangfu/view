@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P1：组件重跑／裸 fetch DEV 防护（非破坏 DX）**
+  - **运行时：** `jsx` 函数组件 setup 在 `untrack` 下执行，顶层读 Signal 不再导致
+    非路由更新整树 remount（测：`component-rerun-guard`）。
+
+  - `@dreamer/view/devtools`：`noteComponentSetup`／`detectComponentRerun`／
+    `clearComponentSetupNotes`；detect／enable oversubscribe 支持 `setupKeys`。
+  - 新警告种类 `component-rerun`；wide-subscription／remount-churn 文案点明失焦与
+    顶层裸 `fetch` 重发。
+  - 文档：[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)；P0-4
+    「勿顶层裸 fetch」。
+  - 薄配套：切页取消用 `createResource` 外层 `options.signal` 文档钉清
+    （Owner dispose 与 Suspense fallback 冲突，不作默认 abort）。
+
 ### 变更
 
 - **3.0 R1／R3：更严水合默认（破坏性）**
