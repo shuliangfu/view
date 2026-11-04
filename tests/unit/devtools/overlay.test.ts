@@ -387,6 +387,20 @@ describe("devtools overlay HMR bridge integration", () => {
     );
     handle.unmount();
   });
+
+  it("status-dot stays green when HMR connected after warnings refresh", () => {
+    installMockBridge();
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    const shadow = handle.root.shadowRoot!;
+    const dot = shadow.querySelector("[data-el='status-dot']") as HTMLElement;
+    expect(dot.className).toContain("ok");
+    expect(dot.className).not.toContain("hidden");
+    // refresh runs renderWarnings; must not wipe HMR green to bare gray `.dot`
+    handle.refresh();
+    expect(dot.className).toContain("ok");
+    expect(dot.classList.contains("warn")).toBe(false);
+    handle.unmount();
+  });
 });
 
 describe("devtools inspectOwnerIndexed", () => {

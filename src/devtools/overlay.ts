@@ -510,7 +510,7 @@ const CSS = /* css */ `
 .hmr-missing { color: rgba(236,236,241,0.42); font-size: 11.5px; line-height: 1.45; }
 
 .indicator {
-  pointer-events: auto; width: 44px; height: 44px; border-radius: 999px;
+  pointer-events: auto; width: 38px; height: 38px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.14);
   background: linear-gradient(160deg, rgba(32,32,38,0.94), rgba(10,10,14,0.96));
   backdrop-filter: blur(14px) saturate(1.3);
@@ -526,12 +526,12 @@ const CSS = /* css */ `
 .indicator:active { cursor: grabbing; }
 .indicator:focus-visible { outline: 2px solid rgba(59,130,246,0.8); outline-offset: 2px; }
 .indicator-mark {
-  font-weight: 780; font-size: 15px; letter-spacing: -0.04em;
+  font-weight: 780; font-size: 13px; letter-spacing: -0.04em;
   background: linear-gradient(180deg, #93c5fd, #3b82f6);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .dot {
-  position: absolute; top: 3px; right: 3px; width: 9px; height: 9px;
+  position: absolute; top: 2px; right: 2px; width: 8px; height: 8px;
   border-radius: 999px; border: 1.5px solid rgba(10,10,14,0.95); background: #71717a;
 }
 .dot.ok { background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.25); }
@@ -1204,13 +1204,54 @@ export function mountDevtoolsOverlay(
     }
   };
 
+  /**
+   * Float status-dot: merge HMR connection + misuse warnings.
+   * - connected + no warns → green (`ok`)
+   * - any warns → yellow (`warn`) without clearing HMR state for next paint
+   * - disconnected / error / no bridge → gray / hidden as before
+   */
+  const syncStatusDot = () => {
+    const statusDot = el("[data-el='status-dot']");
+    if (!statusDot) return;
+    const snap = lastHmrSnap;
+    const n = warnings.length;
+    if (!snap) {
+      statusDot.className = "dot hidden off";
+      statusDot.title = ot("indicatorHmrOffline");
+      statusDot.style.background = "";
+      return;
+    }
+    let cls: "ok" | "warn" | "err" | "off";
+    let title: string;
+    if (n > 0) {
+      cls = "warn";
+      title = snap.connection === "connected"
+        ? ot("indicatorHmrConnected")
+        : ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
+    } else if (snap.connection === "connected") {
+      cls = "ok";
+      title = ot("indicatorHmrConnected");
+    } else if (snap.connection === "reconnecting") {
+      cls = "warn";
+      title = ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
+    } else if (snap.connection === "error") {
+      cls = "err";
+      title = ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
+    } else {
+      cls = "off";
+      title = ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
+    }
+    statusDot.className = `dot ${cls}`;
+    statusDot.title = title;
+    statusDot.style.background = "";
+  };
+
   const renderWarnings = () => {
     const list = el("[data-el='warn-list']");
     const badge = el("[data-el='warn-badge']");
     const count = el("[data-el='warn-count']");
     const health = el("[data-el='health-badge']");
     const healthHint = el("[data-el='health-hint']");
-    const dot = el("[data-el='status-dot']");
     const n = warnings.length;
     if (badge) {
       badge.textContent = String(n);
@@ -1231,9 +1272,8 @@ export function mountDevtoolsOverlay(
     if (healthHint) {
       healthHint.textContent = n > 0 ? ot("healthWarnHint") : ot("healthOk");
     }
-    if (dot) {
-      dot.className = n > 0 ? "dot warn" : "dot";
-    }
+    // status-dot: do not paint bare gray here — merge with HMR via syncStatusDot
+    syncStatusDot();
     if (!list) return;
     if (!n) {
       list.innerHTML = `<p class="empty">${ot("noIssues")}</p>`;
@@ -1298,7 +1338,6 @@ export function mountDevtoolsOverlay(
     const missing = el("[data-el='hmr-missing']");
     const live = el("[data-el='hmr-live']");
     const claimNote = el("[data-el='hmr-claim-note']");
-    const statusDot = el("[data-el='status-dot']");
     if (!snap) {
       if (badge) {
         badge.textContent = ot("hmrOffline");
@@ -1309,12 +1348,7 @@ export function mountDevtoolsOverlay(
       if (claimNote) {
         claimNote.textContent = ot("hmrNoBridge");
       }
-      if (statusDot) {
-        statusDot.classList.remove("ok", "warn", "err", "off");
-        statusDot.classList.add("hidden", "off");
-        statusDot.title = ot("indicatorHmrOffline");
-        statusDot.style.background = "";
-      }
+      syncStatusDot();
       return;
     }
     if (missing) missing.hidden = true;
@@ -1361,21 +1395,7 @@ export function mountDevtoolsOverlay(
     if (claimNote) {
       claimNote.textContent = ot("hmrClaimed");
     }
-    if (statusDot) {
-      statusDot.classList.remove("hidden", "ok", "warn", "err", "off");
-      const cls = snap.connection === "connected"
-        ? "ok"
-        : snap.connection === "reconnecting"
-        ? "warn"
-        : snap.connection === "error"
-        ? "err"
-        : "off";
-      statusDot.classList.add(cls);
-      statusDot.title = snap.connection === "connected"
-        ? ot("indicatorHmrConnected")
-        : ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
-      statusDot.style.background = "";
-    }
+    syncStatusDot();
   };
 
   const attachHmrBridge = () => {
