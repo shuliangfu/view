@@ -77,7 +77,6 @@ describe("compiler/analyzer", () => {
     expect(html).toContain('class="b"');
     expect(html).toContain('title="t-x"');
   });
-});
 
   it("isFullyStatic: 可提升的静态文本表达式子节点应视为静态", () => {
     const code = `<div>{"a" + "b"}</div>`;
@@ -107,3 +106,4 @@ describe("compiler/analyzer", () => {
       (sf.statements[0] as ts.ExpressionStatement).expression;
     expect(isFullyStatic(expr)).toBe(false);
   });
+});
