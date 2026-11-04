@@ -12,7 +12,7 @@
 
 | 项 | 说明 |
 |----|------|
-| CI job | `e2e-examples`，**仅** `ubuntu-latest` |
+| CI job | `e2e-examples`，**仅** `ubuntu-24.04`（勿用 `ubuntu-latest`／26.04：PW 1.59.1 不支持） |
 | 浏览器 | Playwright **Chromium** `1.59.1`（`npx playwright@1.59.1 install --with-deps chromium`） |
 | 命令 | `deno task test:e2e` → `deno test -A tests/e2e` |
 | 失败策略 | job 失败即整条 workflow 红（与本地同严断言，含 form `agree`） |

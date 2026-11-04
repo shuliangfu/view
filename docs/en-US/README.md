@@ -91,7 +91,7 @@ npx jsr add @dreamer/view
 > **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun 1.3+**,
 > and **Node.js 22+** with zero source changes. Unit and integration tests pass
 > on all three runtimes × three OSes (Linux / macOS / Windows) in CI. Examples
-> **browser E2E** (`deno task test:e2e`) runs as a separate ubuntu Chromium job
+> **browser E2E** (`deno task test:e2e`) runs as a separate ubuntu-24.04 Chromium job
 > (`e2e-examples`); it is **not** folded into the Windows / browser-less matrix
 > cells. Local full Deno suite: `deno test -A tests` (needs Playwright Chromium).
 > The CLI `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.

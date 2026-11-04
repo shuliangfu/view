@@ -2,7 +2,7 @@
 # - 9-job unit/integration matrix: 3 Deno v2.9 + 3 Bun + 3 Node 22 × (Linux/macOS/Windows)
 #   → NO Chromium / Playwright; do NOT fold tests/e2e into those jobs (would drag Windows /
 #     browser-less runners and inflate flake surface).
-# - e2e-examples (ubuntu-latest only): Playwright Chromium + examples browser E2E; failure fails the workflow.
+# - e2e-examples (ubuntu-24.04 only): Playwright Chromium + examples browser E2E; failure fails the workflow.
 # Local: deno task test:e2e  |  full Deno suite (unit+integration+e2e): deno test -A tests
 name: CI
 
@@ -151,11 +151,13 @@ jobs:
       - name: Compiler static-subtree coverage + golden gate
         run: deno task compiler:coverage:check
 
-  # ───────────────── Examples browser E2E (Ubuntu + Chromium / Playwright only) ─────────────────
+  # ───────────────── Examples browser E2E (Ubuntu 24.04 + Chromium / Playwright only) ─────────────────
   # Keep this OUT of the 9-job matrix: needs Playwright Chromium + examples `deno task dev`.
   # Windows / macOS / Bun / Node matrix jobs stay browser-free on purpose.
+  # Pin ubuntu-24.04: ubuntu-latest is 26.04; Playwright 1.59.1 rejects chromium + --with-deps there
+  # ("does not support chromium on ubuntu26.04-x64"). Match @dreamer/test's playwright pin.
   e2e-examples:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
@@ -164,12 +166,13 @@ jobs:
         with:
           deno-version: v2.9
 
+      # Do not cache examples/: routers.tsx is generated in E2E beforeAll, missing at cold cache.
       - name: Cache dependencies
         continue-on-error: true
-        run: deno cache src/mod.ts tests/ examples/ --minimum-dependency-age=0
+        run: deno cache src/mod.ts tests/ --minimum-dependency-age=0
 
-      - name: Install Playwright Chromium (+ Ubuntu deps)
-        # Pin to the same playwright major/minor as @dreamer/test (see deno.lock / package).
+      - name: Install Playwright Chromium (+ Ubuntu 24.04 deps)
+        # Same pin as @dreamer/test / dweb CI. --with-deps is safe on 24.04; not on 26.04.
         run: npx -y playwright@1.59.1 install --with-deps chromium
 
       - name: Examples browser E2E (fail = red)

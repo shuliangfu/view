@@ -12,8 +12,14 @@ and this project adheres to
 
 ### Changed
 
+- **P0-hotfix: pin `e2e-examples` to ubuntu-24.04 (Playwright 1.59.1)**
+  - CI failure: `ubuntu-latest` is **26.04**; `playwright@1.59.1 install --with-deps chromium`
+    errors with `does not support chromium on ubuntu26.04-x64`. Pin job to **`ubuntu-24.04`**;
+    drop `examples/` from deno cache (routers.tsx generated in E2E `beforeAll`).
+  - Assertions unchanged; no JSR / npm.
+
 - **P0: examples browser E2E into CI (non-breaking)**
-  - Add ubuntu-only workflow job `e2e-examples`: install Playwright Chromium
+  - Add ubuntu-24.04 workflow job `e2e-examples`: install Playwright Chromium
     `1.59.1` (`--with-deps`) and run `deno task test:e2e`. Failure fails the
     workflow. Assertions are **not** relaxed (including form `agree`).
   - Keep the 9-job Deno / Bun / Node × OS **unit + integration** matrix

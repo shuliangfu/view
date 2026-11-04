@@ -11,8 +11,14 @@
 
 ### 变更
 
+- **P0-hotfix：`e2e-examples` 钉 ubuntu-24.04（Playwright 1.59.1）**
+  - CI 红因：`ubuntu-latest` 已是 **26.04**；`playwright@1.59.1 install --with-deps chromium`
+    报 `does not support chromium on ubuntu26.04-x64`。job 改钉 **`ubuntu-24.04`**；
+    deno cache 去掉 `examples/`（`routers.tsx` 由 E2E `beforeAll` 生成）。
+  - 断言未放宽；禁 JSR／npm。
+
 - **P0：examples 浏览器 E2E 入 CI（非破坏）**
-  - 新增仅 ubuntu 的 workflow job `e2e-examples`：安装 Playwright Chromium
+  - 新增仅 ubuntu-24.04 的 workflow job `e2e-examples`：安装 Playwright Chromium
     `1.59.1`（`--with-deps`）并跑 `deno task test:e2e`；失败即红。**未**放宽断言
     （含 form `agree`）。
   - 9-job Deno／Bun／Node × OS **unit＋integration** 矩阵保持无浏览器；注释写明

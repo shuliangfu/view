@@ -46,7 +46,7 @@ deno test -A tests
 
 # CI：`.github/workflows/ci.yml`
 # - 9-job 矩阵：仅 unit + integration（无 Chromium）
-# - ubuntu `e2e-examples`：安装 Chromium 后跑 `deno task test:e2e`；失败即红
+# - ubuntu-24.04 `e2e-examples`：安装 Chromium 后跑 `deno task test:e2e`；失败即红
 # 详见 docs/zh-CN/P0-e2e-into-ci.md
 
 # 性能基准（不计入 pass/fail）

@@ -46,7 +46,7 @@ deno test -A tests
 
 # CI: `.github/workflows/ci.yml`
 # - 9-job matrix: unit + integration only (no Chromium)
-# - ubuntu `e2e-examples`: install Chromium, then `deno task test:e2e`; fail = red
+# - ubuntu-24.04 `e2e-examples`: install Chromium, then `deno task test:e2e`; fail = red
 # See docs/en-US/P0-e2e-into-ci.md
 
 # Benchmarks (not pass/fail gates)

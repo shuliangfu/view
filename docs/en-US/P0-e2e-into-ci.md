@@ -12,7 +12,7 @@
 
 | Piece | Detail |
 |-------|--------|
-| CI job | `e2e-examples` on **`ubuntu-latest` only** |
+| CI job | `e2e-examples` on **`ubuntu-24.04` only** (do **not** use `ubuntu-latest` / 26.04: Playwright 1.59.1 rejects chromium there) |
 | Browser | Playwright **Chromium** `1.59.1` (`npx playwright@1.59.1 install --with-deps chromium`) |
 | Command | `deno task test:e2e` → `deno test -A tests/e2e` |
 | Fail policy | Job failure fails the workflow (same strict assertions as local, including form `agree`) |
