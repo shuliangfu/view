@@ -79,5 +79,8 @@ describe("subpaths（按需导出）", () => {
     expect(typeof mod.isViewDev).toBe("function");
     expect(typeof mod.summarizeOwnerTree).toBe("function");
     expect(typeof mod.getTrackedRoots).toBe("function");
+    expect(typeof mod.detectOversubscribe).toBe("function");
+    expect(typeof mod.enableOversubscribeWarnings).toBe("function");
+    expect(typeof mod.noteRemount).toBe("function");
   });
 });

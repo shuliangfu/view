@@ -11,6 +11,18 @@
 
 ### 新增
 
+- **P2：DEV-only 过订阅／卸挂再挂警告（§5.1，非破坏）**
+  - 扩展 `@dreamer/view/devtools`：`detectWideSubscriptions`／
+    `detectOversubscribe`、`noteRemount`／`detectRemountChurn`、
+    `detectOwnerRemountChurn`、`enableOversubscribeWarnings`（显式 opt-in；
+    emit 需 `VIEW_DEV`）。
+  - **无** `createSignal`／`createRoot`／`insert` 挂钩；size／consumer-bundle
+    **未**抬基线（仍不进测量入口）。
+  - 文档 [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md)／
+    [`../en-US/P2-dev-warn-oversubscribe.md`](../en-US/P2-dev-warn-oversubscribe.md)；
+    单测 `tests/unit/devtools/oversubscribe-warn.test.ts`。
+  - 禁 JSR／npm；**未**改运行时默认语义。
+
 - **P2-4：DEV-only DevTools（Owner 树／订阅数，非破坏）**
   - 新子路径 `@dreamer/view/devtools`：`inspectOwner`／`summarizeOwnerTree`、
     `getTrackedRoots`、`getSignalObserverCount`、`snapshotRegistrySources`、

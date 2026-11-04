@@ -222,6 +222,6 @@ PullRefreshRoot（return 不读业务 Signal）
 ## 10. 非目标（本刀）
 
 - 不改 `insert`／Effect／`createMemo`／`ref` 默认运行时语义
-- 不新增 dev-only「多余订阅」运行时警告（可另开刀）
+- DEV-only 过订阅／卸挂再挂警告见 [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md)（`/devtools` 显式 opt-in）
 - 不改 ui-view／dweb-admin 产品代码；不发 JSR／npm
 - 不把 P0-2 体积分析、P0-3 编译器优化、P1\* 塞进本刀

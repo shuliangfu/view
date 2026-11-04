@@ -117,7 +117,7 @@ npx jsr add @dreamer/view
 | `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                                            |
 | `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                             |
 | `jsr:@dreamer/view/csr`             | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                |
-| `jsr:@dreamer/view/devtools`      | **DEV-only** Owner tree / subscription inspection (`VIEW_DEV`; not for production bundles)                                      |
+| `jsr:@dreamer/view/devtools`      | **DEV-only** Owner tree / subscription inspection + opt-in oversubscribe warnings (`VIEW_DEV`; not for production bundles)      |
 
 **Recommended imports (prefer these in new code):**
 
@@ -1399,6 +1399,7 @@ function ModalHost() {
 - **P0-2: consumer / examples bundle analyze**: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
 - **P2: examples subpath dogfood**: [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md)
 - **P2-4 DEV-only DevTools** (Owner / subscriptions): [P2-4-devtools.md](./P2-4-devtools.md) / [zh](../zh-CN/P2-4-devtools.md)
+- **P2 DEV oversubscribe / remount warnings** (§5.1 opt-in): [P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md) / [zh](../zh-CN/P2-dev-warn-oversubscribe.md)
 - **P1-1: main-entry barrel deprecation preview (Strategy A)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
 - **P0: examples browser E2E into CI**: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) · [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md)

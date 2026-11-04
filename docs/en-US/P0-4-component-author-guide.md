@@ -240,6 +240,6 @@ Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the 
 ## 10. Non-goals (this knife)
 
 - No default `insert` / Effect / `createMemo` / `ref` runtime semantics changes
-- No new dev-only “over-subscription” runtime warnings (separate knife)
+- Dev-only oversubscribe / remount warnings: see [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) (explicit opt-in on `/devtools`)
 - No ui-view / dweb-admin product edits; no JSR / npm publish
 - No P0-2 bundle work, P0-3 compiler optimization, or P1\* in this knife

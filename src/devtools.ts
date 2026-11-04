@@ -1,15 +1,18 @@
 /**
  * @module @dreamer/view/devtools
- * @description DEV-only inspection helpers: Owner tree + subscription counts.
+ * @description DEV-only inspection helpers: Owner tree + subscription counts,
+ * plus **explicit opt-in** oversubscribe / remount-churn warnings (§5.1).
  *
  * **Not** re-exported from the convenience main barrel or `/reactivity`, so
  * production / size / consumer-bundle measured entries stay unchanged.
  * No browser extension and no UI shell — call these APIs from tests, a REPL,
  * or your own DEV console helpers.
  *
- * Hot path (`createSignal` / `createRoot`) is **not** patched. Instrumentation
- * that needs a Signal→Source map uses a temporary probe observer; root tracking
- * is opt-in via {@link trackRoot} / {@link createRootTracked}.
+ * Hot path (`createSignal` / `createRoot` / `insert`) is **not** patched.
+ * Instrumentation that needs a Signal→Source map uses a temporary probe observer;
+ * root tracking is opt-in via {@link trackRoot} / {@link createRootTracked};
+ * misuse warnings via {@link detectOversubscribe} /
+ * {@link enableOversubscribeWarnings} (require `VIEW_DEV` to emit).
  *
  * Prefer enabling `globalThis.VIEW_DEV = true` in development (dev server already
  * injects it for HMR) so registry snapshots include anonymous Signals.
@@ -309,4 +312,348 @@ export function snapshotRegistrySources(): RegistrySourceSnapshot[] {
     }
   }
   return out;
+}
+
+
+// ---------------------------------------------------------------------------
+// P2-dev-warn-oversubscribe (§5.1): DEV / explicit opt-in misuse warnings
+// ---------------------------------------------------------------------------
+
+/** Misuse patterns from analysis §5.1 (wide top-level subscription / remount churn). */
+export type OversubscribeWarnKind = "wide-subscription" | "remount-churn";
+
+export interface OversubscribeWarning {
+  kind: OversubscribeWarnKind;
+  message: string;
+  /** Upstream edges when kind is wide-subscription. */
+  upstream?: number;
+  /** Remount count in the window when kind is remount-churn. */
+  remounts?: number;
+  depth?: number;
+  ownerKind?: OwnerKind;
+  /** Logical remount key when kind is remount-churn. */
+  key?: string;
+}
+
+export interface OversubscribeWarnOptions {
+  /** Max upstream edges on one Effect before flagging. Default 8. */
+  maxUpstream?: number;
+  /** Remounts within {@link remountWindowMs} that trigger remount-churn. Default 3. */
+  maxRemounts?: number;
+  /** Sliding window for remount counting (ms). Default 2000. */
+  remountWindowMs?: number;
+  /**
+   * When `true`, also `console.warn` / call {@link onWarn}.
+   * Emitting requires `VIEW_DEV` (inspection without emit does not).
+   * Default: `false` for one-shot detect*; `true` for {@link enableOversubscribeWarnings}.
+   */
+  emit?: boolean;
+  /** Optional custom sink (still gated by emit + VIEW_DEV). */
+  onWarn?: (warning: OversubscribeWarning) => void;
+}
+
+const DEFAULT_MAX_UPSTREAM = 8;
+const DEFAULT_MAX_REMOUNTS = 3;
+const DEFAULT_REMOUNT_WINDOW_MS = 2000;
+
+const remountLog = new Map<string, number[]>();
+const warnedWide = new WeakSet<object>();
+const warnedRemountKeys = new Set<string>();
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+let watchStop: (() => void) | null = null;
+
+function resolveOpts(options?: OversubscribeWarnOptions) {
+  return {
+    maxUpstream: options?.maxUpstream ?? DEFAULT_MAX_UPSTREAM,
+    maxRemounts: options?.maxRemounts ?? DEFAULT_MAX_REMOUNTS,
+    remountWindowMs: options?.remountWindowMs ?? DEFAULT_REMOUNT_WINDOW_MS,
+    emit: options?.emit === true,
+    onWarn: options?.onWarn,
+  };
+}
+
+function emitWarning(
+  warning: OversubscribeWarning,
+  opts: ReturnType<typeof resolveOpts>,
+): void {
+  if (!opts.emit) return;
+  if (!isViewDev()) {
+    throw new Error(
+      "@dreamer/view/devtools: emitting oversubscribe warnings requires globalThis.VIEW_DEV === true",
+    );
+  }
+  if (opts.onWarn) opts.onWarn(warning);
+  else {
+    console.warn(`[@dreamer/view/devtools] ${warning.kind}: ${warning.message}`);
+  }
+}
+
+/**
+ * One-shot scan: Effects under `owner` with upstream edge count > threshold.
+ * Holding an `Owner` is enough to inspect; emitting requires `VIEW_DEV` + `emit: true`.
+ * Does **not** patch `createEffect` / `insert`.
+ */
+export function detectWideSubscriptions(
+  owner: Owner | null,
+  options?: OversubscribeWarnOptions,
+): OversubscribeWarning[] {
+  if (!owner) return [];
+  const opts = resolveOpts(options);
+  const out: OversubscribeWarning[] = [];
+
+  const walk = (node: Owner, depth: number) => {
+    const kind = classify(node);
+    if (kind === "effect") {
+      const asObs = node as Owner & Partial<Observer>;
+      const upstream = asObs.sources ? countUpstream(asObs as Observer) : 0;
+      if (upstream > opts.maxUpstream) {
+        const warning: OversubscribeWarning = {
+          kind: "wide-subscription",
+          message:
+            `Effect at depth ${depth} has ${upstream} upstream subscriptions ` +
+            `(threshold ${opts.maxUpstream}). Prefer narrower children / thunks ` +
+            `so the component shell is not re-run (see §5.1 / P0-4 guide).`,
+          upstream,
+          depth,
+          ownerKind: kind,
+        };
+        out.push(warning);
+        if (opts.emit && !warnedWide.has(node as object)) {
+          warnedWide.add(node as object);
+          emitWarning(warning, opts);
+        }
+      }
+    }
+    const kids = node.children;
+    if (kids) {
+      for (let i = 0; i < kids.length; i++) walk(kids[i]!, depth + 1);
+    }
+  };
+
+  walk(owner, 0);
+  return out;
+}
+
+/**
+ * Record a remount for a logical key (component id, route, test label).
+ * Explicit opt-in — call from your remount path or tests. No hot-path hooks.
+ */
+export function noteRemount(key: string, now = Date.now()): void {
+  const list = remountLog.get(key) ?? [];
+  list.push(now);
+  remountLog.set(key, list);
+}
+
+/** Clear remount timestamps (tests). */
+export function clearRemountNotes(): void {
+  remountLog.clear();
+  warnedRemountKeys.clear();
+}
+
+/**
+ * Check remount churn for one key against the sliding window.
+ * Emitting requires `VIEW_DEV` + `emit: true`.
+ */
+export function detectRemountChurn(
+  key: string,
+  options?: OversubscribeWarnOptions,
+  now = Date.now(),
+): OversubscribeWarning | null {
+  const opts = resolveOpts(options);
+  const list = remountLog.get(key);
+  if (!list || list.length === 0) return null;
+  const cutoff = now - opts.remountWindowMs;
+  const recent = list.filter((t) => t >= cutoff);
+  remountLog.set(key, recent);
+  if (recent.length < opts.maxRemounts) return null;
+  const warning: OversubscribeWarning = {
+    kind: "remount-churn",
+    message:
+      `Key "${key}" remounted ${recent.length} times within ${opts.remountWindowMs}ms ` +
+      `(threshold ${opts.maxRemounts}). Suspected whole-tree unmount/remount — ` +
+      `narrow subscriptions so the shell stays mounted (analysis §5.1).`,
+    remounts: recent.length,
+    key,
+  };
+  if (opts.emit && !warnedRemountKeys.has(key)) {
+    warnedRemountKeys.add(key);
+    emitWarning(warning, opts);
+  }
+  return warning;
+}
+
+export interface DetectOversubscribeOptions extends OversubscribeWarnOptions {
+  /** Also check these remount keys. */
+  remountKeys?: string[];
+}
+
+/**
+ * Combined one-shot: wide Effects under `owner` + remount keys.
+ */
+export function detectOversubscribe(
+  owner: Owner | null,
+  options?: DetectOversubscribeOptions,
+): OversubscribeWarning[] {
+  const out = detectWideSubscriptions(owner, options);
+  const keys = options?.remountKeys ?? [];
+  for (const key of keys) {
+    const hit = detectRemountChurn(key, options);
+    if (hit) out.push(hit);
+  }
+  return out;
+}
+
+/** Per-node child-identity fingerprint for remount-churn polling. */
+interface OwnerNodeSnap {
+  childIds: object[];
+  subtreeNodes: number;
+}
+
+/** WeakMap of Owner → previous child fingerprint (per node, not only root). */
+const ownerNodeSnaps = new WeakMap<Owner, OwnerNodeSnap>();
+
+function subtreeNodeCount(owner: Owner): number {
+  let n = 1;
+  const kids = owner.children;
+  if (kids) {
+    for (let i = 0; i < kids.length; i++) n += subtreeNodeCount(kids[i]!);
+  }
+  return n;
+}
+
+/**
+ * Walk `owner` subtree; if any node with a prior non-empty child set has
+ * **zero** surviving child identities, flag remount-churn.
+ * A **single** full replacement is enough (unlike {@link noteRemount} keys).
+ * Does not patch `insert` / `cleanNode` / Effect.run.
+ */
+export function detectOwnerRemountChurn(
+  owner: Owner | null,
+  options?: OversubscribeWarnOptions,
+): OversubscribeWarning | null {
+  if (!owner) return null;
+  const opts = resolveOpts(options);
+  let found: OversubscribeWarning | null = null;
+
+  const walk = (node: Owner, depth: number) => {
+    const kids = (node.children ?? []) as object[];
+    const next: OwnerNodeSnap = {
+      childIds: kids,
+      subtreeNodes: subtreeNodeCount(node),
+    };
+    const prev = ownerNodeSnaps.get(node);
+    ownerNodeSnaps.set(node, next);
+
+    if (
+      !found &&
+      prev &&
+      prev.childIds.length > 0 &&
+      next.childIds.length > 0 &&
+      prev.subtreeNodes >= 2
+    ) {
+      const prevSet = new Set(prev.childIds);
+      let overlap = 0;
+      for (const c of next.childIds) {
+        if (prevSet.has(c)) overlap++;
+      }
+      if (overlap === 0) {
+        const key = `owner:${classify(node)}@d${depth}`;
+        noteRemount(key);
+        found = {
+          kind: "remount-churn",
+          message:
+            `Owner (${classify(node)}) at depth ${depth} replaced all children ` +
+            `(prev subtree=${prev.subtreeNodes}, next=${next.subtreeNodes}). ` +
+            `Suspected whole-tree unmount/remount from a too-wide Effect — ` +
+            `narrow subscriptions (analysis §5.1 / P0-4).`,
+          remounts: 1,
+          depth,
+          ownerKind: classify(node),
+          key,
+        };
+        if (opts.emit && !warnedRemountKeys.has(key)) {
+          warnedRemountKeys.add(key);
+          emitWarning(found, opts);
+        }
+      }
+    }
+
+    const list = node.children;
+    if (list) {
+      for (let i = 0; i < list.length; i++) walk(list[i]!, depth + 1);
+    }
+  };
+
+  walk(owner, 0);
+  return found;
+}
+
+export interface EnableOversubscribeWarningsOptions
+  extends OversubscribeWarnOptions {
+  /** Primary Owner to poll (e.g. `getOwner()` inside a tracked root). */
+  owner?: Owner | null;
+  /** Poll interval ms. Default 500. */
+  intervalMs?: number;
+  /** Also scan {@link getTrackedRoots}. Default true. */
+  includeTrackedRoots?: boolean;
+  /** Remount keys to check each tick. */
+  remountKeys?: string[];
+}
+
+/**
+ * Explicit opt-in live watcher. **Requires** `VIEW_DEV`.
+ * Polls Owners / remount keys; never hooks `createSignal` / `createRoot` / `insert`.
+ * Returns a stop function. Calling again replaces the previous watcher.
+ */
+export function enableOversubscribeWarnings(
+  options?: EnableOversubscribeWarningsOptions,
+): () => void {
+  requireViewDev("enableOversubscribeWarnings");
+  disableOversubscribeWarnings();
+
+  const opts = resolveOpts({ ...options, emit: options?.emit !== false });
+  const intervalMs = options?.intervalMs ?? 500;
+  const includeTracked = options?.includeTrackedRoots !== false;
+  const remountKeys = options?.remountKeys ?? [];
+  const primary = options?.owner ?? null;
+
+  const tick = () => {
+    const roots: Owner[] = [];
+    if (primary) roots.push(primary);
+    if (includeTracked) {
+      for (const r of getTrackedRoots()) {
+        if (r !== primary) roots.push(r);
+      }
+    }
+    for (const root of roots) {
+      detectWideSubscriptions(root, { ...opts, emit: true, onWarn: opts.onWarn });
+      detectOwnerRemountChurn(root, { ...opts, emit: true, onWarn: opts.onWarn });
+    }
+    for (const key of remountKeys) {
+      detectRemountChurn(key, { ...opts, emit: true, onWarn: opts.onWarn });
+    }
+  };
+
+  tick();
+  watchTimer = setInterval(tick, intervalMs);
+  watchStop = () => {
+    if (watchTimer != null) {
+      clearInterval(watchTimer);
+      watchTimer = null;
+    }
+    watchStop = null;
+  };
+  return watchStop;
+}
+
+/** Stop the watcher started by {@link enableOversubscribeWarnings}. */
+export function disableOversubscribeWarnings(): void {
+  if (watchStop) watchStop();
+}
+
+/** Test helper: reset warn-once sets (does not clear remount timestamps). */
+export function clearOversubscribeWarnState(): void {
+  warnedRemountKeys.clear();
+  // WeakSet cannot be cleared; tests should dispose Owners between cases.
+  disableOversubscribeWarnings();
 }

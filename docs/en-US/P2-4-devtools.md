@@ -60,6 +60,10 @@ createRootTracked((dispose) => {
 | `snapshotRegistrySources` | Named Sources always; anonymous also when `VIEW_DEV` |
 | `isViewDev` / `requireViewDev` | Mirror / assert `globalThis.VIEW_DEV` |
 
+## 3b. Follow-up: oversubscribe warnings
+
+Opt-in §5.1 warnings live in the same subpath: [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md).
+
 ## 4. Out of scope
 
 - Browser extension, overlay UI, or network protocol

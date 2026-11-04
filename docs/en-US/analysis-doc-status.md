@@ -25,6 +25,8 @@
 - [P1-4-router-split-ssr.md](./P1-4-router-split-ssr.md) — Router split + SSR isomorphism
 | [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md) | examples subpath dogfood (codegen / Bun import map) |
 | [`P2-4-devtools.md`](./P2-4-devtools.md) · [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md) | DEV-only DevTools (Owner / subscriptions) |
+| [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) · [`../zh-CN/P2-dev-warn-oversubscribe.md`](../zh-CN/P2-dev-warn-oversubscribe.md) | DEV-only oversubscribe / remount warnings (§5.1) |
+
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---

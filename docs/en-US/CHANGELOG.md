@@ -12,6 +12,18 @@ and this project adheres to
 
 ### Added
 
+- **P2: DEV-only oversubscribe / remount warnings (§5.1, non-breaking)**
+  - Extends `@dreamer/view/devtools`: `detectWideSubscriptions` /
+    `detectOversubscribe`, `noteRemount` / `detectRemountChurn`,
+    `detectOwnerRemountChurn`, `enableOversubscribeWarnings` (explicit opt-in;
+    emit requires `VIEW_DEV`).
+  - **No** hooks on `createSignal` / `createRoot` / `insert`; size /
+    consumer-bundle baselines **not** raised (module still off measured entries).
+  - Docs [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) /
+    [`../zh-CN/P2-dev-warn-oversubscribe.md`](../zh-CN/P2-dev-warn-oversubscribe.md);
+    unit locks `tests/unit/devtools/oversubscribe-warn.test.ts`.
+  - No JSR / npm; does **not** change runtime default semantics.
+
 - **P2-4: DEV-only DevTools (Owner tree / subscriptions, non-breaking)**
   - New subpath `@dreamer/view/devtools`: `inspectOwner` / `summarizeOwnerTree`,
     `getTrackedRoots`, `getSignalObserverCount`, `snapshotRegistrySources`,

@@ -58,6 +58,10 @@ createRootTracked((dispose) => {
 | `snapshotRegistrySources` | 具名 Source 始终可列；`VIEW_DEV` 下另含匿名 |
 | `isViewDev`／`requireViewDev` | 镜像／断言 `globalThis.VIEW_DEV` |
 
+## 3b. 后续：过订阅警告
+
+§5.1 显式 opt-in 警告同属本子路径：[`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md)。
+
 ## 4. 不在范围
 
 - 浏览器扩展、浮层 UI、网络协议
