@@ -10,6 +10,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- **3.0 first knife: slim main entry (BREAKING, Strategy A landed)**
+  - `@dreamer/view` main barrel **no longer** re-exports router / form / resource.
+    Use `@dreamer/view/router`, `/form`, `/resource`.
+  - Core CSR surface kept on main (reactivity, mount/hydrate, control-flow,
+    Suspense, scheduler, portal, HMR).
+  - Migration: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
+    [`../zh-CN/MIGRATION-3.0.md`](../zh-CN/MIGRATION-3.0.md).
+  - Package version set to **3.0.0** on `dev` (**JSR publish HOLD** until campaign
+    green + explicit order).
+  - Hydration default `mismatchMode` remains **`continue`** (R1 not in this knife).
+  - Consumer-bundle fixtures that previously pulled integrations through the
+    barrel now import subpaths; refresh size / consumer baselines.
+  - Library main entry minify **~44.3 KiB → ~31.6 KiB** (refreshed size baseline); star-reexport premium vs `/reactivity` now ~**3.0×** minify.
+
+
 ### Added
 
 - **P2: SSR static attr fold parity with CSR templates (non-breaking)**

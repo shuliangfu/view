@@ -37,8 +37,7 @@
    导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
    **`@dreamer/view/reactivity`**、**`/csr`**、**`/ssr`**、**`/router`**、
    **`/form`**、**`/resource`**、**`/control-flow`** 等。主入口
-   **`@dreamer/view`** 仍完整 re-export（**策略 A**：2.x 不删 export），但属
-   **弃用预告**下的便捷全家桶（见该小节／
+   **`@dreamer/view`** 在 **3.0** 起为 CSR **核心** barrel（**不再** re-export 路由／表单／Resource；见该小节／
    [P1-1](./P1-1-main-entry-deprecation-preview.md)）。P0 基线 minify：主入口约
    **43.5 KiB**，`/reactivity` 约 **10.5 KiB**；P0-2 消费方 `export *` 溢价约
    **+34 KiB**（详见 [P0 基线](./P0-基线-体积与性能.md)／
@@ -87,7 +86,7 @@ bunx jsr add @dreamer/view
 
 | 子路径                              | 说明                                                                                                             |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `jsr:@dreamer/view`                 | **主入口**：响应式、运行时、`insert`、`mount` / `hydrate`、路由、Resource、Store、控制流、表单、Suspense、HMR 等 |
+| `jsr:@dreamer/view`                 | **主入口（3.0 核心）**：响应式、运行时、`insert`、`mount` / `hydrate`、Store、控制流、Suspense、HMR；**不含**路由／表单／Resource（见子路径） |
 | `jsr:@dreamer/view/types`           | 公共类型：`VNode`、`JSXRenderable` 等                                                                            |
 | `jsr:@dreamer/view/cli`             | CLI 实现（工具链使用）                                                                                           |
 | `jsr:@dreamer/view/setup`           | 全局安装脚本入口                                                                                                 |
@@ -128,28 +127,25 @@ import { renderToString } from "@dreamer/view/ssr";
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
-#### 便捷全家桶（`@dreamer/view`）— **2.x 弃用预告**
+#### 主入口（`@dreamer/view`）— **3.0 核心 barrel**
 
-> **策略 A（加法）**：主入口仍 **完整 re-export**，行为不变；**不**删除 export、
-> **不**改默认运行时。新代码／生产请默认子路径。模块级 JSDoc 已标
-> `@deprecated`（**无**运行时 `warn`）。指南：
-> [P1-1 主入口弃用预告](./P1-1-main-entry-deprecation-preview.md)／
-> [EN](../en-US/P1-1-main-entry-deprecation-preview.md)。
+> **策略 A 已落地：** 主入口为 CSR **核心** re-export；**不再**导出 router／form／resource。
+> 迁移：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／[EN](../en-US/MIGRATION-3.0.md)。
+> 2.x 弃用预告文档仍可参考：[`P1-1`](./P1-1-main-entry-deprecation-preview.md)。
 
-体积依据：
+体积依据（瘦身后以 `deno task size:check` 新基线为准）：
 
-- 库入口（P0）：minify 主入口约 **43.5 KiB** vs `/reactivity` 约 **10.5 KiB**（~4.2×）—
-  [P0 基线](./P0-基线-体积与性能.md)／[EN](../en-US/P0-baseline-bundle-and-perf.md)。
-- 消费方 `export *`（P0-2）：相对 reactivity 约 **+34.1 KiB minify（~4.26×）**／
-  **+11.9 KiB gzip** — [P0-2](./P0-2-consumer-bundle-analyze.md)。
+- 库入口（P0）：见 [P0 基线](./P0-基线-体积与性能.md)／[EN](../en-US/P0-baseline-bundle-and-perf.md)。
+- 消费方分析：见 [P0-2](./P0-2-consumer-bundle-analyze.md)。
 
 ```ts
-// 兼容（2.x），但属弃用预告对象；避免再 export * 包装：
-import { createRouter, createSignal } from "@dreamer/view";
+// 3.0 主入口仍可用的核心 API：
+import { createSignal, mount, For } from "@dreamer/view";
 
-// 推荐：
-import { createSignal } from "@dreamer/view/reactivity";
+// 集成必须走子路径：
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
+import { createForm } from "@dreamer/view/form";
+import { createResource } from "@dreamer/view/resource";
 ```
 
 ---

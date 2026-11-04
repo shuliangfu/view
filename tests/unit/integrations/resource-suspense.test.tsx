@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@dreamer/test";
-import { createResource, createSignal } from "@dreamer/view";
+import { createSignal } from "@dreamer/view";
+import { createResource } from "@dreamer/view/resource";
 
 /**
  * 模拟异步 API

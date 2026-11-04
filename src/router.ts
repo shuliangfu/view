@@ -2,7 +2,7 @@
  * @module router
  * @description 路由子路径：`jsr:@dreamer/view/router`。
  *
- * 与主入口导出的 router API 相同；仅路由场景时可避免拉入 form 等其它集成。
+ * **3.0：** 路由 API **仅**从此子路径导出（主入口不再 re-export）。
  */
 
 export {

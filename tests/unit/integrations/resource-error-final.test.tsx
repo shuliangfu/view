@@ -2,12 +2,12 @@ import { describe, expect, it } from "@dreamer/test";
 import { waitUntilComplete } from "../dom-setup.ts";
 import {
   batch,
-  createResource,
   createSignal,
   ErrorBoundary,
   mount,
   Suspense,
 } from "@dreamer/view";
+import { createResource } from "@dreamer/view/resource";
 import { jsx } from "@dreamer/view/jsx-runtime";
 
 describe("integrations/resource (error handling)", () => {

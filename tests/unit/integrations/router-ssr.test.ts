@@ -7,7 +7,7 @@ import {
   matchRoute,
   parseRouterUrl,
   type RouteConfig,
-} from "../../../src/mod.ts";
+} from "../../../src/router.ts";
 import {
   renderRouterToString,
   renderToString,
@@ -173,5 +173,4 @@ describe("integrations/router SSR 同构", () => {
     expect(html).toContain("U-3");
     expect(html).not.toContain(">H<");
   });
-
 });

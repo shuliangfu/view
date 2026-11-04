@@ -51,6 +51,7 @@ export const ENTRIES = [
     pair: "barrel-csr-api",
   },
   {
+    // 3.0: router left the main barrel; fixture imports `/router` (parity lock).
     name: "barrel-router-api",
     path: "scripts/consumer-bundle/fixtures/barrel-router-api.ts",
     role: "barrel-named",

@@ -1,13 +1,13 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import {
-  createResource,
   createSignal,
   mount,
   registerForSuspense,
   Suspense,
   useSuspense,
 } from "@dreamer/view";
+import { createResource } from "@dreamer/view/resource";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { waitUntilComplete } from "../dom-setup.ts";
 

@@ -1,55 +1,26 @@
 /**
  * @module mod
- * @deprecated Prefer subpath imports (`@dreamer/view/reactivity`, `/csr`, `/router`, `/form`, `/resource`, `/control-flow`, `/scheduler`, `/ssr`, …).
- * This main barrel remains a **full compatible re-export in 2.x** (Strategy A — deprecation preview only; **no** exports removed, **no** runtime warn).
- * Migration: `docs/zh-CN/P1-1-main-entry-deprecation-preview.md` · `docs/en-US/P1-1-main-entry-deprecation-preview.md`.
- * Cost context (P0-2): app-local `export *` from this entry ≈ +34 KiB minify vs `/reactivity` (~4.26×).
+ * @description @dreamer/view **3.0** main entry — CSR **core** barrel (Strategy A landed).
  *
- * @description @dreamer/view 框架的主入口模块（便捷全家桶）。
+ * **Breaking (3.0):** no longer re-exports router / form / resource integrations.
+ * Import those from `@dreamer/view/router`, `/form`, `/resource`.
+ * Migration: `docs/en-US/MIGRATION-3.0.md` · `docs/zh-CN/MIGRATION-3.0.md`.
  *
- * **框架整体架构：**
+ * Still exports: reactivity, scheduler, mount/hydrate, insert/props/template,
+ * control-flow, Suspense/lazy/Dynamic, portal, HMR helpers.
  *
- * **1. Reactivity (响应式系统)**
- * - ✅ signal.ts - 核心 Signal 实现
- * - ✅ effect.ts - 副作用系统
- * - ✅ memo.ts - 记忆化计算
- * - ✅ owner.ts - 所有权和清理机制
- * - ✅ context.ts - 上下文 API
- * - ✅ store.ts - 状态管理
- * - ✅ lifecycle.ts - 生命周期钩子
- *
- * **2. Runtime (运行时)**
- * - ✅ insert.ts - DOM 插入核心引擎
- * - ✅ browser.ts - 浏览器挂载入口 (mount/hydrate)
- * - ✅ suspense.ts - 异步悬挂机制
- * - ✅ control-flow.ts - Show/For/ErrorBoundary 等控制流
- * - ✅ component.ts - lazy/Dynamic 等高级组件
- * - ✅ hydration.ts - SSR 水合
- * - ✅ dom.ts - `getDocument`、`createRef`（与 JSX `ref={refObj}`）
- *
- * **3. Scheduler (调度器)**
- * - ✅ batch.ts - 批量更新优化
- * - ✅ priority.ts - 优先级调度
- *
- * **4. Integrations (集成)**
- * - ✅ resource.ts - 异步数据获取
- * - ✅ router.ts - 路由系统（页面 `export const metadata` 经路由表由框架写入 `document.title` / meta，业务侧无需手动调 head API）
- * - ✅ form.ts - 表单处理
- *
- * **5. Compiler (编译器)**
- * - ⚠️  compiler/ 目录 - JSX 转换和优化 (开发中)
- *
- * **使用方式（推荐子路径）：**
+ * Prefer focused subpaths when possible:
  * ```ts
  * import { createSignal } from "@dreamer/view/reactivity";
  * import { mount, For } from "@dreamer/view/csr";
  * import { createRouter, mountWithRouter } from "@dreamer/view/router";
+ * import { createForm } from "@dreamer/view/form";
+ * import { createResource } from "@dreamer/view/resource";
  * ```
- * 兼容（2.x 仍完整 re-export，但属弃用预告对象）：
- * `import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"`
- * SSR：`renderToString` / `renderToStream` 等从 `@dreamer/view/ssr` 导入（主入口不打包 happy-dom，避免浏览器构建解析 `node:*`）。
  *
- * **当前状态：** 核心功能完整；主入口为 2.x 弃用预告下的兼容全家桶，非 3.0 瘦身落地。
+ * Compatible core import (3.0):
+ * `import { createSignal, createRef, mount, For, Suspense, createPortal } from "@dreamer/view"`
+ * SSR: `renderToString` / streams from `@dreamer/view/ssr` only.
  */
 
 export * from "./reactivity/context.ts";
@@ -109,20 +80,3 @@ export { createPortal, type CreatePortalRoot } from "./runtime/portal.ts";
 // Scheduler
 export * from "./scheduler/batch.ts";
 export * from "./scheduler/priority.ts";
-
-// Integrations
-export * from "./integrations/form.ts";
-export * from "./integrations/resource.ts";
-export {
-  createRouter,
-  type CreateRouterOptions,
-  Link,
-  matchRoute,
-  mountWithRouter,
-  parseRouterUrl,
-  type RouteConfig,
-  type RouteLocation,
-  type RouteMatch,
-  type Router,
-  useRouter,
-} from "./integrations/router.ts";

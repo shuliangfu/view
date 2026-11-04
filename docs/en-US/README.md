@@ -37,7 +37,7 @@
    match `deno.json` / the table in **Installation**. For app code, default to
    **`@dreamer/view/reactivity`**, **`/csr`**, **`/ssr`**, **`/router`**,
    **`/form`**, **`/resource`**, **`/control-flow`**, etc. The main
-   **`@dreamer/view`** barrel remains a **full compatible** re-export
+   **`@dreamer/view`** main entry is a **3.0 core** barrel (no router/form/resource re-exports)
    (**Strategy A**: no export removals in 2.x) but is under a **deprecation
    preview** (see **Convenience barrel** /
    [P1-1](./P1-1-main-entry-deprecation-preview.md)). P0 minify ~**43.5 KiB**
@@ -100,7 +100,7 @@ npx jsr add @dreamer/view
 
 | Subpath                             | Purpose                                                                                                                         |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `jsr:@dreamer/view`                 | **Main**: reactivity, runtime, `insert`, `mount` / `hydrate`, router, Resource, Store, control flow, forms, Suspense, HMR, etc. |
+| `jsr:@dreamer/view`                 | **Main (3.0 core)**: reactivity, runtime, `insert`, `mount` / `hydrate`, Store, control flow, Suspense, HMR; **no** router / form / Resource (use subpaths) |
 | `jsr:@dreamer/view/types`           | Shared types: `VNode`, `JSXRenderable`, etc.                                                                                    |
 | `jsr:@dreamer/view/cli`             | CLI implementation (toolchain)                                                                                                  |
 | `jsr:@dreamer/view/setup`           | Global install script entry                                                                                                     |
@@ -142,30 +142,29 @@ import { renderToString } from "@dreamer/view/ssr";
 // hydrate(App, root, { bindings, mismatchMode: "remount" | "assert" | "continue" })
 ```
 
-#### Convenience barrel (`@dreamer/view`) — **2.x deprecation preview**
+#### Main entry (`@dreamer/view`) — **3.0 core barrel**
 
-> **Strategy A (additive):** the main entry still **fully re-exports**; behavior
-> unchanged. **No** export removals and **no** runtime default changes. Prefer
-> subpaths for new / production code. Module JSDoc is `@deprecated` (**no**
-> runtime `warn`). Guide:
-> [P1-1 main-entry deprecation preview](./P1-1-main-entry-deprecation-preview.md) /
-> [ZH](../zh-CN/P1-1-main-entry-deprecation-preview.md).
+> **Strategy A landed:** the main entry is a CSR **core** re-export; it **no
+> longer** exports router / form / resource. Migration:
+> [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
+> [ZH](../zh-CN/MIGRATION-3.0.md).
+> 2.x preview docs remain for history:
+> [`P1-1`](./P1-1-main-entry-deprecation-preview.md).
 
-Size context:
+Size context (after slim, trust refreshed `deno task size:check` baselines):
 
-- Library entry (P0): minify ~**43.5 KiB** main vs ~**10.5 KiB** `/reactivity`
-  (~4.2×) — [P0 baseline](../zh-CN/P0-基线-体积与性能.md) /
+- Library entry (P0): [P0 baseline](../zh-CN/P0-基线-体积与性能.md) /
   [EN](./P0-baseline-bundle-and-perf.md).
-- Consumer `export *` (P0-2): ≈ **+34.1 KiB minify (~4.26×)** / **+11.9 KiB gzip**
-  vs reactivity — [P0-2](./P0-2-consumer-bundle-analyze.md).
+- Consumer analyze: [P0-2](./P0-2-consumer-bundle-analyze.md).
 
 ```ts
-// Compatible in 2.x, but under deprecation preview; avoid re-wrapping with export *:
-import { createRouter, createSignal } from "@dreamer/view";
+// Core APIs still available from the 3.0 main entry:
+import { createSignal, mount, For } from "@dreamer/view";
 
-// Recommended:
-import { createSignal } from "@dreamer/view/reactivity";
+// Integrations must use subpaths:
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
+import { createForm } from "@dreamer/view/form";
+import { createResource } from "@dreamer/view/resource";
 ```
 
 ---

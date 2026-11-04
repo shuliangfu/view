@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### 变更
+
+- **3.0 首刀：主入口瘦身（破坏性，策略 A 落地）**
+  - `@dreamer/view` 主 barrel **不再** re-export 路由／表单／Resource。
+    请改用 `@dreamer/view/router`、`/form`、`/resource`。
+  - 主入口保留核心 CSR（响应式、mount／hydrate、控制流、Suspense、调度、portal、HMR）。
+  - 迁移：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／
+    [`../en-US/MIGRATION-3.0.md`](../en-US/MIGRATION-3.0.md)。
+  - 包版本在 `dev` 标为 **3.0.0**（**JSR 仍 HOLD**，等战役绿＋用户令）。
+  - 水合默认 `mismatchMode` 仍为 **`continue`**（R1 不进本刀）。
+  - 原经主入口拉集成的 consumer-bundle 夹具改走子路径；刷新 size／consumer 基线。
+  - 库主入口 minify **约 44.3 KiB → 约 31.6 KiB**（已刷 size 基线）；`export *` 相对 `/reactivity` 溢价约 **3.0×** minify。
+
+
 ### 新增
 
 - **P2：SSR 静态属性折叠对齐 CSR template（非破坏）**

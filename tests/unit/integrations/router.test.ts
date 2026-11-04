@@ -6,7 +6,7 @@ import {
   mountWithRouter,
   type RouteConfig,
   useRouter,
-} from "../../../src/mod.ts";
+} from "../../../src/router.ts";
 import { jsx } from "../../../src/jsx-runtime.ts";
 
 describe("integrations/router", () => {

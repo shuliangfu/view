@@ -1,14 +1,7 @@
 /**
- * App-local barrel that named-reexports from @dreamer/view main entry.
- * With esbuild + sideEffects:false this often still shakes; pair with
- * app-reexport-from-subpath for the recommended pattern.
+ * App-local barrel (3.0): core from main entry; integrations from subpaths.
  */
-export {
-  For,
-  Show,
-  createForm,
-  createResource,
-  createRouter,
-  createSignal,
-  mountWithRouter,
-} from "../../../src/mod.ts";
+export { For, Show, createSignal } from "../../../src/mod.ts";
+export { createForm } from "../../../src/form.ts";
+export { createResource } from "../../../src/resource.ts";
+export { createRouter, mountWithRouter } from "../../../src/router.ts";

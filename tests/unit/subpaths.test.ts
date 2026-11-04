@@ -57,6 +57,19 @@ describe("subpaths（按需导出）", () => {
     expect(n).toBe(1);
   });
 
+  it("3.0：主入口不再导出 router / form / resource", async () => {
+    const main = await import("@dreamer/view");
+    expect("createRouter" in main).toBe(false);
+    expect("createForm" in main).toBe(false);
+    expect("createResource" in main).toBe(false);
+    expect("mountWithRouter" in main).toBe(false);
+    expect("Link" in main).toBe(false);
+    // core still present
+    expect(typeof main.createSignal).toBe("function");
+    expect(typeof main.mount).toBe("function");
+    expect(typeof main.For).toBe("function");
+  });
+
   it("form / resource / router 子路径可导入", () => {
     const form = createForm({ name: "" });
     expect(typeof form.field).toBe("function");

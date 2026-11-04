@@ -1,8 +1,9 @@
 /**
- * Consumer fixture: router app entry via convenience barrel
- * (mirrors examples/src/main.tsx symbol set).
+ * Consumer fixture (3.0): router is **subpath-only**.
+ * Named imports go through `/router` (same symbols as pre-3.0 barrel).
+ * Paired with subpath-router-api (identical graph expected).
  */
 export {
   createRouter,
   mountWithRouter,
-} from "../../../src/mod.ts";
+} from "../../../src/router.ts";

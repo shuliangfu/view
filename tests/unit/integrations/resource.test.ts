@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@dreamer/test";
-import { createResource } from "@dreamer/view";
+import { createResource } from "@dreamer/view/resource";
 
 describe("integrations/resource", () => {
   it("成功加载：方案 B 单值访问模式", async () => {

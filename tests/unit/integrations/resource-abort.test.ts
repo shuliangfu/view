@@ -1,9 +1,6 @@
 import { describe, expect, it } from "@dreamer/test";
-import {
-  createInflightDedupe,
-  createResource,
-  createSignal,
-} from "@dreamer/view";
+import { createSignal } from "@dreamer/view";
+import { createInflightDedupe, createResource } from "@dreamer/view/resource";
 
 async function tick(n = 5) {
   for (let i = 0; i < n; i++) await Promise.resolve();

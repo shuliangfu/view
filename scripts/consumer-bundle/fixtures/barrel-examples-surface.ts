@@ -1,27 +1,27 @@
 /**
- * Union of APIs used across examples/src (views + stores + router),
- * imported through the convenience barrel — counterfactual “全家桶” cost
- * if examples had not migrated to subpaths.
+ * Union of APIs used across examples/src — 3.0: core from main barrel,
+ * router/form/resource from subpaths (matches production recommendation).
  */
 export {
   ErrorBoundary,
   For,
-  Link,
   Portal,
   Show,
   Suspense,
   createContext,
   createEffect,
-  createForm,
-  createResource,
-  createRouter,
   createSelector,
   createSignal,
   createStore,
-  messageFromSafeParse,
-  mountWithRouter,
   produce,
   useContext,
-  useRouter,
   useTransition,
 } from "../../../src/mod.ts";
+export { createForm, messageFromSafeParse } from "../../../src/form.ts";
+export { createResource } from "../../../src/resource.ts";
+export {
+  Link,
+  createRouter,
+  mountWithRouter,
+  useRouter,
+} from "../../../src/router.ts";
