@@ -13,6 +13,9 @@
  * root tracking is opt-in via {@link trackRoot} / {@link createRootTracked};
  * misuse warnings via {@link detectOversubscribe} /
  * {@link enableOversubscribeWarnings} (require `VIEW_DEV` to emit).
+ * DOM inspect ({@link installOwnerDomTracking}) is a separate `VIEW_DEV` hook
+ * read by `jsx()` — absent unless devtools installs it, and it does not mutate
+ * application nodes.
  *
  * Prefer enabling `globalThis.VIEW_DEV = true` in development (dev server already
  * injects it for HMR) so registry snapshots include anonymous Signals.
@@ -38,6 +41,13 @@
  * ```
  */
 
+import {
+  collectOwnerDomElements,
+  installOwnerDomTracking,
+  isOwnerDomTracking,
+  recordOwnerElement,
+  uninstallOwnerDomTracking,
+} from "./devtools/owner-dom.ts";
 import { core } from "./reactivity/master.ts";
 import {
   createRoot,
@@ -317,10 +327,13 @@ export function clearTrackedRoots(): void {
 /**
  * `createRoot` wrapper that auto {@link trackRoot} / {@link untrackRoot} on dispose.
  * Does not change the underlying `createRoot` implementation.
+ * When `VIEW_DEV` is on, also {@link installOwnerDomTracking} **before** `fn`
+ * so the first JSX render is included in inspect highlight.
  */
 export function createRootTracked<T>(
   fn: (dispose: () => void) => T,
 ): T {
+  if (isViewDev()) installOwnerDomTracking();
   return createRoot((dispose) => {
     const owner = getOwner();
     trackRoot(owner);
@@ -742,6 +755,14 @@ export function enableOversubscribeWarnings(
 export function disableOversubscribeWarnings(): void {
   if (watchStop) watchStop();
 }
+
+export {
+  collectOwnerDomElements,
+  installOwnerDomTracking,
+  isOwnerDomTracking,
+  recordOwnerElement,
+  uninstallOwnerDomTracking,
+};
 
 /** Test helper: reset warn-once sets (does not clear remount timestamps). */
 export function clearOversubscribeWarnState(): void {

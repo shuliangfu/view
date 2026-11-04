@@ -16,7 +16,7 @@
 | Tab | Content |
 |-----|---------|
 | **Overview** | Effects / memos / nodes / upstream edges + health + top sources |
-| **Tree** | Expandable Owner forest (`inspectOwnerIndexed` paths), filter, select → detail (upstream / downstream / depth / disposables) |
+| **Tree** | Expandable Owner forest (`inspectOwnerIndexed` paths), filter, select → detail (upstream / downstream / depth / disposables / DOM count). **Click** a row to mark it selected and outline that Owner's DOM |
 | **Signals** | Registry sources with live search / filter |
 | **Warnings** | Oversubscribe / remount warnings; **click** deep-links to Tree path |
 | **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings |
@@ -43,9 +43,25 @@ ui?.unmount();
 Probe helpers used by the overlay (also public on `/devtools`):
 `inspectOwnerIndexed`, `flattenIndexedOwner`, `getOwnerByPath`, warning `path` fields.
 
+## Inspect highlight
+
+Under `VIEW_DEV`, `createRootTracked` (and `mountDevtoolsOverlay`) install
+`globalThis.__DREAMER_OWNER_DOM__` **before** the tracked render. `jsx()` records
+the host element against the Owner that was current when `jsx()` was called
+(the component), not the Effect that later runs the thunk. The overlay does not
+write attributes onto application nodes. The outline is a `pointer-events: none`
+layer (`data-dreamer-view-inspect`) under the panel; it hides when the panel
+closes and is removed on unmount. Owners with no connected DOM (for example a
+bare effect) keep the selected row and show “No connected DOM”.
+
+`installOwnerDomTracking` / `collectOwnerDomElements` live on
+`@dreamer/view/devtools`. No `src/i18n.ts` import.
+
 ## Demo
 
 `examples/src/main.tsx` under `VIEW_DEV` (`examples` → `deno task dev`).
+Open the indicator → Tree → click a node: the row stays selected and a blue
+rect tracks that Owner's DOM. Scroll or resize repositions the rect.
 
 ## Acceptance
 

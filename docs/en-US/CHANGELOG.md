@@ -12,6 +12,15 @@ and this project adheres to
 
 ### Added
 
+- **P2: DevTools Owner-tree inspect highlight (non-breaking)**
+  - Clicking a Tree row (or `selectNode`) marks that row selected (`aria-selected`
+    plus inset accent) and draws a page outline over the Owner's DOM.
+  - `VIEW_DEV` only: `createRootTracked` / `mountDevtoolsOverlay` install an
+    Owner→element hook that `jsx()` reads at call time. No hook means no
+    recording and no DOM mutation. Still no `src/i18n.ts` in the overlay.
+  - Closing the panel or unmounting removes the outline. Signal-only nodes
+    show “no connected DOM”.
+
 - **P2: DevTools overlay DX+ (examples Owner dogfood, non-breaking)**
   - `examples/src/main.tsx` mounts via `createRootTracked` under `VIEW_DEV` so
     the overlay Tree shows real Owner nodes (plain `mount`/`createRoot` does

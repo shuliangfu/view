@@ -46,6 +46,8 @@
   "disposables": "disposables",
   "upstream": "上游",
   "downstream": "下游",
+  "dom": "DOM",
+  "noDomForNode": "此 Owner 没有已连接的 DOM。",
   "upstreamHint": "上游 = Effect/Memo 上 Observer→Source 边。下游 = Memo 上 Source→Observer 边。",
   "sigFilterPh": "搜索注册表订阅源…",
   "misuseScan": "误用扫描",

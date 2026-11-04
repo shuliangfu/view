@@ -11,6 +11,13 @@
 
 ### 新增
 
+- **P2：DevTools Owner 树点击高亮 DOM（非破坏）**
+  - 点击「树」节点（或 `selectNode`）会标出选中态（`aria-selected`＋左侧强调条），
+    并在页面上画出该 Owner 对应 DOM 的轮廓。
+  - 仅 `VIEW_DEV`：`createRootTracked`／`mountDevtoolsOverlay` 安装 Owner→元素钩子，
+    `jsx()` 在调用时读取。未安装则不记录、不改应用 DOM。overlay 仍不引用 `src/i18n.ts`。
+  - 关闭面板或卸载会去掉轮廓。纯 Signal 节点显示「没有已连接的 DOM」。
+
 - **P2：DevTools overlay DX+（examples Owner dogfood，非破坏）**
   - `examples/src/main.tsx` 在 `VIEW_DEV` 下用 `createRootTracked` 挂载，打开
     overlay「树」可见真实 Owner 节点（普通 `mount`／`createRoot` 不会自动登记）。
