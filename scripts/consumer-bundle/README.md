@@ -26,14 +26,14 @@ deno task consumer:bundle:check
 
 ## What the numbers mean
 
-| Pattern | Typical result (esbuild + `sideEffects: false`) |
-|---------|--------------------------------------------------|
-| Named imports from `@dreamer/view` vs same names from `/reactivity` `/csr` `/router` | **Δ ≈ 0** — modern bundlers shake the barrel |
-| `export *` from convenience barrel vs `export *` from `/reactivity` | **Large premium** (~4.3× minify in baseline) — real 全家桶 cost |
-| `examples/src/main.tsx` style (`/router` only) | Matches `examples-main-subpath` / `subpath-router-api` |
+| Pattern                                                                              | Typical result (esbuild + `sideEffects: false`)                 |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Named imports from `@dreamer/view` vs same names from `/reactivity` `/csr` `/router` | **Δ ≈ 0** — modern bundlers shake the barrel                    |
+| `export *` from convenience barrel vs `export *` from `/reactivity`                  | **Large premium** (~4.3× minify in baseline) — real 全家桶 cost |
+| `examples/src/main.tsx` style (`/router` only)                                       | Matches `examples-main-subpath` / `subpath-router-api`          |
 
-Prefer **subpath imports** in apps and examples anyway: smaller module graphs for
-tooling, clearer intent, and protection when a bundler or local `export *`
+Prefer **subpath imports** in apps and examples anyway: smaller module graphs
+for tooling, clearer intent, and protection when a bundler or local `export *`
 wrapper defeats shaking. See docs:
 
 - `docs/zh-CN/P0-2-consumer-bundle-analyze.md`

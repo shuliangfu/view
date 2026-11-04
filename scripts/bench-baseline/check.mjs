@@ -101,8 +101,9 @@ for (const cur of current.entries) {
   if (!ok) {
     failures.push({
       name: cur.name,
-      reason:
-        `avgNs ${Math.round(cur.avgNs)} > limit ${lim} (Δ${delta.toFixed(1)}%)`,
+      reason: `avgNs ${Math.round(cur.avgNs)} > limit ${lim} (Δ${
+        delta.toFixed(1)
+      }%)`,
     });
   }
 }

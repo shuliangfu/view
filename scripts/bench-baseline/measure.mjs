@@ -8,7 +8,7 @@
  * Does not change runtime behavior. Probes never go into src/.
  */
 import { spawnSync } from "node:child_process";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -104,8 +104,7 @@ export function measureAll(write = false) {
   return doc;
 }
 
-const isMain =
-  process.argv[1] &&
+const isMain = process.argv[1] &&
   pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if (isMain) {

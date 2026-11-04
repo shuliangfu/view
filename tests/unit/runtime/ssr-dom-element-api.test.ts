@@ -312,11 +312,11 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
   it("安全：JSX setProperty 路径危险 URL 不应出现在 renderToString", () => {
     withSsrDoc((_doc) => {
       const html = renderToString(() =>
-        jsx("a", { href: "javascript:alert(1)", children: "x" }),
+        jsx("a", { href: "javascript:alert(1)", children: "x" })
       );
       expect(html).not.toContain("javascript:");
       const imgHtml = renderToString(() =>
-        jsx("img", { src: "javascript:alert(1)", alt: "x" }),
+        jsx("img", { src: "javascript:alert(1)", alt: "x" })
       );
       expect(imgHtml).not.toContain("javascript:");
     });

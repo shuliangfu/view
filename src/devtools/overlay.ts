@@ -76,12 +76,13 @@ const HMR_BRIDGE_KEY = "__DREAMER_HMR__";
  * the router. Used so Overview / Warnings resnapshot to the current page.
  */
 function installRoutePathWatch(onChange: () => void): () => void {
-  const win = (typeof globalThis !== "undefined"
-    ? (globalThis as unknown as Window)
-    : undefined) ??
-    (typeof document !== "undefined"
-      ? (document.defaultView as Window | null)
-      : null);
+  const win =
+    (typeof globalThis !== "undefined"
+      ? (globalThis as unknown as Window)
+      : undefined) ??
+      (typeof document !== "undefined"
+        ? (document.defaultView as Window | null)
+        : null);
   const loc = win?.location;
   const hist = win?.history;
   if (!loc || !hist) return () => {};
@@ -112,7 +113,6 @@ function installRoutePathWatch(onChange: () => void): () => void {
     hist.replaceState = origReplace;
   };
 }
-
 
 /** Read the live HMR bridge if the DEV server client has published it. */
 export function getDreamerHmrBridge(): DreamerHmrBridge | null {
@@ -1345,9 +1345,10 @@ export function mountDevtoolsOverlay(
     syncStatusDot();
     if (!list) return;
     if (!n) {
-      list.innerHTML = `<div class="empty-block" data-el="warn-empty"><p class="empty">${
-        ot("noIssues")
-      }</p><p class="empty-hint">${ot("warnEmptyHint")}</p></div>`;
+      list.innerHTML =
+        `<div class="empty-block" data-el="warn-empty"><p class="empty">${
+          ot("noIssues")
+        }</p><p class="empty-hint">${ot("warnEmptyHint")}</p></div>`;
       return;
     }
     list.innerHTML = warnings
@@ -1360,9 +1361,7 @@ export function mountDevtoolsOverlay(
         <button type="button" class="warn-item" data-warn="${i}">
           <span class="warn-kind">${escapeHtml(w.kind)}</span>
           ${
-          w.setups != null
-            ? `<span class="count warn">×${w.setups}</span>`
-            : ""
+          w.setups != null ? `<span class="count warn">×${w.setups}</span>` : ""
         }
           <span>${escapeHtml(w.message)}</span>
           ${

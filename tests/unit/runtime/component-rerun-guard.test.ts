@@ -183,7 +183,6 @@ describe("runtime/component-rerun-guard (P1)", () => {
   });
 }, { sanitizeOps: false, sanitizeResources: false });
 
-
 describe("runtime/jsx-dev-rerun-note (P1)", () => {
   const g = globalThis as { VIEW_DEV?: boolean };
   let prevDev: boolean | undefined;
@@ -242,7 +241,11 @@ describe("runtime/jsx-dev-rerun-note (P1)", () => {
     // detectOversubscribe picks auto-noted keys without setupKeys
     const owner = null; // wide scan N/A; still merges setup map
     const warnings = detectOversubscribe(owner, {});
-    expect(warnings.some((w) => w.kind === "component-rerun" && w.key === "TrackedChild"))
+    expect(
+      warnings.some((w) =>
+        w.kind === "component-rerun" && w.key === "TrackedChild"
+      ),
+    )
       .toBe(true);
 
     dispose();
@@ -280,7 +283,6 @@ describe("runtime/jsx-dev-rerun-note (P1)", () => {
     root.remove();
   });
 }, { sanitizeOps: false, sanitizeResources: false });
-
 
 describe("runtime/props-signal-thunk (P1)", () => {
   it("eager {props.user.name} stays fine-grained for Signal-of-object props", () => {

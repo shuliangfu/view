@@ -46,7 +46,7 @@ export default function RuntimeDemo() {
       return;
     }
     stopHydration();
-    host.innerHTML = "<span id=\"ssr-keep\">SSR 节点</span>";
+    host.innerHTML = '<span id="ssr-keep">SSR 节点</span>';
     setLastMode(mode);
     try {
       const dispose = hydrate(
@@ -136,9 +136,11 @@ export default function RuntimeDemo() {
           故意传入无效 binding path。{" "}
           <code className="text-xs">continue</code>（默认）保留 SSR；
           <code className="text-xs">assert</code> 抛错；
-          <code className="text-xs">remount</code> 清空后 CSR。库默认仍为
-          continue，此处仅为显式试点。文档：
-          <code className="text-xs">docs/zh-CN/P1-2-hydration-opt-in-pilot.md</code>
+          <code className="text-xs">remount</code>{" "}
+          清空后 CSR。库默认仍为 continue，此处仅为显式试点。文档：
+          <code className="text-xs">
+            docs/zh-CN/P1-2-hydration-opt-in-pilot.md
+          </code>
         </p>
         <div
           id="hydrate-pilot-root"
@@ -154,8 +156,7 @@ export default function RuntimeDemo() {
                 className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-900 text-white dark:bg-indigo-600 hover:opacity-90 active:scale-95"
                 onClick={() => runHydratePilot(mode)}
               >
-                {() =>
-                  lastMode() === mode ? `✓ ${mode}` : `试水合 · ${mode}`}
+                {() => lastMode() === mode ? `✓ ${mode}` : `试水合 · ${mode}`}
               </button>
             ),
           )}

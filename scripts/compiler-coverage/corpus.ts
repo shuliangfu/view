@@ -19,7 +19,8 @@ export const FIXTURES: Fixture[] = [
   {
     id: "static-nested",
     fileName: "static-nested.tsx",
-    source: `export const App = () => <div><span>Static 1</span><span>Static 2</span></div>;`,
+    source:
+      `export const App = () => <div><span>Static 1</span><span>Static 2</span></div>;`,
     note: "Fully static nested subtree → single template, no walk",
   },
   {
@@ -73,8 +74,7 @@ export const FIXTURES: Fixture[] = [
   {
     id: "static-text-concat",
     fileName: "static-text-concat.tsx",
-    source:
-      `export const App = () => <div>{"hello" + " world"}</div>;`,
+    source: `export const App = () => <div>{"hello" + " world"}</div>;`,
     note: "Static string + concat child lifted into template (no walk/insert)",
   },
   {
@@ -94,29 +94,25 @@ export const FIXTURES: Fixture[] = [
   {
     id: "static-true-and-jsx",
     fileName: "static-true-and-jsx.tsx",
-    source:
-      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+    source: `export const App = () => <div>{true && <span>A</span>}</div>;`,
     note: "true && <JSX> folded into template (no walk/insert)",
   },
   {
     id: "static-false-and-jsx",
     fileName: "static-false-and-jsx.tsx",
-    source:
-      `export const App = () => <div>{false && <span>A</span>}</div>;`,
+    source: `export const App = () => <div>{false && <span>A</span>}</div>;`,
     note: "false && <JSX> omitted from template",
   },
   {
     id: "static-false-or-jsx",
     fileName: "static-false-or-jsx.tsx",
-    source:
-      `export const App = () => <div>{false || <span>A</span>}</div>;`,
+    source: `export const App = () => <div>{false || <span>A</span>}</div>;`,
     note: "false || <JSX> folded into template",
   },
   {
     id: "ssr-static-true-and-jsx",
     fileName: "ssr-static-true-and-jsx.tsx",
-    source:
-      `export const App = () => <div>{true && <span>A</span>}</div>;`,
+    source: `export const App = () => <div>{true && <span>A</span>}</div>;`,
     options: { generate: "ssr" },
     note: "SSR: true && <JSX> folded like CSR",
   },
@@ -161,8 +157,7 @@ export const FIXTURES: Fixture[] = [
   {
     id: "component-static-when",
     fileName: "component-static-when.tsx",
-    source:
-      `export const App = () => <Show when={true}><span>x</span></Show>;`,
+    source: `export const App = () => <Show when={true}><span>x</span></Show>;`,
     note: "Static component prop not wrapped in arrow",
   },
   {
@@ -217,7 +212,8 @@ export const FIXTURES: Fixture[] = [
     fileName: "ssr-static-text-concat.tsx",
     source: `export const App = () => <div>{"hello" + " world"}</div>;`,
     options: { generate: "ssr" },
-    note: "SSR: static + concat child folded into one string (CSR template parity)",
+    note:
+      "SSR: static + concat child folded into one string (CSR template parity)",
   },
   {
     id: "ssr-static-text-escape",
@@ -299,7 +295,8 @@ export const FIXTURES: Fixture[] = [
     fileName: "ex-semi-dyn-tpl-class.tsx",
     source:
       "export const App = () => <div className={`base ${mod.accent}`}>x</div>;",
-    note: "examples/home semi-dynamic template class → setAttribute (lock non-fold)",
+    note:
+      "examples/home semi-dynamic template class → setAttribute (lock non-fold)",
   },
   {
     id: "ssr-ex-static-ternary-class",

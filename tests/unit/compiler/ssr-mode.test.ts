@@ -30,8 +30,7 @@ describe("compiler/ssr-mode", () => {
   });
 
   it("SSR：静态子文本 + 拼接应折成单字符串（对齐 CSR template）", () => {
-    const code =
-      `export const App = () => <div>{"hello" + " world"}</div>;`;
+    const code = `export const App = () => <div>{"hello" + " world"}</div>;`;
     const ssr = compileSource(code, "test.tsx", { generate: "ssr" });
     const csr = compileSource(code, "test.tsx", {});
     expect(ssr).toContain('"<div>hello world</div>"');
@@ -40,8 +39,7 @@ describe("compiler/ssr-mode", () => {
   });
 
   it("SSR：静态子文本 escape 与 CSR template 一致", () => {
-    const code =
-      `export const App = () => <div>{"a&b" + "<c>"}</div>;`;
+    const code = `export const App = () => <div>{"a&b" + "<c>"}</div>;`;
     const ssr = compileSource(code, "test.tsx", { generate: "ssr" });
     const csr = compileSource(code, "test.tsx", {});
     expect(ssr).toContain("a&amp;b&lt;c&gt;");
@@ -49,9 +47,8 @@ describe("compiler/ssr-mode", () => {
     expect(ssr).not.toContain('"<c>"');
   });
 
-  it("SSR：0 && / \"\" && 仍不提升；null && 省略为空壳", () => {
-    const textAnd =
-      `export const App = () => <div>{"a" && "b"}</div>;`;
+  it('SSR：0 && / "" && 仍不提升；null && 省略为空壳', () => {
+    const textAnd = `export const App = () => <div>{"a" && "b"}</div>;`;
     const zeroAnd =
       `export const App = () => <div>{0 && <span>A</span>}</div>;`;
     const emptyAnd =

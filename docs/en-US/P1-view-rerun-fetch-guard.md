@@ -128,11 +128,11 @@ what the untrack + DEV warnings target.
 
 Keep control-flow **subscribed** to Signals — do not eagerly freeze a snapshot:
 
-| Form | Effect |
-| --- | --- |
-| `when={open}` / `each={items}` | ✅ pass the getter; re-read inside Effect |
-| `when={() => open()}` | ✅ explicit accessor |
-| `when={open()}` / `each={items()}` | ❌ frozen at render; never updates |
+| Form                               | Effect                                    |
+| ---------------------------------- | ----------------------------------------- |
+| `when={open}` / `each={items}`     | ✅ pass the getter; re-read inside Effect |
+| `when={() => open()}`              | ✅ explicit accessor                      |
+| `when={open()}` / `each={items()}` | ❌ frozen at render; never updates        |
 
-Under `VIEW_DEV`, a **plain value** (non-function) triggers a one-shot `console.warn`
-(static literals are valid — you can ignore the tip).
+Under `VIEW_DEV`, a **plain value** (non-function) triggers a one-shot
+`console.warn` (static literals are valid — you can ignore the tip).

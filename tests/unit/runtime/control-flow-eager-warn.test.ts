@@ -1,12 +1,10 @@
 import "../dom-setup.ts";
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
-import { Show, For } from "@dreamer/view/control-flow";
+import { For, Show } from "@dreamer/view/control-flow";
 import { createSignal } from "@dreamer/view/reactivity";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { mount } from "@dreamer/view/csr";
-import {
-  clearEagerControlFlowWarns,
-} from "../../../src/runtime/utils.ts";
+import { clearEagerControlFlowWarns } from "../../../src/runtime/utils.ts";
 
 describe("runtime/control-flow eager when/each DEV tip (P1)", () => {
   const g = globalThis as { VIEW_DEV?: boolean };
@@ -36,13 +34,19 @@ describe("runtime/control-flow eager when/each DEV tip (P1)", () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
     const dispose = mount(
-      () => Show({ when: true as const, children: jsx("span", { children: "x" }) }),
+      () =>
+        Show({ when: true as const, children: jsx("span", { children: "x" }) }),
       root,
     );
-    expect(warns.some((w) => w.includes("when=") && w.includes("plain value"))).toBe(true);
+    expect(warns.some((w) => w.includes("when=") && w.includes("plain value")))
+      .toBe(true);
     const n = warns.length;
     const dispose2 = mount(
-      () => Show({ when: false as const, children: jsx("span", { children: "y" }) }),
+      () =>
+        Show({
+          when: false as const,
+          children: jsx("span", { children: "y" }),
+        }),
       root,
     );
     expect(warns.length).toBe(n); // once-per-kind
@@ -56,7 +60,11 @@ describe("runtime/control-flow eager when/each DEV tip (P1)", () => {
     document.body.appendChild(root);
     const [open] = createSignal(true);
     const dispose = mount(
-      () => Show({ when: open, children: jsx("span", { id: "ok", children: "x" }) }),
+      () =>
+        Show({
+          when: open,
+          children: jsx("span", { id: "ok", children: "x" }),
+        }),
       root,
     );
     expect(warns.length).toBe(0);
@@ -76,7 +84,8 @@ describe("runtime/control-flow eager when/each DEV tip (P1)", () => {
         }),
       root,
     );
-    expect(warns.some((w) => w.includes("each=") && w.includes("plain value"))).toBe(true);
+    expect(warns.some((w) => w.includes("each=") && w.includes("plain value")))
+      .toBe(true);
     dispose();
     root.remove();
   });

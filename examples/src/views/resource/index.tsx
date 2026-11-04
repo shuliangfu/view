@@ -81,8 +81,8 @@ export default function ResourceDemo() {
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
           通过 createResource 实现响应式数据获取。当 userId
           改变时，数据会自动重新加载（上一趟经 AbortSignal 取消）。Suspense
-          会在加载过程中显示 fallback；路由切走时
-          `router.routeAbortSignal()` 会 abort 进行中的请求。
+          会在加载过程中显示 fallback；路由切走时 `router.routeAbortSignal()` 会
+          abort 进行中的请求。
         </p>
       </header>
 

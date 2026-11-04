@@ -134,7 +134,8 @@ export default function ContextDemo() {
           <code className="text-xs bg-slate-100 dark:bg-slate-900 px-1 rounded">
             {"{props.user.name}"}
           </code>
-          ，无需 {"{() => props.user().name}"}。点上方登录／注销即可看到细粒度刷新。
+          ，无需{" "}
+          {"{() => props.user().name}"}。点上方登录／注销即可看到细粒度刷新。
         </p>
         <UserCard user={user} />
       </section>

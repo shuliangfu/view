@@ -1,10 +1,10 @@
 # P2: examples subpath dogfood
 
-| Item | Value |
-|------|-------|
-| Nature | **Non-breaking dogfood**: align examples / codegen / Bun import map with subpaths |
-| Baselines | Does **not** change `size:check` / `consumer:bundle:check` numbers |
-| Forbidden | JSR / npm publish |
+| Item      | Value                                                                             |
+| --------- | --------------------------------------------------------------------------------- |
+| Nature    | **Non-breaking dogfood**: align examples / codegen / Bun import map with subpaths |
+| Baselines | Does **not** change `size:check` / `consumer:bundle:check` numbers                |
+| Forbidden | JSR / npm publish                                                                 |
 
 ## 1. Goal
 
@@ -19,13 +19,13 @@ examples were already on subpaths; keep dogfood locks green after migrate
 
 ## 2. This change
 
-| Area | What |
-|------|------|
-| Router codegen | `generateRoutersContent`: `RouteConfig` from `@dreamer/view/router` (same as `cli/init` template) |
-| SSR hydrate script | `generateHydrationScript`: `hydrate` from `@dreamer/view/csr` |
+| Area                  | What                                                                                                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Router codegen        | `generateRoutersContent`: `RouteConfig` from `@dreamer/view/router` (same as `cli/init` template)                                                                     |
+| SSR hydrate script    | `generateHydrationScript`: `hydrate` from `@dreamer/view/csr`                                                                                                         |
 | Hand-written examples | Prefer dedicated subpaths: control-flow demos → `/control-flow`; signals/stores/selectors → `/reactivity`; CSR-only (`Suspense` / `Dynamic` / hydrate) stay on `/csr` |
-| Bun | `examples/package.json` `imports` mirror `examples/deno.json` subpath maps |
-| Locks | `tests/unit/examples-subpath-dogfood.test.ts` bans bare main entry in hand-written sources; codegen / hydrate unit tests assert subpaths |
+| Bun                   | `examples/package.json` `imports` mirror `examples/deno.json` subpath maps                                                                                            |
+| Locks                 | `tests/unit/examples-subpath-dogfood.test.ts` bans bare main entry in hand-written sources; codegen / hydrate unit tests assert subpaths                              |
 
 `examples/src/router/routers.tsx` remains gitignored; next `dev` / `build`
 regenerates with the new template.

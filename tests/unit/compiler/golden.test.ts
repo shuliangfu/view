@@ -37,7 +37,34 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   }
 
   it("static-nested / static-attr-concat emit no walk or setAttribute", () => {
-    for (const id of ["static-nested", "static-attr-concat", "static-style-object", "static-and-or", "static-typeof-void", "static-nullish", "static-satisfies", "static-text-concat", "static-text-template-ternary", "ssr-static-text-concat", "ssr-static-text-escape", "static-true-and-jsx", "static-false-and-jsx", "static-false-or-jsx", "ssr-static-true-and-jsx", "ssr-static-attr-concat", "ssr-static-attr-style", "ssr-static-attr-logic", "ex-static-card", "ex-static-class-join", "ex-static-tpl-class", "ex-static-ternary-class", "ex-static-array-join", "ssr-ex-static-ternary-class"]) {
+    for (
+      const id of [
+        "static-nested",
+        "static-attr-concat",
+        "static-style-object",
+        "static-and-or",
+        "static-typeof-void",
+        "static-nullish",
+        "static-satisfies",
+        "static-text-concat",
+        "static-text-template-ternary",
+        "ssr-static-text-concat",
+        "ssr-static-text-escape",
+        "static-true-and-jsx",
+        "static-false-and-jsx",
+        "static-false-or-jsx",
+        "ssr-static-true-and-jsx",
+        "ssr-static-attr-concat",
+        "ssr-static-attr-style",
+        "ssr-static-attr-logic",
+        "ex-static-card",
+        "ex-static-class-join",
+        "ex-static-tpl-class",
+        "ex-static-ternary-class",
+        "ex-static-array-join",
+        "ssr-ex-static-ternary-class",
+      ]
+    ) {
       const f = FIXTURES.find((x) => x.id === id)!;
       const body = normalizeGolden(compileSource(f.source, f.fileName))
         .split("\n")

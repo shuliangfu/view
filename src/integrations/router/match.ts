@@ -4,11 +4,7 @@
  * compile helpers. No history / Link / active Router instance.
  */
 
-import type {
-  CreateRouterOptions,
-  RouteConfig,
-  RouteMatch,
-} from "./types.ts";
+import type { CreateRouterOptions, RouteConfig, RouteMatch } from "./types.ts";
 
 // ———————————————————————————————————————————————————————————————————————————
 // 路径工具
@@ -250,4 +246,3 @@ export function findCompiledMatch(
   }
   return null;
 }
-

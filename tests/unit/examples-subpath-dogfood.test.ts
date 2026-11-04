@@ -5,12 +5,7 @@
  *
  * Path/FS via @dreamer/runtime-adapter so Deno / Bun / Node unit runners all resolve.
  */
-import {
-  cwd,
-  join,
-  readdir,
-  readTextFile,
-} from "@dreamer/runtime-adapter";
+import { cwd, join, readdir, readTextFile } from "@dreamer/runtime-adapter";
 import { describe, expect, it } from "@dreamer/test";
 
 const BARE_MAIN =

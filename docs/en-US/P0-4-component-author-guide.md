@@ -1,21 +1,21 @@
 # P0-4: Component author guide (Memo / ref / subscription boundaries)
 
-| Item | Value |
-|------|-------|
-| Target | `@dreamer/view` **v2.2.0**, branch `dev` |
-| Date | **2026-11-04** (Asia/Shanghai) |
-| Nature | **Docs-first** (inline examples OK); **no runtime semantics change**; no JSR / npm |
-| Sources | [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) P0-4; ui-view pitfalls (`PullRefresh` / `ScrollList` / `Affix` / `MobilePortalHostScope`, …) |
-| Chinese | [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md) |
+| Item    | Value                                                                                                                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target  | `@dreamer/view` **v2.2.0**, branch `dev`                                                                                                                                                                |
+| Date    | **2026-11-04** (Asia/Shanghai)                                                                                                                                                                          |
+| Nature  | **Docs-first** (inline examples OK); **no runtime semantics change**; no JSR / npm                                                                                                                      |
+| Sources | [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md) P0-4; ui-view pitfalls (`PullRefresh` / `ScrollList` / `Affix` / `MobilePortalHostScope`, …)                               |
+| Chinese | [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)                                                                                                                    |
 | Related | README [§22 render thunk](./README.md#22-performance-render-thunk-avoid-root-effect-over-subscription); [§7 Memo / Effect](./README.md#7-reactive-basics); [§9 createRef](./README.md#9-dom-and-insert) |
 
 ---
 
 ## 1. Mental model: setup once, updates via fine-grained bindings
 
-`@dreamer/view` is **not** React. Ideally a component function runs **setup** once
-under its own **Owner** (Signals / Memos / Effects / ref bridges). Later DOM
-updates come from `insert` / property Effects / child subscriptions — the
+`@dreamer/view` is **not** React. Ideally a component function runs **setup**
+once under its own **Owner** (Signals / Memos / Effects / ref bridges). Later
+DOM updates come from `insert` / property Effects / child subscriptions — the
 component function does **not** need to re-execute end-to-end.
 
 If an outer “template clone / root `insert`” Effect **accidentally subscribes**
@@ -25,8 +25,8 @@ to business Signals / Memos, each change will:
 2. `replaceChild` / unmount + remount;
 3. Fire `ref(null)` → `ref(el)`, drop listeners, lose focus / gestures / IO.
 
-**Author goal:** keep Signal reads inside the **smallest possible subtree**; keep
-the shell static or bound only to stable identities.
+**Author goal:** keep Signal reads inside the **smallest possible subtree**;
+keep the shell static or bound only to stable identities.
 
 ---
 
@@ -48,13 +48,13 @@ pagination loading flips.
 
 ### 2.2 Remedies
 
-| Remedy | Notes |
-|--------|-------|
-| **Split a reader child** | Heads / badges read Signals; root **must not** read on `return` |
-| **`return () => (…)` thunk** | See README §22: dynamic subtree in an inner Effect |
-| **Control flow** | Pass Signal / getter into `Show` / `Switch`; don’t pre-unwrap booleans into a static tree |
-| **Pass Signal / zero-arg getter** | `loading={sig}` or `loading={() => sig.value}`; **not** `loading={sig.value}` |
-| **`untrack` in handlers** | Need a snapshot without subscribing: `untrack(() => sig())` |
+| Remedy                            | Notes                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Split a reader child**          | Heads / badges read Signals; root **must not** read on `return`                           |
+| **`return () => (…)` thunk**      | See README §22: dynamic subtree in an inner Effect                                        |
+| **Control flow**                  | Pass Signal / getter into `Show` / `Switch`; don’t pre-unwrap booleans into a static tree |
+| **Pass Signal / zero-arg getter** | `loading={sig}` or `loading={() => sig.value}`; **not** `loading={sig.value}`             |
+| **`untrack` in handlers**         | Need a snapshot without subscribing: `untrack(() => sig())`                               |
 
 ```tsx
 import { createMemo, createSignal, Show } from "jsr:@dreamer/view/csr";
@@ -62,17 +62,23 @@ import { createMemo, createSignal, Show } from "jsr:@dreamer/view/csr";
 /** Reads loading only inside the head subtree */
 function RefreshHead(props: { loading: () => boolean }) {
   return () => (
-    <div className="head">{props.loading() ? "Loading…" : "Pull to refresh"}</div>
+    <div className="head">
+      {props.loading() ? "Loading…" : "Pull to refresh"}
+    </div>
   );
 }
 
-function PullShell(props: { loading: ReturnType<typeof createSignal<boolean>> }) {
+function PullShell(
+  props: { loading: ReturnType<typeof createSignal<boolean>> },
+) {
   // setup: Memo once; this return path does **not** call loading() / isLoading()
   const isLoading = createMemo(() => props.loading.value);
   return (
     <div className="shell">
       <RefreshHead loading={isLoading} />
-      <div className="scroll">{/* list: also do not read isLoading here */}</div>
+      <div className="scroll">
+        {/* list: also do not read isLoading here */}
+      </div>
     </div>
   );
 }
@@ -84,24 +90,32 @@ Anti-pattern:
 function Bad(props: { loading: () => boolean }) {
   // top-level read → outer insert subscribes to loading
   const text = props.loading() ? "Loading" : "Idle";
-  return <div className="shell">{text}<List /></div>;
+  return (
+    <div className="shell">
+      {text}
+      <List />
+    </div>
+  );
 }
 ```
 
 ---
 
-
 ### 2.3 No top-level bare `fetch` (the usual repeat-request culprit)
 
-When a too-wide subscription re-runs the whole setup, a bare `fetch` / `axios` at the top of the component fires **again**, often with focus loss. Put IO in `createEffect` or `createResource` (with `signal`). DEV: `noteComponentSetup` / oversubscribe warnings — [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
+When a too-wide subscription re-runs the whole setup, a bare `fetch` / `axios`
+at the top of the component fires **again**, often with focus loss. Put IO in
+`createEffect` or `createResource` (with `signal`). DEV: `noteComponentSetup` /
+oversubscribe warnings —
+[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
 
 ## 3. `createMemo`: when to use / when not
 
-| Use | Avoid |
-|-----|--------|
-| **Derived** values read in several places | Treating Memo as a “stable object store” across re-runs |
-| Merged class strings / derived booleans | Creating a new Memo on every re-run just to “cache” a ref callback |
-| Subscribing to Signal / getter props from a child | Replacing `createSignal` for DOM pointers or mutable bridges |
+| Use                                               | Avoid                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------ |
+| **Derived** values read in several places         | Treating Memo as a “stable object store” across re-runs            |
+| Merged class strings / derived booleans           | Creating a new Memo on every re-run just to “cache” a ref callback |
+| Subscribing to Signal / getter props from a child | Replacing `createSignal` for DOM pointers or mutable bridges       |
 
 **Key:** every `createMemo(fn)` call **allocates a new Memo**. If a mistaken
 subscription re-runs the component, top-level `createMemo` yields a **new**
@@ -132,15 +146,17 @@ const count = createMemo(() => items().length);
 
 ### 4.1 Prefer
 
-- Need `.current`: **`createRef<T>()`** + `ref={refObj}` (matches compiler / JSX).
+- Need `.current`: **`createRef<T>()`** + `ref={refObj}` (matches compiler /
+  JSX).
 - Function refs: keep **one function identity** (Owner-scoped bridge) for scroll
   roots, IO, gestures.
 
 ### 4.2 Transient `ref(null)`
 
-On reactive subtree updates the runtime may call **`ref(null)` then `ref(same
-node)`**. Unconditionally `removeEventListener` / `disconnect` / clearing host
-Signals on `null` will:
+On reactive subtree updates the runtime may call **`ref(null)` then
+`ref(same
+node)`**. Unconditionally `removeEventListener` / `disconnect` /
+clearing host Signals on `null` will:
 
 - Tear down still-needed gestures / IO; or
 - Stack with sync re-renders into **maximum synchronous depth** loops (ui-view
@@ -165,22 +181,23 @@ function bindScrollRootRef(el: HTMLElement | null) {
 
 ### 4.3 Compiler path note
 
-In a few trigger-button cases, `createRef`’s internal signal can be subscribed by
-the compile path and, with function-child inserts, remount repeatedly — a stable
-function ref + local variable may be safer (ui-view DatePicker / ColorPicker).
-Prefer narrowing subscriptions over blanket “never use `createRef`”.
+In a few trigger-button cases, `createRef`’s internal signal can be subscribed
+by the compile path and, with function-child inserts, remount repeatedly — a
+stable function ref + local variable may be safer (ui-view DatePicker /
+ColorPicker). Prefer narrowing subscriptions over blanket “never use
+`createRef`”.
 
 ---
 
 ## 5. Subscription boundaries (`createEffect` / tracking)
 
-| Rule | Notes |
-|------|-------|
-| **Read = subscribe** | Reading Signal / Memo inside Effect / Memo / tracked JSX subscribes |
-| **Narrow** | High-frequency `scroll` / `pointermove` must **not** subscribe to shell-rebuilding flags like `loading` |
-| **`untrack`** | Wrap snapshots inside event handlers |
-| **`onMount` / one-shot** | Built on Effect + `untrack`; init side effects here, not on the template Effect |
-| **Resource** | Create at module / parent setup; never on a path that re-runs the parent from a bad subscription (duplicate fetches) |
+| Rule                     | Notes                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| **Read = subscribe**     | Reading Signal / Memo inside Effect / Memo / tracked JSX subscribes                                                  |
+| **Narrow**               | High-frequency `scroll` / `pointermove` must **not** subscribe to shell-rebuilding flags like `loading`              |
+| **`untrack`**            | Wrap snapshots inside event handlers                                                                                 |
+| **`onMount` / one-shot** | Built on Effect + `untrack`; init side effects here, not on the template Effect                                      |
+| **Resource**             | Create at module / parent setup; never on a path that re-runs the parent from a bad subscription (duplicate fetches) |
 
 Shell split:
 
@@ -209,11 +226,11 @@ getter → runtime `is not a function`.
 
 ## 7. Props conventions (library authors)
 
-| Prefer | Avoid |
-|--------|--------|
-| `open={sig}` / `loading={() => sig.value}` | Boolean snapshot `sig.value` only (never updates if parent doesn’t re-run) |
+| Prefer                                                                             | Avoid                                                                                  |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `open={sig}` / `loading={() => sig.value}`                                         | Boolean snapshot `sig.value` only (never updates if parent doesn’t re-run)             |
 | `items={sig}` or `items={() => rows}`, child `createMemo(() => read(props.items))` | Destructure away reactivity, or top-level `props.items()` with a too-wide subscription |
-| Document `ControlledOpenInput = boolean \| Signal \| () => boolean` | Assume React-style re-render every beat |
+| Document `ControlledOpenInput = boolean \| Signal \| () => boolean`                | Assume React-style re-render every beat                                                |
 
 ---
 
@@ -225,8 +242,10 @@ Prefer for new component / app code:
 - `jsr:@dreamer/view/csr` — mount + control-flow + Suspense
 - Form / router / Resource via their subpaths
 
-Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the [P1-1 deprecation preview](./P1-1-main-entry-deprecation-preview.md) (Strategy A; no export removals in 2.x). Full map: README
-§2.3. This guide does **not** redo the subpath migration doc.
+Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the
+[P1-1 deprecation preview](./P1-1-main-entry-deprecation-preview.md) (Strategy
+A; no export removals in 2.x). Full map: README §2.3. This guide does **not**
+redo the subpath migration doc.
 
 ---
 
@@ -234,10 +253,14 @@ Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the 
 
 - [ ] Does the root `return` path synchronously read hot Signals / Memos?
 - [ ] Are Signal-reading UIs split into the smallest child / thunk / `Show`?
-- [ ] Is each `createMemo` created once at setup — not re-allocated as a “stable store”?
-- [ ] Are function `ref` identities stable? Is transient `ref(null)` ignored via `isConnected`?
-- [ ] Do gesture / scroll callbacks avoid subscribing to shell-rebuilding Signals?
-- [ ] Is Context `value` an object / primitive, not a bare function used as a getter?
+- [ ] Is each `createMemo` created once at setup — not re-allocated as a “stable
+      store”?
+- [ ] Are function `ref` identities stable? Is transient `ref(null)` ignored via
+      `isConnected`?
+- [ ] Do gesture / scroll callbacks avoid subscribing to shell-rebuilding
+      Signals?
+- [ ] Is Context `value` an object / primitive, not a bare function used as a
+      getter?
 - [ ] Do controlled props accept Signal / getter, and is that documented?
 
 ---
@@ -245,12 +268,14 @@ Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the 
 ## 10. Non-goals (this knife)
 
 - No default `insert` / Effect / `createMemo` / `ref` runtime semantics changes
-- Dev-only oversubscribe / remount warnings: see [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) (explicit opt-in on `/devtools`)
+- Dev-only oversubscribe / remount warnings: see
+  [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) (explicit
+  opt-in on `/devtools`)
 - No ui-view / dweb-admin product edits; no JSR / npm publish
 - No P0-2 bundle work, P0-3 compiler optimization, or P1\* in this knife
 
 ## Show / For: pass getters, not `open()`
 
 Use `<Show when={open}>` / `<For each={items}>` with a **Signal getter** or
-`() => ...`. Writing `when={open()}` freezes a boolean/array at render time
-(see P1-view-rerun-fetch-guard §4).
+`() => ...`. Writing `when={open()}` freezes a boolean/array at render time (see
+P1-view-rerun-fetch-guard §4).

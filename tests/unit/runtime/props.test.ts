@@ -142,7 +142,6 @@ describe("runtime/props", () => {
     expect(n).toBe(1);
   });
 
-
   it("安全：危险 srcset 应被拒绝；安全 srcset 保留", () => {
     const img = document.createElement("img");
     setProperty(img, "srcset", "/a.jpg 1x, /b.jpg 2x");
@@ -166,9 +165,10 @@ describe("runtime/props", () => {
       expect(iframe.getAttribute("srcdoc")).toBeNull();
       setProperty(iframe, "srcDoc", "<p>x</p>");
       expect(iframe.getAttribute("srcdoc")).toBeNull();
-      expect(warns.some((w) => w.includes("srcdoc") || w.includes("srcDoc"))).toBe(
-        true,
-      );
+      expect(warns.some((w) => w.includes("srcdoc") || w.includes("srcDoc")))
+        .toBe(
+          true,
+        );
     } finally {
       console.warn = orig;
     }

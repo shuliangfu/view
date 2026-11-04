@@ -13,7 +13,7 @@
  */
 import * as esbuild from "esbuild";
 import { gzipSync } from "node:zlib";
-import { writeFileSync, readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -125,7 +125,8 @@ export const ENTRIES = [
   },
   {
     name: "subpath-namespace-reactivity-api",
-    path: "scripts/consumer-bundle/fixtures/subpath-namespace-reactivity-api.ts",
+    path:
+      "scripts/consumer-bundle/fixtures/subpath-namespace-reactivity-api.ts",
     role: "subpath-namespace",
     pair: "barrel-namespace-reactivity-api",
   },
@@ -178,7 +179,8 @@ async function measureOne(entry) {
   const min = await esbuild.build({ ...common, minify: true });
   const rawBytes = raw.outputFiles[0].contents.byteLength;
   const minBytes = min.outputFiles[0].contents.byteLength;
-  const gzBytes = gzipSync(min.outputFiles[0].contents, { level: 9 }).byteLength;
+  const gzBytes =
+    gzipSync(min.outputFiles[0].contents, { level: 9 }).byteLength;
 
   const inputs = Object.keys(min.metafile.inputs).filter((p) =>
     /(^|[\\/])src[\\/]/.test(p)
@@ -212,7 +214,9 @@ function buildComparisons(rows) {
     if (!sub) continue;
     const minDelta = r.minBytes - sub.minBytes;
     const gzDelta = r.gzipMinBytes - sub.gzipMinBytes;
-    const minRatio = sub.minBytes === 0 ? null : +(r.minBytes / sub.minBytes).toFixed(3);
+    const minRatio = sub.minBytes === 0
+      ? null
+      : +(r.minBytes / sub.minBytes).toFixed(3);
     comparisons.push({
       pair: `${r.name} vs ${sub.name}`,
       barrel: r.name,
@@ -272,15 +276,23 @@ export function printTable(report) {
   console.log("|---|---|---:|---:|---:|---:|");
   for (const r of report.entries) {
     console.log(
-      `| \`${r.name}\` | ${r.role} | ${fmt(r.rawBytes)} | ${fmt(r.minBytes)} | ${fmt(r.gzipMinBytes)} | ${r.inputFileCount} |`,
+      `| \`${r.name}\` | ${r.role} | ${fmt(r.rawBytes)} | ${
+        fmt(r.minBytes)
+      } | ${fmt(r.gzipMinBytes)} | ${r.inputFileCount} |`,
     );
   }
   console.log("\n## Barrel premium (minify / gzip)\n");
-  console.log("| pair | barrel minify | subpath minify | Δ minify | Δ gzip | ratio |");
+  console.log(
+    "| pair | barrel minify | subpath minify | Δ minify | Δ gzip | ratio |",
+  );
   console.log("|---|---:|---:|---:|---:|---:|");
   for (const c of report.comparisons) {
     console.log(
-      `| ${c.pair} | ${fmt(c.barrelMinBytes)} | ${fmt(c.subpathMinBytes)} | +${fmt(c.minifyPremiumBytes)} | +${fmt(c.gzipPremiumBytes)} | ${c.minifyRatioBarrelOverSubpath ?? "n/a"}× |`,
+      `| ${c.pair} | ${fmt(c.barrelMinBytes)} | ${fmt(c.subpathMinBytes)} | +${
+        fmt(c.minifyPremiumBytes)
+      } | +${fmt(c.gzipPremiumBytes)} | ${
+        c.minifyRatioBarrelOverSubpath ?? "n/a"
+      }× |`,
     );
   }
   console.log("");

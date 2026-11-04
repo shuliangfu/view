@@ -353,7 +353,9 @@ export function setProperty(el: any, name: string, value: any) {
     if (value == null || value === false) {
       value = null;
     } else {
-      value = nameLower === "srcset" ? sanitizeSrcset(value) : sanitizeUrl(value);
+      value = nameLower === "srcset"
+        ? sanitizeSrcset(value)
+        : sanitizeUrl(value);
       if (value == null) {
         // 危险 URL：尽量移除既有属性后直接返回，避免留下旧安全值被误以为仍有效
         if (typeof el.removeAttribute === "function") {

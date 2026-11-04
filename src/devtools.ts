@@ -659,7 +659,9 @@ export function listComponentSetupKeys(): string[] {
 }
 
 /** Snapshot of setup counters (overlay Warnings / tests). */
-export function snapshotComponentSetups(): Array<{ key: string; count: number }> {
+export function snapshotComponentSetups(): Array<
+  { key: string; count: number }
+> {
   const out: Array<{ key: string; count: number }> = [];
   for (const [key, count] of componentSetupCounts) {
     out.push({ key, count });

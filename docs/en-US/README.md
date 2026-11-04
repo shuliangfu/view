@@ -38,9 +38,9 @@
    **`@dreamer/view/reactivity`**, **`/csr`**, **`/ssr`**, **`/router`**,
    **`/form`**, **`/resource`**, **`/control-flow`**, etc. The main
    **`@dreamer/view`** entry is a **3.0 core** barrel (**no** router / form /
-   Resource re-exports — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md);
-   2.x preview history: [P1-1](./P1-1-main-entry-deprecation-preview.md)).
-   Current size baseline minify ~**33.4 KiB** main vs ~**11.3 KiB** `/reactivity`;
+   Resource re-exports — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md); 2.x
+   preview history: [P1-1](./P1-1-main-entry-deprecation-preview.md)). Current
+   size baseline minify ~**33.4 KiB** main vs ~**11.3 KiB** `/reactivity`;
    consumer `export *` vs reactivity ≈ **~3.0×** minify
    ([P0](../zh-CN/P0-基线-体积与性能.md) /
    [P0-2](./P0-2-consumer-bundle-analyze.md)).
@@ -88,37 +88,38 @@ bunx jsr add @dreamer/view
 npx jsr add @dreamer/view
 ```
 
-> **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun 1.3+**,
-> and **Node.js 22+** with zero source changes. Unit and integration tests pass
-> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. Examples
-> **browser E2E** (`deno task test:e2e`) runs as a separate ubuntu-24.04 Chromium job
-> (`e2e-examples`); it is **not** folded into the Windows / browser-less matrix
-> cells. Local full Deno suite: `deno test -A tests` (needs Playwright Chromium).
-> The CLI `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
+> **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun
+> 1.3+**, and **Node.js 22+** with zero source changes. Unit and integration
+> tests pass on all three runtimes × three OSes (Linux / macOS / Windows) in CI.
+> Examples **browser E2E** (`deno task test:e2e`) runs as a separate
+> ubuntu-24.04 Chromium job (`e2e-examples`); it is **not** folded into the
+> Windows / browser-less matrix cells. Local full Deno suite:
+> `deno test -A tests` (needs Playwright Chromium). The CLI `upgrade` / `update`
+> commands use `npx jsr` / `npm` respectively on Node.
 
 ### 2.3 `exports` map (same as `view/deno.json`)
 
-| Subpath                             | Purpose                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `jsr:@dreamer/view`                 | **Main (3.0 core)**: reactivity, runtime, `insert`, `mount` / `hydrate`, Store, control flow, Suspense, HMR; **no** router / form / Resource (use subpaths) |
-| `jsr:@dreamer/view/types`           | Shared types: `VNode`, `JSXRenderable`, etc.                                                                                    |
-| `jsr:@dreamer/view/cli`             | CLI implementation (toolchain)                                                                                                  |
-| `jsr:@dreamer/view/setup`           | Global install script entry                                                                                                     |
-| `jsr:@dreamer/view/jsx-runtime`     | Automatic JSX runtime (`jsx` / `jsxs` / `Fragment`)                                                                             |
-| `jsr:@dreamer/view/jsx-dev-runtime` | Dev JSX entry (same source as jsx-runtime; satisfies bundlers that resolve `jsxDEV`)                                            |
-| `jsr:@dreamer/view/portal`          | **`createPortal` only** (optional split import)                                                                                 |
-| `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`**, etc.                                                                                      |
-| `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                   |
-| `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                     |
-| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + convenience **`batch`** re-export (no router/form; better tree-shake)   |
-| `jsr:@dreamer/view/scheduler`       | **`batch` / priority scheduler**                                                                                                |
-| `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` / …**                                                                                  |
-| `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                                |
-| `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                                            |
-| `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                             |
-| `jsr:@dreamer/view/csr`             | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                |
-| `jsr:@dreamer/view/devtools`      | **DEV-only** Owner tree / subscription inspection + opt-in oversubscribe warnings (`VIEW_DEV`; not for production bundles)      |
-| `jsr:@dreamer/view/devtools/overlay` | **DEV-only** Next-inspired floating indicator + panel (`mountDevtoolsOverlay`; requires `VIEW_DEV`; opt-in) |
+| Subpath                              | Purpose                                                                                                                                                     |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jsr:@dreamer/view`                  | **Main (3.0 core)**: reactivity, runtime, `insert`, `mount` / `hydrate`, Store, control flow, Suspense, HMR; **no** router / form / Resource (use subpaths) |
+| `jsr:@dreamer/view/types`            | Shared types: `VNode`, `JSXRenderable`, etc.                                                                                                                |
+| `jsr:@dreamer/view/cli`              | CLI implementation (toolchain)                                                                                                                              |
+| `jsr:@dreamer/view/setup`            | Global install script entry                                                                                                                                 |
+| `jsr:@dreamer/view/jsx-runtime`      | Automatic JSX runtime (`jsx` / `jsxs` / `Fragment`)                                                                                                         |
+| `jsr:@dreamer/view/jsx-dev-runtime`  | Dev JSX entry (same source as jsx-runtime; satisfies bundlers that resolve `jsxDEV`)                                                                        |
+| `jsr:@dreamer/view/portal`           | **`createPortal` only** (optional split import)                                                                                                             |
+| `jsr:@dreamer/view/compiler`         | **`compileSource` / `transformJSX`**, etc.                                                                                                                  |
+| `jsr:@dreamer/view/optimize`         | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                                               |
+| `jsr:@dreamer/view/ssr`              | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                                                 |
+| `jsr:@dreamer/view/reactivity`       | **Signal / Effect / Memo / Owner / Store / Context** + convenience **`batch`** re-export (no router/form; better tree-shake)                                |
+| `jsr:@dreamer/view/scheduler`        | **`batch` / priority scheduler**                                                                                                                            |
+| `jsr:@dreamer/view/router`           | **`createRouter` / `Link` / `matchRoute` / …**                                                                                                              |
+| `jsr:@dreamer/view/form`             | **`createForm`**                                                                                                                                            |
+| `jsr:@dreamer/view/resource`         | **`createResource`**                                                                                                                                        |
+| `jsr:@dreamer/view/control-flow`     | **`Show` / `For` / `Switch` / `ErrorBoundary` / …**                                                                                                         |
+| `jsr:@dreamer/view/csr`              | **CSR bundle**: signal + mount/hydrate + control-flow + Suspense (no SSR/router)                                                                            |
+| `jsr:@dreamer/view/devtools`         | **DEV-only** Owner tree / subscription inspection + opt-in oversubscribe warnings (`VIEW_DEV`; not for production bundles)                                  |
+| `jsr:@dreamer/view/devtools/overlay` | **DEV-only** Next-inspired floating indicator + panel (`mountDevtoolsOverlay`; requires `VIEW_DEV`; opt-in)                                                 |
 
 **Recommended imports (prefer these in new code):**
 
@@ -146,8 +147,7 @@ import { renderToString } from "@dreamer/view/ssr";
 
 > **Strategy A landed:** the main entry is a CSR **core** re-export; it **no
 > longer** exports router / form / resource. Migration:
-> [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
-> [ZH](../zh-CN/MIGRATION-3.0.md).
+> [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) / [ZH](../zh-CN/MIGRATION-3.0.md).
 > 2.x preview docs remain for history:
 > [`P1-1`](./P1-1-main-entry-deprecation-preview.md).
 
@@ -159,7 +159,7 @@ Size context (after slim, trust refreshed `deno task size:check` baselines):
 
 ```ts
 // Core APIs still available from the 3.0 main entry:
-import { createSignal, mount, For } from "@dreamer/view";
+import { createSignal, For, mount } from "@dreamer/view";
 
 // Integrations must use subpaths:
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
@@ -290,22 +290,25 @@ const stop = createRoot((dispose) => {
 - **`container`**: node that already contains server HTML.
 - **`bindingsOrOptions`**: optional
   - legacy: `[number[], string][]` binding table; or
-  - **`HydrateOptions`**: `{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
+  - **`HydrateOptions`**:
+    `{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
 - Calls **`stopHydration()`**, then **`internalHydrate`** with options, then
   **`insert`**.
 
 #### `mismatchMode` (**stricter 3.0 defaults** · resolved by environment when omitted)
 
-| Value | Behavior | When it applies |
-|-------|----------|-----------------|
-| **`assert`** | Throw on any mismatch | **Default when omitted** and `VIEW_DEV === true`; also pass explicitly |
-| **`remount`** | Clear container and CSR-remount on mismatch | **Default when omitted** in production (no `VIEW_DEV`); also pass explicitly |
-| **`continue`** | Record mismatches; do not abort; keep SSR nodes | Must pass **explicitly** (2.x tolerant behavior) |
+| Value          | Behavior                                        | When it applies                                                              |
+| -------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| **`assert`**   | Throw on any mismatch                           | **Default when omitted** and `VIEW_DEV === true`; also pass explicitly       |
+| **`remount`**  | Clear container and CSR-remount on mismatch     | **Default when omitted** in production (no `VIEW_DEV`); also pass explicitly |
+| **`continue`** | Record mismatches; do not abort; keep SSR nodes | Must pass **explicitly** (2.x tolerant behavior)                             |
 
-Resolver: `resolveMismatchMode(options)` (see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1/R3).
-Historical opt-in notes: [P1-2](./P1-2-hydration-opt-in-pilot.md) /
-[ZH](../zh-CN/P1-2-hydration-opt-in-pilot.md) (2.x default `continue` superseded by 3.0).
-examples `/runtime` demos all three modes. Progressive / chunked hydration hooks are **not** shipped yet.
+Resolver: `resolveMismatchMode(options)` (see
+[`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1/R3). Historical opt-in notes:
+[P1-2](./P1-2-hydration-opt-in-pilot.md) /
+[ZH](../zh-CN/P1-2-hydration-opt-in-pilot.md) (2.x default `continue` superseded
+by 3.0). examples `/runtime` demos all three modes. Progressive / chunked
+hydration hooks are **not** shipped yet.
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -349,7 +352,11 @@ The **`Signal<T>`** return supports:
   `set(1)` (also iterable for `for…of`)
 
 ```tsx
-import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+} from "jsr:@dreamer/view/reactivity";
 
 const [count, setCount] = createSignal(0);
 const double = createMemo(() => count() * 2);
@@ -369,7 +376,11 @@ setCount(1);
   (also used internally for function props on native nodes).
 
 ```tsx
-import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createSignal,
+  onCleanup,
+} from "jsr:@dreamer/view/reactivity";
 
 const id = createSignal(0);
 
@@ -426,14 +437,19 @@ Reads inside **`fn`** do **not** track dependencies.
 Deferred commits and transition updates (integrate with **`createEffect`**
 scheduling).
 
-- **Default:** `createDeferred(source)` aligns via **`queueMicrotask`** (unchanged).
+- **Default:** `createDeferred(source)` aligns via **`queueMicrotask`**
+  (unchanged).
 - **Optional** `timeout?: number`: defer with `requestIdleCallback({ timeout })`
   (else `setTimeout`); pending handles cancel on Effect re-run / dispose.
 - **Not** `scheduleTask` / Priority — intentionally **not** merged into the
   priority kernel (`batch` still owns Observer flushing only).
 
 ```tsx
-import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
+import {
+  createDeferred,
+  createSignal,
+  useTransition,
+} from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
@@ -630,8 +646,9 @@ function Page() {
 
 ## 11. `Suspense` and `createResource`
 
-> **Repeat requests?** Usually the component setup re-ran (wide subscription), not a Resource bug — avoid top-level bare `fetch`; see [P1-view-rerun-fetch-guard](./P1-view-rerun-fetch-guard.md) and P0-4.
-
+> **Repeat requests?** Usually the component setup re-ran (wide subscription),
+> not a Resource bug — avoid top-level bare `fetch`; see
+> [P1-view-rerun-fetch-guard](./P1-view-rerun-fetch-guard.md) and P0-4.
 
 ### 11.1 Basic usage
 
@@ -698,7 +715,8 @@ cancels the previous in-flight request. Ignoring the second argument keeps the
 const ac = new AbortController();
 const page = createResource(
   () => routeId(),
-  (id, { signal }) => fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
+  (id, { signal }) =>
+    fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
   { signal: ac.signal }, // e.g. abort on route leave
 );
 // ac.abort();
@@ -731,8 +749,9 @@ const inflight = createInflightDedupe();
 const user = createResource(
   () => userId.value,
   (id, { signal }) =>
-    inflight(`user:${id}`, () =>
-      fetch(`/api/user/${id}`, { signal }).then((r) => r.json())
+    inflight(
+      `user:${id}`,
+      () => fetch(`/api/user/${id}`, { signal }).then((r) => r.json()),
     ),
 );
 ```
@@ -890,7 +909,11 @@ Sections **15.1 / 15.2** expand proxy vs tuple examples.
 ### 15.1 Object root: proxy + `setState`
 
 ```tsx
-import { createEffect, createStore, produce } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createStore,
+  produce,
+} from "jsr:@dreamer/view/reactivity";
 
 const store = createStore({
   user: { name: "Ada", age: 36 },
@@ -1012,16 +1035,16 @@ Partial list/tree updates with stable references (use with **`setState`**).
 
 ### 16.1 Capabilities and limits
 
-| Item                   | Notes                                                                                                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                  |
-| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` / `{ as: "radio", value }` use **`checked`**                              |
-| **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                  |
-| **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                            |
-| **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                  |
-| **No built-in schema** | Not wired to Zod; use **`messageFromSafeParse`** or call parsers inside **`rules`** / manage **`errors`**                                                  |
+| Item                   | Notes                                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                                   |
+| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` / `{ as: "radio", value }` use **`checked`**                                            |
+| **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                                   |
+| **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                                             |
+| **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                                   |
+| **No built-in schema** | Not wired to Zod; use **`messageFromSafeParse`** or call parsers inside **`rules`** / manage **`errors`**                                                                   |
 | **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `radio` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
-| **Schema bridge**      | No built-in Zod; **`messageFromSafeParse(safeParseResult)`** maps Zod-like results to `rules` messages |
+| **Schema bridge**      | No built-in Zod; **`messageFromSafeParse(safeParseResult)`** maps Zod-like results to `rules` messages                                                                      |
 
 Types exported from the main entry: **`CreateFormOptions`**,
 **`FormValidateOn`**, **`FormFieldRule`**.
@@ -1165,9 +1188,12 @@ const form = createForm(
 <input type="number" {...form.field("age", { as: "number" })} />
 ```
 
-- **`checkbox`**: binds **`checked`** (boolean); exposes **`onInput` / `onChange`**.
-- **`select` / `textarea` / `text`**: bind **`value`**; `select` also sets **`onChange`**.
-- **`number`**: writes `Number(raw)`; empty string stays `""` for required rules.
+- **`checkbox`**: binds **`checked`** (boolean); exposes **`onInput` /
+  `onChange`**.
+- **`select` / `textarea` / `text`**: bind **`value`**; `select` also sets
+  **`onChange`**.
+- **`number`**: writes `Number(raw)`; empty string stays `""` for required
+  rules.
 
 ### 16.7 Schema bridge (optional; no Zod runtime dependency)
 
@@ -1184,12 +1210,10 @@ const form = createForm(
       // email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
       email: (v) =>
         messageFromSafeParse(
-          String(v).includes("@")
-            ? { success: true as const }
-            : {
-              success: false as const,
-              error: { issues: [{ message: "Invalid email" }] },
-            },
+          String(v).includes("@") ? { success: true as const } : {
+            success: false as const,
+            error: { issues: [{ message: "Invalid email" }] },
+          },
         ),
     },
   },
@@ -1198,17 +1222,18 @@ const form = createForm(
 
 ### 16.8 Possible further extensions
 
-- Array fields / nested error paths (today **`errors` aligns with top-level keys).
-- Deeper schema-library wrappers (this package only ships **`messageFromSafeParse`**).
+- Array fields / nested error paths (today **`errors` aligns with top-level
+  keys).
+- Deeper schema-library wrappers (this package only ships
+  **`messageFromSafeParse`**).
 
 ---
 
 ## 17. Router: `createRouter` / `mountWithRouter` / `Link` / `useRouter`
 
-> **Module boundaries (P1-4):** `match` (pure) / `history` (`createRouter`) / `Link`; see
-> [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md).
-> For SSR use `matchRoute` or `renderRouterToString` from `@dreamer/view/ssr`.
-
+> **Module boundaries (P1-4):** `match` (pure) / `history` (`createRouter`) /
+> `Link`; see [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md). For SSR
+> use `matchRoute` or `renderRouterToString` from `@dreamer/view/ssr`.
 
 ### 17.1 Creating a router
 
@@ -1287,7 +1312,8 @@ export function Shell() {
 
 ## 18. SSR (`jsr:@dreamer/view/ssr`)
 
-- **`renderRouterToString({ routes, url })`**: one-shot router SSR (forces `ssr: true` + `destroy`); same match semantics as `matchRoute` (see P1-4).
+- **`renderRouterToString({ routes, url })`**: one-shot router SSR (forces
+  `ssr: true` + `destroy`); same match semantics as `matchRoute` (see P1-4).
 
 ### 18.1 `renderToString`
 
@@ -1401,12 +1427,12 @@ function ModalHost() {
 
 - **`dangerouslySetInnerHTML` / `innerHTML`**: trusted content only.
 - Escape or strictly whitelist user input in SSR output.
-- **URL guards (3.0):** `href` / `src` go through `sanitizeUrl`; **`srcset`** uses
-  `sanitizeSrcset` (per-candidate `sanitizeUrl` — whole-string sanitize misses a
-  `javascript:` candidate). Props **reject** `srcdoc` / `srcDoc` writes (same
-  danger class as `innerHTML`). SSR DOM reflected setters / `setAttribute` for
-  `href` / `src` / `srcset` share the same sanitizers; dangerous values drop the
-  key and do not write.
+- **URL guards (3.0):** `href` / `src` go through `sanitizeUrl`; **`srcset`**
+  uses `sanitizeSrcset` (per-candidate `sanitizeUrl` — whole-string sanitize
+  misses a `javascript:` candidate). Props **reject** `srcdoc` / `srcDoc` writes
+  (same danger class as `innerHTML`). SSR DOM reflected setters / `setAttribute`
+  for `href` / `src` / `srcset` share the same sanitizers; dangerous values drop
+  the key and do not write.
 - Related DX: missing-key / eager `when`·`each` warns; `routeAbortSignal()` for
   leave-page cancel; form `field` `as: "radio"`; Switch comment anchors;
   DevTools Warnings clear + route-page snapshot; rerun-guard / Context Proxy
@@ -1416,34 +1442,67 @@ function ModalHost() {
 
 ## 25. Test report and changelog
 
-- **Current framework analysis** (Chinese canonical): [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md)
-- **Analysis doc status** (obsolete / drifted index): [`analysis-doc-status.md`](./analysis-doc-status.md) · [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
-- **P0-1 profiling / bench CI**: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) · [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
-- **P0-2: consumer / examples bundle analyze**: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
-- **P2: examples subpath dogfood**: [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md)
-- **P2-4 DEV-only DevTools** (Owner / subscriptions): [P2-4-devtools.md](./P2-4-devtools.md) / [zh](../zh-CN/P2-4-devtools.md)
-- **P2 DEV floating overlay** (Next-inspired): [P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md) / [zh](../zh-CN/P2-devtools-overlay-ui.md)
-- **P2 DEV oversubscribe / remount warnings** (§5.1 opt-in): [P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md) / [zh](../zh-CN/P2-dev-warn-oversubscribe.md)
-- **P1-1: main-entry barrel (Strategy A · **landed in 3.0**; preview history)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
-- **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
-- **P1: component re-run / bare-fetch DEV guard**: [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) · [`../zh-CN/P1-view-rerun-fetch-guard.md`](../zh-CN/P1-view-rerun-fetch-guard.md)
-- **P0: examples browser E2E into CI**: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) · [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md)
-- **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
-- **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
-- **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
+- **Current framework analysis** (Chinese canonical):
+  [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md)
+- **Analysis doc status** (obsolete / drifted index):
+  [`analysis-doc-status.md`](./analysis-doc-status.md) ·
+  [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
+- **P0-1 profiling / bench CI**:
+  [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) ·
+  [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
+- **P0-2: consumer / examples bundle analyze**:
+  [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) ·
+  [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
+- **P2: examples subpath dogfood**:
+  [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) ·
+  [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md)
+- **P2-4 DEV-only DevTools** (Owner / subscriptions):
+  [P2-4-devtools.md](./P2-4-devtools.md) / [zh](../zh-CN/P2-4-devtools.md)
+- **P2 DEV floating overlay** (Next-inspired):
+  [P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md) /
+  [zh](../zh-CN/P2-devtools-overlay-ui.md)
+- **P2 DEV oversubscribe / remount warnings** (§5.1 opt-in):
+  [P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md) /
+  [zh](../zh-CN/P2-dev-warn-oversubscribe.md)
+- **P1-1: main-entry barrel (Strategy A · **landed in 3.0**; preview history)**:
+  [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)
+  ·
+  [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
+- **P1-2: hydration opt-in pilot (`mismatchMode`)**:
+  [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) ·
+  [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
+- **P1: component re-run / bare-fetch DEV guard**:
+  [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) ·
+  [`../zh-CN/P1-view-rerun-fetch-guard.md`](../zh-CN/P1-view-rerun-fetch-guard.md)
+- **P0: examples browser E2E into CI**:
+  [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) ·
+  [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md)
+- **P0-3 compiler static coverage / golden**:
+  [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md)
+  ·
+  [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
+- **P0-4 component author guide** (Memo / ref / subscription boundaries):
+  [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) ·
+  [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
+- **3.0 planning memo** (Chinese):
+  [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
 
 - **Latest [3.0.0] — 2026-11-05**:
-  - **Breaking**: slim main entry (router/form/resource → subpaths); stricter
-    hydrate defaults (`assert` when `VIEW_DEV`, else `remount`; drop boolean
-    aliases — see `MIGRATION-3.0.md`).
   - **Added**: DevTools overlay + oversubscribe/rerun/missing-key warns;
     compiler static folds (text/attrs/SSR parity + class joins); URL guards
     (`srcset`/`srcdoc`, SSR `href`/`src`); Switch comment anchors;
-    `createDeferred({ timeout })`; route-churn probe.
-  - **Tests**: Deno **564** + examples E2E **22** (local campaign close).
+    `createDeferred({ timeout })`; `routeAbortSignal()`; form `field`
+    `as: "radio"`; route-churn probe.
+  - **Fixed**: static `??` attr fold into templates; DevTools remount-churn
+    false positive on route loading→page expand; JSR slow-types on remount
+    helpers.
+  - **Changed** (breaking): slim main entry (router/form/resource → subpaths);
+    stricter hydrate defaults (`assert` when `VIEW_DEV`, else `remount`; drop
+    boolean aliases — see `MIGRATION-3.0.md`). Library main minify ~44.3→~33.4
+    KiB. Tests: Deno **564** + examples E2E **22**.
   - Full history: **[CHANGELOG.md](./CHANGELOG.md)**.
-- Tests: **[TEST_REPORT.md](./TEST_REPORT.md)**;
-  Chinese: **[../zh-CN/TEST_REPORT.md](../zh-CN/TEST_REPORT.md)**.
+- Tests: **[TEST_REPORT.md](./TEST_REPORT.md)**; Chinese:
+  **[../zh-CN/TEST_REPORT.md](../zh-CN/TEST_REPORT.md)**.
 - Chinese changelog: **[../zh-CN/CHANGELOG.md](../zh-CN/CHANGELOG.md)**.
 
 ---

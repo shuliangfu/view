@@ -20,7 +20,13 @@ import {
   succeedSpinner,
   success,
 } from "@dreamer/console";
-import { createCommand, exit, IS_BUN, IS_DENO, IS_NODE } from "@dreamer/runtime-adapter";
+import {
+  createCommand,
+  exit,
+  IS_BUN,
+  IS_DENO,
+  IS_NODE,
+} from "@dreamer/runtime-adapter";
 import { $tr } from "../i18n.ts";
 import {
   compareVersions,

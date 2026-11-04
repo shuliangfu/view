@@ -201,7 +201,8 @@ describe("devtools overlay (P2)", () => {
     expect(row).not.toBeNull();
     row.click();
     expect(shadow.querySelector(".tree-row.selected")).toBeNull();
-    const detail = shadow.querySelector("[data-el='tree-detail']")!.textContent!;
+    const detail = shadow.querySelector("[data-el='tree-detail']")!
+      .textContent!;
     expect(detail.length).toBeGreaterThan(0);
     handle.unmount();
   });
@@ -214,7 +215,8 @@ describe("devtools overlay (P2)", () => {
     expect(clearBtns.length).toBeGreaterThanOrEqual(1);
     // Warnings tab itself includes a clear control (not only Settings)
     const warnPane = shadow.querySelector("[data-pane='warnings']")!;
-    expect(warnPane.querySelector("[data-action='clear-warns']")).not.toBeNull();
+    expect(warnPane.querySelector("[data-action='clear-warns']")).not
+      .toBeNull();
     const empty = shadow.querySelector("[data-el='warn-empty']");
     expect(empty).not.toBeNull();
     expect(empty!.textContent!).toMatch(/No issues|未发现问题/i);
@@ -227,7 +229,8 @@ describe("devtools overlay (P2)", () => {
     handle.open();
     const shadow = handle.root.shadowRoot!;
     handle.setTab("warnings");
-    const loc = globalThis.location ?? (document.defaultView as Window).location;
+    const loc = globalThis.location ??
+      (document.defaultView as Window).location;
     const hist = globalThis.history ?? (document.defaultView as Window).history;
     expect(loc).toBeTruthy();
     const orig = `${loc.pathname}${loc.search}${loc.hash}`;
@@ -238,7 +241,8 @@ describe("devtools overlay (P2)", () => {
     handle.setTab("warnings");
     expect(shadow.querySelector("[data-el='warn-empty']")).not.toBeNull();
     expect(shadow.querySelector("[data-el='n-effects']")).not.toBeNull();
-    expect(shadow.querySelector("[data-el='n-effects']")!.textContent).toBeTruthy();
+    expect(shadow.querySelector("[data-el='n-effects']")!.textContent)
+      .toBeTruthy();
     hist.replaceState({}, "", orig);
     await Promise.resolve();
     handle.unmount();

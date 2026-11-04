@@ -71,27 +71,28 @@ API；需要指令级演示时请本地使用 `jsx-compiler`/`compileSource` 或
 
 ## 五、Resource（@dreamer/view/resource）
 
-| API                                       | 说明                           | 示例覆盖 | 所在页                               |
-| ----------------------------------------- | ------------------------------ | -------- | ------------------------------------ |
-| `createResource(fetcher)`                 | 无 source，refetch 手动请求    | ✅       | Resource 页（重新请求）              |
-| `createResource(source, fetcher)`         | 有 source，source 变化自动请求 | ✅       | Resource 页（id=1/2/3）              |
-| fetcher 第二参 `{ signal }`               | AbortSignal；切 source／切页 abort | ✅    | Resource 页 `fakeApi` + `router.routeAbortSignal()` |
-| `router.routeAbortSignal()`               | 路由世代 AbortSignal             | ✅       | Resource 页；切页 abort in-flight              |
-| 返回：`{ data, loading, error, refetch }` | 资源状态                       | ✅       | Resource 页（加载中/错误/data 展示） |
-| 类型：`ResourceResult<T>`                 | 类型                           | ✅       | 同上                                 |
+| API                                       | 说明                               | 示例覆盖 | 所在页                                              |
+| ----------------------------------------- | ---------------------------------- | -------- | --------------------------------------------------- |
+| `createResource(fetcher)`                 | 无 source，refetch 手动请求        | ✅       | Resource 页（重新请求）                             |
+| `createResource(source, fetcher)`         | 有 source，source 变化自动请求     | ✅       | Resource 页（id=1/2/3）                             |
+| fetcher 第二参 `{ signal }`               | AbortSignal；切 source／切页 abort | ✅       | Resource 页 `fakeApi` + `router.routeAbortSignal()` |
+| `router.routeAbortSignal()`               | 路由世代 AbortSignal               | ✅       | Resource 页；切页 abort in-flight                   |
+| 返回：`{ data, loading, error, refetch }` | 资源状态                           | ✅       | Resource 页（加载中/错误/data 展示）                |
+| 类型：`ResourceResult<T>`                 | 类型                               | ✅       | 同上                                                |
 
-**结论**：createResource 两种用法、AbortSignal dogfood 及与 Suspense 配合均有示例。
+**结论**：createResource 两种用法、AbortSignal dogfood 及与 Suspense
+配合均有示例。
 
 ---
 
 ## 六、Context（@dreamer/view/context）
 
-| API                            | 说明       | 示例覆盖 | 所在页                        |
-| ------------------------------ | ---------- | -------- | ----------------------------- |
-| `createContext(defaultValue)`  | 创建上下文 | ✅       | Context 页                    |
-| `Provider`（value + children） | 提供值     | ✅       | Context 页（theme）           |
-| `useContext()`                 | 消费上下文 | ✅       | Context 页（light/dark 切换） |
-| 急切 `{user.name}` / props thunk | Context Proxy + props Signal thunk | ✅ | Context 页（Consumer + UserCard `user={user}`） |
+| API                              | 说明                               | 示例覆盖 | 所在页                                          |
+| -------------------------------- | ---------------------------------- | -------- | ----------------------------------------------- |
+| `createContext(defaultValue)`    | 创建上下文                         | ✅       | Context 页                                      |
+| `Provider`（value + children）   | 提供值                             | ✅       | Context 页（theme）                             |
+| `useContext()`                   | 消费上下文                         | ✅       | Context 页（light/dark 切换）                   |
+| 急切 `{user.name}` / props thunk | Context Proxy + props Signal thunk | ✅       | Context 页（Consumer + UserCard `user={user}`） |
 
 **结论**：Context 全流程已有示例；Props 急切读与 Context 对齐 dogfood。
 

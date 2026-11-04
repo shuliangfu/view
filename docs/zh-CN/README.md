@@ -33,14 +33,16 @@
      **`createRenderEffect`**，用于 `className={() => ...}`、`value={() => ...}`
      等响应式属性。
 
-4. **优先子路径导入（3.0 · 策略 A 已落地）**   导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
+4. **优先子路径导入（3.0 · 策略 A 已落地）** 导出键与
+   `deno.json`／下文「安装」表一致。应用代码请默认使用
    **`@dreamer/view/reactivity`**、**`/csr`**、**`/ssr`**、**`/router`**、
    **`/form`**、**`/resource`**、**`/control-flow`** 等。主入口
-   **`@dreamer/view`** 为 **3.0 核心** barrel（**不再** re-export 路由／表单／Resource；见
-   [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)；2.x 预告史：
-   [P1-1](./P1-1-main-entry-deprecation-preview.md)）。当前 size 基线 minify：主入口约
-   **33.4 KiB**，`/reactivity` 约 **11.3 KiB**；消费方 `export *` 相对 reactivity 约
-   **~3.0×** minify（详见 [P0 基线](./P0-基线-体积与性能.md)／
+   **`@dreamer/view`** 为 **3.0 核心** barrel（**不再** re-export
+   路由／表单／Resource；见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)；2.x
+   预告史： [P1-1](./P1-1-main-entry-deprecation-preview.md)）。当前 size 基线
+   minify：主入口约 **33.4 KiB**，`/reactivity` 约 **11.3 KiB**；消费方
+   `export *` 相对 reactivity 约 **~3.0×** minify（详见
+   [P0 基线](./P0-基线-体积与性能.md)／
    [P0-2](./P0-2-consumer-bundle-analyze.md)）。
 
 ---
@@ -80,30 +82,34 @@ deno add jsr:@dreamer/view
 bunx jsr add @dreamer/view
 ```
 
-> **运行时与 CI**：unit／integration 在 Deno／Bun／Node × Linux／macOS／Windows 三端矩阵跑通；examples **浏览器 E2E**（`deno task test:e2e`）单独在 ubuntu-24.04 Chromium job `e2e-examples`，**不**塞进 Windows／无浏览器格子。本地 Deno 全量：`deno test -A tests`（需 Playwright Chromium）。详见 [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md)。
+> **运行时与 CI**：unit／integration 在 Deno／Bun／Node × Linux／macOS／Windows
+> 三端矩阵跑通；examples **浏览器 E2E**（`deno task test:e2e`）单独在
+> ubuntu-24.04 Chromium job `e2e-examples`，**不**塞进
+> Windows／无浏览器格子。本地 Deno 全量：`deno test -A tests`（需 Playwright
+> Chromium）。详见 [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md)。
 
 ### 2.3 `exports` 一览（与仓库 `view/deno.json` 一致）
 
-| 子路径                              | 说明                                                                                                             |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 子路径                              | 说明                                                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `jsr:@dreamer/view`                 | **主入口（3.0 核心）**：响应式、运行时、`insert`、`mount` / `hydrate`、Store、控制流、Suspense、HMR；**不含**路由／表单／Resource（见子路径） |
-| `jsr:@dreamer/view/types`           | 公共类型：`VNode`、`JSXRenderable` 等                                                                            |
-| `jsr:@dreamer/view/cli`             | CLI 实现（工具链使用）                                                                                           |
-| `jsr:@dreamer/view/setup`           | 全局安装脚本入口                                                                                                 |
-| `jsr:@dreamer/view/jsx-runtime`     | JSX 自动运行时（`jsx` / `jsxs` / `Fragment`）                                                                    |
-| `jsr:@dreamer/view/jsx-dev-runtime` | 开发期 JSX 入口（与 jsx-runtime 同源，满足部分打包器对 `jsxDEV` 的解析）                                         |
-| `jsr:@dreamer/view/portal`          | 仅 **`createPortal`**（可按需单独引用）                                                                          |
-| `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`** 等与 TS 编译相关的 API                                                      |
-| `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** 构建期字符串压缩等                                                       |
-| `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**、`generateHydrationScript` 及 SSR 辅助符号       |
-| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + 便利 **`batch`** re-export（无 router/form，利于 tree-shake） |
-| `jsr:@dreamer/view/scheduler`       | **`batch` / 优先级调度**                                                                                         |
-| `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` 等**                                                                    |
-| `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                 |
-| `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                             |
-| `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` 等**                                                               |
-| `jsr:@dreamer/view/csr`             | **CSR 聚合**：signal + mount/hydrate + 控制流 + Suspense（无 SSR/router）                                        |
-| `jsr:@dreamer/view/devtools`      | **仅 DEV**：Owner 树／订阅数＋opt-in 过订阅警告（需 `VIEW_DEV`；勿进生产包）                                                        |
+| `jsr:@dreamer/view/types`           | 公共类型：`VNode`、`JSXRenderable` 等                                                                                                         |
+| `jsr:@dreamer/view/cli`             | CLI 实现（工具链使用）                                                                                                                        |
+| `jsr:@dreamer/view/setup`           | 全局安装脚本入口                                                                                                                              |
+| `jsr:@dreamer/view/jsx-runtime`     | JSX 自动运行时（`jsx` / `jsxs` / `Fragment`）                                                                                                 |
+| `jsr:@dreamer/view/jsx-dev-runtime` | 开发期 JSX 入口（与 jsx-runtime 同源，满足部分打包器对 `jsxDEV` 的解析）                                                                      |
+| `jsr:@dreamer/view/portal`          | 仅 **`createPortal`**（可按需单独引用）                                                                                                       |
+| `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`** 等与 TS 编译相关的 API                                                                                   |
+| `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** 构建期字符串压缩等                                                                                    |
+| `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**、`generateHydrationScript` 及 SSR 辅助符号                                    |
+| `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + 便利 **`batch`** re-export（无 router/form，利于 tree-shake）                          |
+| `jsr:@dreamer/view/scheduler`       | **`batch` / 优先级调度**                                                                                                                      |
+| `jsr:@dreamer/view/router`          | **`createRouter` / `Link` / `matchRoute` 等**                                                                                                 |
+| `jsr:@dreamer/view/form`            | **`createForm`**                                                                                                                              |
+| `jsr:@dreamer/view/resource`        | **`createResource`**                                                                                                                          |
+| `jsr:@dreamer/view/control-flow`    | **`Show` / `For` / `Switch` / `ErrorBoundary` 等**                                                                                            |
+| `jsr:@dreamer/view/csr`             | **CSR 聚合**：signal + mount/hydrate + 控制流 + Suspense（无 SSR/router）                                                                     |
+| `jsr:@dreamer/view/devtools`        | **仅 DEV**：Owner 树／订阅数＋opt-in 过订阅警告（需 `VIEW_DEV`；勿进生产包）                                                                  |
 
 **推荐导入（新代码请优先用子路径）：**
 
@@ -129,18 +135,20 @@ import { renderToString } from "@dreamer/view/ssr";
 
 #### 主入口（`@dreamer/view`）— **3.0 核心 barrel**
 
-> **策略 A 已落地：** 主入口为 CSR **核心** re-export；**不再**导出 router／form／resource。
+> **策略 A 已落地：** 主入口为 CSR **核心** re-export；**不再**导出
+> router／form／resource。
 > 迁移：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／[EN](../en-US/MIGRATION-3.0.md)。
 > 2.x 弃用预告文档仍可参考：[`P1-1`](./P1-1-main-entry-deprecation-preview.md)。
 
 体积依据（瘦身后以 `deno task size:check` 新基线为准）：
 
-- 库入口（P0）：见 [P0 基线](./P0-基线-体积与性能.md)／[EN](../en-US/P0-baseline-bundle-and-perf.md)。
+- 库入口（P0）：见
+  [P0 基线](./P0-基线-体积与性能.md)／[EN](../en-US/P0-baseline-bundle-and-perf.md)。
 - 消费方分析：见 [P0-2](./P0-2-consumer-bundle-analyze.md)。
 
 ```ts
 // 3.0 主入口仍可用的核心 API：
-import { createSignal, mount, For } from "@dreamer/view";
+import { createSignal, For, mount } from "@dreamer/view";
 
 // 集成必须走子路径：
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
@@ -265,19 +273,22 @@ const stop = createRoot((dispose) => {
 - **`bindingsOrOptions`**: 可选
   - 历史形态：`[number[], string][]` 绑定表；或
   - **`HydrateOptions`**：`{ bindings?, mismatchMode?, warnMismatch?, onMismatch? }`
-- 会先 **`stopHydration()`**，再按选项 **`internalHydrate`**，然后 **`insert`**。
+- 会先 **`stopHydration()`**，再按选项 **`internalHydrate`**，然后
+  **`insert`**。
 
 #### `mismatchMode`（**3.0 更严默认** · 省略时按环境解析）
 
-| 值 | 行为 | 何时生效 |
-|----|------|----------|
-| **`assert`** | 有 mismatch 则抛错 | **省略**且 `VIEW_DEV === true` 时的默认；也可显式传入 |
-| **`remount`** | 有 mismatch 则清空容器并 CSR 重挂 | **省略**且生产（无 `VIEW_DEV`）时的默认；也可显式传入 |
-| **`continue`** | 记录 mismatch，不中断；保留 SSR 节点 | **须显式**传入（2.x 容忍错位） |
+| 值             | 行为                                 | 何时生效                                              |
+| -------------- | ------------------------------------ | ----------------------------------------------------- |
+| **`assert`**   | 有 mismatch 则抛错                   | **省略**且 `VIEW_DEV === true` 时的默认；也可显式传入 |
+| **`remount`**  | 有 mismatch 则清空容器并 CSR 重挂    | **省略**且生产（无 `VIEW_DEV`）时的默认；也可显式传入 |
+| **`continue`** | 记录 mismatch，不中断；保留 SSR 节点 | **须显式**传入（2.x 容忍错位）                        |
 
-解析：`resolveMismatchMode(options)`（见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1／R3）。
-历史 opt-in 记录：[P1-2](./P1-2-hydration-opt-in-pilot.md)／[EN](../en-US/P1-2-hydration-opt-in-pilot.md)（2.x 默认 `continue` 已由 3.0 取代）。
-examples `/runtime` 有三档演示。渐进／分片水合钩子**尚未**提供。
+解析：`resolveMismatchMode(options)`（见
+[`MIGRATION-3.0.md`](./MIGRATION-3.0.md) R1／R3）。 历史 opt-in
+记录：[P1-2](./P1-2-hydration-opt-in-pilot.md)／[EN](../en-US/P1-2-hydration-opt-in-pilot.md)（2.x
+默认 `continue` 已由 3.0 取代）。 examples `/runtime`
+有三档演示。渐进／分片水合钩子**尚未**提供。
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -321,7 +332,11 @@ hydrate(() => <RootView />, container /* , bindingMap */);
   **`for…of`** 解构，因实现了迭代器）
 
 ```tsx
-import { createEffect, createMemo, createSignal } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+} from "jsr:@dreamer/view/reactivity";
 
 const [count, setCount] = createSignal(0);
 const double = createMemo(() => count() * 2);
@@ -341,7 +356,11 @@ setCount(1);
   属性更新时序强相关的场景（框架内部也用于原生节点上的函数型 prop）。
 
 ```tsx
-import { createEffect, createSignal, onCleanup } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createSignal,
+  onCleanup,
+} from "jsr:@dreamer/view/reactivity";
 
 const id = createSignal(0);
 
@@ -395,12 +414,19 @@ batch(() => {
 
 用于延迟提交、过渡更新（与 **`createEffect`** 调度配合）。
 
-- **默认**：`createDeferred(source)` 经 **`queueMicrotask`** 对齐（与历史一致）。
-- **可选** `timeout?: number`：用 `requestIdleCallback({ timeout })`（无则 `setTimeout`）推迟提交；Effect 重跑／dispose 时取消未触发句柄。
-- **不是** `scheduleTask`／Priority：文档与实现刻意不并入 priority 内核（batch 仍只管 Observer）。
+- **默认**：`createDeferred(source)` 经 **`queueMicrotask`**
+  对齐（与历史一致）。
+- **可选** `timeout?: number`：用 `requestIdleCallback({ timeout })`（无则
+  `setTimeout`）推迟提交；Effect 重跑／dispose 时取消未触发句柄。
+- **不是** `scheduleTask`／Priority：文档与实现刻意不并入 priority 内核（batch
+  仍只管 Observer）。
 
 ```tsx
-import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
+import {
+  createDeferred,
+  createSignal,
+  useTransition,
+} from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
@@ -594,8 +620,9 @@ function Page() {
 
 ## 十一、`Suspense` 与 `createResource`
 
-> **重复请求？** 多半是组件 setup 因过宽订阅重跑，不是 Resource 坏了——勿顶层裸 `fetch`；见 [P1-view-rerun-fetch-guard](./P1-view-rerun-fetch-guard.md) 与 P0-4。
-
+> **重复请求？** 多半是组件 setup 因过宽订阅重跑，不是 Resource 坏了——勿顶层裸
+> `fetch`；见 [P1-view-rerun-fetch-guard](./P1-view-rerun-fetch-guard.md) 与
+> P0-4。
 
 ### 11.1 基本用法
 
@@ -661,7 +688,8 @@ const user = createResource(
 const ac = new AbortController();
 const page = createResource(
   () => routeId(),
-  (id, { signal }) => fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
+  (id, { signal }) =>
+    fetch(`/api/page/${id}`, { signal }).then((r) => r.json()),
   { signal: ac.signal }, // 例如路由离开时 abort
 );
 // ac.abort();
@@ -670,7 +698,8 @@ const page = createResource(
 - **`resource()`**：读数据；若有 **error** 会 **throw**（交给
   **ErrorBoundary**）。取消／abort **不会**写入 `error`。
 - **`resource.loading()`** / **`resource.error()`**
-- **`resource.mutate(value)`** / **`resource.refetch()`**（refetch 会 abort 上一趟）
+- **`resource.mutate(value)`** / **`resource.refetch()`**（refetch 会 abort
+  上一趟）
 
 框架在 **`resource()` / `resource.loading()`** 时会确保挂到当前 **Suspense**（含
 **ErrorBoundary** 重置后的新边界）。
@@ -691,13 +720,15 @@ const inflight = createInflightDedupe();
 const user = createResource(
   () => userId.value,
   (id, { signal }) =>
-    inflight(`user:${id}`, () =>
-      fetch(`/api/user/${id}`, { signal }).then((r) => r.json())
+    inflight(
+      `user:${id}`,
+      () => fetch(`/api/user/${id}`, { signal }).then((r) => r.json()),
     ),
 );
 ```
 
-这**不是** HTTP 缓存／SWR。共享同一 key 时，一方 abort 可能影响其他消费者——需要独立取消时请用不同 key。
+这**不是** HTTP 缓存／SWR。共享同一 key 时，一方 abort
+可能影响其他消费者——需要独立取消时请用不同 key。
 
 ---
 
@@ -847,7 +878,11 @@ export function App() {
 ### 15.1 对象根：代理 + `setState`
 
 ```tsx
-import { createEffect, createStore, produce } from "jsr:@dreamer/view/reactivity";
+import {
+  createEffect,
+  createStore,
+  produce,
+} from "jsr:@dreamer/view/reactivity";
 
 const store = createStore({
   user: { name: "Ada", age: 36 },
@@ -970,16 +1005,16 @@ const prefs = createStore(
 
 ### 16.1 能力与边界
 
-| 项目              | 说明                                                                                                                     |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **签名**          | **`createForm(initialValues, options?)`** — 第二参可选，不传时与旧版行为兼容                                             |
-| **双向绑定**      | **`field(name, options?)`** → 默认 **`value` + `onInput`**；`{ as: "checkbox" }`／`{ as: "radio", value }` 用 **`checked`** |
-| **规则校验**      | **`options.rules`**：每字段 **`(value, data) => string \| null`**，`null` 表示通过                                       |
-| **校验时机**      | **`validateOn`**：**`submit`**（默认）、**`change`**、**`blur`**，可传数组组合                                           |
-| **API**           | **`validate()`** 整表、**`validateField(name)`** 单字段、**`handleSubmit(onValid, onInvalid?)`**                         |
-| **未内置 schema** | 不与 Zod 等绑定；可用 **`messageFromSafeParse`** 或在 **`rules`** 内手写／外调解析                                       |
+| 项目              | 说明                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **签名**          | **`createForm(initialValues, options?)`** — 第二参可选，不传时与旧版行为兼容                                                                          |
+| **双向绑定**      | **`field(name, options?)`** → 默认 **`value` + `onInput`**；`{ as: "checkbox" }`／`{ as: "radio", value }` 用 **`checked`**                           |
+| **规则校验**      | **`options.rules`**：每字段 **`(value, data) => string \| null`**，`null` 表示通过                                                                    |
+| **校验时机**      | **`validateOn`**：**`submit`**（默认）、**`change`**、**`blur`**，可传数组组合                                                                        |
+| **API**           | **`validate()`** 整表、**`validateField(name)`** 单字段、**`handleSubmit(onValid, onInvalid?)`**                                                      |
+| **未内置 schema** | 不与 Zod 等绑定；可用 **`messageFromSafeParse`** 或在 **`rules`** 内手写／外调解析                                                                    |
 | **控件类型**      | **`field(name, { as })`**：默认文本；**`checkbox`／`radio`／`select`／`textarea`／`number`**；**`produce` 改 data 不会自动触发 `validateOn: change`** |
-| **Schema 桥**     | 不内置 Zod；**`messageFromSafeParse(safeParseResult)`** 把类 Zod 结果映射为 `rules` 文案 |
+| **Schema 桥**     | 不内置 Zod；**`messageFromSafeParse(safeParseResult)`** 把类 Zod 结果映射为 `rules` 文案                                                              |
 
 类型导出（与主入口一并导出）：**`CreateFormOptions`**、**`FormValidateOn`**、**`FormFieldRule`**。
 
@@ -1119,13 +1154,16 @@ const form = createForm(
 <input type="number" {...form.field("age", { as: "number" })} />
 ```
 
-- **`checkbox`**：绑定 **`checked`**，读写 boolean（同时提供 **`onInput`／`onChange`**）。
-- **`select`／`textarea`／`text`**：绑定 **`value`**；`select` 额外带 **`onChange`**。
+- **`checkbox`**：绑定 **`checked`**，读写 boolean（同时提供
+  **`onInput`／`onChange`**）。
+- **`select`／`textarea`／`text`**：绑定 **`value`**；`select` 额外带
+  **`onChange`**。
 - **`number`**：写入时 `Number(raw)`；空串保持 `""`，便于必填规则。
 
 ### 16.7 Schema 桥（可选，无 Zod 运行时依赖）
 
-在 **`rules`** 里调用任意 `safeParse`，再用 **`messageFromSafeParse`** 转成 `string | null`：
+在 **`rules`** 里调用任意 `safeParse`，再用 **`messageFromSafeParse`** 转成
+`string | null`：
 
 ```tsx
 import { createForm, messageFromSafeParse } from "jsr:@dreamer/view/form";
@@ -1138,12 +1176,10 @@ const form = createForm(
       // email: (v) => messageFromSafeParse(z.string().email().safeParse(v)),
       email: (v) =>
         messageFromSafeParse(
-          String(v).includes("@")
-            ? { success: true as const }
-            : {
-              success: false as const,
-              error: { issues: [{ message: "邮箱格式不对" }] },
-            },
+          String(v).includes("@") ? { success: true as const } : {
+            success: false as const,
+            error: { issues: [{ message: "邮箱格式不对" }] },
+          },
         ),
     },
   },
@@ -1159,10 +1195,10 @@ const form = createForm(
 
 ## 十七、路由：`createRouter` / `mountWithRouter` / `Link` / `useRouter`
 
-> **模块边界（P1-4）：** `match`（纯函数）／`history`（`createRouter`）／`Link`；详见
-> [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)。
-> SSR 请用 `matchRoute` 预匹配或 `@dreamer/view/ssr` 的 `renderRouterToString`。
-
+> **模块边界（P1-4）：**
+> `match`（纯函数）／`history`（`createRouter`）／`Link`；详见
+> [`P1-4-router-split-ssr.md`](./P1-4-router-split-ssr.md)。 SSR 请用
+> `matchRoute` 预匹配或 `@dreamer/view/ssr` 的 `renderRouterToString`。
 
 ### 17.1 创建路由器
 
@@ -1241,7 +1277,8 @@ export function Shell() {
 
 ## 十八、SSR（`jsr:@dreamer/view/ssr`）
 
-- **`renderRouterToString({ routes, url })`**：路由 SSR 同构一站式入口（内部 `ssr: true` + `destroy`）；与 `matchRoute` 匹配语义一致（见 P1-4）。
+- **`renderRouterToString({ routes, url })`**：路由 SSR 同构一站式入口（内部
+  `ssr: true` + `destroy`）；与 `matchRoute` 匹配语义一致（见 P1-4）。
 
 ### 18.1 `renderToString`
 
@@ -1370,28 +1407,50 @@ function ModalHost() {
 
 - **现行框架优化分析**：[view-framework-analysis.md](./view-framework-analysis.md)
 - **分析文档状态**（过时／漂移清单）：[分析文档状态.md](./分析文档状态.md)
-- **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
-- **P0-2：消费方／examples bundle analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
-- **P2：examples 子路径 dogfood**：[`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) · [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)
-- **P2-4 DEV-only DevTools**（Owner／订阅数）：[P2-4-devtools.md](./P2-4-devtools.md)／[en](../en-US/P2-4-devtools.md)
-- **P2 DEV 浮动面板**（对齐 Next）：[P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md)／[en](../en-US/P2-devtools-overlay-ui.md)
-- **P2 DEV 过订阅／卸挂再挂警告**（§5.1 opt-in）：[P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md)／[en](../en-US/P2-dev-warn-oversubscribe.md)
-- **P1-1：主入口 barrel（策略 A · **3.0 已落地**；预告史）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
-- **P1-2：水合 opt-in 试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)
-- **P1：组件重跑／裸 fetch DEV 防护**：[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) · [`../en-US/P1-view-rerun-fetch-guard.md`](../en-US/P1-view-rerun-fetch-guard.md)
-- **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
-- **P0-4 组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
+- **P0-1 Profiling／bench
+  CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
+- **P0-2：消费方／examples bundle
+  analyze**：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md)
+  ·
+  [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)
+- **P2：examples 子路径
+  dogfood**：[`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)
+  ·
+  [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)
+- **P2-4 DEV-only
+  DevTools**（Owner／订阅数）：[P2-4-devtools.md](./P2-4-devtools.md)／[en](../en-US/P2-4-devtools.md)
+- **P2 DEV 浮动面板**（对齐
+  Next）：[P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md)／[en](../en-US/P2-devtools-overlay-ui.md)
+- **P2 DEV 过订阅／卸挂再挂警告**（§5.1
+  opt-in）：[P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md)／[en](../en-US/P2-dev-warn-oversubscribe.md)
+- **P1-1：主入口 barrel（策略 A · **3.0
+  已落地**；预告史）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md)
+  ·
+  [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
+- **P1-2：水合 opt-in
+  试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md)
+  ·
+  [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)
+- **P1：组件重跑／裸 fetch DEV
+  防护**：[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) ·
+  [`../en-US/P1-view-rerun-fetch-guard.md`](../en-US/P1-view-rerun-fetch-guard.md)
+- **P0-3
+  编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
+- **P0-4
+  组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
 - **当前版本 [3.0.0] — 2026-11-05**：
-  - **破坏性**：主入口瘦身（router／form／resource → 子路径）；更严水合默认
-    （`VIEW_DEV` 下 `assert`，否则 `remount`；删除布尔别名，见
-    `MIGRATION-3.0.md`）。
   - **新增**：DevTools 面板＋过订阅／重跑／缺 key 警告；编译器静态折叠
     （文本／属性／SSR 对齐＋class join）；URL 守卫（`srcset`／`srcdoc`、SSR
-    `href`／`src`）；Switch 注释锚点；`createDeferred({ timeout })`；路由
-    churn 探针。
-  - **测试**：Deno **564**＋examples E2E **22**（战役本地收口）。
+    `href`／`src`）；Switch 注释锚点；`createDeferred({ timeout })`；
+    `routeAbortSignal()`；form `field` `as: "radio"`；路由 churn 探针。
+  - **修复**：静态 `??` 属性折叠进模板；路由 loading→页面扩张时 DevTools
+    remount-churn 误报；remount 辅助函数 JSR slow-types。
+  - **变更**（破坏性）：主入口瘦身（router／form／resource → 子路径）；更严
+    水合默认（`VIEW_DEV` 下 `assert`，否则 `remount`；删除布尔别名，见
+    `MIGRATION-3.0.md`）。库主入口 minify 约 44.3→33.4 KiB。测试：Deno
+    **564**＋examples E2E **22**。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**；英文版

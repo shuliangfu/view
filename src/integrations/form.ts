@@ -221,7 +221,10 @@ export function createForm<T extends Record<string, unknown>>(
    * 不变量：同一次 `applyValue` 既挂 `onInput` 也挂 `onChange`，避免控件只触发其一
    * 时漏写；校验仍受 `validateOn` 约束。
    */
-  const field = (name: keyof T, fieldOpts?: FormFieldOptions): FormFieldBindings => {
+  const field = (
+    name: keyof T,
+    fieldOpts?: FormFieldOptions,
+  ): FormFieldBindings => {
     const as = fieldOpts?.as;
     /** radio 选项字面量；缺省时仍可读 DOM `.value`，但 checked 比较会退化 */
     const radioValue = fieldOpts?.value;
@@ -241,9 +244,14 @@ export function createForm<T extends Record<string, unknown>>(
         if (n == n) val = n; // NaN 时保留原字符串，避免脏输入被静默清掉
       }
       setData(name, val as T[keyof T]);
-      if (validateOnSet.has("change") && options?.rules?.[name]) validateField(name);
+      if (validateOnSet.has("change") && options?.rules?.[name]) {
+        validateField(name);
+      }
     };
-    const base: FormFieldBindings = { onInput: applyValue, onChange: applyValue };
+    const base: FormFieldBindings = {
+      onInput: applyValue,
+      onChange: applyValue,
+    };
     if (as === "checkbox") {
       base.checked = () => !!data[name];
     } else if (as === "radio") {
@@ -298,7 +306,6 @@ export function createForm<T extends Record<string, unknown>>(
     handleSubmit,
   };
 }
-
 
 /**
  * 把类 Zod `safeParse` 结果映射为 `rules` 用的 `string | null`（无 schema 运行时依赖）。

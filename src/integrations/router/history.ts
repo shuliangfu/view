@@ -797,4 +797,3 @@ export function createRouter(
 
   return router;
 }
-

@@ -14,10 +14,11 @@
  *   deno task consumer:bundle:check
  */
 import { readFileSync } from "node:fs";
-import { measureAll, printTable, BASELINE_PATH } from "./measure.mjs";
+import { BASELINE_PATH, measureAll, printTable } from "./measure.mjs";
 
 function parseBudgetPct(argv) {
-  const env = process.env.CONSUMER_BUNDLE_BUDGET_PCT ?? process.env.SIZE_BUDGET_PCT;
+  const env = process.env.CONSUMER_BUNDLE_BUDGET_PCT ??
+    process.env.SIZE_BUDGET_PCT;
   let pct = env != null && env !== "" ? Number(env) : 5;
   const idx = argv.indexOf("--budget-pct");
   if (idx >= 0 && argv[idx + 1] != null) {
@@ -105,7 +106,11 @@ console.log("|---|---:|---:|---:|---:|---:|---:|");
 for (const r of rows) {
   const mark = (ok) => (ok ? "ok" : "FAIL");
   console.log(
-    `| \`${r.name}\` | ${r.minBytes} ${mark(r.minOk)} | ${r.minLimit} | ${r.minDelta.toFixed(2)} | ${r.gzipMinBytes} ${mark(r.gzOk)} | ${r.gzLimit} | ${r.gzDelta.toFixed(2)} |`,
+    `| \`${r.name}\` | ${r.minBytes} ${mark(r.minOk)} | ${r.minLimit} | ${
+      r.minDelta.toFixed(2)
+    } | ${r.gzipMinBytes} ${mark(r.gzOk)} | ${r.gzLimit} | ${
+      r.gzDelta.toFixed(2)
+    } |`,
   );
 }
 console.log("");
@@ -117,7 +122,9 @@ if (failures.length) {
       console.error(`  - ${f.name}: ${f.reason}`);
     } else {
       console.error(
-        `  - ${f.name} ${f.metric}: ${f.current} B > limit ${f.limit} B (baseline ${f.baseline} B, Δ ${f.deltaPct.toFixed(2)}%)`,
+        `  - ${f.name} ${f.metric}: ${f.current} B > limit ${f.limit} B (baseline ${f.baseline} B, Δ ${
+          f.deltaPct.toFixed(2)
+        }%)`,
       );
     }
   }

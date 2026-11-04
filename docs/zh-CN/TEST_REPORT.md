@@ -8,7 +8,7 @@
 | -------- | --------------------------------------------------------------- |
 | 包名     | `@dreamer/view`                                                 |
 | 版本     | **2.2.0**（与 `deno.json` / `package.json` 一致）               |
-| 测试框架 | `@dreamer/test` ^1.2.3                                         |
+| 测试框架 | `@dreamer/test` ^1.2.3                                          |
 | 报告日期 | **2026-07-23**                                                  |
 | DOM 环境 | 单元/集成：happy-dom **20.4.0**；E2E：Chromium（Playwright 等） |
 | 主要命令 | 见下文「如何运行」                                              |
@@ -105,8 +105,8 @@ files）。
 
 ### 3.3 Node.js 22+
 
-| 范围                                    | 通过      | 失败  | 文件   | 耗时     | 命令                                             |
-| --------------------------------------- | --------- | ----- | ------ | -------- | ------------------------------------------------ |
+| 范围                                    | 通过      | 失败  | 文件   | 耗时     | 命令                                                |
+| --------------------------------------- | --------- | ----- | ------ | -------- | --------------------------------------------------- |
 | **unit + integration**（排除 e2e/dweb） | **65/65** | **0** | **65** | ~**60s** | `node --import tsx --test-force-exit test-node.mjs` |
 
 说明：`tests/integration/dweb-import-ssr.test.ts` 排除——该测试起 Deno 子进程，
@@ -142,7 +142,9 @@ ok | 398 passed | 0 failed (~1m13s)   # Deno
 ### 3.6 Bench
 
 - `tests/bench/signal.bench.ts`：Signal 写、同值跳过、batch + 多 Effect。
-- `deno task bench`／`bench:check`：Signal／Effect／For／insert 微型 bench；CI `bench-check` 对照 `scripts/bench-baseline/bench-baseline.json`（见 [P0-1](./P0-1-profiling-and-bench-ci.md)）。体积门禁仍为 `size:check`。
+- `deno task bench`／`bench:check`：Signal／Effect／For／insert 微型 bench；CI
+  `bench-check` 对照 `scripts/bench-baseline/bench-baseline.json`（见
+  [P0-1](./P0-1-profiling-and-bench-ci.md)）。体积门禁仍为 `size:check`。
 
 ---
 

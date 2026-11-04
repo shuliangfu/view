@@ -1,6 +1,9 @@
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createForm, messageFromSafeParse } from "../../../src/integrations/form.ts";
+import {
+  createForm,
+  messageFromSafeParse,
+} from "../../../src/integrations/form.ts";
 import { waitUntilComplete } from "../dom-setup.ts";
 
 describe("integrations/form", () => {
@@ -246,7 +249,6 @@ describe("integrations/form", () => {
     expect(form.data.agree).toBe(true);
     expect(f.checked!()).toBe(true);
   });
-
 
   it("field as radio 应按 options.value 绑定 checked，并写入 DOM value", async () => {
     const form = createForm({ plan: "free" });

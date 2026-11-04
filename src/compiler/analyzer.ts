@@ -236,7 +236,6 @@ export function isStaticExpression(expr: ts.Expression): boolean {
   return false;
 }
 
-
 /**
  * 子文本是否可静态提升进 template：字面量／数字／`+` 拼接／模板串／静态三元，
  * 及括号／断言／satisfies 包装。不含 `&&`／`||`／`??`／null／boolean（与 insert 省略语义缠绕，本刀不做）。
@@ -313,8 +312,6 @@ export function serializeStaticAttrValue(
   return serializeStaticValue(expr);
 }
 
-
-
 /** 静态短路左侧：truthy / omit（null·false·undefined）/ zero / empty；不可判定为 null */
 export type StaticShortCircuitKind = "truthy" | "omit" | "zero" | "empty";
 
@@ -376,7 +373,10 @@ function isJsxLikeNode(
 }
 
 export type FoldedStaticLogicJsx =
-  | { type: "jsx"; jsx: ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment }
+  | {
+    type: "jsx";
+    jsx: ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment;
+  }
   | { type: "omit" };
 
 /**
@@ -419,9 +419,6 @@ export function foldStaticLogicJsxChild(
   }
   return undefined;
 }
-
-
-
 
 /**
  * 静态可判定为 null / undefined（含括号、断言、void 包装）。

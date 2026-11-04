@@ -4,7 +4,7 @@
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | 包     | `@dreamer/view` **3.0.0**（`dev`）                                                                                                      |
 | 性质   | **DEV／opt-in DX**＋文档 — setup 体被多余重跑时警告（失焦＋裸 `fetch` 重发）                                                            |
-| 入口   | `@dreamer/view/devtools`（`noteComponentSetup`／`installComponentSetupTracking`／`detectComponentRerun`；扩展 oversubscribe）          |
+| 入口   | `@dreamer/view/devtools`（`noteComponentSetup`／`installComponentSetupTracking`／`detectComponentRerun`；扩展 oversubscribe）           |
 | 范围外 | 重写响应式内核；改 Effect 默认微任务；发 JSR（DEV 下 jsx 自动 note 已落地，见 §2.1）                                                    |
 | EN     | [`../en-US/P1-view-rerun-fetch-guard.md`](../en-US/P1-view-rerun-fetch-guard.md)                                                        |
 | 相关   | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) |
@@ -116,10 +116,11 @@ Abort **治不好**「setup 每次重跑又 new 一个 Resource」——根因�
 
 控制流要**跟得上 Signal**，勿急切求值成快照：
 
-| 写法 | 效果 |
-| --- | --- |
-| `when={open}`／`each={items}` | ✅ 传 getter，Effect 内重读 |
-| `when={() => open()}` | ✅ 显式 accessor |
-| `when={open()}`／`each={items()}` | ❌ 渲染时冻结，不再更新 |
+| 写法                              | 效果                        |
+| --------------------------------- | --------------------------- |
+| `when={open}`／`each={items}`     | ✅ 传 getter，Effect 内重读 |
+| `when={() => open()}`             | ✅ 显式 accessor            |
+| `when={open()}`／`each={items()}` | ❌ 渲染时冻结，不再更新     |
 
-`VIEW_DEV` 下若传入**纯值**（非函数），会一次性 `console.warn` 提醒（静态字面量合法，可忽略）。
+`VIEW_DEV` 下若传入**纯值**（非函数），会一次性 `console.warn`
+提醒（静态字面量合法，可忽略）。

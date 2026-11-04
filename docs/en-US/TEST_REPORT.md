@@ -104,9 +104,9 @@ Note: full suite has ~**20** more cases (+1 file → 68 files), mostly e2e.
 
 ### 3.3 Node.js 22+
 
-| Scope                                        | Passed     | Failed | Files  | Duration | Command                                          |
-| -------------------------------------------- | ---------- | ------ | ------ | -------- | ------------------------------------------------ |
-| **unit + integration** (e2e + dweb excluded) | **65/65**  | **0**  | **65** | ~**60s** | `node --import tsx --test-force-exit test-node.mjs` |
+| Scope                                        | Passed    | Failed | Files  | Duration | Command                                             |
+| -------------------------------------------- | --------- | ------ | ------ | -------- | --------------------------------------------------- |
+| **unit + integration** (e2e + dweb excluded) | **65/65** | **0**  | **65** | ~**60s** | `node --import tsx --test-force-exit test-node.mjs` |
 
 Note: `tests/integration/dweb-import-ssr.test.ts` excluded — spawns a Deno
 subprocess dependent on the dweb project's `deno.json`, not runnable on Node.
@@ -144,7 +144,10 @@ e2e**.
 
 - `tests/bench/signal.bench.ts`: signal writes, same-value skip, batch +
   multi-effect.
-- `deno task bench` / `bench:check`: Signal / Effect / For / insert micro-benches; CI `bench-check` vs `scripts/bench-baseline/bench-baseline.json` (see [P0-1](./P0-1-profiling-and-bench-ci.md)). Bundle gate remains `size:check`.
+- `deno task bench` / `bench:check`: Signal / Effect / For / insert
+  micro-benches; CI `bench-check` vs
+  `scripts/bench-baseline/bench-baseline.json` (see
+  [P0-1](./P0-1-profiling-and-bench-ci.md)). Bundle gate remains `size:check`.
   unless configured separately.
 
 ---

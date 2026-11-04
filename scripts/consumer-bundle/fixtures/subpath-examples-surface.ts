@@ -4,15 +4,15 @@
  * page uses it only on /runtime demo.
  */
 export {
-  ErrorBoundary,
-  For,
-  Portal,
-  Show,
-  Suspense,
   createSelector,
   createSignal,
   createStore,
+  ErrorBoundary,
+  For,
+  Portal,
   produce,
+  Show,
+  Suspense,
   useTransition,
 } from "../../../src/csr.ts";
 export {
@@ -23,8 +23,8 @@ export {
 export { createForm, messageFromSafeParse } from "../../../src/form.ts";
 export { createResource } from "../../../src/resource.ts";
 export {
-  Link,
   createRouter,
+  Link,
   mountWithRouter,
   useRouter,
 } from "../../../src/router.ts";

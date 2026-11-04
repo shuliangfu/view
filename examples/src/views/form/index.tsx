@@ -55,7 +55,8 @@ export default function FormDemo() {
           高级表单 (Form Integration)
         </h2>
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
-          createForm：文本、checkbox、radio、select，以及 messageFromSafeParse schema 桥。
+          createForm：文本、checkbox、radio、select，以及 messageFromSafeParse
+          schema 桥。
         </p>
       </header>
 
@@ -82,7 +83,9 @@ export default function FormDemo() {
               placeholder="请输入用户名..."
             />
             <Show when={() => !!form.errors.username}>
-              <span className="text-xs text-rose-500 px-1">{() => form.errors.username}</span>
+              <span className="text-xs text-rose-500 px-1">
+                {() => form.errors.username}
+              </span>
             </Show>
           </div>
 
@@ -97,7 +100,9 @@ export default function FormDemo() {
               placeholder="请输入密码..."
             />
             <Show when={() => !!form.errors.password}>
-              <span className="text-xs text-rose-500 px-1">{() => form.errors.password}</span>
+              <span className="text-xs text-rose-500 px-1">
+                {() => form.errors.password}
+              </span>
             </Show>
           </div>
 
@@ -112,7 +117,9 @@ export default function FormDemo() {
               placeholder="example@dreamer.com"
             />
             <Show when={() => !!form.errors.email}>
-              <span className="text-xs text-rose-500 px-1">{() => form.errors.email}</span>
+              <span className="text-xs text-rose-500 px-1">
+                {() => form.errors.email}
+              </span>
             </Show>
           </div>
 
@@ -129,7 +136,9 @@ export default function FormDemo() {
               <option value="guest">访客</option>
             </select>
             <Show when={() => !!form.errors.role}>
-              <span className="text-xs text-rose-500 px-1">{() => form.errors.role}</span>
+              <span className="text-xs text-rose-500 px-1">
+                {() => form.errors.role}
+              </span>
             </Show>
           </div>
 
@@ -144,7 +153,6 @@ export default function FormDemo() {
               placeholder="写点什么..."
             />
           </div>
-
 
           <div className="flex flex-col gap-2">
             <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
@@ -173,7 +181,9 @@ export default function FormDemo() {
               </label>
             </div>
             <Show when={() => !!form.errors.plan}>
-              <span className="text-xs text-rose-500 px-1">{() => form.errors.plan}</span>
+              <span className="text-xs text-rose-500 px-1">
+                {() => form.errors.plan}
+              </span>
             </Show>
           </div>
 
@@ -188,7 +198,9 @@ export default function FormDemo() {
             </span>
           </label>
           <Show when={() => !!form.errors.agree}>
-            <span className="text-xs text-rose-500 px-1">{() => form.errors.agree}</span>
+            <span className="text-xs text-rose-500 px-1">
+              {() => form.errors.agree}
+            </span>
           </Show>
         </div>
 

@@ -20,16 +20,18 @@ import { compileSource } from "../../src/compiler/mod.ts";
 import { FIXTURES } from "./corpus.ts";
 import {
   BASELINE_PATH,
-  GOLDENS_DIR,
-  measureAll,
   type CoverageReport,
   type FixtureReport,
+  GOLDENS_DIR,
+  measureAll,
 } from "./measure.ts";
 import { measureOutput, normalizeGolden } from "./metrics.ts";
 
 const failures: string[] = [];
 
-function metricKeys(m: FixtureReport["metrics"]): (keyof FixtureReport["metrics"])[] {
+function metricKeys(
+  m: FixtureReport["metrics"],
+): (keyof FixtureReport["metrics"])[] {
   return Object.keys(m) as (keyof FixtureReport["metrics"])[];
 }
 
@@ -57,16 +59,24 @@ for (const cur of current.fixtures) {
   for (const k of metricKeys(base.metrics)) {
     if (cur.metrics[k] !== base.metrics[k]) {
       failures.push(
-        `${cur.id}.metrics.${k}: current=${cur.metrics[k]} baseline=${base.metrics[k]}`,
+        `${cur.id}.metrics.${k}: current=${cur.metrics[k]} baseline=${
+          base.metrics[k]
+        }`,
       );
     }
   }
 }
 
-for (const k of Object.keys(baseline.aggregate) as (keyof CoverageReport["aggregate"])[]) {
+for (
+  const k of Object.keys(
+    baseline.aggregate,
+  ) as (keyof CoverageReport["aggregate"])[]
+) {
   if (current.aggregate[k] !== baseline.aggregate[k]) {
     failures.push(
-      `aggregate.${k}: current=${current.aggregate[k]} baseline=${baseline.aggregate[k]}`,
+      `aggregate.${k}: current=${current.aggregate[k]} baseline=${
+        baseline.aggregate[k]
+      }`,
     );
   }
 }

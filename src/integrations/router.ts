@@ -57,17 +57,8 @@ export type {
   Router,
 } from "./router/types.ts";
 
-export {
-  matchRoute,
-  parseRouterUrl,
-} from "./router/match.ts";
+export { matchRoute, parseRouterUrl } from "./router/match.ts";
 
-export {
-  createRouter,
-  useRouter,
-} from "./router/history.ts";
+export { createRouter, useRouter } from "./router/history.ts";
 
-export {
-  Link,
-  mountWithRouter,
-} from "./router/link.ts";
+export { Link, mountWithRouter } from "./router/link.ts";

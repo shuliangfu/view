@@ -15,7 +15,7 @@
  */
 import * as esbuild from "esbuild";
 import { gzipSync } from "node:zlib";
-import { writeFileSync, readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,13 +24,41 @@ const root = resolve(__dirname, "../..");
 const BASELINE_PATH = join(__dirname, "bundle-size-baseline.json");
 
 export const ENTRIES = [
-  { name: "@dreamer/view", path: "scripts/size-baseline/entry-main.ts", exportPath: "." },
-  { name: "@dreamer/view/reactivity", path: "scripts/size-baseline/entry-reactivity.ts", exportPath: "./reactivity" },
-  { name: "@dreamer/view/csr", path: "scripts/size-baseline/entry-csr.ts", exportPath: "./csr" },
-  { name: "@dreamer/view/ssr", path: "scripts/size-baseline/entry-ssr.ts", exportPath: "./ssr" },
-  { name: "@dreamer/view/router", path: "scripts/size-baseline/entry-router.ts", exportPath: "./router" },
-  { name: "@dreamer/view/form", path: "scripts/size-baseline/entry-form.ts", exportPath: "./form" },
-  { name: "@dreamer/view/resource", path: "scripts/size-baseline/entry-resource.ts", exportPath: "./resource" },
+  {
+    name: "@dreamer/view",
+    path: "scripts/size-baseline/entry-main.ts",
+    exportPath: ".",
+  },
+  {
+    name: "@dreamer/view/reactivity",
+    path: "scripts/size-baseline/entry-reactivity.ts",
+    exportPath: "./reactivity",
+  },
+  {
+    name: "@dreamer/view/csr",
+    path: "scripts/size-baseline/entry-csr.ts",
+    exportPath: "./csr",
+  },
+  {
+    name: "@dreamer/view/ssr",
+    path: "scripts/size-baseline/entry-ssr.ts",
+    exportPath: "./ssr",
+  },
+  {
+    name: "@dreamer/view/router",
+    path: "scripts/size-baseline/entry-router.ts",
+    exportPath: "./router",
+  },
+  {
+    name: "@dreamer/view/form",
+    path: "scripts/size-baseline/entry-form.ts",
+    exportPath: "./form",
+  },
+  {
+    name: "@dreamer/view/resource",
+    path: "scripts/size-baseline/entry-resource.ts",
+    exportPath: "./resource",
+  },
 ];
 
 function fmt(n) {
@@ -69,7 +97,8 @@ async function measureOne(entry) {
   const min = await esbuild.build({ ...common, minify: true });
   const rawBytes = raw.outputFiles[0].contents.byteLength;
   const minBytes = min.outputFiles[0].contents.byteLength;
-  const gzBytes = gzipSync(min.outputFiles[0].contents, { level: 9 }).byteLength;
+  const gzBytes =
+    gzipSync(min.outputFiles[0].contents, { level: 9 }).byteLength;
 
   const inputs = Object.keys(min.metafile.inputs).filter((p) =>
     /(^|[\\/])src[\\/]/.test(p)
@@ -124,7 +153,9 @@ export function printTable(report) {
   console.log("|---|---:|---:|---:|---:|");
   for (const r of report.entries) {
     console.log(
-      `| \`${r.name}\` | ${fmt(r.rawBytes)} | ${fmt(r.minBytes)} | ${fmt(r.gzipMinBytes)} | ${r.inputFileCount} |`,
+      `| \`${r.name}\` | ${fmt(r.rawBytes)} | ${fmt(r.minBytes)} | ${
+        fmt(r.gzipMinBytes)
+      } | ${r.inputFileCount} |`,
     );
   }
   console.log("");

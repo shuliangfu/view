@@ -105,9 +105,8 @@ export async function measureAll(write = false): Promise<CoverageReport> {
     (s, x) => s + x.metrics.pathConstDecls,
     0,
   );
-  const zeroReactiveDomOpsCount = fixtures.filter((x) =>
-    x.metrics.zeroReactiveDomOps
-  ).length;
+  const zeroReactiveDomOpsCount =
+    fixtures.filter((x) => x.metrics.zeroReactiveDomOps).length;
 
   const report: CoverageReport = {
     version: 1,
@@ -167,7 +166,9 @@ export function printTable(report: CoverageReport) {
   for (const f of report.fixtures) {
     const m = f.metrics;
     console.log(
-      `| \`${f.id}\` | ${m.templateCalls} | ${m.walkCalls} | ${m.insertCalls} | ${m.setAttributeCalls} | ${m.setPropertyCalls} | ${m.spreadCalls} | ${m.memoCalls} | ${m.pathConstDecls} | ${m.zeroReactiveDomOps ? "Y" : ""} |`,
+      `| \`${f.id}\` | ${m.templateCalls} | ${m.walkCalls} | ${m.insertCalls} | ${m.setAttributeCalls} | ${m.setPropertyCalls} | ${m.spreadCalls} | ${m.memoCalls} | ${m.pathConstDecls} | ${
+        m.zeroReactiveDomOps ? "Y" : ""
+      } |`,
     );
   }
   console.log("");

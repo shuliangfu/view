@@ -3,9 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import { For, Index } from "@dreamer/view/control-flow";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { mount } from "@dreamer/view/csr";
-import {
-  clearMissingListKeyWarns,
-} from "../../../src/runtime/utils.ts";
+import { clearMissingListKeyWarns } from "../../../src/runtime/utils.ts";
 
 describe("runtime/control-flow missing key DEV tip (P1)", () => {
   const g = globalThis as { VIEW_DEV?: boolean };
@@ -42,10 +40,13 @@ describe("runtime/control-flow missing key DEV tip (P1)", () => {
         }),
       root,
     );
-    expect(warns.some((w) => w.includes("<For>") && w.includes("without key"))).toBe(
-      true,
-    );
-    const n = warns.filter((w) => w.includes("<For>") && w.includes("without key"))
+    expect(warns.some((w) => w.includes("<For>") && w.includes("without key")))
+      .toBe(
+        true,
+      );
+    const n = warns.filter((w) =>
+      w.includes("<For>") && w.includes("without key")
+    )
       .length;
     const dispose2 = mount(
       () =>
@@ -56,7 +57,8 @@ describe("runtime/control-flow missing key DEV tip (P1)", () => {
       root,
     );
     expect(
-      warns.filter((w) => w.includes("<For>") && w.includes("without key")).length,
+      warns.filter((w) => w.includes("<For>") && w.includes("without key"))
+        .length,
     ).toBe(n);
     dispose();
     dispose2();
@@ -75,9 +77,10 @@ describe("runtime/control-flow missing key DEV tip (P1)", () => {
         }),
       root,
     );
-    expect(warns.some((w) => w.includes("<For>") && w.includes("without key"))).toBe(
-      false,
-    );
+    expect(warns.some((w) => w.includes("<For>") && w.includes("without key")))
+      .toBe(
+        false,
+      );
     dispose();
     root.remove();
   });

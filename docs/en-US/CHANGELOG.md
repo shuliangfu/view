@@ -32,8 +32,8 @@ and this project adheres to
 - **P1: form `field` `as: "radio"` (non-breaking)**
   - `checked` (`data[name] === options.value`) + `onInput` / `onChange` write
     that radio’s DOM `.value`.
-  - Pass `options.value`; **do not** also bind `value={() => data[name]}`
-    (would rewrite every radio’s `value` in the group).
+  - Pass `options.value`; **do not** also bind `value={() => data[name]}` (would
+    rewrite every radio’s `value` in the group).
   - **No** `as: "file"` (FileList / multi-select stay app-owned). Examples +
     unit coverage.
 
@@ -62,9 +62,8 @@ and this project adheres to
   - `staticDomOpFreeRatio` ≈ **0.7619**; refresh baseline + goldens.
 
 - **P2: Route-churn local probe (non-breaking, not CI)**
-  - `scripts/profiling/route-churn-probe.ts`: A↔B churn heuristics
-    (subscribers / Owner / Effect); **not** on `src/` hot paths; **not** a Soft
-    Cap gate.
+  - `scripts/profiling/route-churn-probe.ts`: A↔B churn heuristics (subscribers
+    / Owner / Effect); **not** on `src/` hot paths; **not** a Soft Cap gate.
   - Docs: P0-1 profiling §2.2.
 
 - **P1: component re-run / bare-fetch DEV guard (non-breaking DX)**
@@ -91,8 +90,8 @@ and this project adheres to
 
 - **`srcset` sanitization / reject `srcdoc`; SSR `href` / `src` / `srcset`
   parity with props guards (non-breaking)**
-  - `sanitizeSrcset`: split candidates and run `sanitizeUrl` per URL (whole-string
-    sanitize misses a `javascript:` candidate in a list).
+  - `sanitizeSrcset`: split candidates and run `sanitizeUrl` per URL
+    (whole-string sanitize misses a `javascript:` candidate in a list).
   - Props refuse `srcdoc` / `srcDoc` writes (same danger class as `innerHTML`).
   - SSR DOM reflected `href` / `src` / `srcset` setters / `setAttribute` use the
     same sanitizers; dangerous values drop the key and do not write.
@@ -123,15 +122,15 @@ and this project adheres to
     Suspense, scheduler, portal, HMR).
   - Migration: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
     [`../zh-CN/MIGRATION-3.0.md`](../zh-CN/MIGRATION-3.0.md).
-  - Package version **3.0.0**; this release publishes to **JSR** via §5.6
-    (push tag `v3.0.0`; Actions runs `deno publish`).
+  - Package version **3.0.0**; this release publishes to **JSR** via §5.6 (push
+    tag `v3.0.0`; Actions runs `deno publish`).
   - Hydration defaults: see **R1/R3** in this release (omit → DEV `assert` /
     prod `remount`).
   - Consumer-bundle fixtures that previously pulled integrations through the
     barrel now import subpaths; refresh size / consumer baselines.
   - Library main entry minify **~44.3 KiB → ~33.4 KiB** after slim + campaign
-    DX/security (refreshed size baseline); star-reexport premium vs `/reactivity`
-    ~**3.0×** minify.
+    DX/security (refreshed size baseline); star-reexport premium vs
+    `/reactivity` ~**3.0×** minify.
 
 ### Added
 
@@ -625,9 +624,9 @@ and this project adheres to
 
 ### Intentionally out of scope
 
-- **Product progressive / chunked hydration**, **default interruptible
-  batch + priority scheduler unification**, **per-request concurrent SSR
-  isolation (ALS)**: still HOLD / no default time-slicing.
+- **Product progressive / chunked hydration**, **default interruptible batch +
+  priority scheduler unification**, **per-request concurrent SSR isolation
+  (ALS)**: still HOLD / no default time-slicing.
 - **Virtual lists in core**, **reactive-core rewrite**.
 - Campaign already landed further compiler staticization, main-entry slim
   (P2-1), and stricter hydration defaults (P2-3); the older SKIP bullets above

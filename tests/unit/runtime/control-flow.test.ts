@@ -413,7 +413,6 @@ describe("runtime/control-flow", () => {
     expect(comments.length).toBeGreaterThanOrEqual(2);
   }, { sanitizeOps: false, sanitizeResources: false });
 
-
   it("Switch: 使用注释锚点且无 data-view-switch 节点", async () => {
     const [tab, setTab] = createSignal<"a" | "b">("a");
     const parent = document.createElement("div");

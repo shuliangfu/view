@@ -1,8 +1,8 @@
 # Bench baseline & CI gate
 
 Complements the **bundle size** gate (`scripts/size-baseline/`). Covers
-`tests/bench/signal.bench.ts` (Signal / Effect), `for.bench.ts` (For+key),
-and `insert.bench.ts` (insert DOM paths).
+`tests/bench/signal.bench.ts` (Signal / Effect), `for.bench.ts` (For+key), and
+`insert.bench.ts` (insert DOM paths).
 
 ## Reproduce / refresh baseline
 
@@ -29,8 +29,8 @@ deno task bench:check
 committed baseline (`Math.ceil(baseline * 2)`). Over limit → **exit 1**.
 
 CI runners are slower / noisier than the reference CPU; the workflow sets
-`BENCH_BUDGET_PCT=300` to catch catastrophic regressions without flake.
-Override locally: `--budget-pct 100` or `BENCH_BUDGET_PCT=…`.
+`BENCH_BUDGET_PCT=300` to catch catastrophic regressions without flake. Override
+locally: `--budget-pct 100` or `BENCH_BUDGET_PCT=…`.
 
 Smoke-only (run benches, no timing compare): `--smoke` or `BENCH_SMOKE=1`.
 

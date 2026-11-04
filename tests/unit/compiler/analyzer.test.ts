@@ -87,8 +87,7 @@ describe("compiler/analyzer", () => {
       true,
       ts.ScriptKind.TSX,
     );
-    const expr =
-      (sf.statements[0] as ts.ExpressionStatement).expression;
+    const expr = (sf.statements[0] as ts.ExpressionStatement).expression;
     expect(isFullyStatic(expr)).toBe(true);
     expect(serializeStatic(expr)).toBe("<div>ab</div>");
   });
@@ -102,8 +101,7 @@ describe("compiler/analyzer", () => {
       true,
       ts.ScriptKind.TSX,
     );
-    const expr =
-      (sf.statements[0] as ts.ExpressionStatement).expression;
+    const expr = (sf.statements[0] as ts.ExpressionStatement).expression;
     expect(isFullyStatic(expr)).toBe(false);
   });
 });
