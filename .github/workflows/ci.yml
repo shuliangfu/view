@@ -94,6 +94,22 @@ jobs:
       - name: Bundle size gate (+5% vs committed baseline)
         run: node scripts/size-baseline/check.mjs
 
+  # ───────────────── Consumer / examples bundle gate (ubuntu only; independent of size-check) ─────────────────
+  consumer-bundle-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Consumer bundle analyze gate (+5% vs committed baseline)
+        run: node scripts/consumer-bundle/check.mjs
+
   # ───────────────── Bench gate (ubuntu only; loose budget vs reference CPU) ─────────────────
   bench-check:
     runs-on: ubuntu-latest

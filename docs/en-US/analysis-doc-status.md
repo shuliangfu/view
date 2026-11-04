@@ -19,6 +19,7 @@
 | [`README.md`](./README.md) | English getting started / API |
 | [`P0-baseline-bundle-and-perf.md`](./P0-baseline-bundle-and-perf.md) | Bundle / bench baseline |
 | [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md) | Component author guide (Memo / ref / subscription boundaries) |
+| [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md) | Consumer / examples bundle analyze + independent size gate |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Changelog |
 
 ---

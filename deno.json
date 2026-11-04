@@ -56,7 +56,9 @@
     "size:check": "node scripts/size-baseline/check.mjs",
     "size": "node scripts/size-baseline/check.mjs",
     "compiler:coverage:baseline": "deno run -A scripts/compiler-coverage/measure.ts --write",
-    "compiler:coverage:check": "deno run -A scripts/compiler-coverage/check.ts"
+    "compiler:coverage:check": "deno run -A scripts/compiler-coverage/check.ts",
+    "consumer:bundle:baseline": "node scripts/consumer-bundle/measure.mjs --write",
+    "consumer:bundle:check": "node scripts/consumer-bundle/check.mjs"
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",

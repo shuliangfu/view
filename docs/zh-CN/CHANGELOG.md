@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P0-2：消费方／examples bundle analyze + 独立体积预算（非破坏）**
+  - 新增 `scripts/consumer-bundle/`：夹具覆盖具名导入、`export *`／namespace、examples 主入口镜像与 API 并集；
+    `measure.mjs --write` → `consumer-bundle-baseline.json`；
+    `check.mjs`／`deno task consumer:bundle:check` 默认 **+5%**；CI ubuntu `consumer-bundle-check`。
+  - 关键结论（esbuild）：具名从主入口 vs 子路径 minify **Δ≈0**；`export *` 主入口相对 `/reactivity` 约 **+34 KiB minify（~4.26×）**／**+12 KiB gzip**。
+  - 文档：[`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md)／
+    [`../en-US/P0-2-consumer-bundle-analyze.md`](../en-US/P0-2-consumer-bundle-analyze.md)。
+  - **未**放宽既有 `size:check`／`bundle-size-baseline.json`；**无**运行时语义变更；禁 JSR／npm。
+
+
 ### 文档
 
 - **P0-4：组件作者指南（Memo／ref／订阅边界，非破坏）**

@@ -31,3 +31,7 @@ Evidence: main minify ≈ 4.2× `reactivity`. Subpaths already exist since 2.1.0
 ## Tests
 
 `deno task test` → **394 passed / 0 failed** (after this change set).
+
+## Related: consumer import analyze (P0-2)
+
+Beyond the library-entry gate, named / `export *` / examples-main contrasts live in [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) (independent gate; does **not** relax this baseline).

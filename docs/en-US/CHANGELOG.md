@@ -10,6 +10,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P0-2: consumer / examples bundle analyze + independent size budget (non-breaking)**
+  - Add `scripts/consumer-bundle/`: fixtures for named imports, `export *` / namespace,
+    examples main mirror and API union; `measure.mjs --write` →
+    `consumer-bundle-baseline.json`; `check.mjs` / `deno task consumer:bundle:check`
+    default **+5%**; CI ubuntu `consumer-bundle-check`.
+  - Headline (esbuild): named barrel vs subpath minify **Δ≈0**; star-reexport barrel vs
+    `/reactivity` ≈ **+34 KiB minify (~4.26×)** / **+12 KiB gzip**.
+  - Docs: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) /
+    [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md).
+  - Does **not** relax existing `size:check` / `bundle-size-baseline.json`; **no**
+    runtime semantics change; no JSR / npm.
+
+
 ### Documentation
 
 - **P0-4: component author guide (Memo / ref / subscription boundaries, non-breaking)**
