@@ -196,7 +196,8 @@ async function waitForExamplesDevReady(
  * 不能引用外层闭包变量（否则会报 `expectRootNav is not defined`）。因此按选项拆成两条无闭包谓词。
  *
  * @param t 测试上下文
- * @param options.expectRootNav 为 false 时不强制顶栏（standalone 页，仅需 `#root`）
+ * @param options.expectRootNav 为 false 时不强制顶栏 nav；仍等 `#root` + `[data-demo-layout]`
+ *   （standalone 布局也会打该属性；仅等 `#root` 会在 CI 上偶发早于布局挂载）
  */
 async function waitExamplesShell(
   t: TestContext | undefined,
@@ -218,9 +219,13 @@ async function waitExamplesShell(
       { timeout: 90_000 },
     );
   } else {
-    // standalone：不强制顶栏 nav，有 #root 即视为可测（与原先 !expectRootNav 分支一致）
+    // standalone：不强制顶栏 nav，但仍等布局标记（避免空 #root 竞态）
     await t.browser.waitFor(
-      () => document.getElementById("root") !== null,
+      () => {
+        const root = document.getElementById("root");
+        if (!root) return false;
+        return document.querySelector("[data-demo-layout]") !== null;
+      },
       { timeout: 90_000 },
     );
   }
@@ -1016,12 +1021,12 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
   it("[layout-nested/inner] 标记与三条 Link", async (t) => {
     assertBrowserE2E(t);
     await gotoExamplesPath(t, "/layout-nested/inner");
-    expect(
-      await t.browser.evaluate(() =>
+    await t.browser.waitFor(
+      () =>
         document.querySelector('[data-demo-layout="layout-nested-outer"]') !==
-          null
-      ),
-    ).toBe(true);
+          null,
+      { timeout: 20_000 },
+    );
     await pw(t).getByRole("link", { name: /不继承/ }).click();
     await waitExamplesShell(t, { expectRootNav: false });
     expect(await t.browser.evaluate(() => globalThis.location.pathname)).toBe(
@@ -1046,14 +1051,13 @@ describe("@dreamer/view examples 站点 E2E（浏览器）", () => {
     await gotoExamplesPath(t, "/layout-nested/standalone", {
       expectRootNav: false,
     });
-    expect(
-      await t.browser.evaluate(() =>
+    await t.browser.waitFor(
+      () =>
         document.querySelector(
           '[data-demo-layout="layout-standalone-no-inherit"]',
-        ) !==
-          null
-      ),
-    ).toBe(true);
+        ) !== null,
+      { timeout: 20_000 },
+    );
     await pw(t).getByRole("link", { name: /多层继承/ }).click();
     await t.browser.waitFor(
       () => globalThis.location.pathname === "/layout-nested/inner",
