@@ -2,7 +2,8 @@
  * @module views/form
  * @description 展示 @dreamer/view createForm：文本／checkbox／select，以及 schema 桥模式。
  */
-import { createSignal, Show } from "@dreamer/view/csr";
+import { createSignal } from "@dreamer/view/reactivity";
+import { Show } from "@dreamer/view/control-flow";
 import { createForm, messageFromSafeParse } from "@dreamer/view/form";
 
 /** 无 Zod 依赖时的最小「类 safeParse」示意（生产可换成 z.string().email().safeParse） */

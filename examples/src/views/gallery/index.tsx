@@ -2,12 +2,8 @@
  * @module views/gallery
  * @description 展示 @dreamer/view 处理复杂交互、缩放、拖拽与样式的能力。
  */
-import {
-  createMemo,
-  createSignal,
-  For,
-  Show,
-} from "@dreamer/view/csr";
+import { createMemo, createSignal } from "@dreamer/view/reactivity";
+import { For, Show } from "@dreamer/view/control-flow";
 
 interface ImageInfo {
   id: number;

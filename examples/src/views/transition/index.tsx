@@ -2,7 +2,8 @@
  * @module views/transition
  * @description 展示过场动画与加载转换逻辑。
  */
-import { createSignal, Show, useTransition } from "@dreamer/view/csr";
+import { createSignal, useTransition } from "@dreamer/view/reactivity";
+import { Show } from "@dreamer/view/control-flow";
 
 export default function TransitionDemo() {
   const [isPending, startTransition] = useTransition();

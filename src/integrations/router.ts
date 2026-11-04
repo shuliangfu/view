@@ -14,7 +14,7 @@
  *
  * **页面组件 props：** `{ params, query }`（`query` 为扁平对象，重复键后者覆盖）
  *
- * **导入：** `import { createRouter, Link, mountWithRouter, useRouter } from "@dreamer/view"`
+ * **导入：** `import { createRouter, Link, mountWithRouter, useRouter } from "@dreamer/view/router"`
  *
  * **`navigate` / `replace`：** 返回 `Promise<void>`，在 `beforeEach` 与 `pushState`/`replaceState` 提交完成后 resolve。
  *

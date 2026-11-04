@@ -12,6 +12,18 @@ and this project adheres to
 
 ### Changed
 
+- **P2: examples subpath dogfood (non-breaking)**
+  - Router codegen / `generateHydrationScript` use `@dreamer/view/router` / `/csr`;
+    hand-written examples prefer `/reactivity` / `/control-flow` / `/csr` / `/form` /
+    `/resource` / `/ssr`; Bun `examples/package.json` gains matching subpath `imports`.
+  - Locks: `examples-subpath-dogfood` + codegen / hydrate assertions; docs
+    [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md) /
+    [`../zh-CN/P2-examples-subpath-dogfood.md`](../zh-CN/P2-examples-subpath-dogfood.md).
+  - No JSR / npm; does **not** change or relax `size:check` / `consumer:bundle:check`
+    baseline numbers.
+
+### Changed
+
 - **P1-4: Router split (match / history / Link) + SSR isomorphism (non-breaking)**
   - Source boundaries: `src/integrations/router/{types,match,history,link}.ts`;
     `src/integrations/router.ts` remains the barrel; public API / behavior unchanged.

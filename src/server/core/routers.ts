@@ -365,7 +365,7 @@ export function generateRoutersContent(routeEntries: RouteEntry[]): string {
     " * " + $tr("init.template.routersComment1"),
     " * " + $tr("init.template.routersComment2"),
     " */",
-    'import type { RouteConfig } from "@dreamer/view";',
+    'import type { RouteConfig } from "@dreamer/view/router";',
   ];
 
   // 静态导入 loading 组件，确保它们在主包中，可以立即显示

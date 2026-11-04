@@ -27,6 +27,8 @@ describe("server/core/routers (codegen)", () => {
       const out = join(root, "src", "router", "routers.tsx");
       const text = await readTextFile(out);
       expect(text).toContain("RouteConfig");
+      expect(text).toContain('@dreamer/view/router');
+      expect(text).not.toContain('from "@dreamer/view";');
       expect(text).toContain("home");
     } finally {
       await remove(root, { recursive: true });

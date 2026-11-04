@@ -2,7 +2,8 @@
  * @module examples/views/boundary/index
  * @description 错误边界 (ErrorBoundary) 示例。
  */
-import { createEffect, createSignal, ErrorBoundary } from "@dreamer/view/csr";
+import { createEffect, createSignal } from "@dreamer/view/reactivity";
+import { ErrorBoundary } from "@dreamer/view/control-flow";
 
 /** 一个会偶尔崩溃的危险组件 */
 function BrokenComponent() {

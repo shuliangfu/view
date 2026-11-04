@@ -16,7 +16,14 @@
     "@dreamer/view/portal": "../src/runtime/portal.ts",
     "@dreamer/view/compiler": "../src/compiler/mod.ts",
     "@dreamer/view/optimize": "../src/optimize.ts",
-    "@dreamer/view/ssr": "../src/runtime/server.ts"
+    "@dreamer/view/ssr": "../src/runtime/server.ts",
+    "@dreamer/view/reactivity": "../src/reactivity/mod.ts",
+    "@dreamer/view/scheduler": "../src/scheduler/mod.ts",
+    "@dreamer/view/router": "../src/router.ts",
+    "@dreamer/view/form": "../src/form.ts",
+    "@dreamer/view/resource": "../src/resource.ts",
+    "@dreamer/view/control-flow": "../src/control-flow.ts",
+    "@dreamer/view/csr": "../src/csr.ts"
   },
   "dependencies": {
     "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",

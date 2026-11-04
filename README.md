@@ -148,6 +148,10 @@ import { renderToString } from "@dreamer/view/ssr";
 > runtime `warn`). Guide:
 > [P1-1](./docs/en-US/P1-1-main-entry-deprecation-preview.md) /
 > [ZH](./docs/zh-CN/P1-1-main-entry-deprecation-preview.md).
+>
+> examples dogfood (P2): hand-written sources + routers codegen + hydrate script
+> prefer subpaths — [P2](./docs/en-US/P2-examples-subpath-dogfood.md) /
+> [ZH](./docs/zh-CN/P2-examples-subpath-dogfood.md).
 
 Size context:
 
@@ -1396,6 +1400,7 @@ function ModalHost() {
 - **P1-1 main-entry barrel deprecation preview (Strategy A)**: [`docs/en-US/P1-1-main-entry-deprecation-preview.md`](./docs/en-US/P1-1-main-entry-deprecation-preview.md) · [`docs/zh-CN/P1-1-main-entry-deprecation-preview.md`](./docs/zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`docs/en-US/P1-2-hydration-opt-in-pilot.md`](./docs/en-US/P1-2-hydration-opt-in-pilot.md) · [`docs/zh-CN/P1-2-hydration-opt-in-pilot.md`](./docs/zh-CN/P1-2-hydration-opt-in-pilot.md)
 - **P0: examples browser E2E into CI**: [`docs/en-US/P0-e2e-into-ci.md`](./docs/en-US/P0-e2e-into-ci.md) · [`docs/zh-CN/P0-e2e-into-ci.md`](./docs/zh-CN/P0-e2e-into-ci.md)
+- **P2: examples subpath dogfood**: [`docs/en-US/P2-examples-subpath-dogfood.md`](./docs/en-US/P2-examples-subpath-dogfood.md) · [`docs/zh-CN/P2-examples-subpath-dogfood.md`](./docs/zh-CN/P2-examples-subpath-dogfood.md)
 - **P0-3 compiler static coverage / golden**: [`docs/en-US/P0-3-compiler-static-coverage-and-golden.md`](./docs/en-US/P0-3-compiler-static-coverage-and-golden.md) · [`docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md`](./docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 planning memo** (Chinese): [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)
 

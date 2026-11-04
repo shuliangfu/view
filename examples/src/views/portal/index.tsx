@@ -2,7 +2,8 @@
  * @module views/portal
  * @description 展示传送门 (Portal) 技术，用于实现 Modal/Tooltip 等全局层。
  */
-import { createSignal, Portal, Show } from "@dreamer/view/csr";
+import { createSignal } from "@dreamer/view/reactivity";
+import { Portal, Show } from "@dreamer/view/control-flow";
 
 export default function PortalDemo() {
   const [isOpen, setIsOpen] = createSignal(false);

@@ -297,7 +297,7 @@ export function generateHydrationScript(
   bindingMap: [number[], string][],
 ): string {
   return `<script type="module">
-    import { hydrate } from "@dreamer/view";
+    import { hydrate } from "@dreamer/view/csr";
     const root = document.getElementById("${id}");
     if (root) hydrate(root, ${JSON.stringify(bindingMap)});
   </script>`;

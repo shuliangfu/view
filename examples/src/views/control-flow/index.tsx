@@ -2,17 +2,15 @@
  * @module views/control-flow
  * @description 展示 @dreamer/view 核心控制流组件。
  */
+import { createContext, createSignal, useContext } from "@dreamer/view/reactivity";
 import {
-  createContext,
-  createSignal,
-  Dynamic,
   For,
   Index,
   Match,
   Show,
   Switch,
-  useContext,
-} from "@dreamer/view/csr";
+} from "@dreamer/view/control-flow";
+import { Dynamic } from "@dreamer/view/csr";
 
 const UserContext = createContext({ name: "Guest", role: "none" });
 

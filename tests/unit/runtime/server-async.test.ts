@@ -88,6 +88,8 @@ describe("runtime/server（异步与流式）", () => {
     const script = generateHydrationScript("app-root", [[[0, 1], "b1"]]);
     expect(script).toContain("app-root");
     expect(script).toContain("hydrate");
+    expect(script).toContain("@dreamer/view/csr");
+    expect(script).not.toContain('from "@dreamer/view";');
     expect(script).toContain("b1");
   });
 

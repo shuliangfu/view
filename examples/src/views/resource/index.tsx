@@ -3,7 +3,9 @@
  * @description 展示 @dreamer/view 异步资源加载与数据获取。
  */
 
-import { createSignal, ErrorBoundary, Suspense } from "@dreamer/view/csr";
+import { createSignal } from "@dreamer/view/reactivity";
+import { ErrorBoundary } from "@dreamer/view/control-flow";
+import { Suspense } from "@dreamer/view/csr";
 import { createResource, type Resource } from "@dreamer/view/resource";
 
 /**

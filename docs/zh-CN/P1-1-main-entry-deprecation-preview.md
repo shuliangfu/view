@@ -20,7 +20,7 @@
 1. **库入口图**（`deno task size:check`）：主入口 minify 约 **43.5 KiB**，`/reactivity` 约 **10.5 KiB**（约 **4.2×**）。
 2. **消费方 `export *`／namespace**（P0-2 `consumer:bundle:check`）：`export * from "@dreamer/view"` 相对只需要 reactivity 却走主入口，minify 溢价约 **+34.1 KiB（~4.26×）**／gzip 约 **+11.9 KiB**。
 3. **具名导入**在强摇树（esbuild + `sideEffects: false`）下 barrel vs 子路径 minify **Δ≈0**；子路径仍更稳——模块图更小、意图清晰，弱摇树或应用再包一层 `export *` 时有保护。
-4. **examples** 已全面子路径化（如 `examples/src/main.tsx` → `@dreamer/view/router`）。
+4. **examples** 已全面子路径化（如 `examples/src/main.tsx` → `@dreamer/view/router`）；P2 起路由 codegen／hydrate 脚本亦走子路径（见 [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)）。
 
 本刀是 **预告与迁移指引**：**不**等于 3.0 已删主入口。3.0 是否瘦身／拆默认面见 [`3.0.0-规划分析.md`](./3.0.0-规划分析.md)，须另开产品拍板。
 

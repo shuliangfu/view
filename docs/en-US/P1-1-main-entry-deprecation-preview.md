@@ -28,7 +28,7 @@ comes from P0 / P0-2 measurements:
    show barrel vs subpath minify **Δ≈0**; subpaths still win on smaller module
    graphs and weaker bundlers / app-local `export *` wrappers.
 4. **examples** already use subpaths (e.g. `examples/src/main.tsx` →
-   `@dreamer/view/router`).
+   `@dreamer/view/router`). As of P2, routers codegen / hydrate script also use subpaths (see [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)).
 
 This knife is a **preview and migration guide**. It is **not** a 3.0 removal.
 Whether 3.0 slims the default surface is a separate product decision

@@ -11,6 +11,17 @@
 
 ### 变更
 
+- **P2：examples 子路径 dogfood（非破坏）**
+  - 路由 codegen／`generateHydrationScript` 改走 `@dreamer/view/router`／`/csr`；
+    examples 手写源优先 `/reactivity`／`/control-flow`／`/csr`／`/form`／`/resource`／`/ssr`；
+    Bun `examples/package.json` 补齐子路径 `imports`。
+  - 锁测：`examples-subpath-dogfood`＋codegen／hydrate 断言；文档
+    [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)／
+    [`../en-US/P2-examples-subpath-dogfood.md`](../en-US/P2-examples-subpath-dogfood.md)。
+  - 禁 JSR／npm；**未**改／放宽 `size:check`／`consumer:bundle:check` 基线数字。
+
+### 变更
+
 - **P1-4：Router 拆 match／history／Link + SSR 同构加强（非破坏）**
   - 源码边界：`src/integrations/router/{types,match,history,link}.ts`；
     `src/integrations/router.ts` 仍为 barrel，公开 API／行为不变。
