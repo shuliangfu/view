@@ -1316,6 +1316,7 @@ function ModalHost() {
 - **现行框架优化分析**：[view-framework-analysis.md](./view-framework-analysis.md)
 - **分析文档状态**（过时／漂移清单）：[分析文档状态.md](./分析文档状态.md)
 - **P0-1 Profiling／bench CI**：[P0-1-profiling-and-bench-ci.md](./P0-1-profiling-and-bench-ci.md)
+- **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
 - **当前版本 [2.1.0] — 2026-07-22**：

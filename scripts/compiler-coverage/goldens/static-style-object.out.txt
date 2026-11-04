@@ -1,0 +1,6 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<div style=\"color:red;font-size:12px;\"></div>");
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    return _el;
+})();

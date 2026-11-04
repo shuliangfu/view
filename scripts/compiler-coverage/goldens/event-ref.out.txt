@@ -1,0 +1,8 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<button>Click</button>");
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    _el.addEventListener("click", handler);
+    (el => myRef = el)(_el);
+    return _el;
+})();

@@ -1,0 +1,9 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<span>Showed</span>");
+export const App = () => Show({
+    when: () => ok(),
+    children: () => (() => {
+        const _el = _tmpl$1();
+        return _el;
+    })()
+});

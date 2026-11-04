@@ -1,0 +1,6 @@
+import { template, walk, insert, setAttribute, setProperty, spread, createHMRProxy } from "@dreamer/view";
+const _tmpl$1 = template("<div>Hi</div>");
+export const App = createHMRProxy("hmr-export.tsx:App", () => (() => {
+    const _el = _tmpl$1();
+    return _el;
+})());

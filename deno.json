@@ -54,7 +54,9 @@
     "bench:baseline": "node scripts/bench-baseline/measure.mjs --write",
     "bench:check": "node scripts/bench-baseline/check.mjs",
     "size:check": "node scripts/size-baseline/check.mjs",
-    "size": "node scripts/size-baseline/check.mjs"
+    "size": "node scripts/size-baseline/check.mjs",
+    "compiler:coverage:baseline": "deno run -A scripts/compiler-coverage/measure.ts --write",
+    "compiler:coverage:check": "deno run -A scripts/compiler-coverage/check.ts"
   },
   "imports": {
     "@dreamer/view": "./src/mod.ts",

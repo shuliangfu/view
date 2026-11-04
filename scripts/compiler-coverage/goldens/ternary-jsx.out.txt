@@ -1,0 +1,14 @@
+import { template, walk, insert, setAttribute, setProperty, spread, memo } from "@dreamer/view";
+const _tmpl$1 = template("<div><!--[--><!--]--></div>"), _tmpl$2 = template("<span>A</span>"), _tmpl$3 = template("<span>B</span>");
+const _path$0 = [1];
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    insert(walk(_el, _path$0), () => memo(() => cond() ? (() => {
+        const _el = _tmpl$2();
+        return _el;
+    })() : (() => {
+        const _el = _tmpl$3();
+        return _el;
+    })()));
+    return _el;
+})();

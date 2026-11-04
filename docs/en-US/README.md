@@ -1350,6 +1350,7 @@ function ModalHost() {
 - **Current framework analysis** (Chinese canonical): [`../zh-CN/view-framework-analysis.md`](../zh-CN/view-framework-analysis.md)
 - **Analysis doc status** (obsolete / drifted index): [`analysis-doc-status.md`](./analysis-doc-status.md) · [`../zh-CN/分析文档状态.md`](../zh-CN/分析文档状态.md)
 - **P0-1 profiling / bench CI**: [`P0-1-profiling-and-bench-ci.md`](./P0-1-profiling-and-bench-ci.md) · [`../zh-CN/P0-1-profiling-and-bench-ci.md`](../zh-CN/P0-1-profiling-and-bench-ci.md)
+- **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
 
 - **Latest [2.1.0] — 2026-07-22**:

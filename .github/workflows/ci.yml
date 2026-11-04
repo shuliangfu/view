@@ -116,3 +116,20 @@ jobs:
 
       - name: Bench regression gate (signal / Effect / For / insert)
         run: node scripts/bench-baseline/check.mjs
+
+  # ───────────────── Compiler coverage / golden gate (ubuntu only) ─────────────────
+  compiler-coverage-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        continue-on-error: true
+        run: deno cache src/mod.ts tests/ scripts/compiler-coverage/ --minimum-dependency-age=0
+
+      - name: Compiler static-subtree coverage + golden gate
+        run: deno task compiler:coverage:check

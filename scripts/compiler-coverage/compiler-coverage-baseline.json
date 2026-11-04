@@ -1,0 +1,473 @@
+{
+  "version": 1,
+  "package": "@dreamer/view",
+  "measuredAt": "2026-11-04T01:58:29.358Z",
+  "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
+  "denoTask": "deno task compiler:coverage:baseline",
+  "notes": [
+    "Metrics are counted on compileSource() output body (after injected imports).",
+    "setAttribute ≈ reactive Effect-style attrs; setProperty ≈ one-shot; walk ≈ dynamic path.",
+    "zeroReactiveDomOps = no walk/setAttribute/setProperty/spread in body (static DOM op-free).",
+    "Goldens lock full normalized compile output; refresh intentionally with --write.",
+    "Does not change default compile semantics."
+  ],
+  "fixtures": [
+    {
+      "id": "static-nested",
+      "fileName": "static-nested.tsx",
+      "note": "Fully static nested subtree → single template, no walk",
+      "options": {},
+      "metrics": {
+        "outputBytes": 257,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-nested.out.txt"
+    },
+    {
+      "id": "static-attr-concat",
+      "fileName": "static-attr-concat.tsx",
+      "note": "Static binary concat lifted into template class",
+      "options": {},
+      "metrics": {
+        "outputBytes": 237,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-attr-concat.out.txt"
+    },
+    {
+      "id": "static-style-object",
+      "fileName": "static-style-object.tsx",
+      "note": "Static style object serialized into template",
+      "options": {},
+      "metrics": {
+        "outputBytes": 251,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-style-object.out.txt"
+    },
+    {
+      "id": "static-ternary-attr",
+      "fileName": "static-ternary-attr.tsx",
+      "note": "Static ternary + template literal attrs lifted",
+      "options": {},
+      "metrics": {
+        "outputBytes": 243,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/static-ternary-attr.out.txt"
+    },
+    {
+      "id": "dyn-text",
+      "fileName": "dyn-text.tsx",
+      "note": "Dynamic child → walk + insert thunk",
+      "options": {},
+      "metrics": {
+        "outputBytes": 299,
+        "templateCalls": 1,
+        "walkCalls": 1,
+        "insertCalls": 1,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 1,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/dyn-text.out.txt"
+    },
+    {
+      "id": "reactive-attr",
+      "fileName": "reactive-attr.tsx",
+      "note": "Reactive attr → setAttribute Effect",
+      "options": {},
+      "metrics": {
+        "outputBytes": 262,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 1,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/reactive-attr.out.txt"
+    },
+    {
+      "id": "id-attr",
+      "fileName": "id-attr.tsx",
+      "note": "Plain identifier → setProperty (no Effect)",
+      "options": {},
+      "metrics": {
+        "outputBytes": 255,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 1,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/id-attr.out.txt"
+    },
+    {
+      "id": "store-prop-attr",
+      "fileName": "store-prop-attr.tsx",
+      "note": "Property access → setAttribute Effect",
+      "options": {},
+      "metrics": {
+        "outputBytes": 266,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 1,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/store-prop-attr.out.txt"
+    },
+    {
+      "id": "multi-attr-mixed",
+      "fileName": "multi-attr-mixed.tsx",
+      "note": "Multiple reactive attrs + dynamic child; shared path consts",
+      "options": {},
+      "metrics": {
+        "outputBytes": 381,
+        "templateCalls": 1,
+        "walkCalls": 1,
+        "insertCalls": 1,
+        "setAttributeCalls": 2,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 1,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/multi-attr-mixed.out.txt"
+    },
+    {
+      "id": "component-show",
+      "fileName": "component-show.tsx",
+      "note": "Component call; static child template; reactive when wrapped",
+      "options": {},
+      "metrics": {
+        "outputBytes": 287,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/component-show.out.txt"
+    },
+    {
+      "id": "component-static-when",
+      "fileName": "component-static-when.tsx",
+      "note": "Static component prop not wrapped in arrow",
+      "options": {},
+      "metrics": {
+        "outputBytes": 276,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/component-static-when.out.txt"
+    },
+    {
+      "id": "ternary-jsx",
+      "fileName": "ternary-jsx.tsx",
+      "note": "Inline ternary JSX → memo(); branch templates",
+      "options": {},
+      "metrics": {
+        "outputBytes": 534,
+        "templateCalls": 3,
+        "walkCalls": 1,
+        "insertCalls": 1,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 1,
+        "pathConstDecls": 1,
+        "tmplConstDecls": 3,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ternary-jsx.out.txt"
+    },
+    {
+      "id": "fragment",
+      "fileName": "fragment.tsx",
+      "note": "Fragment → DocumentFragment + static child templates",
+      "options": {},
+      "metrics": {
+        "outputBytes": 458,
+        "templateCalls": 2,
+        "walkCalls": 0,
+        "insertCalls": 2,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 2,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/fragment.out.txt"
+    },
+    {
+      "id": "event-ref",
+      "fileName": "event-ref.tsx",
+      "note": "Event listener + ref call",
+      "options": {},
+      "metrics": {
+        "outputBytes": 299,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/event-ref.out.txt"
+    },
+    {
+      "id": "spread",
+      "fileName": "spread.tsx",
+      "note": "Spread props → spread()",
+      "options": {},
+      "metrics": {
+        "outputBytes": 241,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 1,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/spread.out.txt"
+    },
+    {
+      "id": "hydration-dyn-text",
+      "fileName": "hydration-dyn-text.tsx",
+      "note": "Hydration: useHydratedNode + _bindingMap",
+      "options": {
+        "hydration": true
+      },
+      "metrics": {
+        "outputBytes": 417,
+        "templateCalls": 1,
+        "walkCalls": 1,
+        "insertCalls": 1,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 1,
+        "tmplConstDecls": 1,
+        "hasBindingMap": true,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": false
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/hydration-dyn-text.out.txt"
+    },
+    {
+      "id": "ssr-static",
+      "fileName": "ssr-static.tsx",
+      "note": "SSR generate: static string concat / literal",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 115,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static.out.txt"
+    },
+    {
+      "id": "ssr-dyn",
+      "fileName": "ssr-dyn.tsx",
+      "note": "SSR generate: dynamic child expression",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 90,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-dyn.out.txt"
+    },
+    {
+      "id": "hmr-export",
+      "fileName": "hmr-export.tsx",
+      "note": "HMR wraps export const component",
+      "options": {
+        "hmr": true
+      },
+      "metrics": {
+        "outputBytes": 271,
+        "templateCalls": 1,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 1,
+        "hasBindingMap": false,
+        "importHasMemo": false,
+        "importHasCreateHMRProxy": true,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/hmr-export.out.txt"
+    }
+  ],
+  "aggregate": {
+    "fixtureCount": 19,
+    "totalSetAttribute": 4,
+    "totalSetProperty": 1,
+    "totalWalk": 4,
+    "totalInsert": 6,
+    "totalMemo": 1,
+    "totalSpread": 1,
+    "totalPathConsts": 4,
+    "zeroReactiveDomOpsCount": 11,
+    "staticDomOpFreeRatio": 0.5789
+  }
+}

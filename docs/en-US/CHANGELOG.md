@@ -12,6 +12,21 @@ and this project adheres to
 
 ### Added
 
+- **P0-3: compiler static-subtree coverage baseline + goldens (non-breaking)**
+  - `scripts/compiler-coverage/`: 19 JSX fixtures; `measure.ts --write` →
+    `compiler-coverage-baseline.json` + `goldens/*.out.txt`;
+    `check.ts` / `deno task compiler:coverage:check` exact-match metrics and golden text.
+  - Metrics (compile body): `template` / `walk` / `insert` / `setAttribute` /
+    `setProperty` / `spread` / `memo` / paths; `staticDomOpFreeRatio` baseline ≈
+    **0.5789** (11/19).
+  - Unit test `tests/unit/compiler/golden.test.ts`; CI ubuntu `compiler-coverage-check`.
+  - Docs: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) /
+    [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md).
+  - **No** default compile / runtime semantics change; no JSR / npm publish.
+
+
+### Added
+
 - **P0-1: real-page profiling notes + Signal / Effect / For / insert benches in CI (non-breaking)**
   - Add `tests/bench/insert.bench.ts` (static text / Signal thunk / array children);
     fold existing `signal.bench.ts` (incl. Effect) and `for.bench.ts` into the gate.

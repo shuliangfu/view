@@ -11,6 +11,20 @@
 
 ### 新增
 
+- **P0-3：编译器静态子树覆盖率基线 + golden（非破坏）**
+  - `scripts/compiler-coverage/`：19 条 JSX 语料；`measure.ts --write` →
+    `compiler-coverage-baseline.json` + `goldens/*.out.txt`；
+    `check.ts`／`deno task compiler:coverage:check` 精确对齐指标与 golden 全文。
+  - 指标（compile body）：`template`／`walk`／`insert`／`setAttribute`／`setProperty`／
+    `spread`／`memo`／path；`staticDomOpFreeRatio` 基线约 **0.5789**（11/19）。
+  - 单测 `tests/unit/compiler/golden.test.ts`；CI ubuntu `compiler-coverage-check`。
+  - 文档：[`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md)／
+    [`../en-US/P0-3-compiler-static-coverage-and-golden.md`](../en-US/P0-3-compiler-static-coverage-and-golden.md)。
+  - **无**默认编译／运行时语义变更；禁 JSR／npm。
+
+
+### 新增
+
 - **P0-1：真实页 Profiling 对照 + Signal／Effect／For／insert bench 入 CI（非破坏）**
   - 新增 `tests/bench/insert.bench.ts`（静态文本／Signal thunk／数组子节点）；既有
     `signal.bench.ts`（含 Effect）与 `for.bench.ts` 一并纳入门禁。

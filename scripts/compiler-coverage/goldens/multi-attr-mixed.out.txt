@@ -1,0 +1,10 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+const _tmpl$1 = template("<div><!--[--><!--]--></div>");
+const _path$0 = [1];
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    setAttribute(_el, "title", () => a());
+    setAttribute(_el, "class", () => b());
+    insert(walk(_el, _path$0), () => c());
+    return _el;
+})();

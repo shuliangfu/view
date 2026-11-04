@@ -1,0 +1,10 @@
+import { template, walk, insert, setAttribute, setProperty, spread } from "@dreamer/view";
+import { useHydratedNode } from "@dreamer/view";
+const _tmpl$1 = template("<div><!--[--><!--]--></div>");
+const _path$0 = [1];
+export const App = () => (() => {
+    const _el = _tmpl$1();
+    insert(useHydratedNode("v-0") || walk(_el, _path$0), () => count());
+    return _el;
+})();
+export const _bindingMap = [[[1], "v-0"]];
