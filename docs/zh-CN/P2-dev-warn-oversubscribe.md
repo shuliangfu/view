@@ -17,7 +17,7 @@
 帮助作者抓到会导致焦点丢失／受控输入抖动的误用（§5.1）：
 
 - **wide-subscription** — Effect 上游边过多（常是组件壳整段重跑）
-- **remount-churn** — 逻辑 key 短时多次 remount，或 Owner 子节点在两次轮询间被整批换掉
+- **remount-churn** — 逻辑 key 短时多次 remount，或 Owner 子节点在两次轮询间被整批换掉。从小占位（路由 loading 壳；examples dogfood 为 path `0/0` 子树 5→整页）一次性胀到大页面是首屏，不是 churn。体积相近的整树重建仍会警告。
 
 ## 2. 如何 opt-in
 

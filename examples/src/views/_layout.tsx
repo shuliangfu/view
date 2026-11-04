@@ -119,13 +119,21 @@ function navLinkClass(isActive: boolean): string {
     : "rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100";
 }
 
-/** 布局：顶部固定 Navbar + 主内容区 */
+/** 键盘焦点环（与激活态 class 拼接；本身不含信号读） */
+const NAV_FOCUS =
+  " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800";
+
+/**
+ * 布局：顶部固定 Navbar + 主内容区。
+ *
+ * `router.path()` / `theme()` 只在属性 getter 里读。示例在 `VIEW_DEV` 下用
+ * `insert(container, () => router.render())` 挂载，组件函数跑在那一个根 Effect 上；
+ * 顶层同步读会把主题和路径绑到整页 Effect，切换主题时子树整批换掉（DevTools remount-churn）。
+ */
 export default function Layout(props: { children: any }) {
   const router = useRouter();
-  const currentPath = router.path();
   const navItems = navItemsFromRoutes(routes);
   const grouped = groupNavItems(navItems);
-  const isDark = theme && theme() === "dark";
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 to-slate-100/80 dark:from-slate-900 dark:to-slate-800/80 transition-colors duration-300">
@@ -148,13 +156,12 @@ export default function Layout(props: { children: any }) {
 
                 if (groupName === "首页") {
                   const item = items[0];
-                  const isActive = currentPath === item.path;
                   return (
                     <li key={item.path}>
                       <Link
                         href={item.path}
-                        className={navLinkClass(isActive) +
-                          " outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+                        className={() =>
+                          navLinkClass(router.path() === item.path) + NAV_FOCUS}
                       >
                         {item.label}
                       </Link>
@@ -162,7 +169,6 @@ export default function Layout(props: { children: any }) {
                   );
                 }
 
-                const isGroupActive = items.some((i) => i.path === currentPath);
                 return (
                   <li
                     key={groupName}
@@ -170,8 +176,12 @@ export default function Layout(props: { children: any }) {
                   >
                     <button
                       type="button"
-                      className={navLinkClass(isGroupActive) +
-                        " inline-flex items-center gap-1.5 pr-4 overflow-visible outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"}
+                      className={() =>
+                        navLinkClass(
+                          items.some((i) => i.path === router.path()),
+                        ) +
+                        " inline-flex items-center gap-1.5 pr-4 overflow-visible" +
+                        NAV_FOCUS}
                       aria-haspopup="true"
                     >
                       <span className="shrink-0">{groupName}</span>
@@ -193,14 +203,15 @@ export default function Layout(props: { children: any }) {
                       role="menu"
                     >
                       {items.map((item) => {
-                        const isActive = currentPath === item.path;
                         return (
                           <li key={item.path} role="none">
                             <Link
                               href={item.path}
-                              className={"block px-4 py-2 text-sm " + (isActive
-                                ? "text-indigo-600 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-900/50"
-                                : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700")}
+                              className={() =>
+                                "block px-4 py-2 text-sm " +
+                                (router.path() === item.path
+                                  ? "text-indigo-600 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-900/50"
+                                  : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700")}
                               role="menuitem"
                             >
                               {item.label}
@@ -219,9 +230,23 @@ export default function Layout(props: { children: any }) {
                 type="button"
                 onClick={() => toggleTheme()}
                 className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-slate-800"
-                title={isDark ? "切换到浅色" : "切换到深色"}
+                title={() => theme() === "dark" ? "切换到浅色" : "切换到深色"}
               >
-                {isDark ? <SunIcon /> : <MoonIcon />}
+                {/* 两枚图标都挂住，只改 display，避免主题信号重跑根 Effect */}
+                <span
+                  style={() => ({
+                    display: theme() === "dark" ? "inline-flex" : "none",
+                  })}
+                >
+                  <SunIcon />
+                </span>
+                <span
+                  style={() => ({
+                    display: theme() === "dark" ? "none" : "inline-flex",
+                  })}
+                >
+                  <MoonIcon />
+                </span>
               </button>
             )}
 

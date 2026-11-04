@@ -4,25 +4,39 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
-  clearRemountNotes,
   clearOversubscribeWarnState,
+  clearRemountNotes,
   clearTrackedRoots,
-  detectOwnerRemountChurn,
+  createRootTracked,
   detectOversubscribe,
+  detectOwnerRemountChurn,
   detectRemountChurn,
   detectWideSubscriptions,
   disableOversubscribeWarnings,
   enableOversubscribeWarnings,
+  getTrackedRoots,
+  inspectOwner,
   noteRemount,
+  type OwnerNodeSnapshot,
 } from "@dreamer/view/devtools";
+import { createRouter } from "@dreamer/view/router";
+import { jsx } from "@dreamer/view/jsx-runtime";
 import {
   createEffect,
   createRoot,
   createSignal,
   getOwner,
 } from "@dreamer/view/reactivity";
+import { insert } from "../../../src/runtime/insert.ts";
 import { flushPendingSync } from "../../../src/scheduler/batch.ts";
 import { resetRegistry } from "../dom-setup.ts";
+
+function countOwners(node: OwnerNodeSnapshot | null): number {
+  if (!node) return 0;
+  let n = 1;
+  for (const child of node.childNodes) n += countOwners(child);
+  return n;
+}
 
 const g = globalThis as { VIEW_DEV?: boolean };
 
@@ -184,6 +198,144 @@ describe("devtools oversubscribe warn (P2)", () => {
       expect(hit!.kind).toBe("remount-churn");
       dispose();
     });
+  });
+
+  it("does not flag a one-time placeholder expansion (small shell → page)", () => {
+    createRoot((dispose) => {
+      const root = getOwner()!;
+      const phase = createSignal(0);
+      createEffect(() => {
+        if (phase() === 0) {
+          // loading shell: effect + one child (subtree 2, under the cap)
+          createEffect(() => {});
+        } else {
+          for (let i = 0; i < 8; i++) createEffect(() => {});
+        }
+      });
+      expect(detectOwnerRemountChurn(root)).toBeNull();
+      phase.value = 1;
+      flushPendingSync();
+      // 2 → 9 is the examples loading→page shape, scaled down
+      expect(detectOwnerRemountChurn(root)).toBeNull();
+      dispose();
+    });
+  });
+
+  it("still flags equal-size replacement of an established subtree", () => {
+    createRoot((dispose) => {
+      const root = getOwner()!;
+      const phase = createSignal(0);
+      createEffect(() => {
+        phase();
+        for (let i = 0; i < 12; i++) createEffect(() => {});
+      });
+      expect(detectOwnerRemountChurn(root)).toBeNull();
+      phase.value = 1;
+      flushPendingSync();
+      const hit = detectOwnerRemountChurn(root);
+      expect(hit).not.toBeNull();
+      expect(hit!.kind).toBe("remount-churn");
+      expect(hit!.path).toBe("0/0");
+      dispose();
+    });
+  });
+
+  it("still flags a large shell collapsing to a placeholder", () => {
+    createRoot((dispose) => {
+      const root = getOwner()!;
+      const phase = createSignal(0);
+      createEffect(() => {
+        const n = phase() === 0 ? 12 : 1;
+        for (let i = 0; i < n; i++) createEffect(() => {});
+      });
+      expect(detectOwnerRemountChurn(root)).toBeNull();
+      phase.value = 1;
+      flushPendingSync();
+      expect(detectOwnerRemountChurn(root)?.kind).toBe("remount-churn");
+      dispose();
+    });
+  });
+
+  it("examples-shaped mount: loading→page at path 0/0 does not warn; narrow class does not remount", async () => {
+    const theme = createSignal("light");
+    const router = createRouter({
+      url: "http://localhost/",
+      interceptLinks: false,
+      routes: [
+        {
+          path: "/",
+          layouts: [() =>
+            Promise.resolve({
+              default: (props: { children: unknown }) =>
+                jsx("div", {
+                  "data-shell": "1",
+                  // getter only — must not subscribe the root insert effect
+                  className: () => (theme() === "dark" ? "dark" : "light"),
+                  children: props.children,
+                }),
+            })],
+          loading: () =>
+            jsx("div", {
+              className: "loading",
+              children: [
+                jsx("div", {
+                  children: jsx("div", { className: "spin" }),
+                }),
+                jsx("p", { children: "loading" }),
+              ],
+            }),
+          component: () =>
+            Promise.resolve({
+              default: () => {
+                const kids = [];
+                for (let i = 0; i < 24; i++) {
+                  kids.push(jsx("section", {
+                    className: () => "card",
+                    children: String(i),
+                  }));
+                }
+                return jsx("main", { children: kids });
+              },
+            }),
+        },
+      ],
+    });
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let dispose = () => {};
+    createRootTracked((d) => {
+      dispose = d;
+      insert(container, () => router.render());
+    });
+
+    const root = getTrackedRoots()[0]!;
+    const loadingNodes = countOwners(inspectOwner(root));
+    // Mirrors dogfood: effect subtree 5, total owners = root + that subtree.
+    expect(loadingNodes).toBeLessThanOrEqual(9);
+    expect(detectOwnerRemountChurn(root)).toBeNull();
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    const pageNodes = countOwners(inspectOwner(root));
+    expect(pageNodes).toBeGreaterThanOrEqual(loadingNodes * 4);
+    const hit = detectOwnerRemountChurn(root);
+    expect(hit).toBeNull();
+
+    const shell = container.querySelector("[data-shell]") as HTMLElement;
+    expect(shell).not.toBeNull();
+    expect(shell.className).toBe("light");
+    const shellBefore = shell;
+
+    theme.value = "dark";
+    flushPendingSync();
+    // Theme read lives in the class getter, so the outlet effect stays mounted.
+    expect(detectOwnerRemountChurn(root)).toBeNull();
+    expect(container.querySelector("[data-shell]")).toBe(shellBefore);
+    expect(shellBefore.className).toBe("dark");
+
+    dispose();
+    router.destroy();
   });
 });
 

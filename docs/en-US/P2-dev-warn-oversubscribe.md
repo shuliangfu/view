@@ -17,7 +17,7 @@
 Help authors catch misuse patterns that cause focus loss / controlled-input flicker (§5.1):
 
 - **wide-subscription** — an Effect with too many upstream edges (often a component shell re-running)
-- **remount-churn** — logical key remounted too often, or an Owner whose children were fully replaced between polls
+- **remount-churn** — logical key remounted too often, or an Owner whose children were fully replaced between polls. A one-time expansion from a small placeholder (route loading shell; examples dogfood is subtree 5→page at path `0/0`) is first paint, not churn. Equal-size rebuilds still warn.
 
 ## 2. How to opt in
 

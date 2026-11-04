@@ -49,18 +49,14 @@ import {
   uninstallOwnerDomTracking,
 } from "./devtools/owner-dom.ts";
 import { core } from "./reactivity/master.ts";
-import {
-  createRoot,
-  getOwner,
-  type Owner,
-} from "./reactivity/owner.ts";
+import { createRoot, getOwner, type Owner } from "./reactivity/owner.ts";
 import {
   cleanupObserver,
-  setCurrentObserver,
-  STATE_CLEAN,
   type Observer,
+  setCurrentObserver,
   type Signal,
   type Source,
+  STATE_CLEAN,
   type Subscription,
 } from "./reactivity/signal.ts";
 
@@ -148,7 +144,10 @@ export function inspectOwner(
   const maxDepth = options?.maxDepth ?? 32;
 
   const walk = (node: Owner, depth: number): OwnerNodeSnapshot => {
-    const asHybrid = node as Owner & Partial<Observer> & Partial<Source<unknown>>;
+    const asHybrid = node as
+      & Owner
+      & Partial<Observer>
+      & Partial<Source<unknown>>;
     const childList = node.children ?? [];
     const childNodes = depth >= maxDepth
       ? []
@@ -189,7 +188,10 @@ export function inspectOwnerIndexed(
   const rootId = options?.rootId ?? "0";
 
   const walk = (node: Owner, depth: number, id: string): IndexedOwnerNode => {
-    const asHybrid = node as Owner & Partial<Observer> & Partial<Source<unknown>>;
+    const asHybrid = node as
+      & Owner
+      & Partial<Observer>
+      & Partial<Source<unknown>>;
     const childList = node.children ?? [];
     const childNodes = depth >= maxDepth
       ? []
@@ -285,7 +287,10 @@ export function summarizeOwnerTree(
     else if (kind === "memo") summary.memos++;
     else summary.plainOwners++;
 
-    const asHybrid = node as Owner & Partial<Observer> & Partial<Source<unknown>>;
+    const asHybrid = node as
+      & Owner
+      & Partial<Observer>
+      & Partial<Source<unknown>>;
     if (asHybrid.sources) {
       summary.upstreamEdges += countUpstream(asHybrid as Observer);
     }
@@ -404,7 +409,6 @@ export function snapshotRegistrySources(): RegistrySourceSnapshot[] {
   return out;
 }
 
-
 // ---------------------------------------------------------------------------
 // P2-dev-warn-oversubscribe (§5.1): DEV / explicit opt-in misuse warnings
 // ---------------------------------------------------------------------------
@@ -451,6 +455,28 @@ const DEFAULT_MAX_UPSTREAM = 8;
 const DEFAULT_MAX_REMOUNTS = 3;
 const DEFAULT_REMOUNT_WINDOW_MS = 2000;
 
+/**
+ * Subtree this small is a placeholder (route `loading` shell), not an
+ * established UI. Examples dogfood measures **5** under the root insert
+ * effect (`_loading` + that effect) before the page resolves (~266).
+ */
+const PLACEHOLDER_SUBTREE_MAX = 8;
+/**
+ * Other side must be at least this many times larger. Equal-size rebuilds
+ * (focus-loss shell re-runs, including tiny ones) stay warnings.
+ */
+const PLACEHOLDER_GROWTH = 4;
+
+/**
+ * First paint of an async route: a handful of loading owners replaced by
+ * the real page. Not remount churn — nothing interactive was torn down.
+ */
+function isPlaceholderExpansion(prevNodes: number, nextNodes: number): boolean {
+  return prevNodes <= PLACEHOLDER_SUBTREE_MAX &&
+    nextNodes > prevNodes &&
+    nextNodes >= prevNodes * PLACEHOLDER_GROWTH;
+}
+
 const remountLog = new Map<string, number[]>();
 const warnedWide = new WeakSet<object>();
 const warnedRemountKeys = new Set<string>();
@@ -479,7 +505,9 @@ function emitWarning(
   }
   if (opts.onWarn) opts.onWarn(warning);
   else {
-    console.warn(`[@dreamer/view/devtools] ${warning.kind}: ${warning.message}`);
+    console.warn(
+      `[@dreamer/view/devtools] ${warning.kind}: ${warning.message}`,
+    );
   }
 }
 
@@ -625,7 +653,10 @@ function subtreeNodeCount(owner: Owner): number {
 /**
  * Walk `owner` subtree; if any node with a prior non-empty child set has
  * **zero** surviving child identities, flag remount-churn.
- * A **single** full replacement is enough (unlike {@link noteRemount} keys).
+ * A **single** full replacement of an established subtree is enough
+ * (unlike {@link noteRemount} keys).
+ * A one-time **placeholder expansion** (small loading shell → much larger
+ * page, e.g. examples dogfood 5→266 at path `0/0`) is first paint, not churn.
  * Does not patch `insert` / `cleanNode` / Effect.run.
  */
 export function detectOwnerRemountChurn(
@@ -651,7 +682,8 @@ export function detectOwnerRemountChurn(
       prev &&
       prev.childIds.length > 0 &&
       next.childIds.length > 0 &&
-      prev.subtreeNodes >= 2
+      prev.subtreeNodes >= 2 &&
+      !isPlaceholderExpansion(prev.subtreeNodes, next.subtreeNodes)
     ) {
       const prevSet = new Set(prev.childIds);
       let overlap = 0;
@@ -664,7 +696,9 @@ export function detectOwnerRemountChurn(
         found = {
           kind: "remount-churn",
           message:
-            `Owner (${classify(node)}) at depth ${depth} replaced all children ` +
+            `Owner (${
+              classify(node)
+            }) at depth ${depth} replaced all children ` +
             `(prev subtree=${prev.subtreeNodes}, next=${next.subtreeNodes}). ` +
             `Suspected whole-tree unmount/remount from a too-wide Effect — ` +
             `narrow subscriptions (analysis §5.1 / P0-4).`,
@@ -731,8 +765,16 @@ export function enableOversubscribeWarnings(
       }
     }
     for (const root of roots) {
-      detectWideSubscriptions(root, { ...opts, emit: true, onWarn: opts.onWarn });
-      detectOwnerRemountChurn(root, { ...opts, emit: true, onWarn: opts.onWarn });
+      detectWideSubscriptions(root, {
+        ...opts,
+        emit: true,
+        onWarn: opts.onWarn,
+      });
+      detectOwnerRemountChurn(root, {
+        ...opts,
+        emit: true,
+        onWarn: opts.onWarn,
+      });
     }
     for (const key of remountKeys) {
       detectRemountChurn(key, { ...opts, emit: true, onWarn: opts.onWarn });
