@@ -90,8 +90,11 @@ npx jsr add @dreamer/view
 
 > **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun 1.3+**,
 > and **Node.js 22+** with zero source changes. Unit and integration tests pass
-> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. The CLI
-> `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
+> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. Examples
+> **browser E2E** (`deno task test:e2e`) runs as a separate ubuntu Chromium job
+> (`e2e-examples`); it is **not** folded into the Windows / browser-less matrix
+> cells. Local full Deno suite: `deno test -A tests` (needs Playwright Chromium).
+> The CLI `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
 
 ### 2.3 `exports` map (same as `view/deno.json`)
 
@@ -1384,6 +1387,7 @@ function ModalHost() {
 - **P0-2 consumer / examples bundle analyze**: [`docs/en-US/P0-2-consumer-bundle-analyze.md`](./docs/en-US/P0-2-consumer-bundle-analyze.md) · [`docs/zh-CN/P0-2-consumer-bundle-analyze.md`](./docs/zh-CN/P0-2-consumer-bundle-analyze.md)
 - **P1-1 main-entry barrel deprecation preview (Strategy A)**: [`docs/en-US/P1-1-main-entry-deprecation-preview.md`](./docs/en-US/P1-1-main-entry-deprecation-preview.md) · [`docs/zh-CN/P1-1-main-entry-deprecation-preview.md`](./docs/zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`docs/en-US/P1-2-hydration-opt-in-pilot.md`](./docs/en-US/P1-2-hydration-opt-in-pilot.md) · [`docs/zh-CN/P1-2-hydration-opt-in-pilot.md`](./docs/zh-CN/P1-2-hydration-opt-in-pilot.md)
+- **P0: examples browser E2E into CI**: [`docs/en-US/P0-e2e-into-ci.md`](./docs/en-US/P0-e2e-into-ci.md) · [`docs/zh-CN/P0-e2e-into-ci.md`](./docs/zh-CN/P0-e2e-into-ci.md)
 - **P0-3 compiler static coverage / golden**: [`docs/en-US/P0-3-compiler-static-coverage-and-golden.md`](./docs/en-US/P0-3-compiler-static-coverage-and-golden.md) · [`docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md`](./docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 planning memo** (Chinese): [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)
 

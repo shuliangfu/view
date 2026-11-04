@@ -81,6 +81,8 @@ deno add jsr:@dreamer/view
 bunx jsr add @dreamer/view
 ```
 
+> **运行时与 CI**：unit／integration 在 Deno／Bun／Node × Linux／macOS／Windows 三端矩阵跑通；examples **浏览器 E2E**（`deno task test:e2e`）单独在 ubuntu Chromium job `e2e-examples`，**不**塞进 Windows／无浏览器格子。本地 Deno 全量：`deno test -A tests`（需 Playwright Chromium）。详见 [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md)。
+
 ### 2.3 `exports` 一览（与仓库 `view/deno.json` 一致）
 
 | 子路径                              | 说明                                                                                                             |

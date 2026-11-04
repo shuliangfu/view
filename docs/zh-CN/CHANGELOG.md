@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+### 变更
+
+- **P0：examples 浏览器 E2E 入 CI（非破坏）**
+  - 新增仅 ubuntu 的 workflow job `e2e-examples`：安装 Playwright Chromium
+    `1.59.1`（`--with-deps`）并跑 `deno task test:e2e`；失败即红。**未**放宽断言
+    （含 form `agree`）。
+  - 9-job Deno／Bun／Node × OS **unit＋integration** 矩阵保持无浏览器；注释写明
+    为何不把 E2E 塞进 Windows／无浏览器 runner。
+  - 文档：[`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md)／
+    [`../en-US/P0-e2e-into-ci.md`](../en-US/P0-e2e-into-ci.md)；README／
+    TEST_REPORT 写清本地 `deno task test:e2e`／`deno test -A tests` 与 CI 关系。
+  - 禁 JSR／npm；**未**放宽 `size:check`／`consumer:bundle:check`。
+
+
 ### 文档
 
 - **P1-2：水合质量 opt-in 试点（`mismatchMode` · 2.x 加法，非破坏）**

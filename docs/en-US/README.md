@@ -90,8 +90,11 @@ npx jsr add @dreamer/view
 
 > **Runtime compatibility**: `@dreamer/view` runs on **Deno 2.9+**, **Bun 1.3+**,
 > and **Node.js 22+** with zero source changes. Unit and integration tests pass
-> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. The CLI
-> `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
+> on all three runtimes × three OSes (Linux / macOS / Windows) in CI. Examples
+> **browser E2E** (`deno task test:e2e`) runs as a separate ubuntu Chromium job
+> (`e2e-examples`); it is **not** folded into the Windows / browser-less matrix
+> cells. Local full Deno suite: `deno test -A tests` (needs Playwright Chromium).
+> The CLI `upgrade` / `update` commands use `npx jsr` / `npm` respectively on Node.
 
 ### 2.3 `exports` map (same as `view/deno.json`)
 
@@ -1388,6 +1391,7 @@ function ModalHost() {
 - **P0-2: consumer / examples bundle analyze**: [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`../zh-CN/P0-2-consumer-bundle-analyze.md`](../zh-CN/P0-2-consumer-bundle-analyze.md)
 - **P1-1: main-entry barrel deprecation preview (Strategy A)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
+- **P0: examples browser E2E into CI**: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) · [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md)
 - **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)

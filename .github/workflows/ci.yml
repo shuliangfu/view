@@ -1,6 +1,9 @@
-# CI: 9-job matrix — 3 Deno v2.9 + 3 Bun + 3 Node 22 (Linux/macOS/Windows)
-# No Chromium, no Playwright, no external services
-# E2E tests (tests/e2e/) excluded — run locally via deno task test:e2e
+# CI layout:
+# - 9-job unit/integration matrix: 3 Deno v2.9 + 3 Bun + 3 Node 22 × (Linux/macOS/Windows)
+#   → NO Chromium / Playwright; do NOT fold tests/e2e into those jobs (would drag Windows /
+#     browser-less runners and inflate flake surface).
+# - e2e-examples (ubuntu-latest only): Playwright Chromium + examples browser E2E; failure fails the workflow.
+# Local: deno task test:e2e  |  full Deno suite (unit+integration+e2e): deno test -A tests
 name: CI
 
 on:
@@ -34,6 +37,7 @@ jobs:
       - name: Lint
         run: deno lint src/
 
+      # Unit + integration only — examples browser E2E lives in job `e2e-examples` (ubuntu).
       - name: Test (Deno)
         run: deno test -A --no-check tests/unit tests/integration
 
@@ -146,3 +150,28 @@ jobs:
 
       - name: Compiler static-subtree coverage + golden gate
         run: deno task compiler:coverage:check
+
+  # ───────────────── Examples browser E2E (Ubuntu + Chromium / Playwright only) ─────────────────
+  # Keep this OUT of the 9-job matrix: needs Playwright Chromium + examples `deno task dev`.
+  # Windows / macOS / Bun / Node matrix jobs stay browser-free on purpose.
+  e2e-examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9
+
+      - name: Cache dependencies
+        continue-on-error: true
+        run: deno cache src/mod.ts tests/ examples/ --minimum-dependency-age=0
+
+      - name: Install Playwright Chromium (+ Ubuntu deps)
+        # Pin to the same playwright major/minor as @dreamer/test (see deno.lock / package).
+        run: npx -y playwright@1.59.1 install --with-deps chromium
+
+      - name: Examples browser E2E (fail = red)
+        # Same command as local `deno task test:e2e`. Assertions are not relaxed for CI.
+        run: deno task test:e2e

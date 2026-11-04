@@ -37,8 +37,17 @@ deno task test
 # 仅集成
 deno task test:integration
 
-# 浏览器 E2E（需 examples 环境 / 浏览器依赖）
+# 浏览器 E2E（需 Playwright Chromium；与 CI job `e2e-examples` 同命令）
 deno task test:e2e
+# 等价：deno test -A tests/e2e
+
+# Deno 全量（unit + integration + e2e；本地需已装 Chromium）
+deno test -A tests
+
+# CI：`.github/workflows/ci.yml`
+# - 9-job 矩阵：仅 unit + integration（无 Chromium）
+# - ubuntu `e2e-examples`：安装 Chromium 后跑 `deno task test:e2e`；失败即红
+# 详见 docs/zh-CN/P0-e2e-into-ci.md
 
 # 性能基准（不计入 pass/fail）
 deno task bench

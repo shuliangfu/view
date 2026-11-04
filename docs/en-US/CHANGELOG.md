@@ -10,6 +10,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- **P0: examples browser E2E into CI (non-breaking)**
+  - Add ubuntu-only workflow job `e2e-examples`: install Playwright Chromium
+    `1.59.1` (`--with-deps`) and run `deno task test:e2e`. Failure fails the
+    workflow. Assertions are **not** relaxed (including form `agree`).
+  - Keep the 9-job Deno / Bun / Node × OS **unit + integration** matrix
+    browser-free; comments document why E2E is not folded into Windows /
+    browser-less runners.
+  - Docs: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) /
+    [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md); README /
+    TEST_REPORT clarify local `deno task test:e2e` /
+    `deno test -A tests` vs CI.
+  - No JSR / npm; does **not** relax `size:check` / `consumer:bundle:check`.
+
+
 ### Documentation
 
 - **P1-2: hydration quality opt-in pilot (`mismatchMode` · 2.x additive, non-breaking)**

@@ -37,8 +37,17 @@ deno task test
 # Integration only
 deno task test:integration
 
-# Browser E2E (requires examples env / browser deps)
+# Browser E2E (needs Playwright Chromium; same command as CI job `e2e-examples`)
 deno task test:e2e
+# equivalent: deno test -A tests/e2e
+
+# Full Deno suite (unit + integration + e2e; local needs Chromium installed)
+deno test -A tests
+
+# CI: `.github/workflows/ci.yml`
+# - 9-job matrix: unit + integration only (no Chromium)
+# - ubuntu `e2e-examples`: install Chromium, then `deno task test:e2e`; fail = red
+# See docs/en-US/P0-e2e-into-ci.md
 
 # Benchmarks (not pass/fail gates)
 deno task bench
