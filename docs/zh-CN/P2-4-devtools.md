@@ -3,9 +3,9 @@
 | 项 | 值 |
 |----|-----|
 | 性质 | **加法 DX**：观察 Owner 树与订阅边计数 |
-| 包 | `@dreamer/view` **v2.2.0**（`dev`） |
+| 包 | `@dreamer/view` **3.0.0**（`dev`；始于 2.2） |
 | 入口 | **仅** `@dreamer/view/devtools`（不进主 barrel／`/reactivity`） |
-| 基线 | **不**改／抬高 `size:check`／`consumer:bundle:check` 基线数字 |
+| 基线 | 本刀本身**不**抬测量门；后续 3.0 战役 DX 可另刷基线 |
 | 禁止 | JSR／npm 发布；浏览器扩展／UI 壳；推倒响应式内核；动 ui-view／dweb-admin／xlang |
 | EN | [`../en-US/P2-4-devtools.md`](../en-US/P2-4-devtools.md) |
 

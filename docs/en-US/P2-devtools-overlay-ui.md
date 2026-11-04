@@ -3,7 +3,7 @@
 | Item | Value |
 |------|-------|
 | Nature | **Additive DX**: floating indicator + multi-tab inspector |
-| Package | `@dreamer/view` **v2.2.0** (`dev`) |
+| Package | `@dreamer/view` **3.0.0** (`dev`; overlay since 2.2) |
 | Entry | **`@dreamer/view/devtools/overlay`** only |
 | Baselines | Does **not** raise `size:check` / `consumer:bundle:check` |
 | Forbidden | JSR / npm; auto-mount in production; kernel rewrites; ui-view / dweb-admin / xlang |
@@ -15,10 +15,10 @@
 
 | Tab | Content |
 |-----|---------|
-| **Overview** | Effects / memos / nodes / upstream edges + health + top sources |
+| **Overview** | Effects / memos / nodes / upstream edges + health + top sources. **3.0:** resnapshots on route change (`popstate` + history push/replace); page-scoped, not whole-app cumulative |
 | **Tree** | Expandable Owner forest (`inspectOwnerIndexed` paths), filter, select → detail (upstream / downstream / depth / disposables / DOM count). **Click** a row to mark it selected and outline that Owner's DOM |
 | **Signals** | Registry sources with live search / filter |
-| **Warnings** | Oversubscribe / remount warnings; **click** deep-links to Tree path |
+| **Warnings** | Oversubscribe / remount / `component-rerun`; toolbar **clear**; **click** deep-links to Tree path |
 | **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings |
 
 **Extras:** `⌘/Ctrl+Shift+D` toggle, `Esc` close, drag header/indicator, snap to corners, `localStorage` position & prefs.

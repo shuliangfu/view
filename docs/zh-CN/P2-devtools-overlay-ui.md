@@ -3,7 +3,7 @@
 | 项 | 值 |
 |----|-----|
 | 性质 | **加法 DX**：浮动指示器＋多 tab 探查面板 |
-| 包 | `@dreamer/view` **v2.2.0**（`dev`） |
+| 包 | `@dreamer/view` **3.0.0**（`dev`；overlay 始于 2.2） |
 | 入口 | **仅** `@dreamer/view/devtools/overlay` |
 | 基线 | **不**抬 `size:check`／`consumer:bundle:check` |
 | 禁止 | JSR／npm；生产自动挂载；改内核；动 ui-view／dweb-admin／xlang |
@@ -15,10 +15,10 @@
 
 | Tab | 内容 |
 |-----|------|
-| **Overview** | effects／memos／nodes／上游边＋健康度＋Top Sources |
+| **Overview** | effects／memos／nodes／上游边＋健康度＋Top Sources。**3.0：** 随路由刷新为当前页快照（`popstate`＋history push／replace）；页面级，非整应用累计 |
 | **Tree** | 可展开 Owner 树（`inspectOwnerIndexed` path）、过滤、选中看详情（含 DOM 数量）。**点击**节点：树行选中态，并在页面上勾出该 Owner 的 DOM 轮廓 |
 | **Signals** | registry Source 列表＋搜索过滤 |
-| **Warnings** | 过订阅／remount；**点击**跳到 Tree 对应 path |
+| **Warnings** | 过订阅／remount／`component-rerun`；工具栏**清空**；**点击**跳到 Tree 对应 path |
 | **Settings** | 角落、刷新间隔、快捷键说明、复位位置／清空警告 |
 
 **加分：** `⌘/Ctrl+Shift+D` 开合、`Esc` 关闭、拖拽角标／标题、贴边吸附、`localStorage` 记忆。

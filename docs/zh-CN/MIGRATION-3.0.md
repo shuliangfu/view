@@ -4,7 +4,7 @@
 | -------- | -------------------------------------------------------- |
 | 自       | 2.2.x（策略 A 弃用预告）                                 |
 | 至       | **3.0.0**（策略 A **落地** — 主入口瘦身）                |
-| 状态     | 3.0 首刀已在 `dev` — **尚未发 JSR**                      |
+| 状态     | **3.0.0** 已在 `dev` — CI 绿后按 §5.6 发 JSR               |
 | EN       | [`../en-US/MIGRATION-3.0.md`](../en-US/MIGRATION-3.0.md) |
 | 规划备忘 | [`3.0.0-规划分析.md`](./3.0.0-规划分析.md)               |
 
@@ -70,6 +70,25 @@ SSR 仍 **仅** `@dreamer/view/ssr`（不变）。
 ### 组件 setup 在 untrack 下执行（对齐「只跑一次」）
 
 `jsx()` 函数组件 setup 经 `untrack`。请用 accessor 子节点／属性（`() => …`）或编译模板；在 setup 里急切 `{signal()}` 只会读一次。见 [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)。
+
+## 1b. 本战役非破坏项（同列 3.0.0）
+
+随 **3.0.0** 发出但**不**破坏既有 API；可按需采用，无需 codemod：
+
+| 面 | 内容 |
+|----|------|
+| DX 警告 | `For`／`Index` 缺 `key`；Show／For／Index 急切 `when`／`each`（`VIEW_DEV`） |
+| 路由 | `routeAbortSignal()` 世代 abort，配合切页 `createResource({ signal })` |
+| 表单 | `field` `as: "radio"`（传 `options.value`；勿再绑组 `value`） |
+| Deferred | `createDeferred(source, { timeout? })` |
+| Switch | 注释起止锚点（不再包 `span[data-view-switch]`） |
+| 安全 | `sanitizeSrcset`；拒 `srcdoc`／`srcDoc`；SSR `href`／`src`／`srcset` 对齐 |
+| DevTools | Warnings 清空；总览随路由刷新为当前页快照 |
+| 运行时 | setup `untrack`＋Context Proxy／props Signal thunk（重跑防护） |
+| 编译器 | 语料 → 42；静态 class join 折叠；SSR 静态属性对齐 |
+| 探针 | 本地 `route-churn-probe.ts`（非 CI） |
+
+详见：[`CHANGELOG.md`](./CHANGELOG.md) · [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)。
 
 ## 2. 迁移步骤
 

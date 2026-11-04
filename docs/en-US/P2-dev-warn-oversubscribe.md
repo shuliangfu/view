@@ -3,10 +3,11 @@
 | Item | Value |
 |------|-------|
 | Nature | **Additive DX**: explicit opt-in warnings for wide Effect subscriptions and remount churn |
-| Package | `@dreamer/view` **v2.2.0** (`dev`) |
+| Package | `@dreamer/view` **3.0.0** (`dev`; started in 2.2) |
 | Entry | **`@dreamer/view/devtools`** (extends P2-4; not on main barrel / `/reactivity`) |
 | Baselines | Does **not** change or raise `size:check` / `consumer:bundle:check` baseline numbers |
-| Forbidden | JSR / npm publish; browser extension / UI shell; patching `createSignal` / `createRoot` / `insert` defaults; P2-1/2/3; stricter default hydration; 3.0 barrel slim-down; ui-view / dweb-admin / xlang |
+| Forbidden (knife-time) | Browser extension / UI shell; patching `createSignal` / `createRoot` / `insert` defaults; default time-slicing |
+| Note | **3.0** separately landed main-entry slim + stricter hydrate; this DX also gained `component-rerun` + `setupKeys` (see [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)) |
 | ZH | [`../zh-CN/P2-dev-warn-oversubscribe.md`](../zh-CN/P2-dev-warn-oversubscribe.md) |
 | Related | [`P2-4-devtools.md`](./P2-4-devtools.md); analysis §5.1; [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) |
 
@@ -18,6 +19,7 @@ Help authors catch misuse patterns that cause focus loss / controlled-input flic
 
 - **wide-subscription** — an Effect with too many upstream edges (often a component shell re-running)
 - **remount-churn** — logical key remounted too often, or an Owner whose children were fully replaced between polls. A one-time expansion from a small placeholder (route loading shell; examples dogfood is subtree 5→page at path `0/0`) is first paint, not churn. Equal-size rebuilds still warn.
+- **component-rerun** (**3.0**) — setup body re-noted under the same logical key (focus loss / bare `fetch`); pairs with runtime setup `untrack`.
 
 ## 2. How to opt in
 

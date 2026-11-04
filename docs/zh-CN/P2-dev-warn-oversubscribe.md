@@ -3,10 +3,11 @@
 | 项 | 值 |
 |------|-------|
 | 性质 | **加法 DX**：显式 opt-in 警告——过宽 Effect 订阅／整树卸挂再挂 |
-| 包 | `@dreamer/view` **v2.2.0**（`dev`） |
+| 包 | `@dreamer/view` **3.0.0**（`dev`；始于 2.2） |
 | 入口 | **`@dreamer/view/devtools`**（扩展 P2-4；不进主 barrel／`/reactivity`） |
 | 基线 | **不**改／抬 `size:check`／`consumer:bundle:check` 基线数字 |
-| 禁止 | JSR／npm；浏览器扩展／UI 壳；改 `createSignal`／`createRoot`／`insert` 默认；P2-1／2／3；改严默认水合；3.0 主入口瘦身；ui-view／dweb-admin／xlang |
+| 禁止（开刀时） | 浏览器扩展／UI 壳；改 `createSignal`／`createRoot`／`insert` 默认；默认时间分片 |
+| 注 | **3.0** 另刀已落地主入口瘦身＋更严水合；本 DX 亦增 `component-rerun`＋`setupKeys`（见 [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md)） |
 | EN | [`../en-US/P2-dev-warn-oversubscribe.md`](../en-US/P2-dev-warn-oversubscribe.md) |
 | 相关 | [`P2-4-devtools.md`](./P2-4-devtools.md)；分析 §5.1；[`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) |
 
@@ -18,6 +19,7 @@
 
 - **wide-subscription** — Effect 上游边过多（常是组件壳整段重跑）
 - **remount-churn** — 逻辑 key 短时多次 remount，或 Owner 子节点在两次轮询间被整批换掉。从小占位（路由 loading 壳；examples dogfood 为 path `0/0` 子树 5→整页）一次性胀到大页面是首屏，不是 churn。体积相近的整树重建仍会警告。
+- **component-rerun**（**3.0**）— 同一逻辑 key 下 setup 体被再次 note（失焦／裸 `fetch`）；与运行时 setup `untrack` 配套。
 
 ## 2. 如何 opt-in
 

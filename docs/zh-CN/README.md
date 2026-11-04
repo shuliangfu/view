@@ -33,14 +33,14 @@
      **`createRenderEffect`**，用于 `className={() => ...}`、`value={() => ...}`
      等响应式属性。
 
-4. **优先子路径导入（2.x · 主入口弃用预告）**\
-   导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
+4. **优先子路径导入（3.0 · 策略 A 已落地）**   导出键与 `deno.json`／下文「安装」表一致。应用代码请默认使用
    **`@dreamer/view/reactivity`**、**`/csr`**、**`/ssr`**、**`/router`**、
    **`/form`**、**`/resource`**、**`/control-flow`** 等。主入口
-   **`@dreamer/view`** 在 **3.0** 起为 CSR **核心** barrel（**不再** re-export 路由／表单／Resource；见该小节／
-   [P1-1](./P1-1-main-entry-deprecation-preview.md)）。P0 基线 minify：主入口约
-   **43.5 KiB**，`/reactivity` 约 **10.5 KiB**；P0-2 消费方 `export *` 溢价约
-   **+34 KiB**（详见 [P0 基线](./P0-基线-体积与性能.md)／
+   **`@dreamer/view`** 为 **3.0 核心** barrel（**不再** re-export 路由／表单／Resource；见
+   [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)；2.x 预告史：
+   [P1-1](./P1-1-main-entry-deprecation-preview.md)）。当前 size 基线 minify：主入口约
+   **33.4 KiB**，`/reactivity` 约 **11.3 KiB**；消费方 `export *` 相对 reactivity 约
+   **~3.0×** minify（详见 [P0 基线](./P0-基线-体积与性能.md)／
    [P0-2](./P0-2-consumer-bundle-analyze.md)）。
 
 ---
@@ -973,12 +973,12 @@ const prefs = createStore(
 | 项目              | 说明                                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | **签名**          | **`createForm(initialValues, options?)`** — 第二参可选，不传时与旧版行为兼容                                             |
-| **双向绑定**      | **`field(name, options?)`** → 默认 **`value` + `onInput`**；`{ as: "checkbox" }` 用 **`checked`**                       |
+| **双向绑定**      | **`field(name, options?)`** → 默认 **`value` + `onInput`**；`{ as: "checkbox" }`／`{ as: "radio", value }` 用 **`checked`** |
 | **规则校验**      | **`options.rules`**：每字段 **`(value, data) => string \| null`**，`null` 表示通过                                       |
 | **校验时机**      | **`validateOn`**：**`submit`**（默认）、**`change`**、**`blur`**，可传数组组合                                           |
 | **API**           | **`validate()`** 整表、**`validateField(name)`** 单字段、**`handleSubmit(onValid, onInvalid?)`**                         |
 | **未内置 schema** | 不与 Zod 等绑定；可用 **`messageFromSafeParse`** 或在 **`rules`** 内手写／外调解析                                       |
-| **控件类型**      | **`field(name, { as })`**：默认文本；**`checkbox`／`select`／`textarea`／`number`**；**`produce` 改 data 不会自动触发 `validateOn: change`** |
+| **控件类型**      | **`field(name, { as })`**：默认文本；**`checkbox`／`radio`／`select`／`textarea`／`number`**；**`produce` 改 data 不会自动触发 `validateOn: change`** |
 | **Schema 桥**     | 不内置 Zod；**`messageFromSafeParse(safeParseResult)`** 把类 Zod 结果映射为 `rules` 文案 |
 
 类型导出（与主入口一并导出）：**`CreateFormOptions`**、**`FormValidateOn`**、**`FormFieldRule`**。
@@ -1110,6 +1110,8 @@ const form = createForm(
 
 <label>
   <input type="checkbox" {...form.field("agree", { as: "checkbox" })} />
+  {/* radio：须传 options.value；不要再绑 value={() => data[name]} */}
+  <input type="radio" {...form.field("plan", { as: "radio", value: "pro" })} />
   同意条款
 </label>
 
@@ -1353,6 +1355,14 @@ function ModalHost() {
 
 - **`dangerouslySetInnerHTML` / `innerHTML`**：仅用于可信内容。
 - SSR 输出若暴露用户输入，需在服务端做转义或严格白名单。
+- **URL 守卫（3.0）：** `href`／`src` 走 `sanitizeUrl`；**`srcset`** 走
+  `sanitizeSrcset`（按候选拆分后各跑 `sanitizeUrl`——整串消毒挡不住夹带
+  `javascript:` 的候选）。props **拒绝**写入 `srcdoc`／`srcDoc`（与 `innerHTML`
+  同级危险面）。SSR DOM 反射 setter／`setAttribute` 对 `href`／`src`／`srcset`
+  共用同一消毒；危险值删除既有键不写入。
+- 相关 DX：缺 key／急切 `when`·`each` 警告；`routeAbortSignal()` 切页取消；form
+  `field` `as: "radio"`；Switch 注释锚点；DevTools Warnings 清空＋路由页快照；
+  重跑防护／Context Proxy thunk — 见 CHANGELOG **3.0.0** 与下方 P 文档。
 
 ---
 
@@ -1366,24 +1376,26 @@ function ModalHost() {
 - **P2-4 DEV-only DevTools**（Owner／订阅数）：[P2-4-devtools.md](./P2-4-devtools.md)／[en](../en-US/P2-4-devtools.md)
 - **P2 DEV 浮动面板**（对齐 Next）：[P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md)／[en](../en-US/P2-devtools-overlay-ui.md)
 - **P2 DEV 过订阅／卸挂再挂警告**（§5.1 opt-in）：[P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md)／[en](../en-US/P2-dev-warn-oversubscribe.md)
-- **P1-1：主入口 barrel 弃用预告（策略 A）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
+- **P1-1：主入口 barrel（策略 A · **3.0 已落地**；预告史）**：[`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md)
 - **P1-2：水合 opt-in 试点（mismatchMode）**：[`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../en-US/P1-2-hydration-opt-in-pilot.md`](../en-US/P1-2-hydration-opt-in-pilot.md)
+- **P1：组件重跑／裸 fetch DEV 防护**：[`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) · [`../en-US/P1-view-rerun-fetch-guard.md`](../en-US/P1-view-rerun-fetch-guard.md)
 - **P0-3 编译器静态子树覆盖率／golden**：[P0-3-compiler-static-coverage-and-golden.md](./P0-3-compiler-static-coverage-and-golden.md)／[../en-US/P0-3-compiler-static-coverage-and-golden.md](../en-US/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
-- **当前版本 [2.1.0] — 2026-07-22**：
-  - **新增**：细粒度子路径（`/reactivity`、`/csr`、`/router`、`/control-flow`
-    等）；`HydrateOptions` + `mismatchMode`
-    （`continue`/`assert`/`remount`）；`sideEffects: false`。
-  - **变更**：编译器对静态组件 props 不包箭头；静态 `&&`/`||` 进模板；主入口仍
-    兼容。
-  - **测试**：Deno 单元+集成 **394** / Bun **326** / 0 失败。
+- **当前版本 [3.0.0] — 2026-11-05**：
+  - **破坏性**：主入口瘦身（router／form／resource → 子路径）；更严水合默认
+    （`VIEW_DEV` 下 `assert`，否则 `remount`；删除布尔别名，见
+    `MIGRATION-3.0.md`）。
+  - **新增**：DevTools 面板＋过订阅／重跑／缺 key 警告；编译器静态折叠
+    （文本／属性／SSR 对齐＋class join）；URL 守卫（`srcset`／`srcdoc`、SSR
+    `href`／`src`）；Switch 注释锚点；`createDeferred({ timeout })`；路由
+    churn 探针。
+  - **测试**：Deno **564**＋examples E2E **22**（战役本地收口）。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
-- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**（**2026-07-22**：Deno
-  单元+集成 **394** / Bun **326**，0 失败；英文版
-  **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**）。
+- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**；英文版
+  **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**。
 
 ---
 

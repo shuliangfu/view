@@ -33,16 +33,16 @@
      **`createRenderEffect`** (e.g. `className={() => ...}`,
      `value={() => ...}`).
 
-4. **Prefer subpath imports (2.x · main-entry deprecation preview)** Export keys
-   match `deno.json` / the table in **Installation**. For app code, default to
+4. **Prefer subpath imports (3.0 · Strategy A landed)** Export keys match
+   `deno.json` / the table in **Installation**. For app code, default to
    **`@dreamer/view/reactivity`**, **`/csr`**, **`/ssr`**, **`/router`**,
    **`/form`**, **`/resource`**, **`/control-flow`**, etc. The main
-   **`@dreamer/view`** main entry is a **3.0 core** barrel (no router/form/resource re-exports)
-   (**Strategy A**: no export removals in 2.x) but is under a **deprecation
-   preview** (see **Convenience barrel** /
-   [P1-1](./docs/en-US/P1-1-main-entry-deprecation-preview.md)). P0 minify
-   ~**43.5 KiB** main vs ~**10.5 KiB** `/reactivity`; P0-2 consumer `export *`
-   premium ≈ **+34 KiB** ([P0](./docs/zh-CN/P0-基线-体积与性能.md) /
+   **`@dreamer/view`** entry is a **3.0 core** barrel (**no** router / form /
+   Resource re-exports — see [`MIGRATION-3.0.md`](./docs/en-US/MIGRATION-3.0.md);
+   2.x preview history: [P1-1](./docs/en-US/P1-1-main-entry-deprecation-preview.md)).
+   Current size baseline minify ~**33.4 KiB** main vs ~**11.3 KiB** `/reactivity`;
+   consumer `export *` vs reactivity ≈ **~3.0×** minify
+   ([P0](./docs/zh-CN/P0-基线-体积与性能.md) /
    [P0-2](./docs/en-US/P0-2-consumer-bundle-analyze.md)).
 
 ---
@@ -294,17 +294,18 @@ const stop = createRoot((dispose) => {
 - Calls **`stopHydration()`**, then **`internalHydrate`** with options, then
   **`insert`**.
 
-#### `mismatchMode` (additive · **default `continue`**)
+#### `mismatchMode` (**stricter 3.0 defaults** · resolved by environment when omitted)
 
-| Value | Behavior | Use |
-|-------|----------|-----|
-| **`continue`** (default) | Record mismatches; do not abort; keep SSR nodes | Production hybrid; **do not flip the 2.x library default** |
-| **`assert`** | Throw on any mismatch | CI / strict gates — pass **explicitly** |
-| **`remount`** | Clear container and CSR-remount on mismatch | Prefer a clean remount — pass **explicitly** |
+| Value | Behavior | When it applies |
+|-------|----------|-----------------|
+| **`assert`** | Throw on any mismatch | **Default when omitted** and `VIEW_DEV === true`; also pass explicitly |
+| **`remount`** | Clear container and CSR-remount on mismatch | **Default when omitted** in production (no `VIEW_DEV`); also pass explicitly |
+| **`continue`** | Record mismatches; do not abort; keep SSR nodes | Must pass **explicitly** (2.x tolerant behavior) |
 
-Guide: [P1-2 hydration opt-in pilot](./docs/en-US/P1-2-hydration-opt-in-pilot.md) /
-[ZH](./docs/zh-CN/P1-2-hydration-opt-in-pilot.md). examples `/runtime` demos all
-three modes. Progressive / chunked hydration hooks are **not** shipped yet.
+Resolver: `resolveMismatchMode(options)` (see [`MIGRATION-3.0.md`](./docs/en-US/MIGRATION-3.0.md) R1/R3).
+Historical opt-in notes: [P1-2](./docs/en-US/P1-2-hydration-opt-in-pilot.md) /
+[ZH](./docs/zh-CN/P1-2-hydration-opt-in-pilot.md) (2.x default `continue` superseded by 3.0).
+examples `/runtime` demos all three modes. Progressive / chunked hydration hooks are **not** shipped yet.
 
 ```tsx
 import { hydrate } from "jsr:@dreamer/view/csr";
@@ -314,9 +315,9 @@ function RootView() {
 }
 
 const container = document.getElementById("root")!;
-// default continue (mismatchMode may be omitted)
+// 3.0: omit mismatchMode → DEV assert / prod remount
 hydrate(() => <RootView />, container /* , bindingMap */);
-// CI: hydrate(() => <RootView />, container, { bindings, mismatchMode: "assert" });
+// 2.x tolerant: hydrate(..., { bindings, mismatchMode: "continue" });
 ```
 
 ---
@@ -425,11 +426,17 @@ Reads inside **`fn`** do **not** track dependencies.
 Deferred commits and transition updates (integrate with **`createEffect`**
 scheduling).
 
+- **Default:** `createDeferred(source)` aligns via **`queueMicrotask`** (unchanged).
+- **Optional** `timeout?: number`: defer with `requestIdleCallback({ timeout })`
+  (else `setTimeout`); cancel pending handles on Effect rerun / dispose.
+- **Not** `scheduleTask` / Priority — intentionally outside the priority kernel.
+
 ```tsx
 import { createDeferred, createSignal, useTransition } from "jsr:@dreamer/view/reactivity";
 
 const source = createSignal(0);
 const deferred = createDeferred(source);
+// optional: createDeferred(source, { timeout: 100 });
 const [isPending, startTransitionFromHook] = useTransition();
 
 void startTransitionFromHook(() => {
@@ -1007,12 +1014,12 @@ Partial list/tree updates with stable references (use with **`setState`**).
 | Item                   | Notes                                                                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                  |
-| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` uses **`checked`**                                                     |
+| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` / `{ as: "radio", value }` use **`checked`**                              |
 | **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                  |
 | **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                            |
 | **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                  |
 | **No built-in schema** | Not wired to Zod; use **`messageFromSafeParse`** or call parsers inside **`rules`** / manage **`errors`**                                                  |
-| **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
+| **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `radio` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
 | **Schema bridge**      | No built-in Zod; **`messageFromSafeParse(safeParseResult)`** maps Zod-like results to `rules` messages |
 
 Types exported from the main entry: **`CreateFormOptions`**,
@@ -1148,6 +1155,8 @@ const form = createForm(
 
 <label>
   <input type="checkbox" {...form.field("agree", { as: "checkbox" })} />
+  {/* radio: pass options.value; do NOT also bind value={() => data[name]} */}
+  <input type="radio" {...form.field("plan", { as: "radio", value: "pro" })} />
   I agree
 </label>
 
@@ -1388,6 +1397,16 @@ function ModalHost() {
 
 - **`dangerouslySetInnerHTML` / `innerHTML`**: trusted content only.
 - Escape or strictly whitelist user input in SSR output.
+- **URL guards (3.0):** `href` / `src` go through `sanitizeUrl`; **`srcset`** uses
+  `sanitizeSrcset` (per-candidate `sanitizeUrl` — whole-string sanitize misses a
+  `javascript:` candidate). Props **reject** `srcdoc` / `srcDoc` writes (same
+  danger class as `innerHTML`). SSR DOM reflected setters / `setAttribute` for
+  `href` / `src` / `srcset` share the same sanitizers; dangerous values drop the
+  key and do not write.
+- Related DX: missing-key / eager `when`·`each` warns; `routeAbortSignal()` for
+  leave-page cancel; form `field` `as: "radio"`; Switch comment anchors;
+  DevTools Warnings clear + route-page snapshot; rerun-guard / Context Proxy
+  thunk — see CHANGELOG **3.0.0** and linked P docs below.
 
 ---
 
@@ -1397,8 +1416,9 @@ function ModalHost() {
 - **Analysis doc status** (obsolete / drifted index): [`docs/en-US/analysis-doc-status.md`](./docs/en-US/analysis-doc-status.md) · [`docs/zh-CN/分析文档状态.md`](./docs/zh-CN/分析文档状态.md)
 - **P0-1 profiling / bench CI**: [`docs/en-US/P0-1-profiling-and-bench-ci.md`](./docs/en-US/P0-1-profiling-and-bench-ci.md) · [`docs/zh-CN/P0-1-profiling-and-bench-ci.md`](./docs/zh-CN/P0-1-profiling-and-bench-ci.md)
 - **P0-2 consumer / examples bundle analyze**: [`docs/en-US/P0-2-consumer-bundle-analyze.md`](./docs/en-US/P0-2-consumer-bundle-analyze.md) · [`docs/zh-CN/P0-2-consumer-bundle-analyze.md`](./docs/zh-CN/P0-2-consumer-bundle-analyze.md)
-- **P1-1 main-entry barrel deprecation preview (Strategy A)**: [`docs/en-US/P1-1-main-entry-deprecation-preview.md`](./docs/en-US/P1-1-main-entry-deprecation-preview.md) · [`docs/zh-CN/P1-1-main-entry-deprecation-preview.md`](./docs/zh-CN/P1-1-main-entry-deprecation-preview.md)
+- **P1-1 main-entry barrel (Strategy A · **landed in 3.0**; preview history)**: [`docs/en-US/P1-1-main-entry-deprecation-preview.md`](./docs/en-US/P1-1-main-entry-deprecation-preview.md) · [`docs/zh-CN/P1-1-main-entry-deprecation-preview.md`](./docs/zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`docs/en-US/P1-2-hydration-opt-in-pilot.md`](./docs/en-US/P1-2-hydration-opt-in-pilot.md) · [`docs/zh-CN/P1-2-hydration-opt-in-pilot.md`](./docs/zh-CN/P1-2-hydration-opt-in-pilot.md)
+- **P1: component re-run / bare-fetch DEV guard**: [`docs/en-US/P1-view-rerun-fetch-guard.md`](./docs/en-US/P1-view-rerun-fetch-guard.md) · [`docs/zh-CN/P1-view-rerun-fetch-guard.md`](./docs/zh-CN/P1-view-rerun-fetch-guard.md)
 - **P0: examples browser E2E into CI**: [`docs/en-US/P0-e2e-into-ci.md`](./docs/en-US/P0-e2e-into-ci.md) · [`docs/zh-CN/P0-e2e-into-ci.md`](./docs/zh-CN/P0-e2e-into-ci.md)
 - **P2: examples subpath dogfood**: [`docs/en-US/P2-examples-subpath-dogfood.md`](./docs/en-US/P2-examples-subpath-dogfood.md) · [`docs/zh-CN/P2-examples-subpath-dogfood.md`](./docs/zh-CN/P2-examples-subpath-dogfood.md)
 - **P2-4 DEV-only DevTools** (Owner / subscriptions): [P2-4-devtools.md](./docs/en-US/P2-4-devtools.md) / [zh](./docs/zh-CN/P2-4-devtools.md)
@@ -1407,16 +1427,17 @@ function ModalHost() {
 - **P0-3 compiler static coverage / golden**: [`docs/en-US/P0-3-compiler-static-coverage-and-golden.md`](./docs/en-US/P0-3-compiler-static-coverage-and-golden.md) · [`docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md`](./docs/zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **3.0 planning memo** (Chinese): [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)
 
-- **Latest [2.1.0] — 2026-07-22**:
-  - **Added**: fine-grained subpaths (`/reactivity`, `/csr`, `/router`,
-    `/control-flow`, …); `HydrateOptions` + `mismatchMode`
-    (`continue`/`assert`/`remount`); `sideEffects: false`.
-  - **Changed**: compiler skips arrow wrappers for static component props;
-    static `&&`/`||` fold into templates. Main barrel still compatible.
-  - **Tests**: Deno unit+integration **394** / Bun **326** / 0 failed.
+- **Latest [3.0.0] — 2026-11-05**:
+  - **Breaking**: slim main entry (router/form/resource → subpaths); stricter
+    hydrate defaults (`assert` when `VIEW_DEV`, else `remount`; drop boolean
+    aliases — see `MIGRATION-3.0.md`).
+  - **Added**: DevTools overlay + oversubscribe/rerun/missing-key warns;
+    compiler static folds (text/attrs/SSR parity + class joins); URL guards
+    (`srcset`/`srcdoc`, SSR `href`/`src`); Switch comment anchors;
+    `createDeferred({ timeout })`; route-churn probe.
+  - **Tests**: Deno **564** + examples E2E **22** (local campaign close).
   - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
-- Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**
-  (**2026-07-22**: Deno unit+integration **394** / Bun **326**, 0 failed);
+- Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**;
   Chinese: **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
 - Chinese changelog: **[docs/zh-CN/CHANGELOG.md](./docs/zh-CN/CHANGELOG.md)**.
 

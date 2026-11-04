@@ -33,16 +33,16 @@
      **`createRenderEffect`** (e.g. `className={() => ...}`,
      `value={() => ...}`).
 
-4. **Prefer subpath imports (2.x · main-entry deprecation preview)** Export keys
-   match `deno.json` / the table in **Installation**. For app code, default to
+4. **Prefer subpath imports (3.0 · Strategy A landed)** Export keys match
+   `deno.json` / the table in **Installation**. For app code, default to
    **`@dreamer/view/reactivity`**, **`/csr`**, **`/ssr`**, **`/router`**,
    **`/form`**, **`/resource`**, **`/control-flow`**, etc. The main
-   **`@dreamer/view`** main entry is a **3.0 core** barrel (no router/form/resource re-exports)
-   (**Strategy A**: no export removals in 2.x) but is under a **deprecation
-   preview** (see **Convenience barrel** /
-   [P1-1](./P1-1-main-entry-deprecation-preview.md)). P0 minify ~**43.5 KiB**
-   main vs ~**10.5 KiB** `/reactivity`; P0-2 consumer `export *` premium ≈
-   **+34 KiB** ([P0](../zh-CN/P0-基线-体积与性能.md) /
+   **`@dreamer/view`** entry is a **3.0 core** barrel (**no** router / form /
+   Resource re-exports — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md);
+   2.x preview history: [P1-1](./P1-1-main-entry-deprecation-preview.md)).
+   Current size baseline minify ~**33.4 KiB** main vs ~**11.3 KiB** `/reactivity`;
+   consumer `export *` vs reactivity ≈ **~3.0×** minify
+   ([P0](../zh-CN/P0-基线-体积与性能.md) /
    [P0-2](./P0-2-consumer-bundle-analyze.md)).
 
 ---
@@ -1015,12 +1015,12 @@ Partial list/tree updates with stable references (use with **`setState`**).
 | Item                   | Notes                                                                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Signature**          | **`createForm(initialValues, options?)`** — second arg optional; omit for legacy behavior                                                                  |
-| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` uses **`checked`**                                                     |
+| **Two-way binding**    | **`field(name, options?)`** → default **`value` + `onInput`**; `{ as: "checkbox" }` / `{ as: "radio", value }` use **`checked`**                              |
 | **Rules**              | **`options.rules`**: per field **`(value, data) => string                                                                                                  |
 | **When to validate**   | **`validateOn`**: **`submit`** (default), **`change`**, **`blur`**, or an array                                                                            |
 | **API**                | **`validate()`** whole form, **`validateField(name)`** one field, **`handleSubmit(onValid, onInvalid?)`**                                                  |
 | **No built-in schema** | Not wired to Zod; use **`messageFromSafeParse`** or call parsers inside **`rules`** / manage **`errors`**                                                  |
-| **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
+| **Control types**      | **`field(name, { as })`**: text by default; **`checkbox` / `radio` / `select` / `textarea` / `number`**; **`produce` on `data` does not auto-trigger `validateOn: change`** |
 | **Schema bridge**      | No built-in Zod; **`messageFromSafeParse(safeParseResult)`** maps Zod-like results to `rules` messages |
 
 Types exported from the main entry: **`CreateFormOptions`**,
@@ -1156,6 +1156,8 @@ const form = createForm(
 
 <label>
   <input type="checkbox" {...form.field("agree", { as: "checkbox" })} />
+  {/* radio: pass options.value; do NOT also bind value={() => data[name]} */}
+  <input type="radio" {...form.field("plan", { as: "radio", value: "pro" })} />
   I agree
 </label>
 
@@ -1399,6 +1401,16 @@ function ModalHost() {
 
 - **`dangerouslySetInnerHTML` / `innerHTML`**: trusted content only.
 - Escape or strictly whitelist user input in SSR output.
+- **URL guards (3.0):** `href` / `src` go through `sanitizeUrl`; **`srcset`** uses
+  `sanitizeSrcset` (per-candidate `sanitizeUrl` — whole-string sanitize misses a
+  `javascript:` candidate). Props **reject** `srcdoc` / `srcDoc` writes (same
+  danger class as `innerHTML`). SSR DOM reflected setters / `setAttribute` for
+  `href` / `src` / `srcset` share the same sanitizers; dangerous values drop the
+  key and do not write.
+- Related DX: missing-key / eager `when`·`each` warns; `routeAbortSignal()` for
+  leave-page cancel; form `field` `as: "radio"`; Switch comment anchors;
+  DevTools Warnings clear + route-page snapshot; rerun-guard / Context Proxy
+  thunk — see CHANGELOG **3.0.0** and linked P docs below.
 
 ---
 
@@ -1412,25 +1424,27 @@ function ModalHost() {
 - **P2-4 DEV-only DevTools** (Owner / subscriptions): [P2-4-devtools.md](./P2-4-devtools.md) / [zh](../zh-CN/P2-4-devtools.md)
 - **P2 DEV floating overlay** (Next-inspired): [P2-devtools-overlay-ui.md](./P2-devtools-overlay-ui.md) / [zh](../zh-CN/P2-devtools-overlay-ui.md)
 - **P2 DEV oversubscribe / remount warnings** (§5.1 opt-in): [P2-dev-warn-oversubscribe.md](./P2-dev-warn-oversubscribe.md) / [zh](../zh-CN/P2-dev-warn-oversubscribe.md)
-- **P1-1: main-entry barrel deprecation preview (Strategy A)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
+- **P1-1: main-entry barrel (Strategy A · **landed in 3.0**; preview history)**: [`P1-1-main-entry-deprecation-preview.md`](./P1-1-main-entry-deprecation-preview.md) · [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md)
 - **P1-2: hydration opt-in pilot (`mismatchMode`)**: [`P1-2-hydration-opt-in-pilot.md`](./P1-2-hydration-opt-in-pilot.md) · [`../zh-CN/P1-2-hydration-opt-in-pilot.md`](../zh-CN/P1-2-hydration-opt-in-pilot.md)
+- **P1: component re-run / bare-fetch DEV guard**: [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md) · [`../zh-CN/P1-view-rerun-fetch-guard.md`](../zh-CN/P1-view-rerun-fetch-guard.md)
 - **P0: examples browser E2E into CI**: [`P0-e2e-into-ci.md`](./P0-e2e-into-ci.md) · [`../zh-CN/P0-e2e-into-ci.md`](../zh-CN/P0-e2e-into-ci.md)
 - **P0-3 compiler static coverage / golden**: [`P0-3-compiler-static-coverage-and-golden.md`](./P0-3-compiler-static-coverage-and-golden.md) · [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md)
 - **P0-4 component author guide** (Memo / ref / subscription boundaries): [`P0-4-component-author-guide.md`](./P0-4-component-author-guide.md) · [`../zh-CN/P0-4-component-author-guide.md`](../zh-CN/P0-4-component-author-guide.md)
 - **3.0 planning memo** (Chinese): [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)
 
-- **Latest [2.1.0] — 2026-07-22**:
-  - **Added**: fine-grained subpaths (`/reactivity`, `/csr`, `/router`,
-    `/control-flow`, …); `HydrateOptions` + `mismatchMode`
-    (`continue`/`assert`/`remount`); `sideEffects: false`.
-  - **Changed**: compiler skips arrow wrappers for static component props;
-    static `&&`/`||` fold into templates. Main barrel still compatible.
-  - **Tests**: Deno unit+integration **394** / Bun **326** / 0 failed.
-  - Full history: **[docs/en-US/CHANGELOG.md](./CHANGELOG.md)**.
-- Tests: **[docs/en-US/TEST_REPORT.md](./TEST_REPORT.md)**
-  (**2026-07-22**: Deno unit+integration **394** / Bun **326**, 0 failed);
-  Chinese: **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
-- Chinese changelog: **[docs/zh-CN/CHANGELOG.md](../zh-CN/CHANGELOG.md)**.
+- **Latest [3.0.0] — 2026-11-05**:
+  - **Breaking**: slim main entry (router/form/resource → subpaths); stricter
+    hydrate defaults (`assert` when `VIEW_DEV`, else `remount`; drop boolean
+    aliases — see `MIGRATION-3.0.md`).
+  - **Added**: DevTools overlay + oversubscribe/rerun/missing-key warns;
+    compiler static folds (text/attrs/SSR parity + class joins); URL guards
+    (`srcset`/`srcdoc`, SSR `href`/`src`); Switch comment anchors;
+    `createDeferred({ timeout })`; route-churn probe.
+  - **Tests**: Deno **564** + examples E2E **22** (local campaign close).
+  - Full history: **[CHANGELOG.md](./CHANGELOG.md)**.
+- Tests: **[TEST_REPORT.md](./TEST_REPORT.md)**;
+  Chinese: **[../zh-CN/TEST_REPORT.md](../zh-CN/TEST_REPORT.md)**.
+- Chinese changelog: **[../zh-CN/CHANGELOG.md](../zh-CN/CHANGELOG.md)**.
 
 ---
 

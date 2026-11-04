@@ -1,10 +1,16 @@
 # P1-1: Main-entry barrel deprecation preview (Strategy A · 2.x additive)
 
+> **Superseded for product surface:** **3.0.0** landed Strategy A — main entry is a
+> **core** barrel (**no** router / form / Resource re-exports). Migrate with
+> [`MIGRATION-3.0.md`](./MIGRATION-3.0.md). This page remains the **2.x preview**
+> record (why subpaths, IDE `@deprecated` hint). Size numbers below are the **2.x
+> snapshot**; current baselines are ~**33.4 KiB** main / ~**11.3 KiB** `/reactivity`.
+
 | Item | Value |
 |------|-------|
-| Package | `@dreamer/view` **v2.2.0** (`dev`) |
-| Nature | **Deprecation preview / docs**: prefer subpaths + migration path; module-level JSDoc `@deprecated` on the main entry |
-| **Out of scope** | Removing any export; changing runtime defaults/semantics; shipping a 3.0 slim barrel; JSR/npm publish; relaxing `bundle-size-baseline.json` / consumer-bundle baselines |
+| Package | `@dreamer/view` **v2.2.0** preview → **3.0.0** landed |
+| Nature | **Historical deprecation preview / docs** (2.x); 3.0 slim is live |
+| **Out of scope (at preview time)** | Removing exports in 2.x; changing runtime defaults then |
 | Code touch | `src/mod.ts` (JSDoc only; **no** runtime `warn` / side effect) |
 | Metrics | [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`P0-baseline-bundle-and-perf.md`](./P0-baseline-bundle-and-perf.md) |
 | ZH | [`../zh-CN/P1-1-main-entry-deprecation-preview.md`](../zh-CN/P1-1-main-entry-deprecation-preview.md) |
@@ -30,9 +36,9 @@ comes from P0 / P0-2 measurements:
 4. **examples** already use subpaths (e.g. `examples/src/main.tsx` →
    `@dreamer/view/router`). As of P2, routers codegen / hydrate script also use subpaths (see [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)).
 
-This knife is a **preview and migration guide**. It is **not** a 3.0 removal.
-Whether 3.0 slims the default surface is a separate product decision
-([`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md)).
+This knife was a **preview and migration guide** on 2.x. **3.0.0 has since
+landed** the slim main entry — see [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) and
+[`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md).
 
 ---
 

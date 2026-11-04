@@ -4,7 +4,7 @@
 | --------- | ---------------------------------------------------------- |
 | From      | 2.2.x (Strategy A deprecation preview)                     |
 | To        | **3.0.0** (Strategy A **landed** — slim main entry)        |
-| Status    | First 3.0 knife on `dev` — **JSR not published yet**       |
+| Status    | **3.0.0** on `dev` — publish via §5.6 after CI green       |
 | ZH        | [`../zh-CN/MIGRATION-3.0.md`](../zh-CN/MIGRATION-3.0.md)   |
 | Plan memo | [`../zh-CN/3.0.0-规划分析.md`](../zh-CN/3.0.0-规划分析.md) |
 
@@ -70,6 +70,26 @@ SSR remains **`@dreamer/view/ssr` only** (unchanged).
 ### Component setup is untracked (behavior align with “run once”)
 
 `jsx()` function components run setup under `untrack`. Prefer reactive children / attrs as accessors (`() => …`) or compiled templates — eager `{signal()}` in setup is one-shot. See [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
+
+## 1b. Non-breaking campaign items (same 3.0.0 train)
+
+These shipped with **3.0.0** but are **not** breaking. Prefer them; no codemod
+required:
+
+| Area | What |
+|------|------|
+| DX warns | `For`/`Index` missing `key`; eager `when`/`each` on Show/For/Index (`VIEW_DEV`) |
+| Router | `routeAbortSignal()` generation abort for leave-page `createResource({ signal })` |
+| Form | `field` `as: "radio"` (pass `options.value`; do not also bind group `value`) |
+| Deferred | `createDeferred(source, { timeout? })` |
+| Switch | Comment start/end anchors (no `span[data-view-switch]`) |
+| Security | `sanitizeSrcset`; reject `srcdoc`/`srcDoc`; SSR `href`/`src`/`srcset` parity |
+| DevTools | Warnings clear; Overview resnapshots on route change |
+| Runtime | Setup `untrack` + Context Proxy / props Signal thunk (rerun-guard) |
+| Compiler | Corpus → 42; static class-join folds; SSR static attr parity |
+| Probe | Local `route-churn-probe.ts` (not CI) |
+
+Full notes: [`CHANGELOG.md`](./CHANGELOG.md) · [`P1-view-rerun-fetch-guard.md`](./P1-view-rerun-fetch-guard.md).
 
 ## 2. Codemod-style steps
 

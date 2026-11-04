@@ -3,9 +3,9 @@
 | Item | Value |
 |------|-------|
 | Nature | **Additive DX**: inspect Owner trees and subscription edge counts |
-| Package | `@dreamer/view` **v2.2.0** (`dev`) |
+| Package | `@dreamer/view` **3.0.0** (`dev`; started in 2.2) |
 | Entry | **`@dreamer/view/devtools`** only (not on main barrel / `/reactivity`) |
-| Baselines | Does **not** change or raise `size:check` / `consumer:bundle:check` baseline numbers |
+| Baselines | Knife itself does **not** raise measured gates; later 3.0 campaign DX may refresh baselines separately |
 | Forbidden | JSR / npm publish; browser extension / UI shell; rewriting the reactive kernel; touching ui-view / dweb-admin / xlang |
 | ZH | [`../zh-CN/P2-4-devtools.md`](../zh-CN/P2-4-devtools.md) |
 

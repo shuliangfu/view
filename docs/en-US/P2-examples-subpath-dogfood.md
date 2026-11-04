@@ -13,7 +13,9 @@ main barrel onto subpaths (`/reactivity`, `/csr`, `/router`, `/form`,
 `/resource`, `/control-flow`, `/ssr`, …), matching
 [P1-1](./P1-1-main-entry-deprecation-preview.md) /
 [P0-2](./P0-2-consumer-bundle-analyze.md). **Behavior unchanged**; E2E / full
-suite stay green.
+suite stay green. **3.0:** main entry no longer re-exports integrations —
+examples were already on subpaths; keep dogfood locks green after migrate
+([`MIGRATION-3.0.md`](./MIGRATION-3.0.md)).
 
 ## 2. This change
 

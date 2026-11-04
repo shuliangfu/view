@@ -11,7 +11,7 @@
 把消费方示范（`examples/`）与相关生成路径，从主入口便利 barrel 迁到子路径
 （`/reactivity` `/csr` `/router` `/form` `/resource` `/control-flow` `/ssr` …），
 对齐 [P1-1](./P1-1-main-entry-deprecation-preview.md)／[P0-2](./P0-2-consumer-bundle-analyze.md)。
-**行为不变**；E2E／全测不红。
+**行为不变**；E2E／全测不红。**3.0：** 主入口已不再 re-export 集成 — examples 本就走子路径；迁移后保持 dogfood 锁测绿（[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)）。
 
 ## 2. 本件改动
 

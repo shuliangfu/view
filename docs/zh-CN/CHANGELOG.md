@@ -7,9 +7,47 @@
 
 ---
 
-## [Unreleased]
+## [3.0.0] - 2026-11-05
 
 ### 新增
+
+- **P1：For／Index 缺 key DEV 警告（非破坏 DX）**
+  - `VIEW_DEV` 下 `For`／`Index` 未传 `key` 时 `console.warn`（`warnMissingListKey`），提示列表差分／复用风险。
+  - 单测：`tests/unit/runtime/control-flow-missing-key-warn.test.ts`。
+
+- **P1：Show／For／Index 急切 `when`／`each` DEV 警告（非破坏 DX）**
+  - 传入已求值的非函数／非 Signal 值时 `warnEagerControlFlowProp`，引导用 getter／Signal 保持细粒度。
+  - 单测：`control-flow-eager-warn.test.ts`。
+
+- **P1：路由世代 AbortSignal（非破坏）**
+  - `createRouter` 暴露 `routeAbortSignal()`；成功切页／popstate 路径变化时 abort 上一世代并换新。
+  - 供 `createResource(..., { signal })` 在离开页时取消 in-flight；`dispose` 亦 abort。
+  - 单测：`router-route-abort.test.ts`；examples resource dogfood。
+
+- **P1：form `field` 支持 `as: "radio"`（非破坏）**
+  - `checked`（`data[name] === options.value`）+ `onInput`／`onChange` 写入该 radio 的 DOM `.value`。
+  - 须传 `options.value`；**不要**再绑 `value={() => data[name]}`（会改掉同组其它 radio 的 value）。
+  - **无** `as: "file"`（FileList／多选属应用层）。examples／单测已补。
+
+- **P1：DevTools Warnings 清空＋总览随路由刷新为当前页快照（非破坏）**
+  - Warnings 工具栏「清空」；监听 `popstate`＋`history.pushState`／`replaceState`，路径变化时重置页面级警告／选中态并 refresh。
+  - 总览不再跨路由整应用累计；卸载时恢复原生 history 方法。
+
+- **P1：`createDeferred` 可选 `timeout`（非破坏）**
+  - 第二参 `{ timeout?: number }`：优先 `requestIdleCallback(fn, { timeout })`，否则 `setTimeout`；省略时仍为历史 `queueMicrotask` 语义。
+  - Effect 重跑／dispose 时 `onCleanup` 取消未触发 idle／timeout；**不是**可中断调度统一／priority 桥。
+
+- **P2：Switch 注释锚点（非破坏）**
+  - `Switch` 插槽改为注释起止锚点（对齐 For keyed），**不再**包 `span[data-view-switch][display:contents]`。
+  - 插槽外兄弟节点不被误删；单测锁定。
+
+- **P2：编译器语料扩真实模式／静态 class 拼接折叠（非破坏）**
+  - 语料增至 **42**；补 examples 风格静态 card／`class` join／模板／三元／数组 join 与 SSR 对齐 fixture。
+  - `staticDomOpFreeRatio` 约 **0.7619**；刷新 baseline＋goldens。
+
+- **P2：路由 churn 本地探针（非破坏、非 CI）**
+  - `scripts/profiling/route-churn-probe.ts`：A↔B 往返启发式（订阅／Owner／Effect）；**不**进 `src/` 热路径、**非** Soft Cap。
+  - 文档见 P0-1 profiling §2.2。
 
 - **P1：组件重跑／裸 fetch DEV 防护（非破坏 DX）**
   - **运行时：** `jsx` 函数组件 setup 在 `untrack` 下执行，顶层读 Signal
@@ -27,6 +65,19 @@
     「勿顶层裸 fetch」。
   - 薄配套：切页取消用 `createResource` 外层 `options.signal` 文档钉清 （Owner
     dispose 与 Suspense fallback 冲突，不作默认 abort）。
+
+### 安全
+
+- **`srcset` 消毒／拒绝 `srcdoc`；SSR `href`／`src`／`srcset` 与 props 护栏对齐（非破坏）**
+  - `sanitizeSrcset`：按候选拆分后对每条 URL 跑 `sanitizeUrl`（整串消毒挡不住夹带 `javascript:` 的候选）。
+  - props 层拒绝写入 `srcdoc`／`srcDoc`（与 `innerHTML` 同级危险面）。
+  - SSR DOM `href`／`src`／`srcset` 反射 setter／`setAttribute` 走同一消毒；危险值删除既有键不写入。
+  - 单测：`escape`／`props`／`ssr-dom-element-api`。
+
+### 文档
+
+- **3.0 水合 README／P1-2 试点文对齐 R1／R3**；分析文档／缺口水印刷新（过时条目标漂移）。
+- examples Context 急切 props dogfood；控制流／form radio 示例补全。
 
 ### 变更
 
@@ -47,12 +98,12 @@
     CSR（响应式、mount／hydrate、控制流、Suspense、调度、portal、HMR）。
   - 迁移：[`MIGRATION-3.0.md`](./MIGRATION-3.0.md)／
     [`../en-US/MIGRATION-3.0.md`](../en-US/MIGRATION-3.0.md)。
-  - 包版本在 `dev` 标为 **3.0.0**（**JSR 仍 HOLD**，等战役绿＋用户令）。
-  - 水合默认 `mismatchMode` 仍为 **`continue`**（R1 不进本刀）。
+  - 包版本 **3.0.0**；本版按 §5.6 发 **JSR**（推 `v3.0.0` tag 由 Actions 发布）。
+  - 水合默认见同版 **R1／R3**（省略 → DEV `assert`／生产 `remount`）。
   - 原经主入口拉集成的 consumer-bundle 夹具改走子路径；刷新 size／consumer
     基线。
-  - 库主入口 minify **约 44.3 KiB → 约 31.6 KiB**（已刷 size 基线）；`export *`
-    相对 `/reactivity` 溢价约 **3.0×** minify。
+  - 库主入口 minify **约 44.3 KiB → 约 33.4 KiB**（瘦身＋本战役 DX／安全后已刷
+    size 基线）；`export *` 相对 `/reactivity` 溢价约 **3.0×** minify。
 
 ### 新增
 
@@ -502,12 +553,11 @@
 
 ---
 
-### 本版刻意 SKIP（交刀说明）
+### 本版刻意不做
 
-- **编译器续作（更多静态化／少 Effect）**：P0-3 已锁覆盖率＋golden；再动
-  analyzer／transformer 属 C1 级语义风险，无把握的小步可测绿改动，**SKIP**。
-- **HOLD P2-1／P2-2／P2-3**：P2-1／3 为主入口破坏或改严默认水合；P2-2
-  默认时间分片仍禁；均无法做成 2.x 小步加法，**SKIP**。
+- **产品级渐进／分片水合**、**默认可中断 batch＋priority 调度统一**、**每请求并发 SSR 隔离（ALS）**：仍 HOLD／禁默认时间分片。
+- **虚拟列表进核心**、**重写响应式内核**。
+- 战役内已落地编译器静态化续作、主入口瘦身（P2-1）与更严水合默认（P2-3）；上列 SKIP 条作废。
 
 ## [2.2.0] - 2026-07-23
 

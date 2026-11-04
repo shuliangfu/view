@@ -8,9 +8,64 @@ and this project adheres to
 
 ---
 
-## [Unreleased]
+## [3.0.0] - 2026-11-05
 
 ### Added
+
+- **P1: For / Index missing-key DEV warn (non-breaking DX)**
+  - Under `VIEW_DEV`, `For` / `Index` without `key` call `warnMissingListKey`
+    (`console.warn`) about list diff / reuse risk.
+  - Unit: `tests/unit/runtime/control-flow-missing-key-warn.test.ts`.
+
+- **P1: Show / For / Index eager `when` / `each` DEV warn (non-breaking DX)**
+  - Eager non-function / non-Signal values trip `warnEagerControlFlowProp`;
+    prefer getters / Signals for fine-grained updates.
+  - Unit: `control-flow-eager-warn.test.ts`.
+
+- **P1: Router generation AbortSignal (non-breaking)**
+  - `createRouter` exposes `routeAbortSignal()`; successful navigations /
+    popstate path changes abort the previous generation and rotate.
+  - Lets `createResource(..., { signal })` cancel in-flight work on leave;
+    `dispose` also aborts.
+  - Unit: `router-route-abort.test.ts`; examples resource dogfood.
+
+- **P1: form `field` `as: "radio"` (non-breaking)**
+  - `checked` (`data[name] === options.value`) + `onInput` / `onChange` write
+    that radio’s DOM `.value`.
+  - Pass `options.value`; **do not** also bind `value={() => data[name]}`
+    (would rewrite every radio’s `value` in the group).
+  - **No** `as: "file"` (FileList / multi-select stay app-owned). Examples +
+    unit coverage.
+
+- **P1: DevTools Warnings clear + Overview resnapshots on route change
+  (non-breaking)**
+  - Warnings toolbar clear; watch `popstate` + `history.pushState` /
+    `replaceState` and reset page-scoped warnings / selection then refresh.
+  - Overview is a current-page snapshot, not a whole-app cumulative counter;
+    unmount restores native history methods.
+
+- **P1: `createDeferred` optional `timeout` (non-breaking)**
+  - Second arg `{ timeout?: number }`: prefer
+    `requestIdleCallback(fn, { timeout })`, else `setTimeout`; omit keeps the
+    historical `queueMicrotask` path.
+  - Effect rerun / dispose `onCleanup` cancels pending idle / timeout. **Not** a
+    unified interruptible scheduler / priority bridge.
+
+- **P2: Switch comment anchors (non-breaking)**
+  - Switch slots use comment start/end anchors (aligned with keyed `For`);
+    **no** wrapping `span[data-view-switch][display:contents]`.
+  - Siblings outside the slot are not deleted; unit-locked.
+
+- **P2: Compiler corpus real patterns / static class-join folds (non-breaking)**
+  - Corpus → **42**; examples-style static card / `class` join / template /
+    ternary / array join + SSR parity fixtures.
+  - `staticDomOpFreeRatio` ≈ **0.7619**; refresh baseline + goldens.
+
+- **P2: Route-churn local probe (non-breaking, not CI)**
+  - `scripts/profiling/route-churn-probe.ts`: A↔B churn heuristics
+    (subscribers / Owner / Effect); **not** on `src/` hot paths; **not** a Soft
+    Cap gate.
+  - Docs: P0-1 profiling §2.2.
 
 - **P1: component re-run / bare-fetch DEV guard (non-breaking DX)**
   - **Runtime:** `jsx` function components run setup under `untrack` so
@@ -32,6 +87,23 @@ and this project adheres to
   - Thin companion: document route-leave cancel via `createResource` outer
     `options.signal` (Owner dispose is unsafe with Suspense fallback).
 
+### Security
+
+- **`srcset` sanitization / reject `srcdoc`; SSR `href` / `src` / `srcset`
+  parity with props guards (non-breaking)**
+  - `sanitizeSrcset`: split candidates and run `sanitizeUrl` per URL (whole-string
+    sanitize misses a `javascript:` candidate in a list).
+  - Props refuse `srcdoc` / `srcDoc` writes (same danger class as `innerHTML`).
+  - SSR DOM reflected `href` / `src` / `srcset` setters / `setAttribute` use the
+    same sanitizers; dangerous values drop the key and do not write.
+  - Units: `escape` / `props` / `ssr-dom-element-api`.
+
+### Documentation
+
+- **3.0 hydrate README / P1-2 pilot docs aligned to R1/R3**; analysis / gap
+  watermarks refreshed (stale entries marked drifted).
+- Examples: eager Context props dogfood; control-flow / form radio coverage.
+
 ### Changed
 
 - **3.0 R1/R3: stricter hydration defaults (BREAKING)**
@@ -51,14 +123,15 @@ and this project adheres to
     Suspense, scheduler, portal, HMR).
   - Migration: [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) /
     [`../zh-CN/MIGRATION-3.0.md`](../zh-CN/MIGRATION-3.0.md).
-  - Package version set to **3.0.0** on `dev` (**JSR publish HOLD** until
-    campaign green + explicit order).
-  - Hydration default `mismatchMode` remains **`continue`** (R1 not in this
-    knife).
+  - Package version **3.0.0**; this release publishes to **JSR** via §5.6
+    (push tag `v3.0.0`; Actions runs `deno publish`).
+  - Hydration defaults: see **R1/R3** in this release (omit → DEV `assert` /
+    prod `remount`).
   - Consumer-bundle fixtures that previously pulled integrations through the
     barrel now import subpaths; refresh size / consumer baselines.
-  - Library main entry minify **~44.3 KiB → ~31.6 KiB** (refreshed size
-    baseline); star-reexport premium vs `/reactivity` now ~**3.0×** minify.
+  - Library main entry minify **~44.3 KiB → ~33.4 KiB** after slim + campaign
+    DX/security (refreshed size baseline); star-reexport premium vs `/reactivity`
+    ~**3.0×** minify.
 
 ### Added
 
@@ -550,14 +623,15 @@ and this project adheres to
 
 ---
 
-### Intentionally SKIPPED this release
+### Intentionally out of scope
 
-- **Compiler continuation (more staticization / fewer Effects)**: P0-3 already
-  locked coverage + goldens; further analyzer/transformer changes are C1-class
-  semantic risk with no clearly safe micro-step — **SKIP**.
-- **HOLD P2-1 / P2-2 / P2-3**: P2-1/3 imply main-entry breakage or stricter
-  default hydration; P2-2 default time-slicing remains forbidden — not 2.x
-  additive micro-steps — **SKIP**.
+- **Product progressive / chunked hydration**, **default interruptible
+  batch + priority scheduler unification**, **per-request concurrent SSR
+  isolation (ALS)**: still HOLD / no default time-slicing.
+- **Virtual lists in core**, **reactive-core rewrite**.
+- Campaign already landed further compiler staticization, main-entry slim
+  (P2-1), and stricter hydration defaults (P2-3); the older SKIP bullets above
+  are obsolete.
 
 ## [2.2.0] - 2026-07-23
 

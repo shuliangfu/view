@@ -1,10 +1,15 @@
 # P1-1：主入口 barrel 弃用预告（策略 A · 2.x 加法）
 
+> **产品面已由 3.0 取代：** **3.0.0** 已落地策略 A — 主入口为 **核心** barrel（**不再**
+> re-export 路由／表单／Resource）。迁移见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md)。
+> 本文保留 **2.x 弃用预告**记录（为何走子路径、IDE `@deprecated`）。下文体积数字为
+> **2.x 快照**；现行基线约主入口 **33.4 KiB**／`/reactivity` **11.3 KiB**。
+
 | 项 | 值 |
 |----|-----|
-| 对象 | `@dreamer/view` **v2.2.0**，分支 `dev` |
-| 性质 | **弃用预告／文档**：写清子路径优先与迁移；主入口加模块级 JSDoc `@deprecated` |
-| **不做** | 删除任何 export；改运行时默认行为／语义；3.0 瘦身落地；JSR／npm 发布；放宽 `bundle-size-baseline.json`／`consumer-bundle` 基线 |
+| 对象 | `@dreamer/view` **v2.2.0** 预告 → **3.0.0** 已落地 |
+| 性质 | **历史弃用预告／文档**（2.x）；3.0 瘦身已生效 |
+| **预告当时不做** | 在 2.x 删 export；当时不改运行时默认 |
 | 代码触点 | `src/mod.ts`（仅 JSDoc；**无**运行时 `warn`／副作用） |
 | 相关度量 | [`P0-2-consumer-bundle-analyze.md`](./P0-2-consumer-bundle-analyze.md) · [`P0-基线-体积与性能.md`](./P0-基线-体积与性能.md) |
 | EN | [`../en-US/P1-1-main-entry-deprecation-preview.md`](../en-US/P1-1-main-entry-deprecation-preview.md) |
@@ -22,7 +27,7 @@
 3. **具名导入**在强摇树（esbuild + `sideEffects: false`）下 barrel vs 子路径 minify **Δ≈0**；子路径仍更稳——模块图更小、意图清晰，弱摇树或应用再包一层 `export *` 时有保护。
 4. **examples** 已全面子路径化（如 `examples/src/main.tsx` → `@dreamer/view/router`）；P2 起路由 codegen／hydrate 脚本亦走子路径（见 [`P2-examples-subpath-dogfood.md`](./P2-examples-subpath-dogfood.md)）。
 
-本刀是 **预告与迁移指引**：**不**等于 3.0 已删主入口。3.0 是否瘦身／拆默认面见 [`3.0.0-规划分析.md`](./3.0.0-规划分析.md)，须另开产品拍板。
+本刀当时是 **2.x 预告与迁移指引**。**3.0.0 起策略 A 已落地**（主入口瘦身）— 见 [`MIGRATION-3.0.md`](./MIGRATION-3.0.md) 与 [`3.0.0-规划分析.md`](./3.0.0-规划分析.md)。
 
 ---
 
