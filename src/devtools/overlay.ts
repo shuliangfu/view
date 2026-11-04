@@ -224,7 +224,11 @@ const CSS = /* css */ `
 .head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
   padding: 12px 12px 10px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
   cursor: grab;
@@ -252,6 +256,7 @@ const CSS = /* css */ `
 .head-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
   flex-shrink: 0;
   margin-left: auto;
@@ -427,6 +432,11 @@ const CSS = /* css */ `
   color: rgba(147,197,253,0.9);
 }
 .empty { margin: 0; padding: 14px 8px; text-align: center; font-size: 12px; color: rgba(236,236,241,0.4); }
+.empty-hint {
+  margin: -6px 12px 14px; padding: 0 4px; text-align: center;
+  font-size: 11px; line-height: 1.45; color: rgba(236,236,241,0.32);
+}
+.empty-block { padding: 8px 0 4px; }
 
 .foot {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -513,9 +523,12 @@ const CSS = /* css */ `
 }
 .dot {
   position: absolute; top: 3px; right: 3px; width: 9px; height: 9px;
-  border-radius: 999px; border: 1.5px solid rgba(10,10,14,0.95); background: #22c55e;
+  border-radius: 999px; border: 1.5px solid rgba(10,10,14,0.95); background: #71717a;
 }
-.dot.warn { background: #f59e0b; }
+.dot.ok { background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.25); }
+.dot.warn { background: #fbbf24; box-shadow: 0 0 0 2px rgba(251,191,36,0.22); }
+.dot.err { background: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,0.22); }
+.dot.off { background: #71717a; }
 .dot.hidden { display: none; }
 `;
 
@@ -1028,9 +1041,15 @@ export function mountDevtoolsOverlay(
       }
     };
     for (const root of forest) walk(root);
-    list.innerHTML = rows.length
-      ? rows.join("")
-      : `<p class="empty">${ot("noOwnerRoots")}</p>`;
+    if (rows.length) {
+      list.innerHTML = rows.join("");
+    } else if (forest.length === 0) {
+      list.innerHTML = `<div class="empty-block"><p class="empty">${
+        ot("noOwnerRoots")
+      }</p><p class="empty-hint">${ot("noOwnerRootsHint")}</p></div>`;
+    } else {
+      list.innerHTML = `<p class="empty">${ot("noTreeMatch")}</p>`;
+    }
     renderDetail();
   };
 
@@ -1184,7 +1203,12 @@ export function mountDevtoolsOverlay(
       if (claimNote) {
         claimNote.textContent = ot("hmrNoBridge");
       }
-      if (statusDot) statusDot.classList.add("hidden");
+      if (statusDot) {
+        statusDot.classList.remove("ok", "warn", "err", "off");
+        statusDot.classList.add("hidden", "off");
+        statusDot.title = ot("indicatorHmrOffline");
+        statusDot.style.background = "";
+      }
       return;
     }
     if (missing) missing.hidden = true;
@@ -1232,14 +1256,19 @@ export function mountDevtoolsOverlay(
       claimNote.textContent = ot("hmrClaimed");
     }
     if (statusDot) {
-      statusDot.classList.remove("hidden");
-      statusDot.style.background = snap.connection === "connected"
-        ? "#4ade80"
+      statusDot.classList.remove("hidden", "ok", "warn", "err", "off");
+      const cls = snap.connection === "connected"
+        ? "ok"
         : snap.connection === "reconnecting"
-        ? "#fbbf24"
+        ? "warn"
         : snap.connection === "error"
-        ? "#f87171"
-        : "#71717a";
+        ? "err"
+        : "off";
+      statusDot.classList.add(cls);
+      statusDot.title = snap.connection === "connected"
+        ? ot("indicatorHmrConnected")
+        : ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
+      statusDot.style.background = "";
     }
   };
 

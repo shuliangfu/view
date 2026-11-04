@@ -98,10 +98,11 @@ describe("devtools overlay (P2)", () => {
     ).toBeTruthy();
     expect(actions.contains(refresh)).toBe(true);
     expect(actions.contains(close)).toBe(true);
-    // CSS: brand flexes so actions sit on the trailing edge
+    // CSS: brand flexes; head space-between; actions trailing
     const css = shadow.querySelector("style")!.textContent!;
     expect(css).toMatch(/\.head-brand\s*\{[^}]*flex:\s*1/);
-    expect(css).toMatch(/\.head-actions\s*\{/);
+    expect(css).toMatch(/\.head\s*\{[^}]*justify-content:\s*space-between/);
+    expect(css).toMatch(/\.head-actions\s*\{[^}]*margin-left:\s*auto/);
 
     expect(handle.isOpen).toBe(true);
     close.click();
@@ -219,6 +220,49 @@ describe("devtools overlay (P2)", () => {
     handle.unmount();
     expect(getDevtoolsOverlay()).toBeNull();
     expect(document.querySelector("[data-dreamer-view-devtools]")).toBeNull();
+  });
+
+  it("Tree empty state explains createRootTracked / trackRoot (zh+en)", () => {
+    clearTrackedRoots();
+    document.documentElement.lang = "en";
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    handle.setTab("tree");
+    const shadow = handle.root.shadowRoot!;
+    const empty = shadow.querySelector("[data-el='tree-list']")!.textContent!;
+    expect(empty).toMatch(/No Owner roots/i);
+    expect(empty).toMatch(/createRootTracked/);
+    handle.unmount();
+
+    document.documentElement.lang = "zh-CN";
+    const handleZh = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handleZh.open();
+    handleZh.setTab("tree");
+    const zh = handleZh.root.shadowRoot!.querySelector(
+      "[data-el='tree-list']",
+    )!.textContent!;
+    expect(zh).toMatch(/Owner/);
+    expect(zh).toMatch(/createRootTracked/);
+    handleZh.unmount();
+  });
+
+  it("Tree filter miss uses noTreeMatch when roots exist", () => {
+    createRootTracked(() => {
+      const a = createSignal(1);
+      createEffect(() => a());
+    });
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    handle.setTab("tree");
+    const shadow = handle.root.shadowRoot!;
+    const filter = shadow.querySelector(
+      "[data-el='tree-filter']",
+    ) as HTMLInputElement;
+    filter.value = "zzz-no-such-kind";
+    filter.dispatchEvent(new Event("input", { bubbles: true }));
+    const list = shadow.querySelector("[data-el='tree-list']")!.textContent!;
+    expect(list).toMatch(/No nodes match|没有匹配/);
+    handle.unmount();
   });
 });
 

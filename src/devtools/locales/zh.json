@@ -64,12 +64,17 @@
   "clearWarns": "清除警告",
   "devOn": "VIEW_DEV · 开",
   "devOff": "VIEW_DEV · 关",
-  "noOwnerRoots": "无 Owner 根 — 请调用 createRootTracked / trackRoot，或传入 owner。",
+  "noOwnerRoots": "尚未登记 Owner 根。",
   "noSourcesMatch": "无匹配的订阅源",
   "noSourcesYet": "注册表尚无订阅源",
   "noSources": "无订阅源",
   "obs": "{n} 订户",
   "noIssues": "未发现问题",
   "rootsBadge": "{n} 个根 · 深度 {depth}",
-  "rootsBadgePlural": "{n} 个根 · 深度 {depth}"
+  "rootsBadgePlural": "{n} 个根 · 深度 {depth}",
+  "noOwnerRootsHint": "DEV 下：用 createRootTracked((d) => …) 包裹挂载，或 trackRoot(getOwner())，或 mountDevtoolsOverlay({ owner })。本示例在 main.tsx 已用 createRootTracked dogfood。",
+  "noTreeMatch": "没有匹配该过滤条件的节点。",
+  "indicatorHmrConnected": "HMR 已连接",
+  "indicatorHmrOffline": "HMR 离线",
+  "indicatorHmrWarn": "HMR · {status}"
 }

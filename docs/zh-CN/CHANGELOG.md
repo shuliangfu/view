@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **P2：DevTools overlay DX+（examples Owner dogfood，非破坏）**
+  - `examples/src/main.tsx` 在 `VIEW_DEV` 下用 `createRootTracked` 挂载，打开
+    overlay「树」可见真实 Owner 节点（普通 `mount`／`createRoot` 不会自动登记）。
+  - 空树文案说明 `createRootTracked`／`trackRoot`／`mountDevtoolsOverlay({ owner })`
+    （中英跟页面 lang）；过滤无匹配与无根文案区分。
+  - 浮动按钮 HMR 绿点用稳定的 ok／warn／err／off class + title。
+
+### 修复
+
+- **DevTools overlay 顶栏**：加强 `.head { justify-content: space-between;
+  width: 100% }`，刷新／关闭在各种布局下仍靠右。
+
+
 ### Fixed
 
 - **DevTools overlay 顶栏**：补 `.head-brand`／`.head-actions`，刷新／关闭靠右；

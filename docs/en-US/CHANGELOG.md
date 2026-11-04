@@ -10,6 +10,23 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **P2: DevTools overlay DX+ (examples Owner dogfood, non-breaking)**
+  - `examples/src/main.tsx` mounts via `createRootTracked` under `VIEW_DEV` so
+    the overlay Tree shows real Owner nodes (plain `mount`/`createRoot` does
+    not auto-track).
+  - Empty Tree copy explains `createRootTracked` / `trackRoot` /
+    `mountDevtoolsOverlay({ owner })` (zh/en, page lang); filter-miss message
+    distinct from empty roots.
+  - Floating indicator HMR dot uses stable ok/warn/err/off classes + title.
+
+### Fixed
+
+- **DevTools overlay header**: reinforce `.head { justify-content: space-between;
+  width: 100% }` so refresh/close stay trailing across layouts.
+
+
 ### Fixed
 
 - **DevTools overlay header**: `.head-brand` / `.head-actions` so refresh/close

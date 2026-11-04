@@ -3,6 +3,7 @@
  * 全面转向自动化 jsx-runtime 与统一导入路径。
  */
 
+import { insert } from "@dreamer/view/csr";
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
 import { routerBeforeEach } from "./router/router.ts";
 import { notFoundRoute, routes } from "./router/routers.tsx";
@@ -19,20 +20,51 @@ const router = createRouter({
   beforeEach: routerBeforeEach,
 });
 
-/**
- * 根挂载：新架构下仅需传入选择器和路由器实例
- * HMR 将由编译器注入 createHMRProxy 自动处理局部重绘。
- */
-mountWithRouter("#root", router);
+const isViewDev = (globalThis as { VIEW_DEV?: boolean }).VIEW_DEV === true;
 
-/**
- * DEV-only floating DevTools overlay (Next-inspired indicator).
- * Opt-in: gated on VIEW_DEV (injected by `view dev`); production build/start
- * never mounts. Framework does not auto-attach this.
- */
-if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV === true) {
-  void import("@dreamer/view/devtools/overlay").then(({ mountDevtoolsOverlay }) => {
-    mountDevtoolsOverlay({ corner: "bottom-left" });
-  });
+/** Clear cloak + children (mirrors runtime/browser `mount`). */
+function prepareRoot(container: HTMLElement): void {
+  container.textContent = "";
+  container.removeAttribute("data-view-cloak");
+  container.style.display = "";
 }
 
+/**
+ * DEV dogfood: mount via {@link createRootTracked} so DevTools 「树」sees a real
+ * Owner root (plain `mountWithRouter` → `createRoot` does not auto-track).
+ * Production / non-VIEW_DEV keeps `mountWithRouter` unchanged.
+ */
+function mountExamplesApp(): void {
+  const runTracked = async () => {
+    const container = document.querySelector("#root") as HTMLElement | null;
+    if (!container) return;
+
+    const { createRootTracked } = await import("@dreamer/view/devtools");
+    const { mountDevtoolsOverlay } = await import(
+      "@dreamer/view/devtools/overlay"
+    );
+
+    createRootTracked(() => {
+      prepareRoot(container);
+      // Same shape as mountWithRouter → mount(() => () => router.render(), …)
+      insert(container, () => router.render());
+    });
+
+    mountDevtoolsOverlay({ corner: "bottom-left" });
+  };
+
+  if (isViewDev) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        void runTracked();
+      });
+    } else {
+      void runTracked();
+    }
+    return;
+  }
+
+  mountWithRouter("#root", router);
+}
+
+mountExamplesApp();

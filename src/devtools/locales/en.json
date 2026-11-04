@@ -64,12 +64,17 @@
   "clearWarns": "Clear warnings",
   "devOn": "VIEW_DEV · on",
   "devOff": "VIEW_DEV · off",
-  "noOwnerRoots": "No Owner roots — call createRootTracked / trackRoot, or pass owner.",
+  "noOwnerRoots": "No Owner roots tracked yet.",
   "noSourcesMatch": "No sources match filter",
   "noSourcesYet": "No registry sources yet",
   "noSources": "No sources",
   "obs": "{n} obs",
   "noIssues": "No issues detected",
   "rootsBadge": "{n} root · depth {depth}",
-  "rootsBadgePlural": "{n} roots · depth {depth}"
+  "rootsBadgePlural": "{n} roots · depth {depth}",
+  "noOwnerRootsHint": "In DEV: wrap mount with createRootTracked((d) => …), call trackRoot(getOwner()), or pass owner to mountDevtoolsOverlay({ owner }). Examples dogfood uses createRootTracked in main.tsx.",
+  "noTreeMatch": "No nodes match this filter.",
+  "indicatorHmrConnected": "HMR connected",
+  "indicatorHmrOffline": "HMR offline",
+  "indicatorHmrWarn": "HMR {status}"
 }
