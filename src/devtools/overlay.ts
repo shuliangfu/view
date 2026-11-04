@@ -447,10 +447,6 @@ const CSS = /* css */ `
 }
 .empty-block { padding: 8px 0 4px; }
 
-.foot {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 12px 10px; border-top: 1px solid rgba(255,255,255,0.08);
-}
 .ghost {
   appearance: none; border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04); color: rgba(236,236,241,0.85);
@@ -481,19 +477,20 @@ const CSS = /* css */ `
   padding: 10px 11px; border-radius: 11px;
   background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07);
 }
-.hmr-row {
-  display: flex; align-items: center; gap: 8px; font-size: 12px;
+.hmr-badge-pair {
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .hmr-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
   background: #71717a; box-shadow: 0 0 0 3px rgba(113,113,122,0.2);
 }
-.hmr-dot.ok { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.2); }
+.hmr-dot.ok {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.28), 0 0 8px rgba(34,197,94,0.45);
+}
 .hmr-dot.warn { background: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.22); }
 .hmr-dot.err { background: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.22); }
 .hmr-dot.off { background: #71717a; }
-.hmr-title { font-weight: 650; color: #f4f4f5; }
-.hmr-meta { margin-left: auto; color: rgba(236,236,241,0.45); font-variant-numeric: tabular-nums; font-size: 11px; }
 .hmr-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
 }
@@ -751,18 +748,17 @@ export function mountDevtoolsOverlay(
             <h3 class="section-title" data-i18n="hmrTitle">${
     ot("hmrTitle")
   }</h3>
-            <span class="badge" data-el="hmr-badge">—</span>
+            <span class="hmr-badge-pair" data-el="hmr-badge-pair">
+              <span class="hmr-dot off" data-el="hmr-dot" aria-hidden="true"></span>
+              <span class="badge" data-el="hmr-badge">—</span>
+            </span>
           </div>
           <div class="hmr-card" data-el="hmr-card">
             <p class="hmr-missing" data-el="hmr-missing" data-i18n="hmrWaiting">${
     ot("hmrWaiting")
   }</p>
             <div class="hmr-live" data-el="hmr-live" hidden>
-              <div class="hmr-row">
-                <span class="hmr-dot off" data-el="hmr-dot"></span>
-                <span class="hmr-title" data-el="hmr-status">—</span>
-                <span class="hmr-meta" data-el="hmr-progress"></span>
-              </div>
+              <p class="hint" data-el="hmr-progress"></p>
               <div class="hmr-stats">
                 <div class="hmr-stat"><b data-el="hmr-updates">0</b><span data-i18n="hmrUpdates">${
     ot("hmrUpdates")
@@ -861,11 +857,6 @@ export function mountDevtoolsOverlay(
   }</button>
         </div>
       </div>
-    </div>
-    <div class="foot">
-      <button type="button" class="ghost" data-action="refresh-foot">↻ <span data-i18n="refresh">${
-    ot("refresh")
-  }</span></button>
     </div>
   `;
 
@@ -1337,6 +1328,8 @@ export function mountDevtoolsOverlay(
         badge.textContent = ot("hmrOffline");
         badge.className = "badge";
       }
+      const offlineDot = el("[data-el='hmr-dot']");
+      if (offlineDot) offlineDot.className = "hmr-dot off";
       if (missing) missing.hidden = false;
       if (live) live.hidden = true;
       if (claimNote) {
@@ -1357,12 +1350,6 @@ export function mountDevtoolsOverlay(
     }
     const dot = el("[data-el='hmr-dot']");
     if (dot) dot.className = hmrDotClass(snap.connection);
-    const status = el("[data-el='hmr-status']");
-    if (status) {
-      status.textContent = ot("hmrStatus", {
-        status: hmrLabel(snap.connection),
-      });
-    }
     const prog = el("[data-el='hmr-progress']");
     if (prog) {
       prog.textContent = snap.updating
@@ -1515,10 +1502,9 @@ export function mountDevtoolsOverlay(
   panel.querySelectorAll("[data-action='close']").forEach((n) =>
     n.addEventListener("click", () => setOpen(false))
   );
-  panel.querySelectorAll(
-    "[data-action='refresh'], [data-action='refresh-foot']",
-  )
-    .forEach((n) => n.addEventListener("click", () => refresh()));
+  panel.querySelectorAll("[data-action='refresh']").forEach((n) =>
+    n.addEventListener("click", () => refresh())
+  );
   panel.querySelector("[data-action='clear-warns']")?.addEventListener(
     "click",
     () => {

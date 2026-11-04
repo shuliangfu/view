@@ -77,12 +77,13 @@ describe("devtools overlay (P2)", () => {
     expect(handle!.isOpen).toBe(false);
   });
 
-  it("footer has no VIEW_DEV status pill", () => {
+  it("panel has no footer bar (refresh lives in head)", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     handle.open();
     const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector(".foot")).toBeNull();
     expect(shadow.querySelector("[data-el='dev-pill']")).toBeNull();
-    expect(shadow.querySelector(".foot")!.textContent).not.toMatch(/VIEW_DEV/);
+    expect(shadow.querySelector('[data-action="refresh"]')).not.toBeNull();
     handle.unmount();
   });
 
@@ -365,10 +366,14 @@ describe("devtools overlay HMR bridge integration", () => {
     expect(mock.claimers.has("view-devtools-overlay")).toBe(true);
     handle.open();
     const shadow = handle.root.shadowRoot!;
-    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent)
+    expect(shadow.querySelector("[data-el='hmr-badge']")!.textContent)
       .toContain(
         "Connected",
       );
+    expect(shadow.querySelector("[data-el='hmr-dot']")!.className).toContain(
+      "ok",
+    );
+    expect(shadow.querySelector("[data-el='hmr-status']")).toBeNull();
     expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
       "3",
     );
@@ -387,10 +392,13 @@ describe("devtools overlay HMR bridge integration", () => {
       successCount: 8,
       failureCount: 1,
     });
-    expect(shadow.querySelector("[data-el='hmr-status']")!.textContent)
+    expect(shadow.querySelector("[data-el='hmr-badge']")!.textContent)
       .toContain(
         "Reconnecting",
       );
+    expect(shadow.querySelector("[data-el='hmr-dot']")!.className).toContain(
+      "warn",
+    );
     expect(shadow.querySelector("[data-el='hmr-updates']")!.textContent).toBe(
       "9",
     );
