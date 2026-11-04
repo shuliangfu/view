@@ -10,6 +10,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependencies**: bump `@dreamer/server` to `^1.3.0` (JSR / npm:@jsr) for
+  `__DREAMER_HMR__` + `claimUi` (overlay can hide the standalone HMR capsule).
+
 ### Added
 
 - **P2: DevTools overlay absorbs HMR status (non-breaking)**
@@ -17,8 +22,8 @@ and this project adheres to
     client), `claimUi` hides the standalone HMR capsule; Overview → HMR shows
     connection / update stats; unmount releases the claim.
   - Degrades gracefully with no bridge. Still `VIEW_DEV` only; baselines **not**
-    raised. Unit tests mock the bridge; local dogfood should map `@dreamer/server`
-    to the sibling checkout (do not exercise this slice via JSR).
+    raised. Unit tests mock the bridge; dogfood against `@dreamer/server@^1.3.0`
+    (JSR) which ships the bridge.
 
 - **P2: DevTools overlay upgrade (multi-tab inspector, non-breaking)**
   - Overlay tabs: Overview / Tree / Signals / Warnings / Settings; expandable
