@@ -1,0 +1,2 @@
+import { memo } from "@dreamer/view";
+export const App = () => "<div style=\"color:red;font-size:12px;\"></div>";

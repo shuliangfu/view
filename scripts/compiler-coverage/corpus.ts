@@ -227,6 +227,29 @@ export const FIXTURES: Fixture[] = [
     note: "SSR: static text child HTML-escaped like CSR escapeForText",
   },
   {
+    id: "ssr-static-attr-concat",
+    fileName: "ssr-static-attr-concat.tsx",
+    source: `export const App = () => <div class={"btn-" + "primary"}></div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: static attr concat folded like CSR template",
+  },
+  {
+    id: "ssr-static-attr-style",
+    fileName: "ssr-static-attr-style.tsx",
+    source:
+      `export const App = () => <div style={{ color: "red", fontSize: "12px" }}></div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: static style object serialized (not [object Object])",
+  },
+  {
+    id: "ssr-static-attr-logic",
+    fileName: "ssr-static-attr-logic.tsx",
+    source:
+      `export const App = () => <div class={null ?? "fb"} data-x={"" || "y"} data-t={typeof "x"}></div>;`,
+    options: { generate: "ssr" },
+    note: "SSR: static ?? / || / typeof attrs folded",
+  },
+  {
     id: "hmr-export",
     fileName: "hmr-export.tsx",
     source: `export const App = () => <div>Hi</div>;`,

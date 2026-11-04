@@ -11,6 +11,16 @@
 
 ### 新增
 
+- **P2：SSR 静态属性折叠对齐 CSR template（非破坏）**
+  - `generate: "ssr"` 对 `isStaticExpression` 属性（`+`／三元／`&&`／`||`／`??`／
+    `typeof`／`void`／`satisfies`／静态 style 对象等）用与 CSR 同源的
+    `serializeStaticAttrValue` 折进字符串，避免运行期拼接与 style 的
+    `[object Object]`。
+  - 动态属性（如 `class={color()}`）仍保留表达式。
+  - 语料 32→**35**；`staticDomOpFreeRatio` 约 **0.7429**（26/35）。
+
+### 新增
+
 - **P2：编译期折叠静态 `true && <JSX>`／假值短路（非破坏）**
   - `true && <JSX>`／非空串／非 0 数字 `&& <JSX>` → 直接 JSX；`false`／`null`／
     `undefined` `&& <JSX>` → 省略；`false`／`0`／`""`／`null` `|| <JSX>` → JSX；

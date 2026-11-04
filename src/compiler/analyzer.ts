@@ -265,6 +265,18 @@ export function serializeLiftableStaticTextChild(
   return escapeForText(serializeStaticValue(expr));
 }
 
+/**
+ * 静态属性值序列化（与 CSR template 属性提升同源）。
+ * 不可静态判定时返回 undefined。
+ */
+export function serializeStaticAttrValue(
+  expr: ts.Expression,
+): string | undefined {
+  if (!isStaticExpression(expr)) return undefined;
+  return serializeStaticValue(expr);
+}
+
+
 
 /** 静态短路左侧：truthy / omit（null·false·undefined）/ zero / empty；不可判定为 null */
 export type StaticShortCircuitKind = "truthy" | "omit" | "zero" | "empty";

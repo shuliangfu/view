@@ -31,6 +31,7 @@ import {
   getTagName,
   isStaticExpression,
   serializeLiftableStaticTextChild,
+  serializeStaticAttrValue,
   serializeToTemplate,
 } from "./analyzer.ts";
 
@@ -118,12 +119,19 @@ function rewriteToSSR(
         parts.push(` ${name === "className" ? "class" : name}="`);
         if (attr.initializer) {
           if (ts.isJsxExpression(attr.initializer)) {
-            parts.push(
-              ts.visitNode(
-                attr.initializer.expression!,
-                visitor,
-              ) as ts.Expression,
-            );
+            const expr = attr.initializer.expression!;
+            // 与 CSR template 对齐：静态属性折进字符串（含 style 对象／??／&&／typeof…）
+            const staticVal = serializeStaticAttrValue(expr);
+            if (staticVal !== undefined) {
+              parts.push(staticVal);
+            } else {
+              const visited = ts.visitNode(expr, visitor) as ts.Expression;
+              if (visited && ts.isStringLiteral(visited)) {
+                parts.push(visited.text);
+              } else if (visited) {
+                parts.push(visited);
+              }
+            }
           } else {
             parts.push((attr.initializer as ts.StringLiteral).text);
           }

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T13:43:39.975Z",
+  "measuredAt": "2026-11-04T13:48:16.805Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -738,6 +738,81 @@
       "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-text-escape.out.txt"
     },
     {
+      "id": "ssr-static-attr-concat",
+      "fileName": "ssr-static-attr-concat.tsx",
+      "note": "SSR: static attr concat folded like CSR template",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 100,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-attr-concat.out.txt"
+    },
+    {
+      "id": "ssr-static-attr-style",
+      "fileName": "ssr-static-attr-style.tsx",
+      "note": "SSR: static style object serialized (not [object Object])",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 114,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-attr-style.out.txt"
+    },
+    {
+      "id": "ssr-static-attr-logic",
+      "fileName": "ssr-static-attr-logic.tsx",
+      "note": "SSR: static ?? / || / typeof attrs folded",
+      "options": {
+        "generate": "ssr"
+      },
+      "metrics": {
+        "outputBytes": 122,
+        "templateCalls": 0,
+        "walkCalls": 0,
+        "insertCalls": 0,
+        "setAttributeCalls": 0,
+        "setPropertyCalls": 0,
+        "spreadCalls": 0,
+        "memoCalls": 0,
+        "pathConstDecls": 0,
+        "tmplConstDecls": 0,
+        "hasBindingMap": false,
+        "importHasMemo": true,
+        "importHasCreateHMRProxy": false,
+        "zeroReactiveDomOps": true
+      },
+      "goldenRel": "scripts/compiler-coverage/goldens/ssr-static-attr-logic.out.txt"
+    },
+    {
       "id": "hmr-export",
       "fileName": "hmr-export.tsx",
       "note": "HMR wraps export const component",
@@ -764,7 +839,7 @@
     }
   ],
   "aggregate": {
-    "fixtureCount": 32,
+    "fixtureCount": 35,
     "totalSetAttribute": 4,
     "totalSetProperty": 1,
     "totalWalk": 5,
@@ -772,7 +847,7 @@
     "totalMemo": 1,
     "totalSpread": 1,
     "totalPathConsts": 5,
-    "zeroReactiveDomOpsCount": 23,
-    "staticDomOpFreeRatio": 0.7188
+    "zeroReactiveDomOpsCount": 26,
+    "staticDomOpFreeRatio": 0.7429
   }
 }

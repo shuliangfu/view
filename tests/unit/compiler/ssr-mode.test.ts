@@ -81,4 +81,37 @@ describe("compiler/ssr-mode", () => {
     expect(out).toContain('"ab"');
     expect(out).not.toContain("createDocumentFragment");
   });
+
+  it("SSR：静态属性折叠对齐 CSR template", () => {
+    const code =
+      `export const App = () => <div class={"btn-" + "primary"} style={{ color: "red" }}></div>;`;
+    const ssr = compileSource(code, "t.tsx", { generate: "ssr" });
+    const csr = compileSource(code, "t.tsx", {});
+    expect(ssr).toContain('class=\\"btn-primary\\"');
+    expect(ssr).toContain("color:red");
+    expect(ssr).not.toContain('"btn-" + "primary"');
+    expect(ssr).not.toContain("[object Object]");
+    expect(csr).toContain('class=\\"btn-primary\\"');
+    expect(csr).toContain("color:red");
+  });
+
+  it("SSR：静态 ??／||／typeof 属性折叠", () => {
+    const code =
+      `export const App = () => <div class={null ?? "fb"} data-x={"" || "y"} data-t={typeof "x"}></div>;`;
+    const ssr = compileSource(code, "t.tsx", { generate: "ssr" });
+    expect(ssr).toContain('class=\\"fb\\"');
+    expect(ssr).toContain('data-x=\\"y\\"');
+    expect(ssr).toContain('data-t=\\"string\\"');
+    expect(ssr).not.toContain("??");
+    expect(ssr).not.toContain("typeof");
+  });
+
+  it("SSR：动态属性仍保留表达式", () => {
+    const ssr = compileSource(
+      `export const App = () => <div class={color()}></div>;`,
+      "t.tsx",
+      { generate: "ssr" },
+    );
+    expect(ssr).toContain("color()");
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

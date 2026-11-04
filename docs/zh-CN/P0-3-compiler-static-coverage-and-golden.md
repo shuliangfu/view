@@ -11,7 +11,7 @@
 
 ## 1. 指标含义
 
-在固定 JSX 语料（`scripts/compiler-coverage/corpus.ts`，32 条）上调用
+在固定 JSX 语料（`scripts/compiler-coverage/corpus.ts`，35 条）上调用
 `compileSource()`，对**注入 import 之后的 body**计数：
 
 | 指标 | 含义 |
@@ -23,7 +23,7 @@
 | `setProperty` | 一次性属性写（不包 Effect） |
 | `spread` / `memo` | spread 与三元内联 memo |
 | `zeroReactiveDomOps` | body 中无 walk／setAttribute／setProperty／spread |
-| `staticDomOpFreeRatio` | 语料中 `zeroReactiveDomOps` 占比（基线约 **0.7188**＝23/32） |
+| `staticDomOpFreeRatio` | 语料中 `zeroReactiveDomOps` 占比（基线约 **0.7429**＝26/35） |
 
 **本刀是基线**：把「当前编译器已经吃到的静态提升」锁住，防止静默回退；
 **不是**立刻把覆盖率吃满到「默认产物几乎零通用 Effect」。

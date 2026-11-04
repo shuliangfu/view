@@ -12,6 +12,16 @@ and this project adheres to
 
 ### Added
 
+- **P2: SSR static attr fold parity with CSR templates (non-breaking)**
+  - `generate: "ssr"` folds `isStaticExpression` attrs (`+` / ternary / `&&` /
+    `||` / `??` / `typeof` / `void` / `satisfies` / static style objects, …)
+    via shared `serializeStaticAttrValue`, matching CSR template lifts and
+    avoiding runtime concat / style `[object Object]`.
+  - Dynamic attrs (e.g. `class={color()}`) stay as expressions.
+  - Corpus 32→**35**; `staticDomOpFreeRatio` ≈ **0.7429** (26/35).
+
+### Added
+
 - **P2: compile-time fold for static `true && <JSX>` / falsy short-circuit (non-breaking)**
   - `true && <JSX>` / non-empty string / non-zero number `&& <JSX>` → JSX;
     `false` / `null` / `undefined` `&& <JSX>` → omit; `false` / `0` / `""` /

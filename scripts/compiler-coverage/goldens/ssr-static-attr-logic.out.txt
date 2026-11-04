@@ -1,0 +1,2 @@
+import { memo } from "@dreamer/view";
+export const App = () => "<div class=\"fb\" data-x=\"y\" data-t=\"string\"></div>";
