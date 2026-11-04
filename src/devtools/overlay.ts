@@ -32,6 +32,7 @@ import {
   isViewDev,
   type OversubscribeWarning,
   type OwnerTreeSummary,
+  snapshotComponentSetups,
   snapshotRegistrySources,
   summarizeOwnerTree,
 } from "../devtools.ts";
@@ -812,6 +813,16 @@ export function mountDevtoolsOverlay(
   }</h3>
           <span class="badge ok" data-el="warn-badge">0</span>
         </div>
+        <div class="section-h" style="margin:0 0 6px">
+          <h3 class="section-title" data-i18n="setupRerunTitle">${
+    ot("setupRerunTitle")
+  }</h3>
+          <span class="badge ok" data-el="setup-rerun-badge">0</span>
+        </div>
+        <p class="hint" data-el="setup-rerun-hint" data-i18n="setupRerunHint">${
+    ot("setupRerunHint")
+  }</p>
+        <ul class="list" data-el="setup-rerun-list"></ul>
         <div data-el="warn-list"></div>
       </div>
       <div class="pane" data-pane="settings">
@@ -1232,7 +1243,31 @@ export function mountDevtoolsOverlay(
     statusDot.style.background = "";
   };
 
+  const renderSetupReruns = () => {
+    const badge = el("[data-el='setup-rerun-badge']");
+    const list = el("[data-el='setup-rerun-list']");
+    const snaps = snapshotComponentSetups().filter((s) => s.count >= 2);
+    const n = snaps.length;
+    if (badge) {
+      badge.textContent = String(n);
+      badge.className = n > 0 ? "badge warn" : "badge ok";
+    }
+    if (!list) return;
+    if (!n) {
+      list.innerHTML = `<li class="empty">${ot("setupRerunNone")}</li>`;
+      return;
+    }
+    list.innerHTML = snaps
+      .slice(0, 24)
+      .map((s) =>
+        `<li class="warn-item"><span class="warn-kind">component-rerun</span> ` +
+        `<b>${escapeHtml(s.key)}</b> ×${s.count}</li>`
+      )
+      .join("");
+  };
+
   const renderWarnings = () => {
+    renderSetupReruns();
     const list = el("[data-el='warn-list']");
     const badge = el("[data-el='warn-badge']");
     const count = el("[data-el='warn-count']");
@@ -1274,6 +1309,11 @@ export function mountDevtoolsOverlay(
         return `
         <button type="button" class="warn-item" data-warn="${i}">
           <span class="warn-kind">${escapeHtml(w.kind)}</span>
+          ${
+          w.setups != null
+            ? `<span class="count warn">×${w.setups}</span>`
+            : ""
+        }
           <span>${escapeHtml(w.message)}</span>
           ${
           w.path ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>` : ""
@@ -1530,11 +1570,13 @@ export function mountDevtoolsOverlay(
     if (twist?.dataset.twist === path) {
       if (expanded.has(path)) expanded.delete(path);
       else expanded.add(path);
-      // Keep the collapsed row collapsed; still select + highlight.
+      // Twist only expands/collapses; keep current selection (select without toggle).
       selectNode(path, false);
       return;
     }
-    selectNode(path);
+    // Toggle select: click selected row again → clear highlight
+    if (path === selectedPath) selectNode(null);
+    else selectNode(path);
   });
 
   el("[data-el='warn-list']")?.addEventListener("click", (ev) => {

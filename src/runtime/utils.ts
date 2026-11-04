@@ -69,3 +69,35 @@ export function readAccessor<T>(source: T | (() => T)): T {
   }
   return source as T;
 }
+
+/** VIEW_DEV once-per-kind: plain when/each may be an eager `signal()` mistake. */
+const eagerControlFlowWarned = new Set<string>();
+
+/**
+ * DEV tip for control-flow props. Static literals are valid; the message reminds
+ * authors that `when={open()}` / `each={items()}` freezes a snapshot — pass the
+ * getter (`when={open}`) or `when={() => open()}` instead.
+ */
+export function warnEagerControlFlowProp(
+  kind: "when" | "each",
+  value: unknown,
+): void {
+  try {
+    if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV !== true) return;
+    if (typeof value === "function") return; // accessor / Signal getter — OK
+    if (eagerControlFlowWarned.has(kind)) return;
+    eagerControlFlowWarned.add(kind);
+    console.warn(
+      `[@dreamer/view] <Show|For|Index|Match> ${kind}={...} got a plain value. ` +
+        `If you meant a Signal, pass the getter (${kind}={open} / ${kind}={items}) ` +
+        `or ${kind}={() => open()}, not ${kind}={open()}. Static literals are fine.`,
+    );
+  } catch {
+    /* DEV tip must not break render */
+  }
+}
+
+/** Test helper: clear eager-control-flow warn-once set. */
+export function clearEagerControlFlowWarns(): void {
+  eagerControlFlowWarned.clear();
+}

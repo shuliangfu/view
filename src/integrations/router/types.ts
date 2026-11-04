@@ -95,5 +95,11 @@ export interface Router {
   subscribe: (fn: () => void) => () => void;
   /** 移除 popstate、链接拦截、订阅，并清空 active 槽位（单测或卸载用） */
   destroy: () => void;
+  /**
+   * 当前「路由世代」的 AbortSignal：每次成功切页（commitNavigation）会 abort
+   * 上一世代并换新。交给 `createResource(..., { signal: router.routeAbortSignal() })`
+   * 即可在离页时取消 in-flight（P1-view-route-resource-abort）。
+   */
+  routeAbortSignal: () => AbortSignal;
 }
 

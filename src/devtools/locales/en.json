@@ -74,5 +74,8 @@
   "noTreeMatch": "No nodes match this filter.",
   "indicatorHmrConnected": "HMR connected",
   "indicatorHmrOffline": "HMR offline",
-  "indicatorHmrWarn": "HMR {status}"
+  "indicatorHmrWarn": "HMR {status}",
+  "setupRerunTitle": "Setup re-runs",
+  "setupRerunHint": "Auto-noted components: count ≥ 2 means setup re-ran (focus loss / bare-fetch risk).",
+  "setupRerunNone": "No setup re-runs"
 }

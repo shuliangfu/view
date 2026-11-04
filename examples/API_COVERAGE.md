@@ -75,7 +75,8 @@ API；需要指令级演示时请本地使用 `jsx-compiler`/`compileSource` 或
 | ----------------------------------------- | ------------------------------ | -------- | ------------------------------------ |
 | `createResource(fetcher)`                 | 无 source，refetch 手动请求    | ✅       | Resource 页（重新请求）              |
 | `createResource(source, fetcher)`         | 有 source，source 变化自动请求 | ✅       | Resource 页（id=1/2/3）              |
-| fetcher 第二参 `{ signal }`               | AbortSignal；切 source／离页 abort | ✅    | Resource 页 `fakeApi` + 页级 `AbortController` |
+| fetcher 第二参 `{ signal }`               | AbortSignal；切 source／切页 abort | ✅    | Resource 页 `fakeApi` + `router.routeAbortSignal()` |
+| `router.routeAbortSignal()`               | 路由世代 AbortSignal             | ✅       | Resource 页；切页 abort in-flight              |
 | 返回：`{ data, loading, error, refetch }` | 资源状态                       | ✅       | Resource 页（加载中/错误/data 展示） |
 | 类型：`ResourceResult<T>`                 | 类型                           | ✅       | 同上                                 |
 

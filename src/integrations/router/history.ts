@@ -115,6 +115,14 @@ export function createRouter(
 
   const scrollMemory = new Map<string, number>();
   const subscribers = new Set<() => void>();
+  /** 当前路由世代 AbortController；成功切页时 abort 并换新（Resource 外层 signal） */
+  let routeAbortController = new AbortController();
+  const rotateRouteAbort = () => {
+    try {
+      routeAbortController.abort();
+    } catch { /* ignore */ }
+    routeAbortController = new AbortController();
+  };
 
   let lastMatchKey = "";
   let interceptOn = false;
@@ -342,7 +350,13 @@ export function createRouter(
   }
 
   function syncFromBrowser() {
-    setLocationSig(readBrowserLocation());
+    const next = readBrowserLocation();
+    const cur = locationSig();
+    const changed = cur.pathname !== next.pathname ||
+      cur.search !== next.search ||
+      cur.hash !== next.hash;
+    if (changed) rotateRouteAbort();
+    setLocationSig(next);
     notifySubscribers();
   }
 
@@ -422,6 +436,9 @@ export function createRouter(
     const prevLoc = readBrowserLocation();
     const ok = await runBeforeEach(target);
     if (!ok) return;
+
+    // 离开当前页：abort 上一世代 in-flight Resource（持有旧 signal 的 createResource）
+    rotateRouteAbort();
 
     const hist = globalThis.history;
     const url = target.pathname + target.search + target.hash;
@@ -650,6 +667,9 @@ export function createRouter(
     stopIntercept();
     stopPopState();
     subscribers.clear();
+    try {
+      routeAbortController.abort();
+    } catch { /* ignore */ }
     if (routerCore.active === router) routerCore.active = null;
   }
 
@@ -677,6 +697,7 @@ export function createRouter(
     stop: () => stopIntercept(),
     subscribe,
     destroy,
+    routeAbortSignal: () => routeAbortController.signal,
     render: () => {
       const m = activeMatch();
       if (!m) {

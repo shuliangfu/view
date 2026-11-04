@@ -12,9 +12,11 @@ import {
   unmountDevtoolsOverlay,
 } from "@dreamer/view/devtools/overlay";
 import {
+  clearComponentSetupNotes,
   clearTrackedRoots,
   createRootTracked,
   inspectOwnerIndexed,
+  noteComponentSetup,
   uninstallOwnerDomTracking,
 } from "@dreamer/view/devtools";
 import { createEffect, createSignal, getOwner } from "@dreamer/view/reactivity";
@@ -42,6 +44,7 @@ describe("devtools overlay (P2)", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    clearComponentSetupNotes();
     uninstallOwnerDomTracking();
     document.querySelector("[data-dreamer-view-inspect]")?.remove();
     if (prevDev === undefined) delete g.VIEW_DEV;
@@ -177,6 +180,49 @@ describe("devtools overlay (P2)", () => {
     // Signal-only owners have no host elements — no page outline.
     expect(detail).toMatch(/No connected DOM/i);
     expect(document.querySelector("[data-dreamer-view-inspect]")).toBeNull();
+  });
+
+  it("Tree click toggle-clears selection on second click", () => {
+    let rootOwner = null as ReturnType<typeof getOwner>;
+    createRootTracked(() => {
+      rootOwner = getOwner();
+      const a = createSignal(1);
+      createEffect(() => a());
+    });
+    const indexed = inspectOwnerIndexed(rootOwner, { rootId: "0" })!;
+    const childPath = indexed.childNodes[0]!.id;
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.selectNode(childPath);
+    const shadow = handle.root.shadowRoot!;
+    expect(shadow.querySelector(".tree-row.selected")).not.toBeNull();
+    const row = shadow.querySelector(
+      `[data-path="${childPath}"]`,
+    ) as HTMLElement;
+    expect(row).not.toBeNull();
+    row.click();
+    expect(shadow.querySelector(".tree-row.selected")).toBeNull();
+    const detail = shadow.querySelector("[data-el='tree-detail']")!.textContent!;
+    expect(detail.length).toBeGreaterThan(0);
+    handle.unmount();
+  });
+
+  it("Warnings pane shows setup-rerun badge from auto notes", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    clearComponentSetupNotes();
+    noteComponentSetup("DemoPage");
+    noteComponentSetup("DemoPage");
+    handle.refresh();
+    handle.setTab("warnings");
+    const shadow = handle.root.shadowRoot!;
+    const badge = shadow.querySelector("[data-el='setup-rerun-badge']");
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toBe("1");
+    expect(badge!.className).toContain("warn");
+    const list = shadow.querySelector("[data-el='setup-rerun-list']")!
+      .textContent!;
+    expect(list).toContain("DemoPage");
+    expect(list).toContain("×2");
+    handle.unmount();
   });
 
   it("Signals filter narrows registry list", () => {
@@ -348,6 +394,7 @@ describe("devtools overlay HMR bridge integration", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    clearComponentSetupNotes();
     uninstallOwnerDomTracking();
     delete gAny.__DREAMER_HMR__;
     if (prevDev === undefined) delete g.VIEW_DEV;
@@ -468,6 +515,7 @@ describe("devtools overlay i18n (page lang, no switcher)", () => {
   afterEach(() => {
     unmountDevtoolsOverlay();
     clearTrackedRoots();
+    clearComponentSetupNotes();
     uninstallOwnerDomTracking();
     document.documentElement.lang = prevLang;
     if (prevDev === undefined) delete g.VIEW_DEV;

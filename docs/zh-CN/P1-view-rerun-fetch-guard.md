@@ -95,8 +95,31 @@ detectComponentRerun("Page", { emit: true });
 ## 3. Resource AbortSignal（薄配套）
 
 `createResource` 每次 load 传 `{ signal }`；**source 变化**／`refetch`／外层
-**`options.signal`** 会 abort。切页请传 `{ signal: routeAbort.signal }`——
+**`options.signal`** 会 abort。
+
+**路由切页：** `router.routeAbortSignal()` 返回当前路由世代的 `AbortSignal`；
+每次成功导航（含 popstate）会 abort 上一世代并换新。推荐：
+
+```ts
+const router = useRouter();
+const data = createResource(id, fetcher, {
+  signal: router.routeAbortSignal(),
+});
+```
+
 **不要**指望 Owner dispose（Suspense 切 fallback 也会 dispose 子 Owner）。
 
 Abort **治不好**「setup 每次重跑又 new 一个 Resource」——根因仍靠 untrack＋DEV
 警告。
+
+## 4. Show／For `when`／`each` 口诀
+
+控制流要**跟得上 Signal**，勿急切求值成快照：
+
+| 写法 | 效果 |
+| --- | --- |
+| `when={open}`／`each={items}` | ✅ 传 getter，Effect 内重读 |
+| `when={() => open()}` | ✅ 显式 accessor |
+| `when={open()}`／`each={items()}` | ❌ 渲染时冻结，不再更新 |
+
+`VIEW_DEV` 下若传入**纯值**（非函数），会一次性 `console.warn` 提醒（静态字面量合法，可忽略）。

@@ -248,3 +248,9 @@ Main `@dreamer/view` remains a **convenience barrel** (larger) and is under the 
 - Dev-only oversubscribe / remount warnings: see [`P2-dev-warn-oversubscribe.md`](./P2-dev-warn-oversubscribe.md) (explicit opt-in on `/devtools`)
 - No ui-view / dweb-admin product edits; no JSR / npm publish
 - No P0-2 bundle work, P0-3 compiler optimization, or P1\* in this knife
+
+## Show / For: pass getters, not `open()`
+
+Use `<Show when={open}>` / `<For each={items}>` with a **Signal getter** or
+`() => ...`. Writing `when={open()}` freezes a boolean/array at render time
+(see P1-view-rerun-fetch-guard §4).

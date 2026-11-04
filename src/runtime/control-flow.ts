@@ -57,7 +57,7 @@ import {
   type ViewSlot,
 } from "../types.ts";
 import { insert } from "./insert.ts";
-import { readAccessor } from "./utils.ts";
+import { readAccessor, warnEagerControlFlowProp } from "./utils.ts";
 
 /**
  * 比较两组 resetKeys 是否逐项相同（Object.is），用于判断依赖是否相对上次 effect 运行发生变化。
@@ -479,6 +479,7 @@ export function Show<T>(props: {
   fallback?: JSXRenderable;
   children: ShowChildren<T>;
 }): DocumentFragment {
+  warnEagerControlFlowProp("when", props.when);
   const marker = document.createTextNode("");
   const fragment = document.createDocumentFragment();
   fragment.appendChild(marker);
@@ -558,6 +559,7 @@ export function For<T>(props: {
   /** 稳定键；提供时启用键控复用与 DOM 重排 */
   key?: (item: T) => unknown;
 }): DocumentFragment {
+  warnEagerControlFlowProp("each", props.each);
   if (props.key) {
     return forKeyedList(props as typeof props & { key: (item: T) => unknown });
   }
@@ -724,6 +726,7 @@ export function Index<T>(props: {
   children: (item: T, index: () => number) => JSXRenderable;
   key?: (item: T) => unknown;
 }): DocumentFragment {
+  warnEagerControlFlowProp("each", props.each);
   if (props.key) {
     return forKeyedList({
       each: props.each,
@@ -861,6 +864,7 @@ export function Match(props: {
   when: MaybeAccessor<unknown>;
   children: JSXRenderable;
 }): ViewMatchDescriptor {
+  warnEagerControlFlowProp("when", props.when);
   const whenFn: () => unknown = () => {
     try {
       return readAccessor(props.when);

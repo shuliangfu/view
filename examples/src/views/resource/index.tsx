@@ -3,9 +3,10 @@
  * @description 展示 @dreamer/view 异步资源加载与数据获取。
  */
 
-import { createSignal, onCleanup } from "@dreamer/view/reactivity";
+import { createSignal } from "@dreamer/view/reactivity";
 import { ErrorBoundary } from "@dreamer/view/control-flow";
 import { Suspense } from "@dreamer/view/csr";
+import { useRouter } from "@dreamer/view/router";
 import {
   createResource,
   type Resource,
@@ -14,7 +15,7 @@ import {
 
 /**
  * 模拟异步 API：第二参接收 createResource 注入的 `{ signal }`。
- * source 切换／refetch／页级 AbortController 会 abort，清掉定时器（dogfood AbortSignal）。
+ * source 切换／refetch／`router.routeAbortSignal()`（切页）会 abort，清掉定时器。
  */
 async function fakeApi(id: number, { signal }: ResourceFetcherInfo) {
   await new Promise<void>((resolve, reject) => {
@@ -62,13 +63,14 @@ function UserLoaded(props: { user: Resource<UserRecord> }) {
 
 export default function ResourceDemo() {
   const [userId, setUserId] = createSignal(1);
+  const router = useRouter();
   /**
-   * 页级 AbortController：离开本页 onCleanup → abort in-flight（P1 AbortSignal dogfood）。
+   * 路由世代 AbortSignal：切页 abort in-flight（P1-view-route-resource-abort）。
    * 与 Suspense 配合须在边界外创建：同一 resource 在 fallback/内容切换时不应重复 new。
    */
-  const pageAbort = new AbortController();
-  onCleanup(() => pageAbort.abort());
-  const user = createResource(userId, fakeApi, { signal: pageAbort.signal });
+  const user = createResource(userId, fakeApi, {
+    signal: router.routeAbortSignal(),
+  });
 
   return (
     <section className="space-y-8">
@@ -79,7 +81,8 @@ export default function ResourceDemo() {
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
           通过 createResource 实现响应式数据获取。当 userId
           改变时，数据会自动重新加载（上一趟经 AbortSignal 取消）。Suspense
-          会在加载过程中显示 fallback；离开本页会 abort 进行中的请求。
+          会在加载过程中显示 fallback；路由切走时
+          `router.routeAbortSignal()` 会 abort 进行中的请求。
         </p>
       </header>
 

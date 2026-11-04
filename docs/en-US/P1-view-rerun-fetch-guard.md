@@ -106,9 +106,33 @@ components are skipped. Production installs no hook → `jsx` only reads
 ## 3. Resource AbortSignal (thin companion)
 
 `createResource` already passes `{ signal }` per load; **source change** /
-`refetch` / outer **`options.signal`** abort in-flight. Prefer
-`{ signal: routeAbort.signal }` on page leave — do **not** rely on Owner dispose
-(Suspense fallback also disposes child Owners).
+`refetch` / outer **`options.signal`** abort in-flight.
+
+**Route navigation:** `router.routeAbortSignal()` returns the current route
+generation `AbortSignal`. Each successful navigation (including popstate) aborts
+the previous generation and rotates a new one. Prefer:
+
+```ts
+const router = useRouter();
+const data = createResource(id, fetcher, {
+  signal: router.routeAbortSignal(),
+});
+```
+
+Do **not** rely on Owner dispose (Suspense fallback also disposes child Owners).
 
 Abort does not fix a setup that re-creates the Resource every re-run — that is
 what the untrack + DEV warnings target.
+
+## 4. Show / For `when` / `each` tip
+
+Keep control-flow **subscribed** to Signals — do not eagerly freeze a snapshot:
+
+| Form | Effect |
+| --- | --- |
+| `when={open}` / `each={items}` | ✅ pass the getter; re-read inside Effect |
+| `when={() => open()}` | ✅ explicit accessor |
+| `when={open()}` / `each={items()}` | ❌ frozen at render; never updates |
+
+Under `VIEW_DEV`, a **plain value** (non-function) triggers a one-shot `console.warn`
+(static literals are valid — you can ignore the tip).

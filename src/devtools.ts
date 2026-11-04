@@ -658,6 +658,16 @@ export function listComponentSetupKeys(): string[] {
   return [...componentSetupCounts.keys()];
 }
 
+/** Snapshot of setup counters (overlay Warnings / tests). */
+export function snapshotComponentSetups(): Array<{ key: string; count: number }> {
+  const out: Array<{ key: string; count: number }> = [];
+  for (const [key, count] of componentSetupCounts) {
+    out.push({ key, count });
+  }
+  out.sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+  return out;
+}
+
 /**
  * If {@link noteComponentSetup} was called ≥ 2 times for `key`, return a
  * `component-rerun` warning. Emitting requires `VIEW_DEV` + `emit: true`.

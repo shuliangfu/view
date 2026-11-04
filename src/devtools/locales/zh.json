@@ -74,5 +74,8 @@
   "noTreeMatch": "没有匹配该过滤条件的节点。",
   "indicatorHmrConnected": "HMR 已连接",
   "indicatorHmrOffline": "HMR 离线",
-  "indicatorHmrWarn": "HMR · {status}"
+  "indicatorHmrWarn": "HMR · {status}",
+  "setupRerunTitle": "Setup 重跑",
+  "setupRerunHint": "jsx 自动 note 的组件：计数 ≥ 2 表示 setup 被多余重跑（失焦／裸 fetch 风险）。",
+  "setupRerunNone": "暂无 setup 重跑"
 }
