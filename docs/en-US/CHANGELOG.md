@@ -24,6 +24,13 @@ and this project adheres to
     [`../zh-CN/P0-3-compiler-static-coverage-and-golden.md`](../zh-CN/P0-3-compiler-static-coverage-and-golden.md).
   - **No** default compile / runtime semantics change; no JSR / npm publish.
 
+### Fixed
+
+- **P0-3 CI: golden unit test cross Deno / Bun / Node**
+  - `tests/unit/compiler/golden.test.ts` drops `jsr:@std/path` / `Deno.readTextFile`;
+    uses `@dreamer/runtime-adapter` `dirname` / `fromFileUrl` / `join` / `readTextFile`,
+    matching existing unit tests. Assertions and coverage metrics unchanged.
+
 
 ### Added
 

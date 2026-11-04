@@ -22,6 +22,13 @@
     [`../en-US/P0-3-compiler-static-coverage-and-golden.md`](../en-US/P0-3-compiler-static-coverage-and-golden.md)。
   - **无**默认编译／运行时语义变更；禁 JSR／npm。
 
+### 修复
+
+- **P0-3 CI：golden 单测跨 Deno／Bun／Node**
+  - `tests/unit/compiler/golden.test.ts` 不再使用 `jsr:@std/path`／`Deno.readTextFile`；
+    改为 `@dreamer/runtime-adapter` 的 `dirname`／`fromFileUrl`／`join`／`readTextFile`，
+    与既有 unit（如 `version.test.ts`／`routers-codegen.test.ts`）一致。断言与覆盖率指标不变。
+
 
 ### 新增
 

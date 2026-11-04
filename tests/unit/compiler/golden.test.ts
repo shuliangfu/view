@@ -1,9 +1,16 @@
 /**
  * Golden lock for compileSource() output over the P0-3 corpus.
  * Fixtures + expected files live under scripts/compiler-coverage/.
+ *
+ * Path/FS via @dreamer/runtime-adapter so Deno / Bun / Node unit runners all resolve.
  */
 import { describe, expect, it } from "@dreamer/test";
-import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import {
+  dirname,
+  fromFileUrl,
+  join,
+  readTextFile,
+} from "@dreamer/runtime-adapter";
 import { compileSource } from "@dreamer/view/compiler";
 import { FIXTURES } from "../../../scripts/compiler-coverage/corpus.ts";
 import { normalizeGolden } from "../../../scripts/compiler-coverage/metrics.ts";
@@ -21,7 +28,7 @@ describe("compiler/golden (P0-3 static-subtree corpus)", () => {
   for (const f of FIXTURES) {
     it(`golden: ${f.id}`, async () => {
       const expectedPath = join(GOLDENS, `${f.id}.out.txt`);
-      const expected = normalizeGolden(await Deno.readTextFile(expectedPath));
+      const expected = normalizeGolden(await readTextFile(expectedPath));
       const actual = normalizeGolden(
         compileSource(f.source, f.fileName, f.options ?? {}),
       );
