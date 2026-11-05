@@ -81,5 +81,11 @@ Overlay chrome follows the **page language** (`html[lang]` /
 
 ## HMR
 
-With `@dreamer/server` DEV HMR: overlay `claimUi` hides the capsule and Overview
-→ HMR shows status; degrades without a bridge. Never in production.
+With `@dreamer/server` DEV HMR: overlay `claimUi` hides the standalone capsule;
+Overview → HMR shows status; degrades without a bridge. Never mounts in
+production.
+
+**Float invariant (3.0.x hotfix):** the corner status-dot is **HMR connection
+only** (aligned with Overview → HMR). Misuse warnings use the Warnings tab count
+badge and a separate float warn pill — they must **not** paint a connected HMR
+dot amber.

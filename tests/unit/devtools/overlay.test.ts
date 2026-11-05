@@ -507,6 +507,63 @@ describe("devtools overlay HMR bridge integration", () => {
     expect(dot.classList.contains("warn")).toBe(false);
     handle.unmount();
   });
+
+  it("status-dot stays green when HMR connected even with misuse warnings", () => {
+    // Root cause regression: warnings.length > 0 used to force status-dot
+    // to `.warn` (amber) while Overview → HMR stayed green “Connected”.
+    createRootTracked(() => {
+      const sigs = Array.from({ length: 10 }, () => createSignal(0));
+      createEffect(() => {
+        for (const s of sigs) s();
+      });
+    });
+    installMockBridge();
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.refresh();
+    const shadow = handle.root.shadowRoot!;
+    const warnCount = shadow.querySelector("[data-el='warn-count']")!;
+    expect(Number(warnCount.textContent)).toBeGreaterThan(0);
+    const floatWarn = shadow.querySelector(
+      "[data-el='float-warn-badge']",
+    ) as HTMLElement;
+    expect(floatWarn.classList.contains("hidden")).toBe(false);
+    expect(Number(floatWarn.textContent)).toBeGreaterThan(0);
+    const dot = shadow.querySelector("[data-el='status-dot']") as HTMLElement;
+    expect(dot.className).toContain("ok");
+    expect(dot.classList.contains("warn")).toBe(false);
+    expect(shadow.querySelector("[data-el='hmr-badge']")!.textContent)
+      .toContain("Connected");
+    expect(shadow.querySelector("[data-el='hmr-dot']")!.className).toContain(
+      "ok",
+    );
+    handle.unmount();
+  });
+
+  it("status-dot follows HMR reconnecting (amber) independent of warn pill", () => {
+    createRootTracked(() => {
+      const sigs = Array.from({ length: 10 }, () => createSignal(0));
+      createEffect(() => {
+        for (const s of sigs) s();
+      });
+    });
+    const mock = installMockBridge();
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.refresh();
+    const shadow = handle.root.shadowRoot!;
+    expect(
+      Number(shadow.querySelector("[data-el='warn-count']")!.textContent),
+    ).toBeGreaterThan(0);
+    mock.push({ connection: "reconnecting" });
+    const dot = shadow.querySelector("[data-el='status-dot']") as HTMLElement;
+    // Amber here means HMR reconnecting — not misuse overriding connected green
+    expect(dot.className).toContain("warn");
+    expect(
+      shadow.querySelector("[data-el='float-warn-badge']")!.classList.contains(
+        "hidden",
+      ),
+    ).toBe(false);
+    handle.unmount();
+  });
 });
 
 describe("devtools inspectOwnerIndexed", () => {

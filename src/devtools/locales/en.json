@@ -76,6 +76,7 @@
   "indicatorHmrConnected": "HMR connected",
   "indicatorHmrOffline": "HMR offline",
   "indicatorHmrWarn": "HMR {status}",
+  "indicatorWarnCount": "{n} warning(s) — see Warnings tab",
   "setupRerunTitle": "Setup re-runs",
   "setupRerunHint": "Auto-noted components: count ≥ 2 means setup re-ran (focus loss / bare-fetch risk).",
   "setupRerunNone": "No setup re-runs"

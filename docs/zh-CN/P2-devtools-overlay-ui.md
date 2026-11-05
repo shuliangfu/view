@@ -63,3 +63,7 @@ import `src/i18n.ts`（避免 `node:*` 进浏览器包）。仍仅 `VIEW_DEV`。
 
 有 `@dreamer/server` DEV HMR 时：overlay `claimUi` 藏独立胶囊，Overview → HMR
 展示状态；无桥则降级。生产绝不出。
+
+**浮标约定（3.0.x hotfix）：** 角点绿／黄／红只表示 **HMR 连接态**（与 Overview
+→ HMR 一致）。误用警告走「警告」页计数角标，以及浮标左下角独立警告
+pill——**不得**把已连接的 HMR 角点误渲成黄。

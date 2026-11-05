@@ -12,7 +12,9 @@
  *
  * When `@dreamer/server` DEV HMR publishes `globalThis.__DREAMER_HMR__`, the
  * overlay claims that UI (`claimUi`) so the standalone “HMR Connected” capsule
- * is hidden and status is shown under Overview → HMR.
+ * is hidden and status is shown under Overview → HMR. The float corner dot
+ * mirrors **HMR connection only**; misuse warnings use the Warnings tab
+ * count and a separate float warn pill — they must not turn the HMR dot amber.
  */
 
 import type { Owner } from "../reactivity/owner.ts";
@@ -576,6 +578,15 @@ const CSS = /* css */ `
 .dot.err { background: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,0.22); }
 .dot.off { background: #71717a; }
 .dot.hidden { display: none; }
+/* Separate from HMR status-dot: misuse warn count on the float (bottom-left). */
+.float-warn {
+  position: absolute; bottom: -2px; left: -2px; min-width: 14px; height: 14px;
+  padding: 0 3px; border-radius: 999px; border: 1.5px solid rgba(10,10,14,0.95);
+  background: #f59e0b; color: #111827; font-size: 9px; font-weight: 780;
+  line-height: 11px; text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.35);
+}
+.float-warn.hidden { display: none; }
 `;
 
 function emptySummary(): OwnerTreeSummary {
@@ -928,6 +939,7 @@ export function mountDevtoolsOverlay(
   indicator.innerHTML = `
     <span class="indicator-mark" aria-hidden="true">V</span>
     <span class="dot hidden" data-el="status-dot" aria-hidden="true"></span>
+    <span class="float-warn hidden" data-el="float-warn-badge" aria-hidden="true">0</span>
   `;
 
   wrap.appendChild(panel);
@@ -1250,16 +1262,20 @@ export function mountDevtoolsOverlay(
   };
 
   /**
-   * Float status-dot: merge HMR connection + misuse warnings.
-   * - connected + no warns → green (`ok`)
-   * - any warns → yellow (`warn`) without clearing HMR state for next paint
-   * - disconnected / error / no bridge → gray / hidden as before
+   * Float status-dot = **HMR connection only** (invariant).
+   * Misuse / setup warnings must NOT paint this dot yellow — they go to
+   * Warnings tab badges (`warn-count` / `warn-badge`) and the separate
+   * float warn pill (`float-warn-badge`). Otherwise Overview can show
+   * HMR “Connected” green while the V float spuriously turns amber.
+   * - connected → green (`ok`)
+   * - reconnecting → yellow (`warn`) — HMR itself, not misuse
+   * - error → red (`err`)
+   * - disconnected / no bridge → gray / hidden
    */
   const syncStatusDot = () => {
     const statusDot = el("[data-el='status-dot']");
     if (!statusDot) return;
     const snap = lastHmrSnap;
-    const n = warnings.length;
     if (!snap) {
       statusDot.className = "dot hidden off";
       statusDot.title = ot("indicatorHmrOffline");
@@ -1268,12 +1284,7 @@ export function mountDevtoolsOverlay(
     }
     let cls: "ok" | "warn" | "err" | "off";
     let title: string;
-    if (n > 0) {
-      cls = "warn";
-      title = snap.connection === "connected"
-        ? ot("indicatorHmrConnected")
-        : ot("indicatorHmrWarn", { status: hmrLabel(snap.connection) });
-    } else if (snap.connection === "connected") {
+    if (snap.connection === "connected") {
       cls = "ok";
       title = ot("indicatorHmrConnected");
     } else if (snap.connection === "reconnecting") {
@@ -1289,6 +1300,25 @@ export function mountDevtoolsOverlay(
     statusDot.className = `dot ${cls}`;
     statusDot.title = title;
     statusDot.style.background = "";
+  };
+
+  /**
+   * Float warn pill (bottom-left): misuse warning count only.
+   * Independent of HMR status-dot so connection green stays truthful.
+   */
+  const syncFloatWarnBadge = () => {
+    const pill = el("[data-el='float-warn-badge']");
+    if (!pill) return;
+    const n = warnings.length;
+    if (n <= 0) {
+      pill.className = "float-warn hidden";
+      pill.textContent = "0";
+      pill.removeAttribute("title");
+      return;
+    }
+    pill.className = "float-warn";
+    pill.textContent = n > 99 ? "99+" : String(n);
+    pill.title = ot("indicatorWarnCount", { n });
   };
 
   const renderSetupReruns = () => {
@@ -1341,8 +1371,9 @@ export function mountDevtoolsOverlay(
     if (healthHint) {
       healthHint.textContent = n > 0 ? ot("healthWarnHint") : ot("healthOk");
     }
-    // status-dot: do not paint bare gray here — merge with HMR via syncStatusDot
+    // status-dot = HMR only; float-warn pill carries misuse count
     syncStatusDot();
+    syncFloatWarnBadge();
     if (!list) return;
     if (!n) {
       list.innerHTML =
