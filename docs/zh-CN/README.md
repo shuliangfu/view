@@ -1440,17 +1440,9 @@ function ModalHost() {
   组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
-- **当前版本 [3.0.0] — 2026-11-05**：
-  - **新增**：DevTools 面板＋过订阅／重跑／缺 key 警告；编译器静态折叠
-    （文本／属性／SSR 对齐＋class join）；URL 守卫（`srcset`／`srcdoc`、SSR
-    `href`／`src`）；Switch 注释锚点；`createDeferred({ timeout })`；
-    `routeAbortSignal()`；form `field` `as: "radio"`；路由 churn 探针。
-  - **修复**：静态 `??` 属性折叠进模板；路由 loading→页面扩张时 DevTools
-    remount-churn 误报；remount 辅助函数 JSR slow-types。
-  - **变更**（破坏性）：主入口瘦身（router／form／resource → 子路径）；更严
-    水合默认（`VIEW_DEV` 下 `assert`，否则 `remount`；删除布尔别名，见
-    `MIGRATION-3.0.md`）。库主入口 minify 约 44.3→33.4 KiB。测试：Deno
-    **564**＋examples E2E **22**。
+- **当前版本 [3.0.1] — 2026-11-05**：
+  - **修复**：DevTools 浮标状态点只跟 HMR 连接（已连接保持绿）；误用警告改走
+    Warnings tab／独立警告 pill，晚到快照不再约 1 秒后把 V 浮标盖黄。
   - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
     **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
 - 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**；英文版

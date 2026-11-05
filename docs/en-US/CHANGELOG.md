@@ -8,6 +8,18 @@ and this project adheres to
 
 ---
 
+## [3.0.1] - 2026-11-05
+
+### Fixed
+
+- **DevTools float status-dot vs HMR connection (non-breaking)**
+  - Status-dot now mirrors **HMR connection only** (green while Connected).
+  - Misuse / oversubscribe warnings no longer paint the float corner amber;
+    Warnings tab count + a separate warn pill carry that signal instead.
+  - Fixes refresh flash: Overview HMR stayed green while the V float turned
+    yellow ~1s later when late warning snapshots arrived.
+  - Regression: `tests/unit/devtools/overlay.test.ts` (connected + warnings).
+
 ## [3.0.0] - 2026-11-05
 
 ### Added

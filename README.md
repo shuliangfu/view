@@ -1490,19 +1490,10 @@ function ModalHost() {
 - **3.0 planning memo** (Chinese):
   [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)
 
-- **Latest [3.0.0] — 2026-11-05**:
-  - **Added**: DevTools overlay + oversubscribe/rerun/missing-key warns;
-    compiler static folds (text/attrs/SSR parity + class joins); URL guards
-    (`srcset`/`srcdoc`, SSR `href`/`src`); Switch comment anchors;
-    `createDeferred({ timeout })`; `routeAbortSignal()`; form `field`
-    `as: "radio"`; route-churn probe.
-  - **Fixed**: static `??` attr fold into templates; DevTools remount-churn
-    false positive on route loading→page expand; JSR slow-types on remount
-    helpers.
-  - **Changed** (breaking): slim main entry (router/form/resource → subpaths);
-    stricter hydrate defaults (`assert` when `VIEW_DEV`, else `remount`; drop
-    boolean aliases — see `MIGRATION-3.0.md`). Library main minify ~44.3→~33.4
-    KiB. Tests: Deno **564** + examples E2E **22**.
+- **Latest [3.0.1] — 2026-11-05**:
+  - **Fixed**: DevTools float status-dot follows HMR connection only (stays
+    green while Connected); misuse warnings use Warnings tab + warn pill and no
+    longer paint the V float amber after a late snapshot (~1s flash).
   - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**; Chinese:
   **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
