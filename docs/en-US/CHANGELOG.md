@@ -8,6 +8,22 @@ and this project adheres to
 
 ---
 
+## [3.0.2] - 2026-11-06
+
+### Added
+
+- **DevTools auto-mount in DEV (non-breaking)**
+  - `prepareDevBuild` wraps the app entry with `devtools/auto-mount` so the
+    floating overlay mounts with **zero** app/`docs` calls to
+    `mountDevtoolsOverlay`.
+  - HMR banner (DEV-only) sets `VIEW_DEV`, then boots via
+    `__VIEW_BOOT_DEVTOOLS__` or a dynamic `@dreamer/view/devtools/overlay`
+    import (warn-only on failure). **Production builds never inject** the
+    banner or the wrapper — prod dist must not contain overlay mount strings.
+  - `mountWithRouter` under `VIEW_DEV` uses `__VIEW_CREATE_ROOT_TRACKED__`
+    (registered by auto-mount) so the Owner tree is visible; prod path
+    unchanged (no static/dynamic `devtools` import from router).
+
 ## [3.0.1] - 2026-11-05
 
 ### Fixed

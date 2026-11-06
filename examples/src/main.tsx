@@ -1,9 +1,12 @@
 /**
  * @dreamer/view 现代架构多页面示例 — 入口
  * 全面转向自动化 jsx-runtime 与统一导入路径。
+ *
+ * DevTools overlay：DEV 由 view 内核自动挂载（HMR banner + auto-mount 入口），
+ * 业务零调用 `mountDevtoolsOverlay`。`mountWithRouter` 在 VIEW_DEV 下走
+ * `createRootTracked`，树面板可见 Owner 根。
  */
 
-import { insert } from "@dreamer/view/csr";
 import { createRouter, mountWithRouter } from "@dreamer/view/router";
 import { routerBeforeEach } from "./router/router.ts";
 import { notFoundRoute, routes } from "./router/routers.tsx";
@@ -20,53 +23,4 @@ const router = createRouter({
   beforeEach: routerBeforeEach,
 });
 
-const isViewDev = (globalThis as { VIEW_DEV?: boolean }).VIEW_DEV === true;
-
-/** Clear cloak + children (mirrors runtime/browser `mount`). */
-function prepareRoot(container: HTMLElement): void {
-  container.textContent = "";
-  container.removeAttribute("data-view-cloak");
-  container.style.display = "";
-}
-
-/**
- * DEV dogfood: mount via {@link createRootTracked} so DevTools 「树」sees a real
- * Owner root (plain `mountWithRouter` → `createRoot` does not auto-track).
- * `createRootTracked` also installs Owner→DOM tracking under `VIEW_DEV` before
- * the first paint, so a Tree click can outline the matching elements.
- * Production / non-VIEW_DEV keeps `mountWithRouter` unchanged.
- */
-function mountExamplesApp(): void {
-  const runTracked = async () => {
-    const container = document.querySelector("#root") as HTMLElement | null;
-    if (!container) return;
-
-    const { createRootTracked } = await import("@dreamer/view/devtools");
-    const { mountDevtoolsOverlay } = await import(
-      "@dreamer/view/devtools/overlay"
-    );
-
-    createRootTracked(() => {
-      prepareRoot(container);
-      // Same shape as mountWithRouter → mount(() => () => router.render(), …)
-      insert(container, () => router.render());
-    });
-
-    mountDevtoolsOverlay({ corner: "bottom-left" });
-  };
-
-  if (isViewDev) {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
-        void runTracked();
-      });
-    } else {
-      void runTracked();
-    }
-    return;
-  }
-
-  mountWithRouter("#root", router);
-}
-
-mountExamplesApp();
+mountWithRouter("#root", router);

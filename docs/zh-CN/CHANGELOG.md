@@ -7,6 +7,19 @@
 
 ---
 
+## [3.0.2] - 2026-11-06
+
+### 新增
+
+- **DEV 自动挂载 DevTools（非破坏）**
+  - `prepareDevBuild` 用虚拟入口 side-import `devtools/auto-mount`，业务／docs
+    **零调用** `mountDevtoolsOverlay` 即可出现浮标。
+  - DEV-only HMR banner 设置 `VIEW_DEV` 后经 `__VIEW_BOOT_DEVTOOLS__` 或动态
+    import 挂载；失败仅 `console.warn`。**生产构建不注入** banner／wrapper，
+    prod 产物不应出现 overlay 挂载字样。
+  - `mountWithRouter` 在 `VIEW_DEV` 下走 `__VIEW_CREATE_ROOT_TRACKED__`（由
+    auto-mount 注册），Owner 树可见；生产路径不变。
+
 ## [3.0.1] - 2026-11-05
 
 ### 修复

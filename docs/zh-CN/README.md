@@ -1440,20 +1440,7 @@ function ModalHost() {
   组件作者指南**（Memo／ref／订阅边界）：[P0-4-component-author-guide.md](./P0-4-component-author-guide.md)／[../en-US/P0-4-component-author-guide.md](../en-US/P0-4-component-author-guide.md)
 - **3.0 规划备忘**：[3.0.0-规划分析.md](./3.0.0-规划分析.md)
 
-- **当前版本 [3.0.1] — 2026-11-05**：
-  - **修复**：DevTools 浮标状态点只跟 HMR 连接（已连接保持绿）；误用警告改走
-    Warnings tab／独立警告 pill，晚到快照不再约 1 秒后把 V 浮标盖黄。
-  - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**；英文
-    **[../en-US/CHANGELOG.md](../en-US/CHANGELOG.md)**。
-- 测试概况见 **[TEST_REPORT.md](./TEST_REPORT.md)**；英文版
-  **[../en-US/TEST_REPORT.md](../en-US/TEST_REPORT.md)**。
-
----
-
-## 二十六、许可证
-
-Apache License 2.0，见仓库根目录 **[LICENSE](../../LICENSE)**。
-
----
-
-<div align="center"><strong>Made with ❤️ by Dreamer Team</strong></div>
+- **当前版本 [3.0.2] — 2026-11-06**：
+  - **新增**：DEV 下 DevTools 浮标**自动挂载**（业务零调用）；生产构建不含 overlay。
+    `mountWithRouter` 在 `VIEW_DEV` 下跟踪 Owner 根供树面板使用。
+  - 完整历史：**[CHANGELOG.md](./CHANGELOG.md)**。

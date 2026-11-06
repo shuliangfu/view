@@ -3,7 +3,9 @@
  * @description DEV-only floating DevTools (Next.js Dev indicator / panel inspired).
  *
  * Multi-tab inspector: Overview · Tree · Signals · Warnings · Settings.
- * Opt-in via {@link mountDevtoolsOverlay}. Requires `VIEW_DEV`; otherwise
+ * Prefer the DEV auto-mount (`prepareDevBuild` + HMR banner) — apps need not
+ * call {@link mountDevtoolsOverlay}. Manual opt-in still works. Requires
+ * `VIEW_DEV`; otherwise
  * returns `null` and creates no DOM. Not on measured size / consumer entries.
  *
  * Reuses / extends `@dreamer/view/devtools` (indexed Owner tree, registry

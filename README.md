@@ -1490,10 +1490,10 @@ function ModalHost() {
 - **3.0 planning memo** (Chinese):
   [`docs/zh-CN/3.0.0-规划分析.md`](./docs/zh-CN/3.0.0-规划分析.md)
 
-- **Latest [3.0.1] — 2026-11-05**:
-  - **Fixed**: DevTools float status-dot follows HMR connection only (stays
-    green while Connected); misuse warnings use Warnings tab + warn pill and no
-    longer paint the V float amber after a late snapshot (~1s flash).
+- **Latest [3.0.2] — 2026-11-06**:
+  - **Added**: DevTools overlay **auto-mounts in DEV** (zero app calls);
+    production builds do not include overlay. `mountWithRouter` tracks the
+    Owner root under `VIEW_DEV` for the tree panel.
   - Full history: **[docs/en-US/CHANGELOG.md](./docs/en-US/CHANGELOG.md)**.
 - Tests: **[docs/en-US/TEST_REPORT.md](./docs/en-US/TEST_REPORT.md)**; Chinese:
   **[docs/zh-CN/TEST_REPORT.md](./docs/zh-CN/TEST_REPORT.md)**.
