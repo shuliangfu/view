@@ -8,6 +8,17 @@ and this project adheres to
 
 ---
 
+## [3.0.4] - 2026-11-06
+
+### Fixed
+
+- **DevTools float default corner → bottom-right (non-breaking)**
+  - `mountDevtoolsOverlay` default `corner`: `bottom-left` → **`bottom-right`**
+    (CSS `.corner-br`: `bottom` / `right: var(--pad)`).
+  - Stored localStorage corner/offset still wins; drag, hide-on-open (same
+    anchor), and restore-on-close are unchanged.
+  - Test: default `corner-br` in `tests/unit/devtools/overlay.test.ts`.
+
 ## [3.0.3] - 2026-11-06
 
 ### Fixed

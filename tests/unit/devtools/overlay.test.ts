@@ -80,6 +80,14 @@ describe("devtools overlay (P2)", () => {
     expect(handle!.isOpen).toBe(false);
   });
 
+  it("defaults float corner to bottom-right (corner-br)", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    const wrap = handle.root.shadowRoot!.querySelector(".wrap") as HTMLElement;
+    expect(wrap.className).toMatch(/corner-br/);
+    expect(wrap.className).not.toMatch(/corner-bl/);
+    handle.unmount();
+  });
+
   it("panel has no footer bar (refresh lives in head)", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     handle.open();

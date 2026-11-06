@@ -170,7 +170,7 @@ export type DevtoolsOverlayTab =
   | "settings";
 
 export interface MountDevtoolsOverlayOptions {
-  /** Initial corner. Default `bottom-left`. Overridden by stored position when present. */
+  /** Initial corner. Default `bottom-right`. Overridden by stored position when present. */
   corner?: DevtoolsOverlayCorner;
   /** Primary Owner; otherwise aggregates {@link getTrackedRoots}. */
   owner?: Owner | null;
@@ -694,7 +694,7 @@ export function mountDevtoolsOverlay(
   const storageKey = options?.storageKey ?? DEFAULT_STORAGE;
   const stored = readStore(storageKey);
   let corner: DevtoolsOverlayCorner = stored.corner ?? options?.corner ??
-    "bottom-left";
+    "bottom-right";
   let refreshMs = stored.refreshMs ?? options?.refreshMs ?? 1000;
   const watchMisuse = options?.watchMisuse !== false;
   const parent = options?.parent ?? document.body;

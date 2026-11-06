@@ -7,6 +7,16 @@
 
 ---
 
+## [3.0.4] - 2026-11-06
+
+### 修复
+
+- **DevTools 浮标默认角改为右下（非破坏）**
+  - `mountDevtoolsOverlay` 默认 `corner`：`bottom-left` → **`bottom-right`**
+    （CSS `.corner-br`：`bottom`／`right: var(--pad)`）。
+  - 仍尊重 localStorage 已存角点／拖拽偏移；可拖、开面板藏浮标／同锚、关闭保留拖位不变。
+  - 单测：默认 `corner-br`（`tests/unit/devtools/overlay.test.ts`）。
+
 ## [3.0.3] - 2026-11-06
 
 ### 修复
