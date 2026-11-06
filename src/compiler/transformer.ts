@@ -739,13 +739,16 @@ export function transformJSX(
             ),
           );
         } else if (dyn.type === "ref") {
-          // expr(target)
+          // scheduleFunctionRef(expr, target) — defer function ref until connected
           statements.push(
             factory.createExpressionStatement(
               factory.createCallExpression(
-                ts.visitNode(dyn.expression, visitor) as ts.Expression,
+                factory.createIdentifier("scheduleFunctionRef"),
                 undefined,
-                [targetNodeExpr],
+                [
+                  ts.visitNode(dyn.expression, visitor) as ts.Expression,
+                  targetNodeExpr,
+                ],
               ),
             ),
           );

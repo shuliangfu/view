@@ -589,6 +589,8 @@ const CSS = /* css */ `
   box-shadow: 0 0 0 1px rgba(245,158,11,0.35);
 }
 .float-warn.hidden { display: none; }
+/* Open panel: hide float so panel sits on the same corner/offset anchor. */
+.indicator.hidden { display: none; }
 `;
 
 function emptySummary(): OwnerTreeSummary {
@@ -1105,6 +1107,8 @@ export function mountDevtoolsOverlay(
   const setOpen = (next: boolean) => {
     open = next;
     panel.classList.toggle("open", open);
+    // UX: panel replaces the float at the same wrap anchor; close restores float + drag offset.
+    indicator.classList.toggle("hidden", open);
     indicator.setAttribute("aria-expanded", open ? "true" : "false");
     indicator.setAttribute(
       "aria-label",
@@ -1764,11 +1768,12 @@ export function mountDevtoolsOverlay(
     handleEl.addEventListener("pointerdown", (ev) => {
       if (ev.button !== 0) return;
       const t = ev.target as Element | null;
-      if (
-        t?.closest?.(
-          "button, a, input, select, textarea, label, [data-action]",
-        )
-      ) {
+      // Skip nested controls (header refresh/close), but allow drag when
+      // handleEl itself is the interactive node (float indicator is a <button>).
+      const interactive = t?.closest?.(
+        "button, a, input, select, textarea, label, [data-action]",
+      );
+      if (interactive && interactive !== handleEl) {
         return;
       }
       dragging = true;

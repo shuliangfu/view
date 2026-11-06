@@ -8,6 +8,27 @@ and this project adheres to
 
 ---
 
+## [3.0.3] - 2026-11-06
+
+### Fixed
+
+- **DevTools float drag + hide-on-open (non-breaking)**
+  - `bindDrag` no longer treats the float `<button>` itself as a nested control
+    (regression from the header clickability hotfix).
+  - Opening the panel hides the float; the panel keeps the same wrap
+    corner/drag-offset anchor. Closing restores the float and its dragged
+    position.
+  - Tests: `tests/unit/devtools/overlay.test.ts`.
+
+- **Defer function `ref` until the node is connected (non-breaking)**
+  - New export `scheduleFunctionRef`: sync when already `isConnected` (hydrate);
+    otherwise `queueMicrotask` after create; `ref(null)` stays sync. Object refs
+    still assign `current` immediately.
+  - `jsx-runtime` and the CSR compiler template use this path so Affix-like
+    hosts are not stuck after a first-frame `!isConnected` `runSync` skip.
+  - Tests: `tests/unit/runtime/dom.test.ts`; compiler expects
+    `scheduleFunctionRef(...)`.
+
 ## [3.0.2] - 2026-11-06
 
 ### Added
@@ -18,11 +39,11 @@ and this project adheres to
     `mountDevtoolsOverlay`.
   - HMR banner (DEV-only) sets `VIEW_DEV`, then boots via
     `__VIEW_BOOT_DEVTOOLS__` or a dynamic `@dreamer/view/devtools/overlay`
-    import (warn-only on failure). **Production builds never inject** the
-    banner or the wrapper — prod dist must not contain overlay mount strings.
+    import (warn-only on failure). **Production builds never inject** the banner
+    or the wrapper — prod dist must not contain overlay mount strings.
   - `mountWithRouter` under `VIEW_DEV` uses `__VIEW_CREATE_ROOT_TRACKED__`
-    (registered by auto-mount) so the Owner tree is visible; prod path
-    unchanged (no static/dynamic `devtools` import from router).
+    (registered by auto-mount) so the Owner tree is visible; prod path unchanged
+    (no static/dynamic `devtools` import from router).
 
 ## [3.0.1] - 2026-11-05
 

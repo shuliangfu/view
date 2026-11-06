@@ -21,13 +21,12 @@ import {
   getOwner,
   runWithOwner,
 } from "./reactivity/owner.ts";
+import { scheduleFunctionRef } from "./runtime/dom.ts";
 import { insert } from "./runtime/insert.ts";
 import { setProperty } from "./runtime/props.ts";
 import type {
   JSXElementType,
   JSXRenderable,
-  RefObject,
-  ViewRefObject,
   ViewTransparentProviderMeta,
   VNode,
 } from "./types.ts";
@@ -161,10 +160,14 @@ export function jsx(
         const value = props[name];
 
         if (name === "ref") {
-          if (typeof value === "function") value(el);
-          else if (value && typeof value === "object") {
-            (value as ViewRefObject | RefObject<unknown>).current = el;
-          }
+          scheduleFunctionRef(
+            value as
+              | ((node: Element | null) => void)
+              | { current: Element | null }
+              | null
+              | undefined,
+            el,
+          );
           continue;
         }
 
@@ -208,7 +211,7 @@ export function Fragment(props: {
 }
 
 /** 与 `@dreamer/view` 主入口一致，便于仅从 `jsx-runtime` 拉 JSX 的项目直接使用 `createRef`。 */
-export { createRef, getDocument } from "./runtime/dom.ts";
+export { createRef, getDocument, scheduleFunctionRef } from "./runtime/dom.ts";
 
 // --- JSX 类型定义 ---
 // deno-lint-ignore no-namespace

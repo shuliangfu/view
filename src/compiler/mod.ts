@@ -73,7 +73,7 @@ export function compileSource(
   if (options.generate === "ssr") {
     runtimeImports = `import { memo } from "${importPath}";\n`;
   } else {
-    // DOM 模式：与 transformer 产出的标识符对齐（template / walk / insert / setAttribute / setProperty / spread）
+    // DOM 模式：与 transformer 产出的标识符对齐（template / walk / insert / setAttribute / setProperty / spread / scheduleFunctionRef）
     const imports = [
       "template",
       "walk",
@@ -85,6 +85,10 @@ export function compileSource(
     // 三元内联 JSX 会生成 memo(() => ...)，按需导入避免无谓依赖
     if (output.includes("memo(")) {
       imports.push("memo");
+    }
+    // 有 ref 绑定时才导入（避免无 ref 语料／golden 被无谓污染）
+    if (output.includes("scheduleFunctionRef(")) {
+      imports.push("scheduleFunctionRef");
     }
     // 只有当产出代码中包含 createHMRProxy 时才导入它（HMR 包装 export const 组件）
     if (options.hmr && output.includes("createHMRProxy")) {

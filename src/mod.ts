@@ -54,7 +54,7 @@ export type {
 // Runtime
 export * from "./runtime/browser.ts";
 export * from "./runtime/component.ts";
-export { createRef, getDocument } from "./runtime/dom.ts";
+export { createRef, getDocument, scheduleFunctionRef } from "./runtime/dom.ts";
 /** 判别 Signal、解包多层 Signal；供组件库使用，与 `insert` 对函数/Signal 的判定一致 */
 export { isSignal, readAccessor, unwrap } from "./runtime/utils.ts";
 export * from "./runtime/control-flow.ts";

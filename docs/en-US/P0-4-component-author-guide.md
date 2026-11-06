@@ -179,6 +179,12 @@ function bindScrollRootRef(el: HTMLElement | null) {
 }
 ```
 
+**Mount timing (3.0.3):** Function `ref`s go through `scheduleFunctionRef`: sync
+when already connected; otherwise after a microtask once create-time nodes can
+be inserted. Object `ref.current` is still assigned immediately. Code that
+checks `host.isConnected` should see a connected node on the first meaningful
+frame (or after that microtask).
+
 ### 4.3 Compiler path note
 
 In a few trigger-button cases, `createRef`’s internal signal can be subscribed

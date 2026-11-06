@@ -166,6 +166,11 @@ function bindScrollRootRef(el: HTMLElement | null) {
 }
 ```
 
+**挂载时机（3.0.3）：** 函数 `ref` 经
+`scheduleFunctionRef`：节点已连接时同步回调；创建时未入文档则微任务后再调。对象
+`ref.current` 仍立刻写入。编写依赖 `host.isConnected`
+的逻辑时，首帧应能看到已连接节点（或等待微任务）。
+
 ### 4.3 与编译路径
 
 个别触发器场景下，`createRef`

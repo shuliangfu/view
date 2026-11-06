@@ -88,4 +88,7 @@ production.
 **Float invariant (3.0.x hotfix):** the corner status-dot is **HMR connection
 only** (aligned with Overview → HMR). Misuse warnings use the Warnings tab count
 badge and a separate float warn pill — they must **not** paint a connected HMR
-dot amber.
+dot amber. **Float open/close (3.0.3):** Opening the panel hides the float; the
+panel uses the same corner/drag offset. Closing restores the float at its
+dragged position. The float itself is draggable (`bindDrag` allows the handle to
+be the `<button>`).

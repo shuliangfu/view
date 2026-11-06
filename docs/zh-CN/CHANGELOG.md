@@ -7,6 +7,26 @@
 
 ---
 
+## [3.0.3] - 2026-11-06
+
+### 修复
+
+- **DevTools 浮标可拖＋开合隐藏（非破坏）**
+  - `bindDrag` 不再把浮标自身 `<button>` 当成「嵌套控件」而跳过拖动（回归自
+    header 点击可点 hotfix）。
+  - 打开面板时隐藏浮标，面板落在同一 wrap 角点／拖拽偏移锚点；关闭后面板隐藏、
+    浮标恢复并保留拖后位置。
+  - 单测：`tests/unit/devtools/overlay.test.ts`（拖动＋开合隐藏）。
+
+- **函数 `ref` 延后到节点连接后（非破坏）**
+  - 新增／导出 `scheduleFunctionRef`：已
+    `isConnected`（hydrate）同步回调；创建时 未入文档则 `queueMicrotask`
+    后再调；`ref(null)` 仍同步。对象 ref 仍立刻写 `current`。
+  - `jsx-runtime` 与编译器 CSR 模板改走该路径，避免 Affix 等在 SSG hydrate／CSR
+    首帧因 `host !isConnected` 跳过 `runSync` 后宿主信号不再更新而永久失钉。
+  - 单测：`tests/unit/runtime/dom.test.ts`；编译器期望
+    `scheduleFunctionRef(...)`。
+
 ## [3.0.2] - 2026-11-06
 
 ### 新增

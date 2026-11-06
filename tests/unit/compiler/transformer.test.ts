@@ -89,13 +89,13 @@ describe("compiler/transformer", () => {
     expect(out).toContain("return _frag");
   });
 
-  it("事件绑定与 Ref 转换：应当生成 addEventListener 和直接调用", () => {
+  it("事件绑定与 Ref 转换：应当生成 addEventListener 和 scheduleFunctionRef", () => {
     const code =
       `export const App = () => <button onClick={handler} ref={el => myRef = el}>Click</button>;`;
     const out = compileSource(code, "test.tsx");
 
     expect(out).toContain('addEventListener("click", handler)');
-    expect(out).toContain("(el => myRef = el)(_el)");
+    expect(out).toContain("scheduleFunctionRef(el => myRef = el, _el)");
   });
 
   it("Spread 属性转换：应当生成 spread() 调用", () => {

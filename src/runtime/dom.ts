@@ -35,3 +35,41 @@ export function createRef<T = unknown>(
 ): RefObject<T> {
   return { current: initial };
 }
+
+/**
+ * JSX / 编译器统一的 ref 应用入口。
+ *
+ * - **对象 ref**：立刻写入 `current`（与历史 `createRef` 路径一致）。
+ * - **函数 ref**：`el === null` 同步回调（卸载／瞬态清空）；非 null 且已
+ *   `isConnected`（hydrate）同步回调；创建时尚在文档外则 `queueMicrotask` 后再调，
+ *   以便同回合的 `insert`／`appendChild` 先挂上。解决 Affix 等在首帧
+ *   `!host.isConnected` 时 `runSync` 永久跳过的问题。
+ *
+ * @param ref 函数 ref、对象 ref，或空
+ * @param el 目标节点；卸载时传 `null`
+ */
+export function scheduleFunctionRef<T extends Element = Element>(
+  ref:
+    | ((el: T | null) => void)
+    | { current: T | null }
+    | null
+    | undefined,
+  el: T | null,
+): void {
+  if (ref == null) return;
+  if (typeof ref !== "function") {
+    (ref as { current: T | null }).current = el;
+    return;
+  }
+  if (el == null) {
+    ref(null);
+    return;
+  }
+  if (el.isConnected) {
+    ref(el);
+    return;
+  }
+  queueMicrotask(() => {
+    ref(el);
+  });
+}

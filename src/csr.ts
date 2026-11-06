@@ -53,7 +53,7 @@ export {
   stopHydration,
   useHydratedNode,
 } from "./runtime/hydration.ts";
-export { createRef, getDocument } from "./runtime/dom.ts";
+export { createRef, getDocument, scheduleFunctionRef } from "./runtime/dom.ts";
 export { insert } from "./runtime/insert.ts";
 export { setAttribute, setProperty, spread } from "./runtime/props.ts";
 export { template, walk } from "./runtime/template.ts";

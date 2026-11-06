@@ -5,7 +5,12 @@
 // 为内置 TS 拉入 DOM 类型；根目录打开工程时若 Deno LSP 未绑定 view/deno.json，可避免 document / HTMLDivElement 报红。
 import "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createRef, getDocument, type VNode } from "@dreamer/view";
+import {
+  createRef,
+  getDocument,
+  scheduleFunctionRef,
+  type VNode,
+} from "@dreamer/view";
 import * as JR from "../../../src/jsx-runtime.ts";
 
 /**
@@ -160,6 +165,77 @@ describe("runtime/dom", () => {
      */
     it("jsx-runtime 再导出的 createRef 与主包为同一函数引用", () => {
       expect(JR.createRef).toBe(createRef);
+    });
+
+    it("jsx-runtime 再导出 scheduleFunctionRef 与主包为同一函数引用", () => {
+      expect(JR.scheduleFunctionRef).toBe(scheduleFunctionRef);
+    });
+  });
+
+  describe("scheduleFunctionRef", () => {
+    it("对象 ref：立刻写入 current（含未连接节点）", () => {
+      const r = createRef<HTMLDivElement | null>(null);
+      const el = document.createElement("div");
+      expect(el.isConnected).toBe(false);
+      scheduleFunctionRef(r, el);
+      expect(r.current).toBe(el);
+      scheduleFunctionRef(r, null);
+      expect(r.current).toBeNull();
+    });
+
+    it("函数 ref：已连接节点同步回调且 el.isConnected === true", () => {
+      const host = document.createElement("div");
+      document.body.appendChild(host);
+      const el = document.createElement("span");
+      host.appendChild(el);
+      expect(el.isConnected).toBe(true);
+      let seen: Element | null | undefined = undefined;
+      scheduleFunctionRef((node) => {
+        seen = node;
+      }, el);
+      expect(seen).toBe(el);
+      expect((seen as Element).isConnected).toBe(true);
+      host.remove();
+    });
+
+    it("函数 ref：未连接时延后到 microtask；挂入 document 后回调时已连接", async () => {
+      const el = document.createElement("div");
+      let seen: Element | null | undefined = undefined;
+      let connectedAtCall: boolean | undefined;
+      scheduleFunctionRef((node) => {
+        seen = node;
+        connectedAtCall = node?.isConnected;
+      }, el);
+      expect(seen).toBeUndefined();
+      document.body.appendChild(el);
+      await Promise.resolve(); // flush queueMicrotask
+      expect(seen).toBe(el);
+      expect(connectedAtCall).toBe(true);
+      el.remove();
+    });
+
+    it("函数 ref：null 同步回调（卸载）", () => {
+      const calls: (Element | null)[] = [];
+      scheduleFunctionRef((node) => {
+        calls.push(node);
+      }, null);
+      expect(calls).toEqual([null]);
+    });
+
+    it("jsx 函数 ref：mount 后 microtask 内 isConnected", async () => {
+      const hits: boolean[] = [];
+      const vnode = JR.jsx("div", {
+        id: "fn-ref",
+        ref: (node: Element | null) => {
+          if (node) hits.push(node.isConnected);
+        },
+      });
+      const el = renderHost(vnode);
+      expect(hits.length).toBe(0); // deferred: not connected at create
+      document.body.appendChild(el);
+      await Promise.resolve();
+      expect(hits).toEqual([true]);
+      el.remove();
     });
   });
 }, { sanitizeOps: false, sanitizeResources: false });

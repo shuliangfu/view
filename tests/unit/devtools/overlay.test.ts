@@ -90,6 +90,91 @@ describe("devtools overlay (P2)", () => {
     handle.unmount();
   });
 
+  it("float indicator is draggable (pointer) and header controls stay clickable", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    const shadow = handle.root.shadowRoot!;
+    const wrap = shadow.querySelector(".wrap") as HTMLElement;
+    const indicator = shadow.querySelector(".indicator") as HTMLElement;
+    expect(indicator).not.toBeNull();
+    expect(indicator.tagName).toBe("BUTTON");
+
+    // happy-dom may lack PointerEvent; synthesize enough fields for bindDrag.
+    const ptr = (
+      type: string,
+      init: {
+        button?: number;
+        clientX?: number;
+        clientY?: number;
+        pointerId?: number;
+      },
+    ) => {
+      const ev = new Event(type, { bubbles: true }) as Event & {
+        button: number;
+        clientX: number;
+        clientY: number;
+        pointerId: number;
+      };
+      ev.button = init.button ?? 0;
+      ev.clientX = init.clientX ?? 0;
+      ev.clientY = init.clientY ?? 0;
+      ev.pointerId = init.pointerId ?? 1;
+      return ev;
+    };
+
+    // Regression: bindDrag must not treat the float <button> itself as a nested control.
+    // Assert after move (before up): pointerup may snap-to-corner and clear transform near edges.
+    indicator.dispatchEvent(ptr("pointerdown", { clientX: 20, clientY: 20 }));
+    document.dispatchEvent(ptr("pointermove", { clientX: 60, clientY: 50 }));
+    expect(wrap.style.transform).toMatch(/translate\(\s*40px\s*,\s*30px\s*\)/);
+    document.dispatchEvent(ptr("pointerup", { clientX: 60, clientY: 50 }));
+
+    // Header refresh/close still skip drag (nested button !== handleEl).
+    handle.open();
+    const close = shadow.querySelector(
+      '[data-action="close"]',
+    ) as HTMLButtonElement;
+    close.dispatchEvent(
+      ptr("pointerdown", { clientX: 10, clientY: 10, pointerId: 2 }),
+    );
+    // transform must not jump from a nested-control pointerdown
+    const before = wrap.style.transform;
+    document.dispatchEvent(
+      ptr("pointermove", { clientX: 100, clientY: 100, pointerId: 2 }),
+    );
+    expect(wrap.style.transform).toBe(before);
+    handle.close();
+  });
+
+  it("open hides float; panel shares wrap anchor; close restores float + offset", () => {
+    const handle = mountDevtoolsOverlay({
+      refreshMs: 0,
+      watchMisuse: false,
+      corner: "bottom-right",
+    })!;
+    const shadow = handle.root.shadowRoot!;
+    const wrap = shadow.querySelector(".wrap") as HTMLElement;
+    const indicator = shadow.querySelector(".indicator") as HTMLElement;
+    const panel = shadow.querySelector(".panel") as HTMLElement;
+
+    wrap.style.transform = "translate(-12px, -8px)";
+    expect(indicator.classList.contains("hidden")).toBe(false);
+    expect(panel.classList.contains("open")).toBe(false);
+
+    handle.open();
+    expect(handle.isOpen).toBe(true);
+    expect(panel.classList.contains("open")).toBe(true);
+    expect(indicator.classList.contains("hidden")).toBe(true);
+    // Same wrap corner + drag offset = panel sits on the float's former anchor.
+    expect(wrap.className).toMatch(/corner-br/);
+    expect(wrap.style.transform).toBe("translate(-12px, -8px)");
+
+    handle.close();
+    expect(handle.isOpen).toBe(false);
+    expect(panel.classList.contains("open")).toBe(false);
+    expect(indicator.classList.contains("hidden")).toBe(false);
+    expect(wrap.style.transform).toBe("translate(-12px, -8px)");
+  });
+
   it("head-actions keeps refresh/close clickable and brand flexes", () => {
     const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
     handle.open();
