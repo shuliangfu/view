@@ -1,7 +1,7 @@
 {
   "version": 1,
   "package": "@dreamer/view",
-  "measuredAt": "2026-11-04T17:36:22.571Z",
+  "measuredAt": "2026-11-06T05:15:29.171Z",
   "command": "deno run -A scripts/compiler-coverage/measure.ts [--write]",
   "denoTask": "deno task compiler:coverage:baseline",
   "notes": [
@@ -572,7 +572,7 @@
       "note": "Event listener + ref call",
       "options": {},
       "metrics": {
-        "outputBytes": 299,
+        "outputBytes": 339,
         "templateCalls": 1,
         "walkCalls": 0,
         "insertCalls": 0,
