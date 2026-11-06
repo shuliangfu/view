@@ -38,7 +38,8 @@ import { generateRoutersFile } from "./routers.ts";
  * compiler / jsx-runtime 在 dev 下共用该契约：路由侧合并新模块，lazy 缓存由 {@link invalidateViewLazyModules} 清空。
  * 另：{@link prepareDevBuild} 用虚拟入口 side-import `devtools/auto-mount`，保证浏览器打包图含 overlay；prod 不注入。
  */
-function getHmrBanner(_msgs: {
+/** @internal exported for unit tests */
+export function getHmrBanner(_msgs: {
   rootNotFound: string;
   containerEmpty: string;
   refreshFailed: string;
@@ -73,7 +74,7 @@ function getHmrBanner(_msgs: {
   // by the DEV entry side-effect; fall back to a dynamic subpath import when the
   // host resolves @dreamer/view/devtools/overlay (import map / Deno). Failures
   // are warn-only — never abort the app.
-  queue function bootOverlay(){
+  function bootOverlay(){
     try {
       var boot = g.__VIEW_BOOT_DEVTOOLS__;
       if (typeof boot === "function") {
