@@ -24,6 +24,12 @@ function withSsrDoc<T>(
   }
 }
 
+
+/** Compact CSS in a style attribute so Deno/Node (no spaces) and Bun (spaces) match. */
+function compactStyle(html: string): string {
+  return html.replace(/:\s+/g, ":").replace(/;\s+/g, ";");
+}
+
 describe("ssr-dom Element API (Bun/Deno SSR)", () => {
   // ---------- 属性 ----------
   it("SsrElement 应实现 hasAttribute / toggleAttribute / get-set-removeAttribute", () => {
@@ -87,22 +93,71 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
       expect(el.outerHTML).toContain("box-sizing:border-box");
     });
 
-    const fromObject = renderToString(() =>
+    const fromObject = compactStyle(renderToString(() =>
       jsx("div", {
         style: { height: "70vh", minHeight: "200px" },
         children: "x",
       })
-    );
+    ));
     expect(fromObject).toContain("height:70vh");
     expect(fromObject).toContain("min-height:200px");
     expect(fromObject).toContain(">x</div>");
 
-    const fromCssText = renderToString(() =>
+    const fromCssText = compactStyle(renderToString(() =>
       jsx("div", { style: "width: 10px; height: 20px", children: "y" })
-    );
+    ));
     expect(fromCssText).toContain("width:10px");
     expect(fromCssText).toContain("height:20px");
     expect(fromCssText).toContain(">y</div>");
+  });
+
+  it("outerHTML should prefer the style bag over a stale style attribute", () => {
+    withSsrDoc((doc) => {
+      const el = doc.createElement("div") as SsrElement;
+      el.setAttribute("style", "height:10px;color:red");
+      el.id = "box";
+      expect(el.outerHTML).toContain('style="height:10px;color:red"');
+      expect(el.outerHTML).toContain('id="box"');
+
+      Object.assign(el.style, { height: "calc(100vh - 350px)" });
+      const html = el.outerHTML;
+      expect(html).toContain("height:calc(100vh - 350px)");
+      expect(html).not.toContain("height:10px");
+      expect(html).not.toContain("color:red");
+      expect(html).toContain('id="box"');
+      expect(html.match(/\sstyle=/g)?.length).toBe(1);
+
+      // Empty bag falls back to the leftover style attribute.
+      el.style.removeProperty("height");
+      expect(el.outerHTML).toContain('style="height:10px;color:red"');
+      expect(el.outerHTML).toContain('id="box"');
+    });
+  });
+
+  it("outerHTML should escape special characters in inline style values", () => {
+    withSsrDoc((doc) => {
+      const el = doc.createElement("div") as SsrElement;
+      el.style.setProperty("font-family", '"Times New Roman"');
+      el.style.setProperty("content", "a & b <c>");
+      const html = el.outerHTML;
+      expect(html).toContain("font-family:&quot;Times New Roman&quot;");
+      expect(html).toContain("content:a &amp; b &lt;c&gt;");
+    });
+
+    const html = compactStyle(renderToString(() =>
+      jsx("div", {
+        style: { height: "calc(100vh - 350px)", fontFamily: '"Arial"' },
+        children: "z",
+      })
+    ));
+    expect(html).toContain("height:calc(100vh - 350px)");
+    // Deno/Node SSR escapes quotes; Bun's DOM may drop them around Arial.
+    expect(
+      html.includes("font-family:&quot;Arial&quot;") ||
+        html.includes('font-family:"Arial"') ||
+        html.includes("font-family:Arial"),
+    ).toBe(true);
+    expect(html).toContain(">z</div>");
   });
 
   // ---------- setProperty 运行时 ----------
