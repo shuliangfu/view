@@ -8,6 +8,19 @@ and this project adheres to
 
 ---
 
+## [3.0.5] - 2026-11-12
+
+### Fixed
+
+- **SSR now emits inline styles from the style bag (non-breaking)**
+  - `SsrElement.outerHTML` / `renderToString` serialize the `_style` bag
+    (object styles and `cssText`) as a `style="..."` attribute in the HTML.
+  - A non-empty bag wins over a leftover `style` attribute; an empty bag
+    keeps the attribute.
+  - Fixes first-paint flash where heights such as `calc(100vh - 350px)` were
+    missing until hydration.
+  - Tests: `tests/unit/runtime/ssr-dom-element-api.test.ts`.
+
 ## [3.0.4] - 2026-11-06
 
 ### Fixed

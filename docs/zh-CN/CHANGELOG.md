@@ -7,6 +7,17 @@
 
 ---
 
+## [3.0.5] - 2026-11-12
+
+### 修复
+
+- **SSR 会把 style 袋输出为内联样式（非破坏）**
+  - `SsrElement.outerHTML` / `renderToString` 会把 `_style` 袋（对象样式和
+    `cssText`）序列化成 HTML 里的 `style="..."`。
+  - 袋非空时优先于已有 `style` 属性；袋为空则保留该属性。
+  - 修复首屏闪烁：如 `calc(100vh - 350px)` 这类高度以前要等 hydrate 才出现。
+  - 单测：`tests/unit/runtime/ssr-dom-element-api.test.ts`。
+
 ## [3.0.4] - 2026-11-06
 
 ### 修复
