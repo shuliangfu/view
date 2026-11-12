@@ -980,8 +980,15 @@ export class SsrElement extends SsrNode {
   get outerHTML(): string {
     const tag = this.namespaceURI === SVG_NS ? this.localName : this.localName;
     const parts: string[] = [];
+    // setProperty writes inline CSS to `_style`, not the style attribute.
+    // Emit it here so SSR HTML includes height and other styles for first paint.
+    const css = styleBagToCssText(this._style);
     for (const [k, val] of this._attrs) {
+      if (k === "style" && css) continue;
       parts.push(` ${k}="${escapeForAttr(val)}"`);
+    }
+    if (css) {
+      parts.push(` style="${escapeForAttr(css)}"`);
     }
     if (this.namespaceURI === SVG_NS && this.localName === "svg") {
       if (!this._attrs.has("xmlns")) {

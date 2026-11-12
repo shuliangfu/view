@@ -76,6 +76,35 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
     });
   });
 
+  it("outerHTML and renderToString should emit inline styles from the style bag", () => {
+    withSsrDoc((doc) => {
+      const el = doc.createElement("div") as SsrElement;
+      Object.assign(el.style, {
+        height: "calc(100vh - 350px)",
+        boxSizing: "border-box",
+      });
+      expect(el.outerHTML).toContain("height:calc(100vh - 350px)");
+      expect(el.outerHTML).toContain("box-sizing:border-box");
+    });
+
+    const fromObject = renderToString(() =>
+      jsx("div", {
+        style: { height: "70vh", minHeight: "200px" },
+        children: "x",
+      })
+    );
+    expect(fromObject).toContain("height:70vh");
+    expect(fromObject).toContain("min-height:200px");
+    expect(fromObject).toContain(">x</div>");
+
+    const fromCssText = renderToString(() =>
+      jsx("div", { style: "width: 10px; height: 20px", children: "y" })
+    );
+    expect(fromCssText).toContain("width:10px");
+    expect(fromCssText).toContain("height:20px");
+    expect(fromCssText).toContain(">y</div>");
+  });
+
   // ---------- setProperty 运行时 ----------
   it("setProperty 对 null 属性不应抛 hasAttribute 错误", () => {
     withSsrDoc((doc) => {
