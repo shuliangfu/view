@@ -21,18 +21,11 @@ import { getInternal } from "./master.ts";
 import { batch } from "../scheduler/batch.ts";
 import { isObject } from "../runtime/utils.ts";
 
-/** Store 注册中心 */
+/** Store 注册中心（仅具名 store） */
 const storeRegistry = getInternal(
   "store",
   () => new Map<string, Source<any>>(),
 );
-
-/** 核心状态访问 */
-const core = getInternal("core", () => ({
-  current: null as any,
-  registry: new Map<string, any>(),
-  uid: 0,
-}));
 
 /**
  * Store 上的 `setState`：支持对象合并、路径更新、函数式更新等重载形式。
@@ -138,11 +131,12 @@ export function createStore<T extends object>(
   }
 
   /**
-   * 匿名 id 仅用递增 uid，**禁止** `new Error().stack`：
-   * 每次 createStore 抓栈在 SPA 热路径上很贵，且调用行号作 key 也不可靠。
-   * 需要跨 HMR/模块复用时请传 `name` / 三参具名重载。
+   * 匿名 store **不**写入全局 storeRegistry，避免生产 / SSR 长会话把每次
+   * `createStore({})` 永远钉在 Map 里。需要跨 HMR/模块复用时请传 `name`
+   * 或三参具名重载（具名项才进注册表）。匿名 id 不再消耗 `core.uid`，
+   * 以免与 VIEW_DEV 匿名 Signal 的 HMR 序号互相抢号。
    */
-  const baseId = options?.name || `store:anon:${core.uid++}`;
+  const baseId = options?.name;
 
   const persist = options?.persist;
   const storage = persist?.storage ??
@@ -179,17 +173,27 @@ export function createStore<T extends object>(
     }
   }
 
-  const storeId = `${baseId}:root`;
-  let rootSource = storeRegistry.get(storeId);
-  if (!rootSource) {
+  let rootSource: Source<any>;
+  if (baseId) {
+    const storeId = `${baseId}:root`;
+    const existing = storeRegistry.get(storeId);
+    if (!existing) {
+      rootSource = {
+        value: mergedInitialState,
+        observers: null,
+        observersTail: null,
+      };
+      storeRegistry.set(storeId, rootSource);
+    } else {
+      Object.assign(existing.value, mergedInitialState);
+      rootSource = existing;
+    }
+  } else {
     rootSource = {
       value: mergedInitialState,
       observers: null,
       observersTail: null,
     };
-    storeRegistry.set(storeId, rootSource);
-  } else {
-    Object.assign(rootSource.value, mergedInitialState);
   }
   const rootTarget = rootSource.value;
 

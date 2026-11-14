@@ -48,23 +48,52 @@ function uncloakContainer(container: Node): void {
   }
 }
 
+/** 同一容器再次 mount/hydrate 时先卸载上一棵树，避免 HMR 重挂泄漏 Owner。 */
+const containerDisposers = new WeakMap<Node, () => void>();
+
+function adoptContainerDispose(
+  container: Node,
+  create: () => () => void,
+): () => void {
+  const prev = containerDisposers.get(container);
+  if (prev) {
+    containerDisposers.delete(container);
+    try {
+      prev();
+    } catch {
+      /* 上一棵树的卸载失败不应挡住这次挂载 */
+    }
+  }
+  const dispose = create();
+  const wrapped = () => {
+    if (containerDisposers.get(container) === wrapped) {
+      containerDisposers.delete(container);
+    }
+    dispose();
+  };
+  containerDisposers.set(container, wrapped);
+  return wrapped;
+}
+
 export function mount(fn: () => any, container: Node): () => void {
-  return createRoot((dispose) => {
-    clearContainerChildren(container);
-    uncloakContainer(container);
-
-    const content = fn();
-    insert(container, content);
-
-    /**
-     * 先回收 Owner/Effect，再物理清空容器。
-     * 与 `hydrate`（卸载后默认保留 SSR 节点）区分。
-     */
-    return () => {
-      dispose();
+  return adoptContainerDispose(container, () =>
+    createRoot((dispose) => {
       clearContainerChildren(container);
-    };
-  });
+      uncloakContainer(container);
+
+      const content = fn();
+      insert(container, content);
+
+      /**
+       * 先回收 Owner/Effect，再物理清空容器。
+       * 与 `hydrate`（卸载后默认保留 SSR 节点）区分。
+       */
+      return () => {
+        dispose();
+        clearContainerChildren(container);
+      };
+    }),
+  );
 }
 
 /**
@@ -101,7 +130,8 @@ export function hydrate(
   container: Node,
   bindingsOrOptions: [number[], string][] | HydrateOptions = [],
 ): () => void {
-  return createRoot((dispose) => {
+  return adoptContainerDispose(container, () =>
+    createRoot((dispose) => {
     stopHydration();
 
     const { bindings, options } = resolveHydrateBindings(bindingsOrOptions);
@@ -140,5 +170,6 @@ export function hydrate(
 
     // continue／assert 成功路径：保留容器内 SSR 节点；仅 dispose Owner
     return dispose;
-  });
+  }),
+  );
 }

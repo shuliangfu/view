@@ -29,7 +29,11 @@
  */
 
 import { ownerCore } from "./master.ts";
-import { cleanupObserver, STATE_DISPOSED } from "./signal.ts";
+import {
+  cleanupObserver,
+  releaseOwnerAnonymousSignals,
+  STATE_DISPOSED,
+} from "./signal.ts";
 
 /** 在节点销毁或 effect 重跑前调用的无参清理回调。 */
 export type Disposable = () => void;
@@ -128,7 +132,10 @@ export function cleanNode(owner: Owner, selfDispose = false): void {
     }
   }
 
-  // 2. 运行当前节点的清理函数
+  // 2. 摘掉本节点在 DEV 下登记的匿名 Signal，避免 registry 强留已卸载树
+  releaseOwnerAnonymousSignals(owner);
+
+  // 3. 运行当前节点的清理函数
   if (owner.disposables) {
     const disposables = owner.disposables;
     owner.disposables = null;
@@ -137,7 +144,7 @@ export function cleanNode(owner: Owner, selfDispose = false): void {
     }
   }
 
-  // 3. 如果标记了彻底销毁，则标记状态并断开依赖
+  // 4. 如果标记了彻底销毁，则标记状态并断开依赖
   if (selfDispose) {
     if ("state" in (owner as any)) {
       (owner as any).state = STATE_DISPOSED;

@@ -52,10 +52,10 @@ import {
   recordOwnerElement,
   uninstallOwnerDomTracking,
 } from "./devtools/owner-dom.ts";
-import { core } from "./reactivity/master.ts";
 import { createRoot, getOwner, type Owner } from "./reactivity/owner.ts";
 import {
   cleanupObserver,
+  forEachRegisteredSource,
   type Observer,
   setCurrentObserver,
   type Signal,
@@ -311,26 +311,45 @@ export function summarizeOwnerTree(
   return summary;
 }
 
-const trackedRoots = new Set<Owner>();
+/** WeakRef 根列表：遗弃的 createRootTracked（未 dispose 的 HMR 重挂）可被 GC。 */
+const trackedRootRefs = new Set<WeakRef<Owner>>();
+const trackedRootByOwner = new WeakMap<Owner, WeakRef<Owner>>();
+
+function compactTrackedRoots(): Owner[] {
+  const out: Owner[] = [];
+  for (const ref of trackedRootRefs) {
+    const owner = ref.deref();
+    if (owner) out.push(owner);
+    else trackedRootRefs.delete(ref);
+  }
+  return out;
+}
 
 /** Opt-in: remember an Owner root for {@link getTrackedRoots}. */
 export function trackRoot(owner: Owner | null | undefined): void {
-  if (owner) trackedRoots.add(owner);
+  if (!owner || trackedRootByOwner.has(owner)) return;
+  const ref = new WeakRef(owner);
+  trackedRootByOwner.set(owner, ref);
+  trackedRootRefs.add(ref);
 }
 
 /** Remove a root previously passed to {@link trackRoot}. */
 export function untrackRoot(owner: Owner | null | undefined): void {
-  if (owner) trackedRoots.delete(owner);
+  if (!owner) return;
+  const ref = trackedRootByOwner.get(owner);
+  if (!ref) return;
+  trackedRootRefs.delete(ref);
+  trackedRootByOwner.delete(owner);
 }
 
 /** Roots registered via {@link trackRoot} / {@link createRootTracked}. */
 export function getTrackedRoots(): Owner[] {
-  return Array.from(trackedRoots);
+  return compactTrackedRoots();
 }
 
 /** Clear the opt-in root registry (tests). */
 export function clearTrackedRoots(): void {
-  trackedRoots.clear();
+  trackedRootRefs.clear();
 }
 
 /**
@@ -398,23 +417,18 @@ export interface RegistrySourceSnapshot {
 }
 
 /**
- * Named + (when `VIEW_DEV`) anonymous Sources currently in `core.registry`.
- * Empty list when the registry has no Source-shaped entries.
+ * Named + (when `VIEW_DEV`) still-live anonymous Sources in `core.registry`.
+ * Anonymous entries are WeakRefs and are omitted once collected or released
+ * with their Owner. Empty list when no Source-shaped entries remain.
  */
 export function snapshotRegistrySources(): RegistrySourceSnapshot[] {
   const out: RegistrySourceSnapshot[] = [];
-  for (const [id, val] of core.registry) {
-    if (
-      val &&
-      typeof val === "object" &&
-      ("observers" in (val as object) || "observersTail" in (val as object))
-    ) {
-      out.push({
-        id: String(id),
-        observers: countDownstream(val as Source<unknown>),
-      });
-    }
-  }
+  forEachRegisteredSource((id, src) => {
+    out.push({
+      id: String(id),
+      observers: countDownstream(src as Source<unknown>),
+    });
+  });
   return out;
 }
 

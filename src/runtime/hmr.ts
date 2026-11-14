@@ -30,7 +30,11 @@ import {
   Owner,
   runWithOwner,
 } from "../reactivity/owner.ts";
-import { createSignal, Signal } from "../reactivity/signal.ts";
+import {
+  beginAnonymousSignalReuse,
+  createSignal,
+  Signal,
+} from "../reactivity/signal.ts";
 import { insert } from "./insert.ts";
 
 type ComponentFn = (props: Record<string, unknown>) => any;
@@ -83,30 +87,35 @@ export function createHMRProxy(
     // 局部重绘任务
     const render = () => {
       const parent = marker.parentNode || fragment;
+      const endReuse = beginAnonymousSignalReuse();
 
-      // 1. 销毁旧版本产生的所有 Effect
-      if (currentOwner) {
-        cleanNode(currentOwner);
+      try {
+        // 1. 销毁旧版本产生的所有 Effect（匿名 Signal 由 reuse bag 暂存）
+        if (currentOwner) {
+          cleanNode(currentOwner);
+        }
+
+        // 2. 在全新的子作用域中执行新代码
+        currentOwner = {
+          owner: parentOwner,
+          disposables: null,
+          children: null,
+        };
+
+        runWithOwner(currentOwner, () => {
+          // 在 HMR 重绘前重置信号 UID，确保新旧版本的信号 ID 能够匹配并复用状态
+          const core = getInternal("core", () => ({} as any));
+          core.uid = 0;
+
+          const Comp = compSignal();
+          const content = Comp(props);
+
+          // 3. 使用 insert 管理更新，它会自动处理旧节点的移除或替换
+          current = insert(parent, content, current, marker);
+        });
+      } finally {
+        endReuse();
       }
-
-      // 2. 在全新的子作用域中执行新代码
-      currentOwner = {
-        owner: parentOwner,
-        disposables: null,
-        children: null,
-      };
-
-      runWithOwner(currentOwner, () => {
-        // 在 HMR 重绘前重置信号 UID，确保新旧版本的信号 ID 能够匹配并复用状态
-        const core = getInternal("core", () => ({} as any));
-        core.uid = 0;
-
-        const Comp = compSignal();
-        const content = Comp(props);
-
-        // 3. 使用 insert 管理更新，它会自动处理旧节点的移除或替换
-        current = insert(parent, content, current, marker);
-      });
     };
 
     // 初始化渲染，并建立对代码信号的订阅

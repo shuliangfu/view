@@ -33,6 +33,7 @@
  */
 
 import { createEffect } from "../reactivity/effect.ts";
+import { onCleanup } from "../reactivity/owner.ts";
 import { createSignal, untrack } from "../reactivity/signal.ts";
 import { registerSSRPromise } from "../runtime/ssr-promises.ts";
 import { registerForSuspense } from "../runtime/suspense.ts";
@@ -278,12 +279,26 @@ export function createResource<T, S>(
 
   // 外层 signal：若在创建后 abort，取消当前请求（上面 load 内 per-load listener 已覆盖；
   // 另加一次长期监听，确保 abort 发生在两次 load 之间也能清 loading）
+  let removeLifetimeAbort: (() => void) | null = null;
   if (options?.signal && !options.signal.aborted) {
-    options.signal.addEventListener("abort", () => {
+    const onAbort = () => {
       abortCurrent();
       setLoading(false);
-    }, { once: true });
+    };
+    const sig = options.signal;
+    sig.addEventListener("abort", onAbort, { once: true });
+    removeLifetimeAbort = () => sig.removeEventListener("abort", onAbort);
   }
+
+  // Owner 卸载时取消 in-flight，并摘掉挂在长寿命外层 signal 上的监听，
+  // 避免路由 AbortSignal 把已卸载 Resource 的闭包一直钉住。
+  onCleanup(() => {
+    abortCurrent();
+    if (removeLifetimeAbort) {
+      removeLifetimeAbort();
+      removeLifetimeAbort = null;
+    }
+  });
 
   // 构建超级资源对象
   const resource: any = () => {

@@ -3,7 +3,7 @@
  */
 import { waitUntilComplete } from "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal, mount } from "@dreamer/view";
+import { createEffect, createSignal, mount } from "@dreamer/view";
 
 describe("runtime/browser (mount 细节)", () => {
   it("mount 前应清空容器子节点（含骨架屏占位）", async () => {
@@ -44,5 +44,29 @@ describe("runtime/browser (mount 细节)", () => {
     expect(container.textContent).toBe("y");
     dispose();
     expect(container.childNodes.length).toBe(0);
+  });
+
+  it("同一容器再次 mount 应 dispose 上一棵树", async () => {
+    const container = document.createElement("div");
+    const tick = createSignal(0);
+    let runs = 0;
+    mount(() => {
+      createEffect(() => {
+        tick();
+        runs++;
+      });
+      return document.createTextNode("first");
+    }, container);
+    await waitUntilComplete();
+    expect(runs).toBe(1);
+    expect(container.textContent).toBe("first");
+
+    mount(() => document.createTextNode("second"), container);
+    await waitUntilComplete();
+    expect(container.textContent).toBe("second");
+
+    tick(1);
+    await waitUntilComplete();
+    expect(runs).toBe(1);
   });
 }, { sanitizeOps: false, sanitizeResources: false });

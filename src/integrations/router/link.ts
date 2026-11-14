@@ -58,6 +58,9 @@ export function Link(props: any): VNode {
 
 type CreateRootTracked = <T>(fn: (dispose: () => void) => T) => T;
 
+/** 同一容器再次 mountWithRouter 时先 dispose 上一棵树（HMR / 测试重挂）。 */
+const routerMountDisposers = new WeakMap<HTMLElement, () => void>();
+
 /**
  * 在 DOM Ready 后把 `router.render()` 挂到指定容器（CSS 选择器或元素）。
  * @param selector 容器选择器或元素节点
@@ -75,6 +78,16 @@ export function mountWithRouter(
     if (!container) return;
 
     const el = container as HTMLElement;
+    const prev = routerMountDisposers.get(el);
+    if (prev) {
+      routerMountDisposers.delete(el);
+      try {
+        prev();
+      } catch {
+        /* 上一棵树的卸载失败不应挡住这次挂载 */
+      }
+    }
+
     const viewDev =
       (globalThis as { VIEW_DEV?: boolean }).VIEW_DEV === true;
     const createRootTracked =
@@ -86,16 +99,19 @@ export function mountWithRouter(
      * Do **not** nest `mount()` (second untracked `createRoot`).
      */
     if (viewDev && typeof createRootTracked === "function") {
-      createRootTracked(() => {
+      const dispose = createRootTracked((disposeRoot) => {
         el.textContent = "";
         el.removeAttribute("data-view-cloak");
         el.style.display = "";
         insert(el, () => router.render());
+        return disposeRoot;
       });
+      routerMountDisposers.set(el, dispose);
       return;
     }
 
-    mount(() => () => router.render(), el);
+    const unmount = mount(() => () => router.render(), el);
+    routerMountDisposers.set(el, unmount);
   };
 
   if (typeof document !== "undefined" && document.readyState === "loading") {

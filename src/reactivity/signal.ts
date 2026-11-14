@@ -28,7 +28,7 @@
  */
 
 import { schedule } from "../scheduler/batch.ts";
-import { core } from "./master.ts";
+import { core, ownerCore } from "./master.ts";
 
 /** 观察者处于干净态，无需重新执行。 */
 export const STATE_CLEAN = 0;
@@ -210,14 +210,111 @@ export const setCurrentObserver = (o: Observer | null): Observer | null => {
  */
 const _devSession = Math.random().toString(36).slice(2);
 
+const ANON_ID_PREFIX = `sig:${_devSession}:`;
+
+/** Owner → 其创建的匿名 DEV registry id（WeakMap，随 Owner 回收）。 */
+const ownerAnonIds = new WeakMap<object, string[]>();
+
+/** HMR 重绘窗口内对匿名 Source 的强引用，避免 cleanNode 后丢失可复用状态。 */
+let hmrReuseBag: Map<string, Source<any>> | null = null;
+
+function isAnonymousRegistryId(id: string): boolean {
+  return id.startsWith(ANON_ID_PREFIX);
+}
+
+function unwrapRegistryValue(val: unknown): Source<any> | undefined {
+  if (!val || typeof val !== "object") return undefined;
+  if (typeof WeakRef !== "undefined" && val instanceof WeakRef) {
+    const inner = val.deref();
+    return inner && typeof inner === "object" ? inner as Source<any> : undefined;
+  }
+  if ("observers" in (val as object) || "observersTail" in (val as object) ||
+    "value" in (val as object)
+  ) {
+    return val as Source<any>;
+  }
+  return undefined;
+}
+
+/**
+ * 取出 registry 中仍存活的 Source；匿名项以 WeakRef 存放，已回收的 key 会被删掉。
+ */
+export function getRegisteredSource(id: string): Source<any> | undefined {
+  const raw = core.registry.get(id);
+  const src = unwrapRegistryValue(raw);
+  if (!src && raw !== undefined) core.registry.delete(id);
+  if (src) return src;
+  return hmrReuseBag?.get(id);
+}
+
+/**
+ * 遍历当前仍存活的 registry Source（跳过已回收的匿名 WeakRef，并压缩空 key）。
+ */
+export function forEachRegisteredSource(
+  fn: (id: string, source: Source<any>) => void,
+): void {
+  const stale: string[] = [];
+  for (const [id, val] of core.registry) {
+    const src = unwrapRegistryValue(val);
+    if (src) fn(id, src);
+    else stale.push(id);
+  }
+  for (const id of stale) core.registry.delete(id);
+}
+
+function rememberOwnerAnonId(id: string): void {
+  const owner = ownerCore.current as object | null;
+  if (!owner) return;
+  const list = ownerAnonIds.get(owner);
+  if (list) list.push(id);
+  else ownerAnonIds.set(owner, [id]);
+}
+
+/**
+ * Owner 被清理时从 DEV registry 摘掉它创建的匿名 Signal。
+ * HMR 重绘窗口内由 {@link beginAnonymousSignalReuse} 暂存 Source，lookup 仍可命中。
+ */
+export function releaseOwnerAnonymousSignals(owner: object): void {
+  const ids = ownerAnonIds.get(owner);
+  if (!ids) return;
+  ownerAnonIds.delete(owner);
+  for (const id of ids) {
+    if (isAnonymousRegistryId(id)) core.registry.delete(id);
+  }
+}
+
+/**
+ * `createHMRProxy` 在 `cleanNode` + `core.uid = 0` 重绘期间调用：
+ * 把仍存活的匿名 Source 钉住，使热更后同一序号仍复用状态；结束后放开，
+ * 未被新树重新登记的项即可被 GC，不会在 registry 里强引用残留。
+ */
+export function beginAnonymousSignalReuse(): () => void {
+  const bag = new Map<string, Source<any>>();
+  forEachRegisteredSource((id, src) => {
+    if (isAnonymousRegistryId(id)) bag.set(id, src);
+  });
+  if (hmrReuseBag) {
+    for (const [id, src] of hmrReuseBag) {
+      if (!bag.has(id)) bag.set(id, src);
+    }
+  }
+  const prev = hmrReuseBag;
+  hmrReuseBag = bag;
+  return () => {
+    if (hmrReuseBag === bag) hmrReuseBag = prev;
+  };
+}
+
 /**
  * 创建响应式信号；可选 `name` 用于 HMR/调试下的物理单例复用。
  *
  * **Registry 策略（性能与 HMR 兼顾）：**
- * - **具名** `name`：始终写入 `core.registry`，供 HMR / 调试单例复用。
+ * - **具名** `name`：始终以强引用写入 `core.registry`，供 HMR / 调试单例复用。
  * - **匿名**：生产路径**不**注册，避免 SPA 长会话 Map 无限增长、便于 GC；
- *   仅当 `globalThis.VIEW_DEV` 为真时按 `sig:<session>:<uid>` 注册，以支持
- *   `createHMRProxy` 在热更时 `core.uid = 0` 后的状态对齐。
+ *   仅当 `globalThis.VIEW_DEV` 为真时按 `sig:<session>:<uid>` 以 **WeakRef**
+ *   登记，并在所属 Owner `cleanNode` 时摘除。这样 DEV 检查仍能列出活着的
+ *   Signal，HMR（`core.uid = 0`）仍可对齐状态，但卸载 / 整树重挂不会把
+ *   匿名 Source 永远钉在 registry 里。
  *
  * @template T 初始值与后续值的类型
  * @param val 初始值
@@ -228,9 +325,9 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
   let source: Source<T>;
 
   if (name) {
-    // 具名：物理单例，HMR / 跨热更边界复用同一 Source
+    // 具名：物理单例，HMR / 跨热更边界复用同一 Source（强引用）
     const id = `sig:${name}`;
-    const existing = core.registry.get(id) as Source<T> | undefined;
+    const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
       core.registry.set(id, source);
@@ -240,16 +337,20 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
       source = existing;
     }
   } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
-    // 开发态匿名：按创建顺序进 registry，供 HMR 状态保持
-    const id = `sig:${_devSession}:${core.uid++}`;
-    const existing = core.registry.get(id) as Source<T> | undefined;
+    // 开发态匿名：按创建顺序 WeakRef 进 registry，供检查 / HMR 状态保持
+    const id = `${ANON_ID_PREFIX}${core.uid++}`;
+    const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
-      core.registry.set(id, source);
     } else {
       // 热更命中：保留已有 value，不覆盖用户运行中状态
       source = existing;
     }
+    core.registry.set(
+      id,
+      typeof WeakRef !== "undefined" ? new WeakRef(source) : source,
+    );
+    rememberOwnerAnonId(id);
   } else {
     // 生产匿名：独立 Source，不进 registry
     source = { value: val, observers: null, observersTail: null };

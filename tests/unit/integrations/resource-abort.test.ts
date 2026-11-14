@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal } from "@dreamer/view";
+import { createRoot, createSignal } from "@dreamer/view";
 import { createInflightDedupe, createResource } from "@dreamer/view/resource";
 
 async function tick(n = 5) {
@@ -140,5 +140,30 @@ describe("integrations/resource AbortSignal + inflight dedupe", () => {
     expect(runs).toBe(2);
     resolveRun!("v2");
     expect(await c).toBe("v2");
+  });
+
+  it("Owner dispose aborts in-flight load and drops the outer abort listener", async () => {
+    const outer = new AbortController();
+    let gotSignal: AbortSignal | undefined;
+
+    createRoot((dispose) => {
+      createResource(
+        () => 1,
+        (_id, info) => {
+          gotSignal = info.signal;
+          return new Promise<string>(() => {
+            /* pending until dispose */
+          });
+        },
+        { signal: outer.signal },
+      );
+      expect(gotSignal?.aborted).toBe(false);
+      dispose();
+    });
+
+    await tick(10);
+    expect(gotSignal?.aborted).toBe(true);
+    // 外层 signal 仍可用；监听已摘掉，再次 abort 不应抛错
+    outer.abort();
   });
 });

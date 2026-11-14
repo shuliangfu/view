@@ -766,3 +766,65 @@ describe("devtools overlay i18n (page lang, no switcher)", () => {
       );
   });
 });
+
+describe("devtools overlay polling", () => {
+  let prevDev: boolean | undefined;
+
+  beforeEach(() => {
+    prevDev = g.VIEW_DEV;
+    g.VIEW_DEV = true;
+    document.documentElement.lang = "en-US";
+    resetRegistry();
+    clearTrackedRoots();
+    unmountDevtoolsOverlay();
+    try {
+      globalThis.localStorage?.removeItem("dreamer-view-devtools-overlay");
+    } catch {
+      /* ignore */
+    }
+  });
+
+  afterEach(() => {
+    unmountDevtoolsOverlay();
+    clearTrackedRoots();
+    if (prevDev === undefined) delete g.VIEW_DEV;
+    else g.VIEW_DEV = prevDev;
+  });
+
+  it("closed overlay does not start the tree refresh interval", () => {
+    const handle = mountDevtoolsOverlay({
+      refreshMs: 50,
+      watchMisuse: false,
+    })!;
+    expect(handle.isOpen).toBe(false);
+    expect(handle.isPolling).toBe(false);
+    handle.unmount();
+  });
+
+  it("opens starts polling and close stops it", () => {
+    const handle = mountDevtoolsOverlay({
+      refreshMs: 50,
+      watchMisuse: false,
+    })!;
+    expect(handle.isPolling).toBe(false);
+    handle.open();
+    expect(handle.isOpen).toBe(true);
+    expect(handle.isPolling).toBe(true);
+    handle.close();
+    expect(handle.isOpen).toBe(false);
+    expect(handle.isPolling).toBe(false);
+    handle.unmount();
+  });
+
+  it("refreshMs 0 never polls even when open", () => {
+    const handle = mountDevtoolsOverlay({
+      refreshMs: 0,
+      watchMisuse: false,
+    })!;
+    handle.open();
+    expect(handle.isOpen).toBe(true);
+    expect(handle.isPolling).toBe(false);
+    handle.unmount();
+  });
+});
+

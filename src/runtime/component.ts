@@ -23,6 +23,7 @@
  * </Suspense>
  */
 
+import { runWithOwner } from "../reactivity/owner.ts";
 import { untrack } from "../reactivity/signal.ts";
 import { createResource, type Resource } from "../integrations/resource.ts";
 import type { InsertValue } from "../types.ts";
@@ -31,14 +32,20 @@ import { insert } from "./insert.ts";
 
 /** dev HMR：登记每个 `lazy()` 实例，热更时清空缓存避免继续用旧 `import()` 结果 */
 type LazyHmrEntry = { reset: () => void };
-const viewLazyHmrRegistry = new Set<LazyHmrEntry>();
+const viewLazyHmrRegistry = new Set<WeakRef<LazyHmrEntry>>();
 
 /**
- * 开发模式 HMR：遍历并调用各 `lazy()` 实例的 reset，使下次渲染重新 `import()`。
+ * 开发模式 HMR：遍历并调用各仍存活的 `lazy()` 实例的 reset，使下次渲染重新 `import()`。
+ * 已卸载模块的条目随 WeakRef 回收，避免 HMR 重求值后旧 factory 永远留在 Set 里。
  * @returns `void`
  */
 export function invalidateViewLazyModules(): void {
-  for (const entry of viewLazyHmrRegistry) {
+  for (const ref of viewLazyHmrRegistry) {
+    const entry = ref.deref();
+    if (!entry) {
+      viewLazyHmrRegistry.delete(ref);
+      continue;
+    }
     try {
       entry.reset();
     } catch {
@@ -65,16 +72,20 @@ export function lazy<T>(
       resource = undefined;
     },
   };
-  viewLazyHmrRegistry.add(hmrEntry);
+  viewLazyHmrRegistry.add(new WeakRef(hmrEntry));
 
   return (props: T) => {
     if (!resource) {
-      resource = createResource<((props: T) => any)>(async () => {
-        if (Component) return Component;
-        const mod = await loader();
-        Component = mod.default;
-        return Component;
-      });
+      // 资源挂在 lazy factory 上，不能绑到第一次渲染的 Owner：
+      // Suspense fallback 会 cleanNode 子树，若在此 abort 则永远加载不完。
+      resource = runWithOwner(null, () =>
+        createResource<((props: T) => any)>(async () => {
+          if (Component) return Component;
+          const mod = await loader();
+          Component = mod.default;
+          return Component;
+        })
+      );
     }
 
     return () => {

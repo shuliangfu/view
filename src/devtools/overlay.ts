@@ -174,7 +174,7 @@ export interface MountDevtoolsOverlayOptions {
   corner?: DevtoolsOverlayCorner;
   /** Primary Owner; otherwise aggregates {@link getTrackedRoots}. */
   owner?: Owner | null;
-  /** Live refresh interval (ms). Default `1000`. `0` = manual only. */
+  /** Live refresh interval (ms) while the panel is **open**. Default `1000`. `0` = manual only. Closed overlay does not poll. */
   refreshMs?: number;
   /** Wire misuse watcher into Warnings. Default `true`. */
   watchMisuse?: boolean;
@@ -204,6 +204,8 @@ export interface DevtoolsOverlayHandle {
   readonly root: HTMLElement;
   readonly isOpen: boolean;
   readonly tab: DevtoolsOverlayTab;
+  /** `true` when the live tree refresh interval is running (open + refreshMs > 0). */
+  readonly isPolling: boolean;
 }
 
 const HOST_ATTR = "data-dreamer-view-devtools";
@@ -1105,6 +1107,7 @@ export function mountDevtoolsOverlay(
   document.defaultView?.addEventListener("resize", onViewport);
 
   const setOpen = (next: boolean) => {
+    const wasOpen = open;
     open = next;
     panel.classList.toggle("open", open);
     // UX: panel replaces the float at the same wrap anchor; close restores float + drag offset.
@@ -1115,7 +1118,17 @@ export function mountDevtoolsOverlay(
       open ? ot("closeAria") : ot("openAria"),
     );
     persist();
-    syncHighlight();
+    if (open && !wasOpen) {
+      startMisuseWatch();
+      restartTimer();
+      refresh();
+    } else if (!open && wasOpen) {
+      stopMisuseWatch();
+      restartTimer();
+      clearInspectHighlight();
+    } else {
+      syncHighlight();
+    }
   };
 
   const setTab = (next: DevtoolsOverlayTab) => {
@@ -1616,7 +1629,28 @@ export function mountDevtoolsOverlay(
       clearInterval(refreshTimer);
       refreshTimer = null;
     }
-    if (refreshMs > 0) refreshTimer = setInterval(refresh, refreshMs);
+    if (open && refreshMs > 0) refreshTimer = setInterval(refresh, refreshMs);
+  };
+
+  const stopMisuseWatch = () => {
+    if (stopWatch) {
+      stopWatch();
+      stopWatch = null;
+    }
+  };
+
+  const startMisuseWatch = () => {
+    if (!watchMisuse || stopWatch) return;
+    try {
+      stopWatch = enableOversubscribeWarnings({
+        owner: primaryOwner,
+        includeTrackedRoots: true,
+        intervalMs: Math.max(refreshMs || 1000, 500),
+        onWarn,
+      });
+    } catch {
+      /* ignore */
+    }
   };
 
   // Events
@@ -1809,19 +1843,6 @@ export function mountDevtoolsOverlay(
   };
   document.addEventListener("keydown", onKey, true);
 
-  if (watchMisuse) {
-    try {
-      stopWatch = enableOversubscribeWarnings({
-        owner: primaryOwner,
-        includeTrackedRoots: true,
-        intervalMs: Math.max(refreshMs || 1000, 500),
-        onWarn,
-      });
-    } catch {
-      /* ignore */
-    }
-  }
-
   // Claim HMR capsule ASAP; poll briefly if the server client is still booting.
   if (!attachHmrBridge()) {
     hmrPoll = setInterval(() => {
@@ -1841,8 +1862,18 @@ export function mountDevtoolsOverlay(
 
   applyCorner();
   setTab(tab);
-  if (open) setOpen(true);
-  refresh();
+  // Apply chrome for the stored open state without the open/close transition.
+  panel.classList.toggle("open", open);
+  indicator.classList.toggle("hidden", open);
+  indicator.setAttribute("aria-expanded", open ? "true" : "false");
+  indicator.setAttribute(
+    "aria-label",
+    open ? ot("closeAria") : ot("openAria"),
+  );
+  if (open) {
+    startMisuseWatch();
+    refresh();
+  }
   restartTimer();
 
   const handle: DevtoolsOverlayHandle = {
@@ -1854,6 +1885,9 @@ export function mountDevtoolsOverlay(
     },
     get tab() {
       return tab;
+    },
+    get isPolling() {
+      return refreshTimer != null;
     },
     refresh,
     open() {
