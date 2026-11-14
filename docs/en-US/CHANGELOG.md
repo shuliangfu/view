@@ -8,6 +8,20 @@ and this project adheres to
 
 ---
 
+## [3.0.6] - 2026-11-14
+
+### Fixed
+
+- **Stop DEV registry and runtime memory leaks (non-breaking)**
+  - Anonymous signals under `VIEW_DEV` are no longer pinned forever in `core.registry` (`sig:<session>:<uid++>`). They are stored as WeakRef and dropped when their Owner is cleaned; HMR remounts no longer accumulate.
+  - The DevTools overlay no longer polls the whole Owner tree every second when closed. Polling and the misuse watcher run only while the panel is open and `refreshMs > 0`. New `handle.isPolling`.
+  - Anonymous `createStore` no longer writes `storeRegistry` in production/SSR (named stores still register).
+  - `trackedRoots` uses WeakRef so undisposed HMR roots can be collected.
+  - `mount` / `hydrate` / `mountWithRouter` dispose the previous tree before remounting on the same container.
+  - `createResource` aborts in-flight work and drops listeners on Owner cleanup. `lazy()` loaders are created with `runWithOwner(null, …)` so Suspense fallback teardown does not cancel them.
+  - The `lazy()` HMR registry holds WeakRefs so stale factories are not retained after hot reload.
+  - Tests: `tests/unit/devtools/registry-leak.test.ts`, `tests/unit/devtools/overlay.test.ts`, `tests/unit/integrations/resource-abort.test.ts`, `tests/unit/runtime/browser-advanced.test.ts`.
+
 ## [3.0.5] - 2026-11-12
 
 ### Fixed

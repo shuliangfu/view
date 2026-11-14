@@ -7,6 +7,20 @@
 
 ---
 
+## [3.0.6] - 2026-11-14
+
+### 修复
+
+- **停止 DEV 注册表与运行时内存泄漏（非破坏）**
+  - `VIEW_DEV` 下匿名 Signal 不再被永久钉在 `core.registry`（`sig:<session>:<uid++>`）。改为 WeakRef，所属 Owner 在 `cleanNode` 时摘掉；HMR／整树重挂不再一直堆积。
+  - DevTools overlay 关闭时不再每秒扫整棵 Owner 树；只有面板打开且 `refreshMs > 0` 才轮询，关闭时停轮询与误用监视。新增 `handle.isPolling`。
+  - 匿名 `createStore` 在生产／SSR 也不再写入 `storeRegistry`（具名 store 仍登记）。
+  - `trackedRoots` 改为 WeakRef，未 dispose 的 HMR 旧根可以被回收。
+  - `mount`／`hydrate`／`mountWithRouter` 在同一容器再次挂载前先 dispose 旧树。
+  - `createResource` 在 Owner 清理时 abort 进行中的请求并摘掉监听。`lazy()` 的 loader 在 `runWithOwner(null, …)` 中创建，避免 Suspense fallback 拆子树时把还在加载的资源掐掉。
+  - `lazy()` 的 HMR 注册表改为 WeakRef，热更新后旧 factory 不再被强引用。
+  - 单测：`tests/unit/devtools/registry-leak.test.ts`、`tests/unit/devtools/overlay.test.ts`、`tests/unit/integrations/resource-abort.test.ts`、`tests/unit/runtime/browser-advanced.test.ts`。
+
 ## [3.0.5] - 2026-11-12
 
 ### 修复
