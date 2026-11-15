@@ -8,6 +8,49 @@ and this project adheres to
 
 ---
 
+## [3.1.0] - 2026-11-15
+
+### Added
+
+- **`@dreamer/view/escape` subpath, reactive Portal `mount`, and static metadata
+  (non-breaking)**
+  - New `jsr:@dreamer/view/escape` so SSR compiler output can import
+    `escapeForAttr` / `escapeForText` plus URL / style / script sanitizers
+    without pulling in the main barrel.
+  - `createPortal` `mount` is reactive, and the docs say so.
+  - Route metadata is parsed as static literals.
+  - Under `VIEW_DEV`, a warning is emitted when a reactive child resolves to an
+    array; `.map` is not auto-rewritten to `For`.
+  - Docs state that `produce()` is not Immer.
+
+- **Richer DevTools overlay (`VIEW_DEV` only; non-breaking)**
+  - Readable labels (component name / `debugName`; `debugName` is display-only,
+    not an HMR singleton key), current-value previews, named component tree, and
+    an Updates timeline (last 100 events, text previews only).
+  - Clicking a warning jumps to the Owner path in Tree. Overview no longer shows
+    the current-warning list or count; the click hint lives on the Warnings tab.
+  - Leak-safe: Owner / Signal metadata uses WeakMap; notify / createSignal hooks
+    install only while the overlay is mounted, and uninstall plus timeline clear
+    on unmount.
+  - The production hot path has no hook checks. `setDevNotifyHook` is not
+    re-exported from the main entry or `@dreamer/view/reactivity`, so unused
+    DevTools code tree-shakes out of production bundles.
+
+### Security
+
+- **Stronger style, URL, store, and SSR text sanitizers (non-breaking)**
+  - Style / cssText sanitizers are shared by CSR and SSR.
+  - Store writes skip dangerous keys.
+  - URL attributes such as `ping` and `<object data>` are sanitized.
+  - SSR breaks `script` / `style` end tags in text.
+  - DevTools HTML interpolations go through `otHtml`.
+
+### Fixed
+
+- **Keyed For tail anchors and shared DOM range helpers (non-breaking)**
+  - Keyed `For` tail anchors use `createAnchorComment()` empty comments.
+  - Shared helpers live in `dom-range.ts`.
+
 ## [3.0.7] - 2026-11-15
 
 ### Fixed

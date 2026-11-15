@@ -7,6 +7,47 @@
 
 ---
 
+## [3.1.0] - 2026-11-15
+
+### 新增
+
+- **`@dreamer/view/escape` 子路径、Portal 响应式 mount、静态
+  metadata（非破坏）**
+  - 新增 `jsr:@dreamer/view/escape`，供 SSR 编译产物引入
+    `escapeForAttr`／`escapeForText` 以及 URL／style／script
+    消毒辅助，避免拖入主入口。
+  - `createPortal` 的 `mount` 变为响应式，文档已说明。
+  - 路由 metadata 按静态字面量解析。
+  - `VIEW_DEV` 下，响应式子节点解析为数组时发出警告，不自动把 `.map` 改写成
+    `For`。
+  - 文档写明 `produce()` 不是 Immer。
+
+- **DevTools 面板更完整（仅 `VIEW_DEV`；非破坏）**
+  - 可读名称（组件名／`debugName`；`debugName` 只用于显示，不是 HMR
+    单例键）、当前值预览、组件树名称、Updates 时间线（最多 100
+    条，只存文本预览）。
+  - 点击警告跳到「树」里对应 Owner
+    路径；总览不再展示当前警告列表和计数，点击说明放在警告 tab。
+  - 防泄漏：Owner／Signal 元数据走 WeakMap；notify／createSignal
+    挂钩只在面板挂载时装上，卸载时卸掉并清空时间线。
+  - 生产路径不含挂钩检查；`setDevNotifyHook` 不从主入口和
+    `@dreamer/view/reactivity` 再导出，未使用开发工具时会被 tree-shake。
+
+### 安全
+
+- **样式、URL、store 与 SSR 文本消毒加固（非破坏）**
+  - CSR／SSR 共用 style／cssText 消毒。
+  - store 过滤危险键。
+  - `ping`／`<object data>` 等 URL 属性走消毒。
+  - SSR 在 script／style 中打断结束标签。
+  - DevTools HTML 插值走 `otHtml` 转义。
+
+### 修复
+
+- **带 key 的 For 尾锚与 DOM 区间辅助（非破坏）**
+  - 带 key 的 `For` 尾锚改为 `createAnchorComment()` 空注释。
+  - 抽出共用 `dom-range.ts`。
+
 ## [3.0.7] - 2026-11-15
 
 ### 修复
