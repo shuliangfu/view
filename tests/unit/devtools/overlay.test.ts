@@ -374,6 +374,14 @@ describe("devtools overlay (P2)", () => {
     expect(empty).not.toBeNull();
     expect(empty!.textContent!).toMatch(/No issues|未发现问题/i);
     expect(empty!.textContent!.length).toBeGreaterThan(20);
+    const hint = warnPane.querySelector("[data-el='warn-hint']");
+    expect(hint).not.toBeNull();
+    expect(hint!.textContent!).toMatch(
+      /Click a warning to jump to the Owner path in Tree|点击警告可在「树」中定位 Owner 路径/,
+    );
+    expect(shadow.querySelector("[data-el='overview-warns']")).toBeNull();
+    expect(shadow.querySelector("[data-el='health-badge']")).toBeNull();
+    expect(shadow.querySelector("[data-el='health-hint']")).toBeNull();
     handle.unmount();
   });
 

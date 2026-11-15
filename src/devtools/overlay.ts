@@ -835,13 +835,6 @@ export function mountDevtoolsOverlay(
     ot("edges")
   }</span></div>
           </div>
-          <div class="section-h" style="margin-top:10px">
-            <span class="badge ok" data-el="health-badge">${
-    ot("healthOkBadge")
-  }</span>
-          </div>
-          <p class="hint" data-el="health-hint">${ot("healthOk")}</p>
-          <ul class="list" data-el="overview-warns" style="margin-top:10px"></ul>
         </div>
         <div class="section">
           <div class="section-h">
@@ -942,6 +935,9 @@ export function mountDevtoolsOverlay(
     ot("setupRerunHint")
   }</p>
         <ul class="list" data-el="setup-rerun-list"></ul>
+        <p class="hint" data-el="warn-hint" data-i18n="healthWarnHint">${
+    ot("healthWarnHint")
+  }</p>
         <div data-el="warn-list"></div>
       </div>
       <div class="pane" data-pane="settings">
@@ -1520,8 +1516,6 @@ export function mountDevtoolsOverlay(
     const list = el("[data-el='warn-list']");
     const badge = el("[data-el='warn-badge']");
     const count = el("[data-el='warn-count']");
-    const health = el("[data-el='health-badge']");
-    const healthHint = el("[data-el='health-hint']");
     const n = warnings.length;
     if (badge) {
       badge.textContent = String(n);
@@ -1531,48 +1525,9 @@ export function mountDevtoolsOverlay(
       count.textContent = String(n);
       count.className = n > 0 ? "count warn" : "count";
     }
-    if (health) {
-      health.textContent = n > 0
-        ? (n === 1
-          ? ot("healthWarnBadge", { n })
-          : ot("healthWarnBadgePlural", { n }))
-        : ot("healthOkBadge");
-      health.className = n > 0 ? "badge warn" : "badge ok";
-    }
-    if (healthHint) {
-      healthHint.textContent = n > 0 ? ot("healthWarnHint") : ot("healthOk");
-    }
     // status-dot = HMR only; float-warn pill carries misuse count
     syncStatusDot();
     syncFloatWarnBadge();
-    const overviewWarns = el("[data-el='overview-warns']");
-    if (overviewWarns) {
-      if (!n) {
-        overviewWarns.innerHTML = "";
-      } else {
-        overviewWarns.innerHTML =
-          `<div class="section-h" style="margin:0 0 6px"><h3 class="section-title">${
-            ot("overviewWarns")
-          }</h3></div>` +
-          warnings
-            .slice()
-            .reverse()
-            .slice(0, 8)
-            .map((w, idx) => {
-              const i = warnings.length - 1 - idx;
-              return `<button type="button" class="warn-item" data-warn="${i}">
-                <span class="warn-kind">${escapeHtml(w.kind)}</span>
-                <span>${escapeHtml(w.message)}</span>
-                ${
-                w.path
-                  ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>`
-                  : ""
-              }
-              </button>`;
-            })
-            .join("");
-      }
-    }
     if (!list) return;
     if (!n) {
       list.innerHTML =
@@ -1920,14 +1875,6 @@ export function mountDevtoolsOverlay(
     setOpen(true);
   };
 
-  el("[data-el='overview-warns']")?.addEventListener("click", (ev) => {
-    const btn = (ev.target as HTMLElement | null)?.closest("[data-warn]") as
-      | HTMLElement
-      | null;
-    if (!btn) return;
-    const idx = Number(btn.dataset.warn);
-    revealWarning(warnings[idx]);
-  });
   panel.querySelector("[data-action='reset-pos']")?.addEventListener(
     "click",
     () => {

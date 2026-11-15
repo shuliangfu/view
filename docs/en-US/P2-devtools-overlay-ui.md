@@ -13,14 +13,14 @@
 
 ## Capabilities
 
-| Tab          | Content                                                                                                                                                                                                                |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview** | Effects / memos / nodes / upstream edges + health + top sources with live previews + current warnings. **3.0:** resnapshots on route change (`popstate` + history push/replace); page-scoped, not whole-app cumulative |
-| **Tree**     | Expandable Owner forest (component names / `inspectOwnerIndexed` paths), filter, select → detail (including DOM count). **Click** a row to mark it selected and outline that Owner's DOM                               |
-| **Signals**  | Readable labels, current-value previews, owning component; click for details. Search matches label / value / id. `debugName` is display-only, not an HMR singleton key                                                 |
-| **Updates**  | Signal-write timeline (last 100 events, labels and text previews only). Closing the panel stops recording and clears the buffer                                                                                        |
-| **Warnings** | Oversubscribe / remount / `component-rerun`; toolbar **clear**; **click** deep-links to Tree path                                                                                                                      |
-| **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings                                                                                                                                               |
+| Tab          | Content                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview** | Effects / memos / nodes / upstream edges + top sources with live previews. **3.0:** resnapshots on route change (`popstate` + history push/replace); page-scoped, not whole-app cumulative |
+| **Tree**     | Expandable Owner forest (component names / `inspectOwnerIndexed` paths), filter, select → detail (including DOM count). **Click** a row to mark it selected and outline that Owner's DOM   |
+| **Signals**  | Readable labels, current-value previews, owning component; click for details. Search matches label / value / id. `debugName` is display-only, not an HMR singleton key                     |
+| **Updates**  | Signal-write timeline (last 100 events, labels and text previews only). Closing the panel stops recording and clears the buffer                                                            |
+| **Warnings** | Oversubscribe / remount / `component-rerun`; toolbar **clear**; hint that a click jumps to the Owner path in Tree                                                                          |
+| **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings                                                                                                                   |
 
 **Extras:** `⌘/Ctrl+Shift+D` toggle, `Esc` close, drag header/indicator, snap to
 corners, `localStorage` position & prefs.
