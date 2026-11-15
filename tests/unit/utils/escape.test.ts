@@ -7,14 +7,22 @@ import {
   escapeForAttr,
   escapeForAttrHtml,
   escapeForText,
+  isDangerousStyleProperty,
   isDangerousUrl,
   isDeniedHtmlContentProp,
   isForbiddenOnAttrName,
   isJsxEventProp,
   isSafeAttrName,
+  sanitizeCssText,
   sanitizeSrcset,
+  sanitizeStyleValue,
   sanitizeUrl,
+  URL_ATTR_NAMES,
 } from "../../../src/utils/escape.ts";
+import {
+  escapeForScriptText,
+  escapeForStyleText,
+} from "../../../src/utils/escape-raw-text.ts";
 
 describe("utils/escape", () => {
   it("escapeForText：无特殊字符应返回同一字符串引用", () => {
@@ -111,5 +119,64 @@ describe("utils/escape", () => {
     expect(escapeCommentData(plain)).toBe(plain);
     expect(escapeCommentData("foo-->bar")).toBe("foo- ->bar");
     expect(escapeCommentData("a--!>b")).toBe("a- -!>b");
+  });
+
+  it("URL_ATTR_NAMES 应包含 ping 与 object data", () => {
+    expect(URL_ATTR_NAMES.has("ping")).toBe(true);
+    expect(URL_ATTR_NAMES.has("data")).toBe(true);
+    expect(URL_ATTR_NAMES.has("href")).toBe(true);
+  });
+
+  it("isDangerousStyleProperty：应拦截 behavior / binding 与原型键", () => {
+    expect(isDangerousStyleProperty("behavior")).toBe(true);
+    expect(isDangerousStyleProperty("binding")).toBe(true);
+    expect(isDangerousStyleProperty("MozBinding")).toBe(true);
+    expect(isDangerousStyleProperty("-moz-binding")).toBe(true);
+    expect(isDangerousStyleProperty("webkitBinding")).toBe(true);
+    expect(isDangerousStyleProperty("__proto__")).toBe(true);
+    expect(isDangerousStyleProperty("constructor")).toBe(true);
+    expect(isDangerousStyleProperty("color")).toBe(false);
+    expect(isDangerousStyleProperty("backgroundImage")).toBe(false);
+  });
+
+  it("sanitizeStyleValue：应清空 expression / javascript: / 危险 url()，保留安全 data:image", () => {
+    expect(sanitizeStyleValue("expression(alert(1))")).toBe("");
+    expect(sanitizeStyleValue("javascript:alert(1)")).toBe("");
+    expect(sanitizeStyleValue("vbscript:msgbox(1)")).toBe("");
+    expect(sanitizeStyleValue("@import url(https://x)")).toBe("");
+    expect(sanitizeStyleValue("url(javascript:alert(1))")).toBe("");
+    expect(sanitizeStyleValue('url("data:text/html,hi")')).toBe("");
+    expect(sanitizeStyleValue("url(data:image/svg+xml,<svg>)")).toBe("");
+    expect(sanitizeStyleValue("url(data:image/png;base64,aaa)")).toBe(
+      "url(data:image/png;base64,aaa)",
+    );
+    expect(sanitizeStyleValue("red")).toBe("red");
+    expect(sanitizeStyleValue(10)).toBe(10);
+  });
+
+  it("sanitizeCssText：应丢掉危险属性名与危险声明，保留安全项", () => {
+    const out = sanitizeCssText(
+      "color: red; behavior: url(#default#VML); background: url(javascript:alert(1)); width: 10px",
+    );
+    expect(out).toContain("color:red");
+    expect(out).toContain("width:10px");
+    expect(out.toLowerCase()).not.toContain("behavior");
+    expect(out).not.toContain("javascript:");
+  });
+
+  it("escapeForScriptText / escapeForStyleText：只打断结束标签，不把 < & 编成实体", () => {
+    expect(escapeForScriptText("if (a < b && c) x();")).toBe(
+      "if (a < b && c) x();",
+    );
+    expect(escapeForScriptText("foo</script><script>alert(1)")).toBe(
+      "foo<\\/script><script>alert(1)",
+    );
+    expect(escapeForScriptText("foo</SCRIPT>bar")).toBe("foo<\\/SCRIPT>bar");
+    expect(escapeForStyleText("a > b { color: #f00; }")).toBe(
+      "a > b { color: #f00; }",
+    );
+    expect(escapeForStyleText("x</style><script>")).toBe(
+      "x<\\/style><script>",
+    );
   });
 });

@@ -133,3 +133,29 @@ export function warnMissingListKey(
 export function clearMissingListKeyWarns(): void {
   missingListKeyWarned.clear();
 }
+
+/** VIEW_DEV once: reactive array children rebuild the whole block; prefer For/Index. */
+let reactiveArrayChildWarned = false;
+
+/**
+ * DEV tip: `{items.map(...)}` / a reactive array child tears down the whole
+ * block on every update. Prefer `<For>` / `<Index>` for keyed or index-stable lists.
+ */
+export function warnReactiveArrayChild(): void {
+  try {
+    if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV !== true) return;
+    if (reactiveArrayChildWarned) return;
+    reactiveArrayChildWarned = true;
+    console.warn(
+      `[@dreamer/view] A reactive array was inserted as children and will rebuild the whole block on every update. ` +
+        `Prefer <For each={...} key={...}> or <Index each={...}> for incremental list updates.`,
+    );
+  } catch {
+    /* DEV tip must not break render */
+  }
+}
+
+/** Test helper: clear reactive-array warn-once flag. */
+export function clearReactiveArrayChildWarns(): void {
+  reactiveArrayChildWarned = false;
+}

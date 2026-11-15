@@ -19,13 +19,20 @@ import {
   escapeCommentData,
   escapeForAttr,
   escapeForText,
+  isDangerousStyleProperty,
   isDeniedHtmlContentProp,
   isForbiddenOnAttrName,
   isSafeAttrName,
+  sanitizeCssText,
   sanitizeSrcset,
+  sanitizeStyleValue,
   sanitizeUrl,
   URL_ATTR_NAMES,
 } from "../utils/escape.ts";
+import {
+  escapeForScriptText,
+  escapeForStyleText,
+} from "../utils/escape-raw-text.ts";
 
 /** 与 `insert.ts` 共用：标记 SSR 树节点，避免在无 `Node` 全局时 `instanceof` 不可用 */
 export const SSR_VIEW_TREE_NODE = Symbol.for("@dreamer/view/ssrTreeNode");
@@ -599,19 +606,68 @@ function joinChildOuterHtml(children: readonly SsrNode[]): string {
 }
 
 /** `_style` 袋转 `cssText`，避免 `Object.entries` + 多段链式分配 */
+function joinRawTextElementChildren(
+  children: readonly SsrNode[],
+  kind: "script" | "style",
+): string {
+  const escape = kind === "script" ? escapeForScriptText : escapeForStyleText;
+  let out = "";
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i]!;
+    if (c.nodeType === NODE_FRAGMENT) {
+      out += joinRawTextElementChildren(
+        (c as SsrDocumentFragment)._children,
+        kind,
+      );
+      continue;
+    }
+    if (c.nodeType === NODE_TEXT) {
+      out += escape((c as SsrText).data);
+      continue;
+    }
+    if (c.nodeType === NODE_COMMENT) {
+      out += `<!--${escapeCommentData((c as SsrComment).data)}-->`;
+      continue;
+    }
+    // Unexpected element child: still serialize, but do not raw-dump text.
+    out += ssrLeafOuterHtml(c);
+  }
+  return out;
+}
+
 function styleBagToCssText(bag: Record<string, string>): string {
   const keys = Object.keys(bag);
   if (keys.length === 0) return "";
   const parts: string[] = [];
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i]!;
-    const v = bag[k];
-    if (v === undefined || v === "") continue;
+    if (isDangerousStyleProperty(k)) continue;
+    const raw = bag[k];
+    if (raw === undefined || raw === "") continue;
+    const v = sanitizeStyleValue(raw);
+    if (typeof v !== "string" || v === "") continue;
     parts.push(
       `${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}:${v}`,
     );
   }
   return parts.join(";");
+}
+
+function writeStyleBag(
+  bag: Record<string, string>,
+  prop: string,
+  value: string,
+): void {
+  if (isDangerousStyleProperty(prop)) {
+    delete bag[prop];
+    return;
+  }
+  const v = sanitizeStyleValue(value);
+  if (typeof v !== "string" || v === "") {
+    delete bag[prop];
+    return;
+  }
+  bag[prop] = v;
 }
 
 /**
@@ -822,7 +878,7 @@ export class SsrElement extends SsrNode {
       },
       set cssText(v: string) {
         for (const k of Object.keys(bag)) delete (bag as any)[k];
-        const s = String(v ?? "");
+        const s = sanitizeCssText(String(v ?? ""));
         if (s.length > 0) {
           for (const part of s.split(";")) {
             const colon = part.indexOf(":");
@@ -831,12 +887,12 @@ export class SsrElement extends SsrNode {
               /-([a-z])/g,
               (_, x) => x.toUpperCase(),
             );
-            (bag as any)[key] = part.slice(colon + 1).trim();
+            writeStyleBag(bag, key, part.slice(colon + 1).trim());
           }
         }
       },
       setProperty(prop: string, value: string) {
-        (bag as any)[cssNameToCamel(prop)] = String(value ?? "");
+        writeStyleBag(bag, cssNameToCamel(prop), String(value ?? ""));
       },
       removeProperty(prop: string): string {
         const key = cssNameToCamel(prop);
@@ -868,7 +924,7 @@ export class SsrElement extends SsrNode {
         ) {
           return false;
         }
-        (bag as any)[String(p)] = String(v);
+        writeStyleBag(bag, String(p), String(v));
         return true;
       },
     });
@@ -923,6 +979,13 @@ export class SsrElement extends SsrNode {
         return;
       }
       v = cleaned;
+    }
+    if (n === "style") {
+      v = sanitizeCssText(v);
+      if (!v) {
+        this._attrs.delete(n);
+        return;
+      }
     }
     this._attrs.set(n, v);
     if (n === "class") {
@@ -1023,7 +1086,11 @@ export class SsrElement extends SsrNode {
     const voidEl = VOID_HTML.has(this.localName);
     const open = `<${tag}${parts.join("")}`;
     if (voidEl) return `${open}>`;
-    return `${open}>${this.innerHTML}</${tag}>`;
+    const rawTag = this.localName;
+    const body = rawTag === "script" || rawTag === "style"
+      ? joinRawTextElementChildren(this._kids, rawTag)
+      : this.innerHTML;
+    return `${open}>${body}</${tag}>`;
   }
 
   cloneNode(deep?: boolean): SsrElement {

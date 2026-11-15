@@ -281,4 +281,47 @@ describe("runtime/props", () => {
     expect(parentFired).toBe(0);
     parent.remove();
   });
+
+  it("style 对象应丢掉 expression / javascript: / behavior，并跳过 __proto__", () => {
+    const el = document.createElement("div");
+    const style = JSON.parse(
+      '{"color":"red","background":"expression(alert(1))","backgroundImage":"url(javascript:alert(1))","behavior":"url(#default#VML)","__proto__":{"polluted":true}}',
+    );
+    setProperty(el, "style", style);
+    expect(el.style.color).toBe("red");
+    expect(el.style.background).not.toContain("expression");
+    expect(el.style.backgroundImage).not.toContain("javascript:");
+    expect((el.getAttribute("style") ?? "").toLowerCase()).not.toContain(
+      "behavior",
+    );
+    expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
+  });
+
+  it("style cssText 应丢掉危险声明，保留安全项", () => {
+    const el = document.createElement("div");
+    setProperty(
+      el,
+      "style",
+      "color: blue; behavior: url(#x); width: 10px; background: url(javascript:alert(1))",
+    );
+    const css = el.style.cssText.toLowerCase();
+    expect(css).toContain("color");
+    expect(css).toContain("width");
+    expect(css).not.toContain("behavior");
+    expect(css).not.toContain("javascript:");
+  });
+
+  it("ping 与 object data 的 javascript: 应被拒绝", () => {
+    const a = document.createElement("a");
+    setProperty(a, "ping", "javascript:alert(1)");
+    expect(a.getAttribute("ping")).toBeNull();
+    setProperty(a, "ping", "https://example.com/p");
+    expect(a.getAttribute("ping")).toBe("https://example.com/p");
+
+    const obj = document.createElement("object");
+    setProperty(obj, "data", "javascript:alert(1)");
+    expect(obj.getAttribute("data")).toBeNull();
+    setProperty(obj, "data", "https://example.com/file.svg");
+    expect(obj.getAttribute("data")).toBe("https://example.com/file.svg");
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

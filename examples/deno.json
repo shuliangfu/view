@@ -15,6 +15,7 @@
     "@dreamer/view/jsx-dev-runtime": "../src/jsx-runtime.ts",
     "@dreamer/view/portal": "../src/runtime/portal.ts",
     "@dreamer/view/compiler": "../src/compiler/mod.ts",
+    "@dreamer/view/escape": "../src/utils/escape.ts",
     "@dreamer/view/optimize": "../src/optimize.ts",
     "@dreamer/view/ssr": "../src/runtime/server.ts",
     "@dreamer/plugins": "jsr:@dreamer/plugins@^1.1.0",

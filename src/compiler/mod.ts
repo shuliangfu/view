@@ -36,6 +36,23 @@ export interface CompileOptions {
 }
 
 /**
+ * Compiled SSR 从更窄的 `@dreamer/view/escape`（或同仓相对路径）引入转义函数，
+ * 以免把这些符号绑死在主入口图上。自定义 `insertImportPath` 时按常见后缀改写。
+ */
+function escapeImportPathFrom(insertImportPath: string): string {
+  if (
+    insertImportPath === "@dreamer/view" ||
+    insertImportPath === "jsr:@dreamer/view"
+  ) {
+    return `${insertImportPath}/escape`;
+  }
+  if (insertImportPath.endsWith("/mod.ts")) {
+    return insertImportPath.replace(/\/mod\.ts$/, "/utils/escape.ts");
+  }
+  return `${insertImportPath}/escape`;
+}
+
+/**
  * 使用 TypeScript Transformer 将 TSX 中的 JSX 转为运行时调用，并注入所需 `import`。
  * @param source 源码文本
  * @param fileName 虚拟文件名（影响 TS 解析）
@@ -72,11 +89,17 @@ export function compileSource(
 
   if (options.generate === "ssr") {
     const ssrImports = ["memo"];
-    if (output.includes("escapeForAttr(")) ssrImports.push("escapeForAttr");
-    if (output.includes("escapeForText(")) ssrImports.push("escapeForText");
+    const escapeImports: string[] = [];
+    if (output.includes("escapeForAttr(")) escapeImports.push("escapeForAttr");
+    if (output.includes("escapeForText(")) escapeImports.push("escapeForText");
     runtimeImports = `import { ${
       ssrImports.join(", ")
     } } from "${importPath}";\n`;
+    if (escapeImports.length > 0) {
+      runtimeImports += `import { ${escapeImports.join(", ")} } from "${
+        escapeImportPathFrom(importPath)
+      }";\n`;
+    }
   } else {
     // DOM 模式：与 transformer 产出的标识符对齐（template / walk / insert / setAttribute / setProperty / spread / scheduleFunctionRef）
     const imports = [

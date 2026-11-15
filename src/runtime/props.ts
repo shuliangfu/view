@@ -31,11 +31,14 @@
 import { createRenderEffect } from "../reactivity/effect.ts";
 import { batch } from "../scheduler/batch.ts";
 import {
+  isDangerousStyleProperty,
   isDeniedHtmlContentProp,
   isForbiddenOnAttrName,
   isJsxEventProp,
   isSafeAttrName,
+  sanitizeCssText,
   sanitizeSrcset,
+  sanitizeStyleValue,
   sanitizeUrl,
   URL_ATTR_NAMES,
 } from "../utils/escape.ts";
@@ -46,18 +49,6 @@ import { isObject } from "./utils.ts";
  * 别名 {@link URL_ATTR_NAMES}，保证 CSR setProperty 与 SSR setAttribute 名单不漂移。
  */
 const URL_PROP_NAMES = URL_ATTR_NAMES;
-
-/**
- * 内联 style 值消毒：拦截 `expression(` / `javascript:`（IE 与旧浏览器 XSS 面）。
- */
-function sanitizeStyleValue(v: unknown): unknown {
-  if (typeof v !== "string") return v;
-  const lower = v.toLowerCase();
-  if (lower.includes("expression(") || lower.includes("javascript:")) {
-    return "";
-  }
-  return v;
-}
 
 /** style 键 camelCase → kebab-case 的有界缓存，减轻热路径上重复正则替换 */
 const STYLE_KEY_CSS_CACHE_MAX = 256;
@@ -426,13 +417,17 @@ export function setProperty(el: any, name: string, value: any) {
       const safe: Record<string, unknown> = {};
       for (let i = 0; i < nextKeys.length; i++) {
         const k = nextKeys[i]!;
+        if (isDangerousStyleProperty(k)) {
+          el.style.removeProperty(styleObjectKeyToCssProperty(k));
+          continue;
+        }
         safe[k] = sanitizeStyleValue(record[k]);
       }
       Object.assign(el.style, safe);
       lastStyleObjectKeys.set(el, nextKeys);
     } else {
       lastStyleObjectKeys.delete(el);
-      const next = sanitizeStyleValue(value || "") as string;
+      const next = sanitizeCssText(String(value || ""));
       if (el.style.cssText !== next) el.style.cssText = next;
     }
     return;

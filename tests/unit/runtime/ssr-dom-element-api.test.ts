@@ -539,4 +539,43 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
       }
     }
   });
+
+  it("style setProperty / cssText / setAttribute 应消毒危险值", () => {
+    withSsrDoc((doc) => {
+      const el = doc.createElement("div") as SsrElement;
+      el.style.setProperty("color", "red");
+      el.style.setProperty("background", "expression(alert(1))");
+      el.style.setProperty("behavior", "url(#default#VML)");
+      expect(el.style.getPropertyValue("color")).toBe("red");
+      expect(el.style.getPropertyValue("background")).toBe("");
+      expect(String(el.style.cssText).toLowerCase()).not.toContain("behavior");
+      el.setAttribute(
+        "style",
+        "width: 10px; background: url(javascript:alert(1))",
+      );
+      expect(el.getAttribute("style") ?? "").toContain("width");
+      expect(el.getAttribute("style") ?? "").not.toContain("javascript:");
+    });
+  });
+
+  it("script / style 文本应打断结束标签，且不把 < & 编成实体", () => {
+    withSsrDoc((doc) => {
+      const script = doc.createElement("script") as SsrElement;
+      script.appendChild(
+        doc.createTextNode("if (a < b && c) {}</script><script>alert(1)"),
+      );
+      const shtml = script.outerHTML;
+      expect(shtml).toContain("if (a < b && c) {}");
+      expect(shtml.toLowerCase()).toContain("<\\/script>");
+      expect(shtml).not.toContain("</script><script>alert");
+
+      const style = doc.createElement("style") as SsrElement;
+      style.appendChild(
+        doc.createTextNode("a > b { color: #f00; }</style><script>"),
+      );
+      const yhtml = style.outerHTML;
+      expect(yhtml).toContain("a > b { color: #f00; }");
+      expect(yhtml.toLowerCase()).toContain("<\\/style>");
+    });
+  });
 });

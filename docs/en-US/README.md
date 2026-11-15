@@ -109,6 +109,7 @@ npx jsr add @dreamer/view
 | `jsr:@dreamer/view/jsx-dev-runtime`  | Dev JSX entry (same source as jsx-runtime; satisfies bundlers that resolve `jsxDEV`)                                                                        |
 | `jsr:@dreamer/view/portal`           | **`createPortal` only** (optional split import)                                                                                                             |
 | `jsr:@dreamer/view/compiler`         | **`compileSource` / `transformJSX`**, etc.                                                                                                                  |
+| `jsr:@dreamer/view/escape`           | **`escapeForAttr` / `escapeForText`** plus URL / style / script sanitizers (SSR compiler output should import from here to avoid the main barrel)            |
 | `jsr:@dreamer/view/optimize`         | **`optimize` / `createOptimizePlugin`** (build-time string compression, etc.)                                                                               |
 | `jsr:@dreamer/view/ssr`              | **`renderToString` / `renderToStringAsync` / `renderToStream`**, `generateHydrationScript`, and SSR helpers                                                 |
 | `jsr:@dreamer/view/reactivity`       | **Signal / Effect / Memo / Owner / Store / Context** + convenience **`batch`** re-export (no router/form; better tree-shake)                                |
@@ -827,7 +828,7 @@ export function ModalDemo() {
 }
 ```
 
-- **`mount`** is optional; default **`document.body`**.
+- **`mount`** is optional; default **`document.body`**. It can be a node, or a getter / Signal that returns a node; when the target changes, children are unmounted from the previous container and remounted on the new one.
 
 ### 13.2 Imperative `createPortal` (`jsr:@dreamer/view/portal`)
 
@@ -932,6 +933,8 @@ store.setState(
   }),
 );
 ```
+
+`produce` is **not** Immer: the callback receives the live store proxy itself, not a draft copy. Mutations inside the callback write through immediately; use it to wrap several updates into one `setState`.
 
 ### 15.2 Tuple: `[getStore, setState]`
 

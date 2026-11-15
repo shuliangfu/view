@@ -213,4 +213,74 @@ export const URL_ATTR_NAMES = new Set([
   "poster",
   "cite",
   "background",
+  "ping",
+  "data",
 ]);
+
+/**
+ * 危险的内联 style 属性名（历史 XSS：IE `behavior`、XBL `-moz-binding`）。
+ * 比较前把 camelCase 收成小写 kebab；`__proto__` 等键一并拒绝。
+ */
+export function isDangerousStyleProperty(name: string): boolean {
+  if (
+    name === "__proto__" || name === "constructor" || name === "prototype"
+  ) {
+    return true;
+  }
+  let kebab = "";
+  for (let i = 0; i < name.length; i++) {
+    const c = name.charCodeAt(i);
+    if (c >= 65 && c <= 90) kebab += "-" + String.fromCharCode(c + 32);
+    else kebab += name[i]!;
+  }
+  const n = kebab.toLowerCase();
+  return n === "behavior" || n === "binding" || n.endsWith("-binding");
+}
+
+/** 值是否含 expression / javascript: / vbscript: / @import，或 url() 里的危险地址。 */
+function styleValueLooksDangerous(v: string): boolean {
+  const lower = v.toLowerCase();
+  if (
+    lower.includes("expression(") ||
+    lower.includes("javascript:") ||
+    lower.includes("vbscript:") ||
+    lower.includes("@import")
+  ) {
+    return true;
+  }
+  const re = /url\s*\(\s*(['"]?)([^)'"]*)\1\s*\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(v)) !== null) {
+    const inner = m[2]!.trim();
+    if (inner && isDangerousUrl(inner)) return true;
+  }
+  return false;
+}
+
+/**
+ * 内联 style 单值消毒。非字符串原样返回（如数字 `width: 10`）。
+ */
+export function sanitizeStyleValue(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  return styleValueLooksDangerous(v) ? "" : v;
+}
+
+/**
+ * 消毒整段 cssText：丢掉危险属性名与危险声明。
+ */
+export function sanitizeCssText(css: string): string {
+  if (!css) return "";
+  const parts: string[] = [];
+  for (const part of css.split(";")) {
+    const colon = part.indexOf(":");
+    if (colon < 0) continue;
+    const key = part.slice(0, colon).trim();
+    const val = part.slice(colon + 1).trim();
+    if (!key || isDangerousStyleProperty(key)) continue;
+    if (styleValueLooksDangerous(val)) continue;
+    parts.push(`${key}:${val}`);
+  }
+  return parts.join(";");
+}
+
+export { escapeForScriptText, escapeForStyleText } from "./escape-raw-text.ts";

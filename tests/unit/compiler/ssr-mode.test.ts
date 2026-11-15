@@ -111,7 +111,10 @@ describe("compiler/ssr-mode", () => {
     );
     expect(ssr).toContain("color()");
     expect(ssr).toContain("escapeForAttr(color())");
-    expect(ssr).toContain("import { memo, escapeForAttr }");
+    expect(ssr).toContain('import { memo } from "@dreamer/view"');
+    expect(ssr).toContain(
+      'import { escapeForAttr } from "@dreamer/view/escape"',
+    );
   });
 
   it("SSR：动态文本应包 escapeForText；静态属性转义引号", () => {
@@ -121,6 +124,10 @@ describe("compiler/ssr-mode", () => {
       { generate: "ssr" },
     );
     expect(dyn).toContain("escapeForText(name)");
+    expect(dyn).toContain(
+      'import { escapeForText } from "@dreamer/view/escape"',
+    );
+    expect(dyn).not.toContain('escapeForText } from "@dreamer/view"');
     const xss = compileSource(
       `export const App = () => <div title={'a" onmouseover="alert(1)'}></div>;`,
       "t.tsx",

@@ -1,2 +1,3 @@
-import { memo, escapeForText } from "@dreamer/view";
+import { memo } from "@dreamer/view";
+import { escapeForText } from "@dreamer/view/escape";
 export const App = () => "<div>" + escapeForText(name) + "</div>";

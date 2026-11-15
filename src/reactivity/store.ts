@@ -21,6 +21,38 @@ import { getInternal } from "./master.ts";
 import { batch } from "../scheduler/batch.ts";
 import { isObject } from "../runtime/utils.ts";
 
+/** persist / setState / Proxy 写入时跳过的原型污染键。 */
+const DANGEROUS_STORE_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+function isDangerousStoreKey(prop: string | symbol): boolean {
+  return typeof prop === "string" && DANGEROUS_STORE_KEYS.has(prop);
+}
+
+/** 拷贝对象时丢掉危险键；数组原样浅拷贝。 */
+function copyStoreSource(source: any): any {
+  if (Array.isArray(source)) return [...source];
+  if (!isObject(source)) return source;
+  const out: Record<string, unknown> = {};
+  const keys = Object.keys(source);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]!;
+    if (isDangerousStoreKey(key)) continue;
+    out[key] = (source as any)[key];
+  }
+  return out;
+}
+
+/** 把 source 的安全键写到 target（不经 Object.assign，避免 `__proto__` 赋值）。 */
+function assignStoreProps(target: any, source: any): void {
+  if (!isObject(source) || Array.isArray(source)) return;
+  const keys = Object.keys(source);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]!;
+    if (isDangerousStoreKey(key)) continue;
+    target[key] = (source as any)[key];
+  }
+}
+
 /** Store 注册中心（仅具名 store） */
 const storeRegistry = getInternal(
   "store",
@@ -147,7 +179,7 @@ export function createStore<T extends object>(
   // 数组入参不能用 `{ ...arr }`，否则会变成带下标键的普通对象，破坏数组根与 For/forEach。
   let mergedInitialState: any = Array.isArray(initialState)
     ? [...initialState]
-    : { ...initialState };
+    : copyStoreSource(initialState);
   if (persist && storage) {
     try {
       const saved = storage.getItem(persist.key);
@@ -161,8 +193,14 @@ export function createStore<T extends object>(
             mergedInitialState.length,
             ...deserialized,
           );
-        } else if (!Array.isArray(mergedInitialState)) {
-          mergedInitialState = { ...mergedInitialState, ...deserialized };
+        } else if (
+          !Array.isArray(mergedInitialState) && isObject(deserialized) &&
+          !Array.isArray(deserialized)
+        ) {
+          mergedInitialState = copyStoreSource({
+            ...mergedInitialState,
+            ...copyStoreSource(deserialized),
+          });
         }
       }
     } catch (e) {
@@ -185,7 +223,7 @@ export function createStore<T extends object>(
       };
       storeRegistry.set(storeId, rootSource);
     } else {
-      Object.assign(existing.value, mergedInitialState);
+      assignStoreProps(existing.value, mergedInitialState);
       rootSource = existing;
     }
   } else {
@@ -270,6 +308,7 @@ export function createStore<T extends object>(
         return isObject(val) ? createProxy(val) : val;
       },
       set(target: any, prop: string | symbol, val: any) {
+        if (isDangerousStoreKey(prop)) return true;
         // Object.is：与 Signal 一致，NaN 不重复通知、+0/-0 可区分
         if (!Object.is(target[prop], val)) {
           target[prop] = val;
@@ -313,6 +352,12 @@ export function createStore<T extends object>(
   const setter: StoreSetter<T> = function (a: any, b?: any, c?: any) {
     batch(() => {
       if (typeof a === "string") {
+        if (
+          isDangerousStoreKey(a) ||
+          (typeof b === "string" && isDangerousStoreKey(b))
+        ) {
+          return;
+        }
         if (arguments.length >= 3) {
           const parent = (proxy as any)[a];
           if (isObject(parent)) {
@@ -345,6 +390,7 @@ export function createStore<T extends object>(
         const keys = Object.keys(a);
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i]!;
+          if (isDangerousStoreKey(key)) continue;
           (proxy as any)[key] = a[key];
         }
       }
@@ -419,6 +465,7 @@ export function reconcile<T>(value: T): (state: T) => void {
 
     for (let i = 0; i < sourceKeys.length; i++) {
       const key = sourceKeys[i]!;
+      if (isDangerousStoreKey(key)) continue;
       const v = source[key];
       const s = target[key];
 

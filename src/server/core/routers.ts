@@ -18,6 +18,7 @@ import {
   writeTextFile,
 } from "@dreamer/runtime-adapter";
 import { $tr } from "../../i18n.ts";
+import { parseStaticLiteral } from "../utils/static-literal.ts";
 import {
   computeLayoutChain,
   readInheritLayoutFromPageFile,
@@ -177,8 +178,7 @@ async function extractMetaFromFile(
     );
     if (match) {
       try {
-        // eslint-disable-next-line no-new-func
-        const raw = new Function("return " + match[1])();
+        const raw = parseStaticLiteral(match[1]!);
         if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
           return undefined;
         }

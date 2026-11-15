@@ -27,6 +27,8 @@
 
 import { createEffect } from "../reactivity/effect.ts";
 import type { InsertCurrent, InsertValue, ViewSignalTagged } from "../types.ts";
+import { removeNodeRange } from "./dom-range.ts";
+import { warnReactiveArrayChild } from "./utils.ts";
 
 /** 与 `ssr-dom.ts` 中 `SSR_VIEW_TREE_NODE` 同址，避免主包静态依赖 SSR 实现文件 */
 const SSR_VIEW_TREE_NODE = Symbol.for("@dreamer/view/ssrTreeNode");
@@ -60,6 +62,21 @@ function isDomNode(v: unknown): v is Node {
   if (v === null || typeof v !== "object") return false;
   if (typeof Node !== "undefined" && v instanceof Node) return true;
   return (v as Record<symbol, unknown>)[SSR_VIEW_TREE_NODE] === true;
+}
+
+function maybeWarnReactiveArray(value: unknown): void {
+  if (Array.isArray(value)) {
+    warnReactiveArrayChild();
+    return;
+  }
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    !isDomNode(value) &&
+    typeof (value as ArrayLike<unknown>).length === "number"
+  ) {
+    warnReactiveArrayChild();
+  }
 }
 
 /**
@@ -98,13 +115,7 @@ function clearViewArrayBlockByEndComment(end: Comment): void {
   viewArrayBlockFirst.delete(end);
   viewArrayEnds.delete(end);
   if (first != null && first.parentNode === p) {
-    let n: Node | null = first;
-    while (n) {
-      const nx: ChildNode | null = n.nextSibling;
-      p.removeChild(n);
-      if (n === end) break;
-      n = nx;
-    }
+    removeNodeRange(first, end);
     return;
   }
   p.removeChild(end);
@@ -212,9 +223,11 @@ export function insert(
           (before && before.parentNode && before.parentNode !== parent)
             ? before.parentNode
             : parent;
+        const nextValue = (value as () => InsertValue)();
+        maybeWarnReactiveArray(nextValue);
         current = insert(
           latestParent,
-          (value as () => InsertValue)(),
+          nextValue,
           current,
           before,
         );
@@ -247,6 +260,7 @@ export function insert(
         );
       }
 
+      maybeWarnReactiveArray(nextValue);
       current = insert(
         latestParent,
         nextValue as InsertValue,

@@ -57,6 +57,11 @@ import {
   type ViewSignalTagged,
   type ViewSlot,
 } from "../types.ts";
+import {
+  clearBetweenAnchors,
+  moveNodeRangeBefore,
+  removeNodeRange,
+} from "./dom-range.ts";
 import { insert } from "./insert.ts";
 import {
   readAccessor,
@@ -86,21 +91,6 @@ function normalizeEachList<T>(raw: T[] | Iterable<T> | null | undefined): T[] {
     return Array.from(raw as Iterable<T>);
   }
   return [];
-}
-
-/**
- * 清除 `start` 与 `end` 之间的节点，保留起止锚点本身。
- * 只清本控制流的区间，不会误删父级里列表/分支外的兄弟节点。
- */
-function clearBetweenAnchors(start: Node, end: Node): void {
-  const parent = start.parentNode;
-  if (!parent) return;
-  let node: Node | null = start.nextSibling;
-  while (node && node !== end) {
-    const next: Node | null = node.nextSibling;
-    parent.removeChild(node);
-    node = next;
-  }
 }
 
 /**
@@ -145,39 +135,6 @@ interface KeyedListRow<T> {
 /** 控制流起止锚点为空白注释；由闭包中的节点引用识别，不靠文案。 */
 function createAnchorComment(): Comment {
   return document.createComment("");
-}
-
-/**
- * 将 `start` 到 `end`（含）的节点依次 `insertBefore(parent, before)`，保持相对顺序。
- */
-function moveNodeRangeBefore(
-  start: Node,
-  end: Node,
-  parent: Node,
-  before: Node | null,
-): void {
-  let node: Node | null = start;
-  while (node) {
-    const next: Node | null = node.nextSibling;
-    parent.insertBefore(node, before);
-    if (node === end) break;
-    node = next;
-  }
-}
-
-/**
- * 移除 `start` 到 `end`（含）之间的全部节点。
- */
-function removeNodeRange(start: Node, end: Node): void {
-  const p = start.parentNode;
-  if (!p) return;
-  let node: Node | null = start;
-  while (node) {
-    const next: Node | null = node.nextSibling;
-    p.removeChild(node);
-    if (node === end) break;
-    node = next;
-  }
 }
 
 /**
@@ -398,7 +355,7 @@ export function ErrorBoundary(props: {
     if (!error()) setError(() => err);
   });
 
-  const marker = document.createTextNode("");
+  const marker = createAnchorComment();
   const fragment = document.createDocumentFragment();
   fragment.appendChild(marker);
 
@@ -489,7 +446,7 @@ export function Show<T>(props: {
   children: ShowChildren<T>;
 }): DocumentFragment {
   warnEagerControlFlowProp("when", props.when);
-  const marker = document.createTextNode("");
+  const marker = createAnchorComment();
   const fragment = document.createDocumentFragment();
   fragment.appendChild(marker);
 
@@ -635,7 +592,7 @@ function forKeyedList<T>(props: {
   fallback?: JSXRenderable;
   key: (item: T) => unknown;
 }): DocumentFragment {
-  const marker = document.createTextNode("");
+  const marker = createAnchorComment();
   const fragment = document.createDocumentFragment();
   fragment.appendChild(marker);
 
@@ -946,27 +903,32 @@ export function Match(props: {
 
 /**
  * 声明式 Portal：把 `children` 插入到 `mount`（默认 `document.body`），随依赖更新。
- * @param props.mount 目标容器节点
+ * `mount` 支持 {@link MaybeAccessor}：静态节点、getter 或 Signal getter；目标变化时会先从旧容器卸下再挂到新容器。
+ * @param props.mount 目标容器节点（或读取它的 accessor）
  * @param props.children 要传送的内容
  * @returns 空 `DocumentFragment`（实际内容挂在 `mount` 上）
  */
 export function Portal(
-  props: { mount?: Node; children: JSXRenderable },
+  props: {
+    mount?: MaybeAccessor<Node | null | undefined>;
+    children: JSXRenderable;
+  },
 ): DocumentFragment {
-  const container = props.mount || document.body;
-  const marker = document.createTextNode("");
-  const fragment = document.createDocumentFragment();
-  fragment.appendChild(marker);
-
   let current: InsertCurrent = null;
+  let lastContainer: Node | undefined;
 
   createEffect(() => {
+    const container = readAccessor(props.mount) || document.body;
+    if (lastContainer && lastContainer !== container) {
+      insert(lastContainer, null, current);
+      current = null;
+    }
+    lastContainer = container;
     current = insert(container, props.children, current);
   });
 
   onCleanup(() => {
-    insert(container, null, current);
-    if (marker.parentNode) marker.parentNode.removeChild(marker);
+    if (lastContainer) insert(lastContainer, null, current);
   });
 
   return document.createDocumentFragment();

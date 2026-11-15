@@ -100,6 +100,7 @@ bunx jsr add @dreamer/view
 | `jsr:@dreamer/view/jsx-dev-runtime` | 开发期 JSX 入口（与 jsx-runtime 同源，满足部分打包器对 `jsxDEV` 的解析）                                                                      |
 | `jsr:@dreamer/view/portal`          | 仅 **`createPortal`**（可按需单独引用）                                                                                                       |
 | `jsr:@dreamer/view/compiler`        | **`compileSource` / `transformJSX`** 等与 TS 编译相关的 API                                                                                   |
+| `jsr:@dreamer/view/escape`          | **`escapeForAttr` / `escapeForText`** 及 URL／style／script 消毒辅助（SSR 编译产物优先从此处引入，避免拖入主入口）                             |
 | `jsr:@dreamer/view/optimize`        | **`optimize` / `createOptimizePlugin`** 构建期字符串压缩等                                                                                    |
 | `jsr:@dreamer/view/ssr`             | **`renderToString` / `renderToStringAsync` / `renderToStream`**、`generateHydrationScript` 及 SSR 辅助符号                                    |
 | `jsr:@dreamer/view/reactivity`      | **Signal / Effect / Memo / Owner / Store / Context** + 便利 **`batch`** re-export（无 router/form，利于 tree-shake）                          |
@@ -797,7 +798,7 @@ export function ModalDemo() {
 }
 ```
 
-- **`mount`** 可选，默认 **`document.body`**。
+- **`mount`** 可选，默认 **`document.body`**。可以是节点，也可以是读取节点的 getter／Signal；目标变化时会先从旧容器卸下，再挂到新容器。
 
 ### 13.2 命令式 `createPortal`（`jsr:@dreamer/view/portal`）
 
@@ -901,6 +902,8 @@ store.setState(
   }),
 );
 ```
+
+`produce` **不是** Immer：回调拿到的就是当前 store 代理本身，没有另做一份草稿拷贝。在回调里改字段会立刻写到活代理上；适合把多步更新包进一次 `setState`。
 
 ### 15.2 元组解构：`[getStore, setState]`
 

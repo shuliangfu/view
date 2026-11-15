@@ -16,6 +16,7 @@
     "./jsx-dev-runtime": "./src/jsx-runtime.ts",
     "./portal": "./src/runtime/portal.ts",
     "./compiler": "./src/compiler/mod.ts",
+    "./escape": "./src/utils/escape.ts",
     "./optimize": "./src/optimize.ts",
     "./ssr": "./src/runtime/server.ts",
     "./reactivity": "./src/reactivity/mod.ts",

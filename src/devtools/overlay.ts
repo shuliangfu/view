@@ -631,6 +631,19 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Like {@link ot}, but HTML-escapes every interpolation before substituting. */
+function otHtml(
+  key: string,
+  params?: Record<string, string | number | boolean>,
+): string {
+  if (!params) return ot(key);
+  const safe: Record<string, string> = {};
+  for (const k of Object.keys(params)) {
+    safe[k] = escapeHtml(String(params[k]));
+  }
+  return ot(key, safe);
+}
+
 function readStore(key: string): StoredPrefs {
   try {
     const raw = globalThis.localStorage?.getItem(key);
@@ -923,7 +936,7 @@ export function mountDevtoolsOverlay(
           <span data-el="hmr-claim-note">${ot("hmrClaimed")}</span>
         </div>
         <p class="hint" data-el="settings-hint">${
-    ot("settingsHint", { storageKey })
+    otHtml("settingsHint", { storageKey })
   }</p>
         <div class="settings-row">
           <button type="button" class="ghost" data-action="reset-pos" data-i18n="resetPos">${
@@ -1152,7 +1165,7 @@ export function mountDevtoolsOverlay(
     const node = flatIndex.get(selectedPath);
     if (!node) {
       detail.innerHTML = `<p class="detail-empty">${
-        ot("nodeStale", { path: selectedPath })
+        otHtml("nodeStale", { path: selectedPath })
       }</p>`;
       return;
     }
@@ -1259,7 +1272,7 @@ export function mountDevtoolsOverlay(
           `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${
             escapeHtml(s.id)
           }</span><span class="row-v">${
-            ot("obs", { n: s.observers })
+            otHtml("obs", { n: s.observers })
           }</span></li>`,
       )
       .join("");
