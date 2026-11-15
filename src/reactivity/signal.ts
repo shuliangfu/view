@@ -149,7 +149,28 @@ export function track(source: Source<any>) {
  * 避免 `in` 操作符的原型链遍历开销。
  * @param source 值已发生变化的源
  */
+/**
+ * Optional DEV notify hook. `null` in production and whenever DevTools is
+ * unmounted — one null check per write, no retained Sources.
+ */
+export type DevNotifyHook = (source: Source<any>) => void;
+
+let devNotifyHook: DevNotifyHook | null = null;
+
+/** Install or clear the DEV notify hook. Pass `null` to detach. */
+export function setDevNotifyHook(hook: DevNotifyHook | null): void {
+  devNotifyHook = hook;
+}
+
 export function notify(source: Source<any>) {
+  const hook = devNotifyHook;
+  if (hook !== null) {
+    try {
+      hook(source);
+    } catch {
+      /* DevTools must never break writes */
+    }
+  }
   let sub = source.observers;
   if (!sub) return;
   while (sub) {
@@ -226,9 +247,12 @@ function unwrapRegistryValue(val: unknown): Source<any> | undefined {
   if (!val || typeof val !== "object") return undefined;
   if (typeof WeakRef !== "undefined" && val instanceof WeakRef) {
     const inner = val.deref();
-    return inner && typeof inner === "object" ? inner as Source<any> : undefined;
+    return inner && typeof inner === "object"
+      ? inner as Source<any>
+      : undefined;
   }
-  if ("observers" in (val as object) || "observersTail" in (val as object) ||
+  if (
+    "observers" in (val as object) || "observersTail" in (val as object) ||
     "value" in (val as object)
   ) {
     return val as Source<any>;
@@ -318,15 +342,63 @@ export function beginAnonymousSignalReuse(): () => void {
  *
  * @template T 初始值与后续值的类型
  * @param val 初始值
- * @param name 可选具名 id，相同 name 复用同一底层源
+ * @param name 可选具名 id（相同 name 复用同一底层源），或 `{ name, debugName }`；`debugName` 仅供开发工具显示，不参与单例复用
  * @returns 可调用的 `Signal`（`sig()` 读、`sig(x)` 写，或解构 `[get, set]`）
  */
-export function createSignal<T>(val: T, name?: string): Signal<T> {
-  let source: Source<T>;
+/**
+ * Optional `createSignal` second argument. A string is the HMR registry
+ * `name` (physical singleton). `debugName` is display-only and must not be
+ * used as a registry key — two components can share a debug label.
+ */
+export interface CreateSignalOptions {
+  name?: string;
+  debugName?: string;
+}
 
-  if (name) {
+function parseSignalNameArg(
+  name?: string | CreateSignalOptions,
+): { registryName?: string; debugName?: string } {
+  if (!name) return {};
+  if (typeof name === "string") return { registryName: name };
+  return {
+    registryName: name.name,
+    debugName: name.debugName,
+  };
+}
+
+function noteSignalMeta(
+  source: Source<unknown>,
+  info: { id: string; debugName?: string; anonymous?: boolean },
+): void {
+  const note = (globalThis as {
+    __DREAMER_SIGNAL_META__?: (
+      source: object,
+      info: { id: string; debugName?: string; anonymous?: boolean },
+    ) => void;
+  }).__DREAMER_SIGNAL_META__;
+  if (typeof note !== "function") return;
+  try {
+    note(source, info);
+  } catch {
+    /* DEV bookkeeping must not break signal creation */
+  }
+}
+
+export function createSignal<T>(
+  val: T,
+  name?: string | CreateSignalOptions,
+): Signal<T> {
+  let source: Source<T>;
+  const parsed = parseSignalNameArg(name);
+  const registryName = parsed.registryName;
+  const debugName = parsed.debugName;
+  let registeredId = "";
+  let anonymous = false;
+
+  if (registryName) {
     // 具名：物理单例，HMR / 跨热更边界复用同一 Source（强引用）
-    const id = `sig:${name}`;
+    const id = `sig:${registryName}`;
+    registeredId = id;
     const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
@@ -339,6 +411,8 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
   } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
     // 开发态匿名：按创建顺序 WeakRef 进 registry，供检查 / HMR 状态保持
     const id = `${ANON_ID_PREFIX}${core.uid++}`;
+    registeredId = id;
+    anonymous = true;
     const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
@@ -354,6 +428,16 @@ export function createSignal<T>(val: T, name?: string): Signal<T> {
   } else {
     // 生产匿名：独立 Source，不进 registry
     source = { value: val, observers: null, observersTail: null };
+  }
+
+  if (registeredId || debugName) {
+    noteSignalMeta(source, {
+      id: registeredId,
+      debugName,
+      anonymous,
+    });
+  } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
+    noteSignalMeta(source, { id: registeredId, debugName, anonymous: true });
   }
 
   const getter = () => {

@@ -79,5 +79,22 @@
   "indicatorWarnCount": "{n} warning(s) — see Warnings tab",
   "setupRerunTitle": "Setup re-runs",
   "setupRerunHint": "Auto-noted components: count ≥ 2 means setup re-ran (focus loss / bare-fetch risk).",
-  "setupRerunNone": "No setup re-runs"
+  "setupRerunNone": "No setup re-runs",
+  "tabUpdates": "Updates",
+  "updatesTitle": "Update timeline",
+  "updatesEmpty": "No signal writes yet. State changes will show up here.",
+  "updatesTotal": "{n} total",
+  "clearUpdates": "Clear timeline",
+  "signalValue": "Value",
+  "signalLabel": "Name",
+  "signalId": "Internal id",
+  "signalOwner": "Owner",
+  "signalDetail": "Signal details",
+  "noSignalSelected": "Select a signal to inspect its current value and subscribers.",
+  "overviewWarns": "Current warnings",
+  "createdIn": "Created in",
+  "timelineHint": "Keeps the last 100 events as labels and text previews only, so signal objects are never retained.",
+  "nodeName": "Name",
+  "component": "Component",
+  "observers": "Observers"
 }

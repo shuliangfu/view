@@ -79,5 +79,22 @@
   "indicatorWarnCount": "{n} 条警告 — 见「警告」页",
   "setupRerunTitle": "Setup 重跑",
   "setupRerunHint": "jsx 自动 note 的组件：计数 ≥ 2 表示 setup 被多余重跑（失焦／裸 fetch 风险）。",
-  "setupRerunNone": "暂无 setup 重跑"
+  "setupRerunNone": "暂无 setup 重跑",
+  "tabUpdates": "更新",
+  "updatesTitle": "更新时间线",
+  "updatesEmpty": "还没有信号写入。改动状态后会出现在这里。",
+  "updatesTotal": "共 {n} 次",
+  "clearUpdates": "清空时间线",
+  "signalValue": "当前值",
+  "signalLabel": "名称",
+  "signalId": "内部 id",
+  "signalOwner": "所属",
+  "signalDetail": "信号详情",
+  "noSignalSelected": "点选一个信号，查看当前值和订阅数。",
+  "overviewWarns": "当前警告",
+  "createdIn": "创建于",
+  "timelineHint": "只保留最近 100 条，且只记录名称和当前值的文本预览，不会把信号对象钉在内存里。",
+  "nodeName": "名称",
+  "component": "组件",
+  "observers": "订阅数"
 }

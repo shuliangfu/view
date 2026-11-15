@@ -2,7 +2,7 @@
  * @module @dreamer/view/devtools/overlay
  * @description DEV-only floating DevTools (Next.js Dev indicator / panel inspired).
  *
- * Multi-tab inspector: Overview · Tree · Signals · Warnings · Settings.
+ * Multi-tab inspector: Overview · Tree · Signals · Updates · Warnings · Settings.
  * Prefer the DEV auto-mount (`prepareDevBuild` + HMR banner) — apps need not
  * call {@link mountDevtoolsOverlay}. Manual opt-in still works. Requires
  * `VIEW_DEV`; otherwise
@@ -10,7 +10,8 @@
  *
  * Reuses / extends `@dreamer/view/devtools` (indexed Owner tree, registry
  * sources, oversubscribe warnings with path deep-links, Owner→DOM inspect
- * highlight). Does **not** patch createSignal / createRoot / insert.
+ * highlight). Labels and the update timeline use WeakMaps plus a capped
+ * primitive buffer; notify has a nullable DEV hook cleared on unmount.
  *
  * When `@dreamer/server` DEV HMR publishes `globalThis.__DREAMER_HMR__`, the
  * overlay claims that UI (`claimUi`) so the standalone “HMR Connected” capsule
@@ -21,6 +22,7 @@
 
 import type { Owner } from "../reactivity/owner.ts";
 import {
+  clearTimeline,
   collectOwnerDomElements,
   detectOversubscribe,
   detectOwnerRemountChurn,
@@ -32,13 +34,16 @@ import {
   type IndexedOwnerNode,
   inspectOwnerIndexed,
   installComponentSetupTracking,
+  installDevtoolsRuntimeHooks,
   installOwnerDomTracking,
   isViewDev,
   type OversubscribeWarning,
   type OwnerTreeSummary,
   snapshotComponentSetups,
   snapshotRegistrySources,
+  snapshotTimeline,
   summarizeOwnerTree,
+  uninstallDevtoolsRuntimeHooks,
 } from "../devtools.ts";
 import {
   getOverlayLocale,
@@ -166,6 +171,7 @@ export type DevtoolsOverlayTab =
   | "overview"
   | "tree"
   | "signals"
+  | "updates"
   | "warnings"
   | "settings";
 
@@ -473,6 +479,18 @@ const CSS = /* css */ `
   color: rgba(236,236,241,0.88);
 }
 .row-v { flex-shrink: 0; font-variant-numeric: tabular-nums; color: rgba(236,236,241,0.5); font-size: 11px; }
+.row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-preview {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px; color: rgba(165,180,252,0.9);
+}
+.row.selected, .row.buttonish.selected {
+  border-color: rgba(96,165,250,0.55); background: rgba(59,130,246,0.16);
+}
+.sig-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; min-height: 0; flex: 1; }
+.sig-detail-pane, .updates-pane { min-width: 0; }
+.time-meta { flex-shrink: 0; color: rgba(236,236,241,0.4); font-size: 10px; font-variant-numeric: tabular-nums; }
 
 .warn-item {
   display: block; width: 100%; text-align: left; appearance: none; cursor: pointer;
@@ -701,10 +719,11 @@ export function mountDevtoolsOverlay(
   if (!isViewDev()) return null;
   if (typeof document === "undefined" || !document.body) return null;
 
+  if (active) active.unmount();
+
   installOwnerDomTracking();
   installComponentSetupTracking();
-
-  if (active) active.unmount();
+  installDevtoolsRuntimeHooks();
 
   const storageKey = options?.storageKey ?? DEFAULT_STORAGE;
   const stored = readStore(storageKey);
@@ -719,6 +738,7 @@ export function mountDevtoolsOverlay(
   let tab: DevtoolsOverlayTab = stored.tab ?? options?.tab ?? "overview";
   let open = stored.open === true;
   let selectedPath: string | null = null;
+  let selectedSignalId: string | null = null;
   let signalQuery = "";
   const expanded = new Set<string>();
   const warnings: OversubscribeWarning[] = [];
@@ -782,6 +802,9 @@ export function mountDevtoolsOverlay(
       <button type="button" class="tab" data-tab="signals" role="tab"><span data-i18n="tabSignals">${
     ot("tabSignals")
   }</span> <span class="count" data-el="sig-count">0</span></button>
+      <button type="button" class="tab" data-tab="updates" role="tab"><span data-i18n="tabUpdates">${
+    ot("tabUpdates")
+  }</span> <span class="count" data-el="upd-count">0</span></button>
       <button type="button" class="tab" data-tab="warnings" role="tab"><span data-i18n="tabWarnings">${
     ot("tabWarnings")
   }</span> <span class="count" data-el="warn-count">0</span></button>
@@ -818,6 +841,7 @@ export function mountDevtoolsOverlay(
   }</span>
           </div>
           <p class="hint" data-el="health-hint">${ot("healthOk")}</p>
+          <ul class="list" data-el="overview-warns" style="margin-top:10px"></ul>
         </div>
         <div class="section">
           <div class="section-h">
@@ -877,7 +901,24 @@ export function mountDevtoolsOverlay(
     ot("sigFilterPh")
   }" />
         </div>
-        <ul class="list" data-el="sig-list"></ul>
+        <div class="sig-layout">
+          <ul class="list" data-el="sig-list"></ul>
+          <div class="detail-pane sig-detail-pane" data-el="sig-detail">
+            <p class="detail-empty" data-i18n="noSignalSelected">${
+    ot("noSignalSelected")
+  }</p>
+          </div>
+        </div>
+      </div>
+      <div class="pane" data-pane="updates">
+        <div class="toolbar" style="margin:0 0 8px">
+          <button type="button" class="ghost" data-action="clear-updates" data-i18n="clearUpdates">${
+    ot("clearUpdates")
+  }</button>
+          <span class="badge" data-el="upd-total">0</span>
+        </div>
+        <p class="hint" data-i18n="timelineHint">${ot("timelineHint")}</p>
+        <ul class="list updates-pane" data-el="upd-list"></ul>
       </div>
       <div class="pane" data-pane="warnings">
         <div class="toolbar" style="margin:0 0 8px">
@@ -1176,6 +1217,16 @@ export function mountDevtoolsOverlay(
         <span class="kind ${node.kind}">${node.kind}</span>
       </div>
       <dl class="kv">
+        ${
+      node.name
+        ? `<dt>${ot("nodeName")}</dt><dd>${escapeHtml(node.name)}</dd>`
+        : ""
+    }
+        ${
+      node.component
+        ? `<dt>${ot("component")}</dt><dd>${escapeHtml(node.component)}</dd>`
+        : ""
+    }
         <dt>${ot("path")}</dt><dd>${escapeHtml(node.id)}</dd>
         <dt>${ot("depth")}</dt><dd>${node.depth}</dd>
         <dt>${ot("children")}</dt><dd>${node.children}</dd>
@@ -1199,11 +1250,16 @@ export function mountDevtoolsOverlay(
 
     const rows: string[] = [];
     const walk = (node: IndexedOwnerNode) => {
-      const label = `${node.kind} ${node.id}`;
+      const display = node.name || node.component;
+      const label = display
+        ? `${display} · ${node.kind}`
+        : `${node.kind} ${node.id}`;
       if (
         filter &&
         !label.toLowerCase().includes(filter) &&
-        !node.id.toLowerCase().includes(filter)
+        !node.id.toLowerCase().includes(filter) &&
+        !(node.name && node.name.toLowerCase().includes(filter)) &&
+        !(node.component && node.component.toLowerCase().includes(filter))
       ) {
         // still walk children in case nested match
         for (const c of node.childNodes) walk(c);
@@ -1225,7 +1281,7 @@ export function mountDevtoolsOverlay(
         escapeHtml(node.id)
       }">${hasKids ? (isOpen ? "▼" : "▶") : "·"}</span>
           <span class="kind ${node.kind}">${node.kind}</span>
-          <span>${escapeHtml(node.id)}</span>
+          <span>${escapeHtml(display || node.id)}</span>
           <span class="meta">↑${node.upstream} ↓${node.downstream}</span>
         </button>
       `);
@@ -1248,49 +1304,130 @@ export function mountDevtoolsOverlay(
     renderDetail();
   };
 
+  const renderSignalDetail = (
+    sources: ReturnType<typeof snapshotRegistrySources>,
+  ) => {
+    const pane = el("[data-el='sig-detail']");
+    if (!pane) return;
+    const s = selectedSignalId
+      ? sources.find((x) => x.id === selectedSignalId)
+      : undefined;
+    if (!s) {
+      pane.innerHTML = `<p class="detail-empty">${ot("noSignalSelected")}</p>`;
+      return;
+    }
+    const owner = s.ownerLabel
+      ? `<dt>${ot("signalOwner")}</dt><dd>${escapeHtml(s.ownerLabel)}</dd>`
+      : "";
+    pane.innerHTML = `
+      <div class="section-h" style="margin-bottom:10px">
+        <h3 class="section-title">${ot("signalDetail")}</h3>
+      </div>
+      <dl class="kv">
+        <dt>${ot("signalLabel")}</dt><dd>${escapeHtml(s.label)}</dd>
+        <dt>${ot("signalValue")}</dt><dd class="row-preview">${
+      escapeHtml(s.preview)
+    }</dd>
+        <dt>${ot("signalId")}</dt><dd>${escapeHtml(s.id)}</dd>
+        ${owner}
+        <dt>${ot("observers")}</dt><dd>${s.observers}</dd>
+      </dl>
+    `;
+  };
+
   const renderSignals = () => {
     const sources = snapshotRegistrySources()
       .slice()
       .sort((a, b) => b.observers - a.observers);
     const q = signalQuery.trim().toLowerCase();
     const filtered = q
-      ? sources.filter((s) => s.id.toLowerCase().includes(q))
+      ? sources.filter((s) =>
+        s.id.toLowerCase().includes(q) ||
+        s.label.toLowerCase().includes(q) ||
+        s.preview.toLowerCase().includes(q) ||
+        (s.ownerLabel && s.ownerLabel.toLowerCase().includes(q)) ||
+        (s.debugName && s.debugName.toLowerCase().includes(q))
+      )
       : sources;
     const countEl = el("[data-el='sig-count']");
     if (countEl) countEl.textContent = String(sources.length);
     const list = el("[data-el='sig-list']");
-    if (!list) return;
-    if (!filtered.length) {
-      list.innerHTML = `<p class="empty">${
-        sources.length ? ot("noSourcesMatch") : ot("noSourcesYet")
-      }</p>`;
-      return;
+    if (list) {
+      if (!filtered.length) {
+        list.innerHTML = `<p class="empty">${
+          sources.length ? ot("noSourcesMatch") : ot("noSourcesYet")
+        }</p>`;
+      } else {
+        list.innerHTML = filtered
+          .map((s) =>
+            `<li class="row buttonish${
+              selectedSignalId === s.id ? " selected" : ""
+            }" data-sig="${escapeHtml(s.id)}" role="button">
+              <span class="row-main">
+                <span class="row-k" title="${escapeHtml(s.id)}">${
+              escapeHtml(s.label)
+            }</span>
+                <span class="row-preview">${escapeHtml(s.preview)}</span>
+              </span>
+              <span class="row-v">${otHtml("obs", { n: s.observers })}</span>
+            </li>`
+          )
+          .join("");
+      }
     }
-    list.innerHTML = filtered
-      .map(
-        (s) =>
-          `<li class="row"><span class="row-k" title="${escapeHtml(s.id)}">${
-            escapeHtml(s.id)
-          }</span><span class="row-v">${
-            otHtml("obs", { n: s.observers })
-          }</span></li>`,
-      )
-      .join("");
+    renderSignalDetail(sources);
 
     const overview = el("[data-el='overview-sources']");
     if (overview) {
       const top = sources.slice(0, 5);
       overview.innerHTML = top.length
         ? top
-          .map(
-            (s) =>
-              `<li class="row"><span class="row-k">${
-                escapeHtml(s.id)
-              }</span><span class="row-v">${s.observers}</span></li>`,
+          .map((s) =>
+            `<li class="row">
+              <span class="row-main">
+                <span class="row-k" title="${escapeHtml(s.id)}">${
+              escapeHtml(s.label)
+            }</span>
+                <span class="row-preview">${escapeHtml(s.preview)}</span>
+              </span>
+              <span class="row-v">${s.observers}</span>
+            </li>`
           )
           .join("")
         : `<p class="empty">${ot("noSources")}</p>`;
     }
+  };
+
+  const renderUpdates = () => {
+    const snap = snapshotTimeline();
+    const countEl = el("[data-el='upd-count']");
+    if (countEl) countEl.textContent = String(snap.events.length);
+    const total = el("[data-el='upd-total']");
+    if (total) total.textContent = ot("updatesTotal", { n: snap.total });
+    const list = el("[data-el='upd-list']");
+    if (!list) return;
+    if (!snap.events.length) {
+      list.innerHTML = `<p class="empty">${ot("updatesEmpty")}</p>`;
+      return;
+    }
+    const rows = snap.events.slice().reverse();
+    list.innerHTML = rows
+      .map((e) => {
+        const t = Math.floor(e.t);
+        return `<li class="row buttonish" data-sig="${
+          escapeHtml(e.id)
+        }" role="button">
+        <span class="time-meta">${t}</span>
+        <span class="row-main">
+          <span class="row-k" title="${escapeHtml(e.id)}">${
+          escapeHtml(e.label)
+        }</span>
+          <span class="row-preview">${escapeHtml(e.preview)}</span>
+        </span>
+        <span class="row-v">${otHtml("obs", { n: e.observers })}</span>
+      </li>`;
+      })
+      .join("");
   };
 
   /**
@@ -1370,8 +1507,10 @@ export function mountDevtoolsOverlay(
     list.innerHTML = snaps
       .slice(0, 24)
       .map((s) =>
-        `<li class="warn-item"><span class="warn-kind">component-rerun</span> ` +
-        `<b>${escapeHtml(s.key)}</b> ×${s.count}</li>`
+        `<button type="button" class="warn-item" data-setup-key="${
+          escapeHtml(s.key)
+        }"><span class="warn-kind">component-rerun</span> ` +
+        `<b>${escapeHtml(s.key)}</b> ×${s.count}</button>`
       )
       .join("");
   };
@@ -1406,6 +1545,34 @@ export function mountDevtoolsOverlay(
     // status-dot = HMR only; float-warn pill carries misuse count
     syncStatusDot();
     syncFloatWarnBadge();
+    const overviewWarns = el("[data-el='overview-warns']");
+    if (overviewWarns) {
+      if (!n) {
+        overviewWarns.innerHTML = "";
+      } else {
+        overviewWarns.innerHTML =
+          `<div class="section-h" style="margin:0 0 6px"><h3 class="section-title">${
+            ot("overviewWarns")
+          }</h3></div>` +
+          warnings
+            .slice()
+            .reverse()
+            .slice(0, 8)
+            .map((w, idx) => {
+              const i = warnings.length - 1 - idx;
+              return `<button type="button" class="warn-item" data-warn="${i}">
+                <span class="warn-kind">${escapeHtml(w.kind)}</span>
+                <span>${escapeHtml(w.message)}</span>
+                ${
+                w.path
+                  ? `<span class="warn-path">→ ${escapeHtml(w.path)}</span>`
+                  : ""
+              }
+              </button>`;
+            })
+            .join("");
+      }
+    }
     if (!list) return;
     if (!n) {
       list.innerHTML =
@@ -1449,6 +1616,25 @@ export function mountDevtoolsOverlay(
     }
   };
 
+  const pathsForComponent = (key: string): string[] => {
+    const out: string[] = [];
+    for (const node of flatIndex.values()) {
+      if (node.name === key) out.push(node.id);
+    }
+    return out;
+  };
+
+  const attachWarningPath = (
+    warning: OversubscribeWarning,
+  ): OversubscribeWarning => {
+    if (warning.path && flatIndex.has(warning.path)) return warning;
+    if (warning.kind === "component-rerun" && warning.key) {
+      const paths = pathsForComponent(warning.key);
+      if (paths.length) return { ...warning, path: paths[0] };
+    }
+    return warning;
+  };
+
   const scanWarnings = () => {
     const roots = collectRoots(primaryOwner);
     const scanned: OversubscribeWarning[] = [];
@@ -1461,10 +1647,11 @@ export function mountDevtoolsOverlay(
       warnings.map((w) => `${w.kind}:${w.path ?? ""}:${w.message}`),
     );
     for (const w of scanned) {
-      const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
+      const next = attachWarningPath(w);
+      const key = `${next.kind}:${next.path ?? ""}:${next.message}`;
       if (!seen.has(key)) {
         seen.add(key);
-        warnings.push(w);
+        warnings.push(next);
       }
     }
     if (warnings.length > 60) warnings.splice(0, warnings.length - 60);
@@ -1583,6 +1770,7 @@ export function mountDevtoolsOverlay(
     renderOverview();
     renderTree();
     renderSignals();
+    renderUpdates();
     renderWarnings();
     syncHighlight();
   };
@@ -1627,13 +1815,14 @@ export function mountDevtoolsOverlay(
   };
 
   const onWarn = (w: OversubscribeWarning) => {
-    const key = `${w.kind}:${w.path ?? ""}:${w.message}`;
+    const next = attachWarningPath(w);
+    const key = `${next.kind}:${next.path ?? ""}:${next.message}`;
     if (
       warnings.some((x) => `${x.kind}:${x.path ?? ""}:${x.message}` === key)
     ) {
       return;
     }
-    warnings.push(w);
+    warnings.push(next);
     renderWarnings();
   };
 
@@ -1689,6 +1878,56 @@ export function mountDevtoolsOverlay(
       syncStatusDot();
     })
   );
+  panel.querySelectorAll("[data-action='clear-updates']").forEach((n) =>
+    n.addEventListener("click", () => {
+      clearTimeline();
+      renderUpdates();
+    })
+  );
+  const pickSignal = (id: string | null) => {
+    selectedSignalId = id;
+    renderSignals();
+    if (id) setTab("signals");
+  };
+  el("[data-el='sig-list']")?.addEventListener("click", (ev) => {
+    const row = (ev.target as HTMLElement | null)?.closest("[data-sig]") as
+      | HTMLElement
+      | null;
+    if (!row?.dataset.sig) return;
+    pickSignal(row.dataset.sig === selectedSignalId ? null : row.dataset.sig);
+  });
+  el("[data-el='upd-list']")?.addEventListener("click", (ev) => {
+    const row = (ev.target as HTMLElement | null)?.closest("[data-sig]") as
+      | HTMLElement
+      | null;
+    if (!row?.dataset.sig) return;
+    pickSignal(row.dataset.sig);
+  });
+  const revealWarning = (w: OversubscribeWarning | undefined) => {
+    if (!w) return;
+    const paths = w.key ? pathsForComponent(w.key) : [];
+    const path = (w.path && flatIndex.has(w.path) ? w.path : undefined) ??
+      paths[0];
+    if (path) {
+      const filterEl = el("[data-el='tree-filter']") as HTMLInputElement | null;
+      if (filterEl && w.key && paths.length > 1) {
+        filterEl.value = w.key;
+      }
+      selectNode(path);
+      return;
+    }
+    setTab("warnings");
+    setOpen(true);
+  };
+
+  el("[data-el='overview-warns']")?.addEventListener("click", (ev) => {
+    const btn = (ev.target as HTMLElement | null)?.closest("[data-warn]") as
+      | HTMLElement
+      | null;
+    if (!btn) return;
+    const idx = Number(btn.dataset.warn);
+    revealWarning(warnings[idx]);
+  });
   panel.querySelector("[data-action='reset-pos']")?.addEventListener(
     "click",
     () => {
@@ -1729,12 +1968,20 @@ export function mountDevtoolsOverlay(
       | null;
     if (!btn) return;
     const idx = Number(btn.dataset.warn);
-    const w = warnings[idx];
-    if (w?.path) selectNode(w.path);
-    else {
-      setTab("warnings");
-      setOpen(true);
-    }
+    revealWarning(warnings[idx]);
+  });
+  el("[data-el='setup-rerun-list']")?.addEventListener("click", (ev) => {
+    const btn = (ev.target as HTMLElement | null)?.closest(
+      "[data-setup-key]",
+    ) as
+      | HTMLElement
+      | null;
+    if (!btn?.dataset.setupKey) return;
+    const key = btn.dataset.setupKey;
+    const existing = warnings.find((w) =>
+      w.kind === "component-rerun" && w.key === key
+    );
+    revealWarning(existing ?? { kind: "component-rerun", message: key, key });
   });
 
   const treeFilter = el("[data-el='tree-filter']") as HTMLInputElement | null;
@@ -1957,6 +2204,7 @@ export function mountDevtoolsOverlay(
       document.defaultView?.removeEventListener("resize", onViewport);
       clearInspectHighlight();
       disableOversubscribeWarnings();
+      uninstallDevtoolsRuntimeHooks();
       document.removeEventListener("keydown", onKey, true);
       host.remove();
       if (active === handle) active = null;

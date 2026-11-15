@@ -13,16 +13,26 @@
 
 ## Capabilities
 
-| Tab          | Content                                                                                                                                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Overview** | Effects / memos / nodes / upstream edges + health + top sources. **3.0:** resnapshots on route change (`popstate` + history push/replace); page-scoped, not whole-app cumulative                           |
-| **Tree**     | Expandable Owner forest (`inspectOwnerIndexed` paths), filter, select → detail (upstream / downstream / depth / disposables / DOM count). **Click** a row to mark it selected and outline that Owner's DOM |
-| **Signals**  | Registry sources with live search / filter                                                                                                                                                                 |
-| **Warnings** | Oversubscribe / remount / `component-rerun`; toolbar **clear**; **click** deep-links to Tree path                                                                                                          |
-| **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings                                                                                                                                   |
+| Tab          | Content                                                                                                                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview** | Effects / memos / nodes / upstream edges + health + top sources with live previews + current warnings. **3.0:** resnapshots on route change (`popstate` + history push/replace); page-scoped, not whole-app cumulative |
+| **Tree**     | Expandable Owner forest (component names / `inspectOwnerIndexed` paths), filter, select → detail (including DOM count). **Click** a row to mark it selected and outline that Owner's DOM                               |
+| **Signals**  | Readable labels, current-value previews, owning component; click for details. Search matches label / value / id. `debugName` is display-only, not an HMR singleton key                                                 |
+| **Updates**  | Signal-write timeline (last 100 events, labels and text previews only). Closing the panel stops recording and clears the buffer                                                                                        |
+| **Warnings** | Oversubscribe / remount / `component-rerun`; toolbar **clear**; **click** deep-links to Tree path                                                                                                                      |
+| **Settings** | Corner, refresh interval, shortcut hint, reset position / clear warnings                                                                                                                                               |
 
 **Extras:** `⌘/Ctrl+Shift+D` toggle, `Esc` close, drag header/indicator, snap to
 corners, `localStorage` position & prefs.
+
+## Memory (no leaks)
+
+Metadata lives in WeakMaps (Owner labels, Signal display names) so instances are
+not retained. The timeline is a capped ring of primitives — never a Source,
+Owner, or DOM node. `notify` installs a nullable hook only while the panel is
+mounted; `unmount` removes the hooks and clears the buffer. A Signal's `name` is
+still an HMR physical singleton (a strong ref); do not auto-fill it from
+variable names.
 
 ## Production never appears
 
@@ -91,4 +101,5 @@ badge and a separate float warn pill — they must **not** paint a connected HMR
 dot amber. **Float open/close (3.0.3):** Opening the panel hides the float; the
 panel uses the same corner/drag offset. Closing restores the float at its
 dragged position. The float itself is draggable (`bindDrag` allows the handle to
-be the `<button>`). **Default corner (3.0.4):** with no stored prefs, defaults to **bottom-right**.
+be the `<button>`). **Default corner (3.0.4):** with no stored prefs, defaults
+to **bottom-right**.

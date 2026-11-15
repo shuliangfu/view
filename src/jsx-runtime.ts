@@ -84,19 +84,43 @@ function captureOwnerDom(): {
 /**
  * DEV：`@dreamer/view/devtools` 在 `VIEW_DEV` 下安装
  * `globalThis.__DREAMER_COMPONENT_SETUP__`，对具名／`displayName` 函数组件
- * 自动 `noteComponentSetup`，无需业务手写。未安装时只读一次 global，生产 no-op。
+ * 自动 `noteComponentSetup`，无需业务手写。安装了 `__DREAMER_COMPONENT_OWNER__`
+ * 时还会把组件名标到新 Owner 上（WeakMap，不钉住实例）。未安装时只读 global，生产 no-op。
  * 匿名（无 name／displayName）跳过，避免共用 `"Anonymous"` 误报。
  */
+function componentDisplayName(
+  type: (...args: never[]) => unknown,
+): string {
+  const meta = type as { displayName?: string; name?: string };
+  return (meta.displayName || meta.name || "").trim();
+}
+
 function noteJsxComponentSetup(type: (...args: never[]) => unknown): void {
   const note = (globalThis as {
     __DREAMER_COMPONENT_SETUP__?: (key: string) => void;
   }).__DREAMER_COMPONENT_SETUP__;
   if (typeof note !== "function") return;
-  const meta = type as { displayName?: string; name?: string };
-  const key = (meta.displayName || meta.name || "").trim();
+  const key = componentDisplayName(type);
   if (!key) return;
   try {
     note(key);
+  } catch {
+    /* DEV bookkeeping must not break render */
+  }
+}
+
+function stampJsxComponentOwner(
+  owner: { owner: unknown },
+  type: (...args: never[]) => unknown,
+): void {
+  const stamp = (globalThis as {
+    __DREAMER_COMPONENT_OWNER__?: (owner: object, label: string) => void;
+  }).__DREAMER_COMPONENT_OWNER__;
+  if (typeof stamp !== "function") return;
+  const key = componentDisplayName(type);
+  if (!key) return;
+  try {
+    stamp(owner, key);
   } catch {
     /* DEV bookkeeping must not break render */
   }
@@ -138,6 +162,10 @@ export function jsx(
 
       const owner = createOwner();
       if (parent) adoptChild(parent, owner);
+      stampJsxComponentOwner(
+        owner,
+        type as (...args: never[]) => unknown,
+      );
 
       // untrack setup：组件顶层读 Signal／Memo 不泄漏到父级 insert Effect，
       // 否则非路由状态一变会 cleanNode＋整段 replaceChild（失焦／裸 fetch 重发）。

@@ -54,6 +54,13 @@ import {
 } from "./devtools/owner-dom.ts";
 import { createRoot, getOwner, type Owner } from "./reactivity/owner.ts";
 import {
+  formatSourceLabel,
+  getOwnerLabel,
+  getOwnOwnerLabel,
+  getSourceMeta,
+  previewValue,
+} from "./devtools/meta.ts";
+import {
   cleanupObserver,
   forEachRegisteredSource,
   type Observer,
@@ -119,6 +126,10 @@ export interface OwnerNodeSnapshot {
   /** Downstream edges when this node is also a Source (Memo). */
   downstream: number;
   depth: number;
+  /** Label stamped on this Owner (component `name` / `displayName`). */
+  name?: string;
+  /** Nearest stamped component name on this node or an ancestor. */
+  component?: string;
   childNodes: OwnerNodeSnapshot[];
 }
 
@@ -165,6 +176,8 @@ export function inspectOwner(
         ? countDownstream(asHybrid as Source<unknown>)
         : 0,
       depth,
+      name: getOwnOwnerLabel(node),
+      component: getOwnerLabel(node),
       childNodes,
     };
   };
@@ -210,6 +223,8 @@ export function inspectOwnerIndexed(
         ? countDownstream(asHybrid as Source<unknown>)
         : 0,
       depth,
+      name: getOwnOwnerLabel(node),
+      component: getOwnerLabel(node),
       childNodes,
     };
   };
@@ -414,6 +429,12 @@ export function getSignalObserverCount(
 export interface RegistrySourceSnapshot {
   id: string;
   observers: number;
+  /** Human-readable label (component + debugName, or `#n`). */
+  label: string;
+  /** Cheap preview of the current value (string only). */
+  preview: string;
+  ownerLabel?: string;
+  debugName?: string;
 }
 
 /**
@@ -424,9 +445,17 @@ export interface RegistrySourceSnapshot {
 export function snapshotRegistrySources(): RegistrySourceSnapshot[] {
   const out: RegistrySourceSnapshot[] = [];
   forEachRegisteredSource((id, src) => {
+    const info = getSourceMeta(src);
     out.push({
       id: String(id),
       observers: countDownstream(src as Source<unknown>),
+      label: formatSourceLabel(
+        info ?? { id: String(id), anonymous: true },
+        String(id),
+      ),
+      preview: previewValue((src as Source<unknown>).value),
+      ownerLabel: info?.ownerLabel,
+      debugName: info?.debugName,
     });
   });
   return out;
@@ -974,3 +1003,21 @@ export function clearOversubscribeWarnState(): void {
   // WeakSet cannot be cleared; tests should dispose Owners between cases.
   disableOversubscribeWarnings();
 }
+
+export {
+  clearTimeline,
+  DEVTOOLS_TIMELINE_CAP,
+  type DevtoolsTimelineEvent,
+  formatSourceLabel,
+  getOwnerLabel,
+  getOwnOwnerLabel,
+  getSourceMeta,
+  installDevtoolsRuntimeHooks,
+  isDevtoolsRuntimeHooksInstalled,
+  previewValue,
+  recordSourceMeta,
+  snapshotTimeline,
+  type SourceDebugMeta,
+  stampOwnerLabel,
+  uninstallDevtoolsRuntimeHooks,
+} from "./devtools/meta.ts";

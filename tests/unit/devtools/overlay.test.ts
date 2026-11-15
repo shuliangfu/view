@@ -19,6 +19,8 @@ import {
   noteComponentSetup,
   uninstallOwnerDomTracking,
 } from "@dreamer/view/devtools";
+import { insert } from "@dreamer/view/csr";
+import { jsx } from "@dreamer/view/jsx-runtime";
 import { createEffect, createSignal, getOwner } from "@dreamer/view/reactivity";
 import { resetRegistry } from "../dom-setup.ts";
 
@@ -221,7 +223,7 @@ describe("devtools overlay (P2)", () => {
     expect(handle.isOpen).toBe(true);
   });
 
-  it("tabs: Overview / Tree / Signals / Warnings / Settings", () => {
+  it("tabs: Overview / Tree / Signals / Updates / Warnings / Settings", () => {
     createRootTracked(() => {
       const a = createSignal(1);
       createEffect(() => a());
@@ -230,7 +232,14 @@ describe("devtools overlay (P2)", () => {
     handle.open();
     const shadow = handle.root.shadowRoot!;
     for (
-      const name of ["overview", "tree", "signals", "warnings", "settings"]
+      const name of [
+        "overview",
+        "tree",
+        "signals",
+        "updates",
+        "warnings",
+        "settings",
+      ]
     ) {
       expect(shadow.querySelector(`[data-tab="${name}"]`)).not.toBeNull();
       expect(shadow.querySelector(`[data-pane="${name}"]`)).not.toBeNull();
@@ -240,6 +249,57 @@ describe("devtools overlay (P2)", () => {
     expect(
       shadow.querySelector('[data-pane="tree"]')!.classList.contains("active"),
     ).toBe(true);
+  });
+
+  it("Signals list shows labels and previews, Updates tab is empty until writes", () => {
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    const count = createSignal(7, { debugName: "count" });
+    createRootTracked(() => {
+      createEffect(() => count());
+    });
+    handle.open();
+    handle.refresh();
+    const shadow = handle.root.shadowRoot!;
+    const sigText = shadow.querySelector("[data-el='sig-list']")!.textContent ??
+      "";
+    expect(sigText).toContain("count");
+    expect(sigText).toContain("7");
+    handle.setTab("updates");
+    expect(
+      shadow.querySelector('[data-pane="updates"]')!.classList.contains(
+        "active",
+      ),
+    ).toBe(true);
+    expect(shadow.querySelector("[data-el='upd-list']")!.textContent)
+      .toContain("No signal writes yet");
+    count(8);
+    handle.refresh();
+    const upd = shadow.querySelector("[data-el='upd-list']")!.textContent ?? "";
+    expect(upd).toContain("count");
+    expect(upd).toContain("8");
+    handle.unmount();
+  });
+
+  it("unmount drops runtime hooks and clears the timeline", () => {
+    const n = createSignal(0, { debugName: "n" });
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.open();
+    n(1);
+    handle.refresh();
+    const gThis = globalThis as Record<string, unknown>;
+    expect(typeof gThis.__DREAMER_COMPONENT_OWNER__).toBe("function");
+    expect(typeof gThis.__DREAMER_SIGNAL_META__).toBe("function");
+    handle.unmount();
+    expect(gThis.__DREAMER_COMPONENT_OWNER__).toBeUndefined();
+    expect(gThis.__DREAMER_SIGNAL_META__).toBeUndefined();
+    n(2);
+    const handle2 = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle2.open();
+    handle2.refresh();
+    const shadow = handle2.root.shadowRoot!;
+    expect(shadow.querySelector("[data-el='upd-list']")!.textContent)
+      .toContain("No signal writes yet");
+    handle2.unmount();
   });
 
   it("Tree selectNode highlights path and shows detail", () => {
@@ -357,6 +417,39 @@ describe("devtools overlay (P2)", () => {
       .textContent!;
     expect(list).toContain("DemoPage");
     expect(list).toContain("×2");
+    handle.unmount();
+  });
+
+  it("clicking a component-rerun warning jumps to the Tree tab and selects the Owner", () => {
+    function Link() {
+      return jsx("a", { href: "#", children: "go" });
+    }
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    createRootTracked(() => {
+      insert(
+        host,
+        jsx("div", { children: [jsx(Link, {}), jsx(Link, {})] }),
+      );
+    });
+    handle.open();
+    handle.refresh();
+    const shadow = handle.root.shadowRoot!;
+    const btn = [...shadow.querySelectorAll("[data-warn]")].find((n) =>
+      (n.textContent ?? "").includes("Link")
+    ) as HTMLButtonElement | undefined;
+    expect(btn).toBeDefined();
+    expect((btn!.textContent ?? "").includes("→")).toBe(true);
+    btn!.click();
+    expect(handle.tab).toBe("tree");
+    expect(
+      shadow.querySelector('[data-pane="tree"]')!.classList.contains("active"),
+    ).toBe(true);
+    const selected = shadow.querySelector(".tree-row.selected");
+    expect(selected).not.toBeNull();
+    expect(selected!.textContent).toContain("Link");
+    host.remove();
     handle.unmount();
   });
 
@@ -827,4 +920,3 @@ describe("devtools overlay polling", () => {
     handle.unmount();
   });
 });
-

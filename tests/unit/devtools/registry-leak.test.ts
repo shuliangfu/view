@@ -5,7 +5,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
+  installDevtoolsRuntimeHooks,
+  isDevtoolsRuntimeHooksInstalled,
   snapshotRegistrySources,
+  snapshotTimeline,
+  uninstallDevtoolsRuntimeHooks,
 } from "@dreamer/view/devtools";
 import { createRoot, createSignal } from "@dreamer/view/reactivity";
 import { core, getInternal } from "../../../src/reactivity/master.ts";
@@ -24,6 +28,7 @@ describe("devtools / registry leak", () => {
   });
 
   afterEach(() => {
+    uninstallDevtoolsRuntimeHooks();
     resetRegistry();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
@@ -91,5 +96,21 @@ describe("devtools / registry leak", () => {
     expect(a.n).toBe(2);
     b.n = 3;
     expect(a.n).toBe(3);
+  });
+
+  it("install hooks do not keep anonymous Signals after Owner dispose", () => {
+    installDevtoolsRuntimeHooks();
+    expect(isDevtoolsRuntimeHooksInstalled()).toBe(true);
+    const baseline = snapshotRegistrySources().length;
+    createRoot((dispose) => {
+      const s = createSignal(0, { debugName: "tmp" });
+      s(1);
+      expect(snapshotTimeline().events.length).toBe(1);
+      dispose();
+    });
+    expect(snapshotRegistrySources().length).toBe(baseline);
+    uninstallDevtoolsRuntimeHooks();
+    expect(isDevtoolsRuntimeHooksInstalled()).toBe(false);
+    expect(snapshotTimeline().events.length).toBe(0);
   });
 });
