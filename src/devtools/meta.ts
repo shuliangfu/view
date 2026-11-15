@@ -224,15 +224,19 @@ export function clearTimeline(): void {
 }
 
 function onNotify(source: Source<unknown>): void {
-  const meta = sourceMeta.get(source);
-  const id = meta?.id ?? "";
-  pushTimeline({
-    t: nowStamp(),
-    label: formatSourceLabel(meta, id),
-    id,
-    observers: countObservers(source),
-    preview: previewValue(source.value),
-  });
+  try {
+    const meta = sourceMeta.get(source);
+    const id = meta?.id ?? "";
+    pushTimeline({
+      t: nowStamp(),
+      label: formatSourceLabel(meta, id),
+      id,
+      observers: countObservers(source),
+      preview: previewValue(source.value),
+    });
+  } catch {
+    /* DevTools must never break writes */
+  }
 }
 
 function ownerHook(owner: Owner, label: string): void {
@@ -243,7 +247,11 @@ function signalHook(
   source: object,
   info: { id: string; debugName?: string; anonymous?: boolean },
 ): void {
-  recordSourceMeta(source, info);
+  try {
+    recordSourceMeta(source, info);
+  } catch {
+    /* DEV bookkeeping must not break signal creation */
+  }
 }
 
 /**

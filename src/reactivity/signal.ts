@@ -149,28 +149,23 @@ export function track(source: Source<any>) {
  * 避免 `in` 操作符的原型链遍历开销。
  * @param source 值已发生变化的源
  */
-/**
- * Optional DEV notify hook. `null` in production and whenever DevTools is
- * unmounted — one null check per write, no retained Sources.
- */
 export type DevNotifyHook = (source: Source<any>) => void;
 
 let devNotifyHook: DevNotifyHook | null = null;
 
 /** Install or clear the DEV notify hook. Pass `null` to detach. */
 export function setDevNotifyHook(hook: DevNotifyHook | null): void {
-  devNotifyHook = hook;
-}
-
-export function notify(source: Source<any>) {
-  const hook = devNotifyHook;
-  if (hook !== null) {
+  devNotifyHook = hook && ((source) => {
     try {
       hook(source);
     } catch {
       /* DevTools must never break writes */
     }
-  }
+  });
+}
+
+export function notify(source: Source<any>) {
+  devNotifyHook?.(source);
   let sub = source.observers;
   if (!sub) return;
   while (sub) {
@@ -355,45 +350,13 @@ export interface CreateSignalOptions {
   debugName?: string;
 }
 
-function parseSignalNameArg(
-  name?: string | CreateSignalOptions,
-): { registryName?: string; debugName?: string } {
-  if (!name) return {};
-  if (typeof name === "string") return { registryName: name };
-  return {
-    registryName: name.name,
-    debugName: name.debugName,
-  };
-}
-
-function noteSignalMeta(
-  source: Source<unknown>,
-  info: { id: string; debugName?: string; anonymous?: boolean },
-): void {
-  const note = (globalThis as {
-    __DREAMER_SIGNAL_META__?: (
-      source: object,
-      info: { id: string; debugName?: string; anonymous?: boolean },
-    ) => void;
-  }).__DREAMER_SIGNAL_META__;
-  if (typeof note !== "function") return;
-  try {
-    note(source, info);
-  } catch {
-    /* DEV bookkeeping must not break signal creation */
-  }
-}
-
 export function createSignal<T>(
   val: T,
   name?: string | CreateSignalOptions,
 ): Signal<T> {
   let source: Source<T>;
-  const parsed = parseSignalNameArg(name);
-  const registryName = parsed.registryName;
-  const debugName = parsed.debugName;
+  const registryName = typeof name === "string" ? name : name?.name;
   let registeredId = "";
-  let anonymous = false;
 
   if (registryName) {
     // 具名：物理单例，HMR / 跨热更边界复用同一 Source（强引用）
@@ -412,7 +375,6 @@ export function createSignal<T>(
     // 开发态匿名：按创建顺序 WeakRef 进 registry，供检查 / HMR 状态保持
     const id = `${ANON_ID_PREFIX}${core.uid++}`;
     registeredId = id;
-    anonymous = true;
     const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
@@ -430,15 +392,18 @@ export function createSignal<T>(
     source = { value: val, observers: null, observersTail: null };
   }
 
-  if (registeredId || debugName) {
-    noteSignalMeta(source, {
-      id: registeredId,
-      debugName,
-      anonymous,
-    });
-  } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
-    noteSignalMeta(source, { id: registeredId, debugName, anonymous: true });
-  }
+  (
+    globalThis as {
+      __DREAMER_SIGNAL_META__?: (
+        source: object,
+        info: { id: string; debugName?: string; anonymous?: boolean },
+      ) => void;
+    }
+  ).__DREAMER_SIGNAL_META__?.(source, {
+    id: registeredId,
+    debugName: typeof name === "object" ? name?.debugName : undefined,
+    anonymous: !registryName,
+  });
 
   const getter = () => {
     track(source);
