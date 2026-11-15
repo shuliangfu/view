@@ -203,7 +203,7 @@ export function sanitizeSrcset(value: unknown): string | null {
  * 与 `setProperty`／`SsrElement.setAttribute` 同源，避免两条路径漏防。
  * `srcdoc` 不在此列——属危险 HTML 面，由 props 层整段拒绝，而非 URL 消毒。
  */
-export const URL_ATTR_NAMES = new Set([
+export const URL_ATTR_NAMES: ReadonlySet<string> = new Set([
   "href",
   "src",
   "srcset",
