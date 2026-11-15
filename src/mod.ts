@@ -31,7 +31,31 @@ export * from "./reactivity/memo.ts";
 export { createMemo as memo } from "./reactivity/memo.ts";
 export * from "./reactivity/owner.ts";
 export * from "./reactivity/selector.ts";
-export * from "./reactivity/signal.ts";
+export {
+  beginAnonymousSignalReuse,
+  cleanupObserver,
+  createSignal,
+  forEachRegisteredSource,
+  getCurrentObserver,
+  getRegisteredSource,
+  notify,
+  releaseOwnerAnonymousSignals,
+  setCurrentObserver,
+  STATE_CHECK,
+  STATE_CLEAN,
+  STATE_DIRTY,
+  STATE_DISPOSED,
+  track,
+  untrack,
+} from "./reactivity/signal.ts";
+export type {
+  CreateSignalOptions,
+  Observer,
+  Setter,
+  Signal,
+  Source,
+  Subscription,
+} from "./reactivity/signal.ts";
 export * from "./reactivity/store.ts";
 export { VIEW_MATCH_KEY } from "./types.ts";
 export type {

@@ -151,21 +151,7 @@ export function track(source: Source<any>) {
  */
 export type DevNotifyHook = (source: Source<any>) => void;
 
-let devNotifyHook: DevNotifyHook | null = null;
-
-/** Install or clear the DEV notify hook. Pass `null` to detach. */
-export function setDevNotifyHook(hook: DevNotifyHook | null): void {
-  devNotifyHook = hook && ((source) => {
-    try {
-      hook(source);
-    } catch {
-      /* DevTools must never break writes */
-    }
-  });
-}
-
-export function notify(source: Source<any>) {
-  devNotifyHook?.(source);
+function notifyCore(source: Source<any>) {
   let sub = source.observers;
   if (!sub) return;
   while (sub) {
@@ -350,18 +336,99 @@ export interface CreateSignalOptions {
   debugName?: string;
 }
 
-export function createSignal<T>(
+function createSignalSource<T>(
+  val: T,
+  registryName?: string,
+): { source: Source<T>; id: string } {
+  if (registryName) {
+    // 具名：物理单例，HMR / 跨热更边界复用同一 Source（强引用）
+    const id = `sig:${registryName}`;
+    const existing = getRegisteredSource(id) as Source<T> | undefined;
+    if (!existing) {
+      const source = { value: val, observers: null, observersTail: null };
+      core.registry.set(id, source);
+      return { source, id };
+    }
+    // 具名已存在时同步初始值（物理单例语义）
+    existing.value = val;
+    return { source: existing, id };
+  }
+  if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
+    // 开发态匿名：按创建顺序 WeakRef 进 registry，供检查 / HMR 状态保持
+    const id = `${ANON_ID_PREFIX}${core.uid++}`;
+    const existing = getRegisteredSource(id) as Source<T> | undefined;
+    const source = existing ??
+      { value: val, observers: null, observersTail: null };
+    core.registry.set(
+      id,
+      typeof WeakRef !== "undefined" ? new WeakRef(source) : source,
+    );
+    rememberOwnerAnonId(id);
+    return { source, id };
+  }
+  // 生产匿名：独立 Source，不进 registry
+  return {
+    source: { value: val, observers: null, observersTail: null },
+    id: "",
+  };
+}
+
+function bindSignal<T>(source: Source<T>): Signal<T> {
+  const getter = () => {
+    track(source);
+    return source.value;
+  };
+  (getter as any).__VIEW_SIGNAL = true;
+
+  const setter: Setter<T> = (v: any) => {
+    const next = typeof v === "function" ? (v as any)(source.value) : v;
+    if (!Object.is(next, source.value)) {
+      source.value = next;
+      notify(source);
+    }
+    return source.value;
+  };
+  (setter as any).__VIEW_SIGNAL = true;
+
+  const signal = function (v?: any) {
+    return arguments.length === 0 ? getter() : setter(v);
+  } as any;
+
+  signal[0] = getter;
+  signal[1] = setter;
+
+  Object.defineProperties(signal, {
+    length: { value: 2, configurable: false, writable: false },
+    value: { get: getter, set: setter, enumerable: true },
+    set: { value: setter, configurable: false, writable: false },
+    [Symbol.iterator]: {
+      value: function* () {
+        yield getter;
+        yield setter;
+      },
+      configurable: false,
+      writable: false,
+    },
+    __VIEW_SIGNAL: {
+      value: true,
+      configurable: false,
+      writable: false,
+    },
+  });
+
+  return signal as Signal<T>;
+}
+
+function createSignalCore<T>(
   val: T,
   name?: string | CreateSignalOptions,
 ): Signal<T> {
   let source: Source<T>;
   const registryName = typeof name === "string" ? name : name?.name;
-  let registeredId = "";
 
   if (registryName) {
     // 具名：物理单例，HMR / 跨热更边界复用同一 Source（强引用）
     const id = `sig:${registryName}`;
-    registeredId = id;
     const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
@@ -374,7 +441,6 @@ export function createSignal<T>(
   } else if ((globalThis as { VIEW_DEV?: boolean }).VIEW_DEV) {
     // 开发态匿名：按创建顺序 WeakRef 进 registry，供检查 / HMR 状态保持
     const id = `${ANON_ID_PREFIX}${core.uid++}`;
-    registeredId = id;
     const existing = getRegisteredSource(id) as Source<T> | undefined;
     if (!existing) {
       source = { value: val, observers: null, observersTail: null };
@@ -391,19 +457,6 @@ export function createSignal<T>(
     // 生产匿名：独立 Source，不进 registry
     source = { value: val, observers: null, observersTail: null };
   }
-
-  (
-    globalThis as {
-      __DREAMER_SIGNAL_META__?: (
-        source: object,
-        info: { id: string; debugName?: string; anonymous?: boolean },
-      ) => void;
-    }
-  ).__DREAMER_SIGNAL_META__?.(source, {
-    id: registeredId,
-    debugName: typeof name === "object" ? name?.debugName : undefined,
-    anonymous: !registryName,
-  });
 
   const getter = () => {
     track(source);
@@ -448,6 +501,57 @@ export function createSignal<T>(
   });
 
   return signal as Signal<T>;
+}
+
+function createSignalDev<T>(
+  val: T,
+  name?: string | CreateSignalOptions,
+): Signal<T> {
+  const registryName = typeof name === "string" ? name : name?.name;
+  const { source, id } = createSignalSource(val, registryName);
+  (
+    globalThis as {
+      __DREAMER_SIGNAL_META__?: (
+        source: object,
+        info: { id: string; debugName?: string; anonymous?: boolean },
+      ) => void;
+    }
+  ).__DREAMER_SIGNAL_META__?.(source, {
+    id,
+    debugName: typeof name === "object" ? name?.debugName : undefined,
+    anonymous: !registryName,
+  });
+  return bindSignal(source);
+}
+
+/** Live binding so DevTools can wrap without leaving hook code in production. */
+export let notify = notifyCore;
+
+/**
+ * Create a signal. A string second argument is the HMR registry `name`.
+ * `{ name, debugName }` is supported; `debugName` is display-only.
+ */
+export let createSignal = createSignalCore;
+
+/**
+ * Install or clear DEV notify / create hooks. Unused in production so bundlers
+ * can tree-shake `createSignalDev` and this installer out of the app graph.
+ */
+export function setDevNotifyHook(hook: DevNotifyHook | null): void {
+  if (!hook) {
+    notify = notifyCore;
+    createSignal = createSignalCore;
+    return;
+  }
+  notify = (source) => {
+    try {
+      hook(source);
+    } catch {
+      /* DevTools must never break writes */
+    }
+    notifyCore(source);
+  };
+  createSignal = createSignalDev;
 }
 
 /**

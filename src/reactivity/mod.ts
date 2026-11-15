@@ -20,7 +20,31 @@ export * from "./memo.ts";
 export { createMemo as memo } from "./memo.ts";
 export * from "./owner.ts";
 export * from "./selector.ts";
-export * from "./signal.ts";
+export {
+  beginAnonymousSignalReuse,
+  cleanupObserver,
+  createSignal,
+  forEachRegisteredSource,
+  getCurrentObserver,
+  getRegisteredSource,
+  notify,
+  releaseOwnerAnonymousSignals,
+  setCurrentObserver,
+  STATE_CHECK,
+  STATE_CLEAN,
+  STATE_DIRTY,
+  STATE_DISPOSED,
+  track,
+  untrack,
+} from "./signal.ts";
+export type {
+  CreateSignalOptions,
+  Observer,
+  Setter,
+  Signal,
+  Source,
+  Subscription,
+} from "./signal.ts";
 export * from "./store.ts";
 
 /** 与 README §7.4／examples 对齐；规范入口仍为 `@dreamer/view/scheduler` */
