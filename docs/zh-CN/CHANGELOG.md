@@ -7,17 +7,46 @@
 
 ---
 
+## [3.0.7] - 2026-11-15
+
+### 修复
+
+- **列表区间清理、事件冒泡与 HTML 转义加固（非破坏；委托事件冒泡有修正）**
+  - 运行时锚点改为空注释 `<!---->`，用 WeakSet／闭包引用识别，不再靠注释文案。
+  - 无 key 的 `For`／`Index`，以及带 key
+    的列表被清空时，只清理列表自己的区间，不再误删前面的兄弟节点。向已有
+    `<summary>` 的 `<details>` 插入数组时，也不再清空全部子节点。
+  - 委托事件沿路径全部触发，并尊重
+    `stopPropagation`／`stopImmediatePropagation`（子 handler 不再吞掉父级）。
+  - `Switch` 仍是同一分支时跳过拆除重插；无 key 的 `Index` 按索引复用行。
+  - 编译器静态属性走 `escapeForAttr`；可选 `generate: "ssr"` 的动态值包
+    `escapeForAttr`／`escapeForText`。`open`／`once`
+    按属性编译，不再被当成事件丢掉。
+  - 大小写无关地拒绝 `innerHTML`／`outerHTML`／`srcdoc`；除 `open`／`once` 外的
+    `on*` 不能写成属性；非法属性名被拒绝。`isDangerousUrl` 拦截可执行 `data:`
+    MIME（如 `data:image/svg+xml`、`data:text/javascript`），保留安全图片。SSR
+    注释转义 `-->`。
+  - 主包导出 `escapeForAttr`／`escapeForText`；JSX 类型去掉从未生效的
+    `innerHTML`。
+  - 单测：`tests/unit/runtime/control-flow.test.ts`、`insert.test.ts`、`props.test.ts`、`ssr-dom-element-api.test.ts`、`tests/unit/utils/escape.test.ts`、`tests/unit/compiler/*`。
+
 ## [3.0.6] - 2026-11-14
 
 ### 修复
 
 - **停止 DEV 注册表与运行时内存泄漏（非破坏）**
-  - `VIEW_DEV` 下匿名 Signal 不再被永久钉在 `core.registry`（`sig:<session>:<uid++>`）。改为 WeakRef，所属 Owner 在 `cleanNode` 时摘掉；HMR／整树重挂不再一直堆积。
-  - DevTools overlay 关闭时不再每秒扫整棵 Owner 树；只有面板打开且 `refreshMs > 0` 才轮询，关闭时停轮询与误用监视。新增 `handle.isPolling`。
-  - 匿名 `createStore` 在生产／SSR 也不再写入 `storeRegistry`（具名 store 仍登记）。
+  - `VIEW_DEV` 下匿名 Signal 不再被永久钉在
+    `core.registry`（`sig:<session>:<uid++>`）。改为 WeakRef，所属 Owner 在
+    `cleanNode` 时摘掉；HMR／整树重挂不再一直堆积。
+  - DevTools overlay 关闭时不再每秒扫整棵 Owner 树；只有面板打开且
+    `refreshMs > 0` 才轮询，关闭时停轮询与误用监视。新增 `handle.isPolling`。
+  - 匿名 `createStore` 在生产／SSR 也不再写入 `storeRegistry`（具名 store
+    仍登记）。
   - `trackedRoots` 改为 WeakRef，未 dispose 的 HMR 旧根可以被回收。
   - `mount`／`hydrate`／`mountWithRouter` 在同一容器再次挂载前先 dispose 旧树。
-  - `createResource` 在 Owner 清理时 abort 进行中的请求并摘掉监听。`lazy()` 的 loader 在 `runWithOwner(null, …)` 中创建，避免 Suspense fallback 拆子树时把还在加载的资源掐掉。
+  - `createResource` 在 Owner 清理时 abort 进行中的请求并摘掉监听。`lazy()` 的
+    loader 在 `runWithOwner(null, …)` 中创建，避免 Suspense fallback
+    拆子树时把还在加载的资源掐掉。
   - `lazy()` 的 HMR 注册表改为 WeakRef，热更新后旧 factory 不再被强引用。
   - 单测：`tests/unit/devtools/registry-leak.test.ts`、`tests/unit/devtools/overlay.test.ts`、`tests/unit/integrations/resource-abort.test.ts`、`tests/unit/runtime/browser-advanced.test.ts`。
 
@@ -39,7 +68,8 @@
 - **DevTools 浮标默认角改为右下（非破坏）**
   - `mountDevtoolsOverlay` 默认 `corner`：`bottom-left` → **`bottom-right`**
     （CSS `.corner-br`：`bottom`／`right: var(--pad)`）。
-  - 仍尊重 localStorage 已存角点／拖拽偏移；可拖、开面板藏浮标／同锚、关闭保留拖位不变。
+  - 仍尊重 localStorage
+    已存角点／拖拽偏移；可拖、开面板藏浮标／同锚、关闭保留拖位不变。
   - 单测：默认 `corner-br`（`tests/unit/devtools/overlay.test.ts`）。
 
 ## [3.0.3] - 2026-11-06

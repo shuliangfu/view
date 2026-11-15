@@ -8,29 +8,71 @@ and this project adheres to
 
 ---
 
+## [3.0.7] - 2026-11-15
+
+### Fixed
+
+- **Range-safe lists, event bubbling, and HTML escaping (non-breaking; delegated
+  events now bubble)**
+  - Runtime anchors are empty comments (`<!---->`), identified by WeakSet / held
+    node refs, not comment text.
+  - Unkeyed `For` / `Index`, and keyed lists when emptied, clear only their own
+    range and no longer delete preceding siblings. Inserting an array into a
+    `<details>` that already has a `<summary>` no longer wipes all children.
+  - Delegated events invoke every handler on the path and honor
+    `stopPropagation` / `stopImmediatePropagation` (a child handler no longer
+    swallows the parent).
+  - `Switch` skips teardown/re-insert when the same branch stays selected.
+    Unkeyed `Index` reuses rows by index.
+  - The compiler runs static attributes through `escapeForAttr`; optional
+    `generate: "ssr"` wraps dynamic values in `escapeForAttr` / `escapeForText`.
+    `open` / `once` compile as attributes, not events.
+  - `innerHTML` / `outerHTML` / `srcdoc` are rejected case-insensitively. `on*`
+    names other than `open` / `once` cannot be written as attributes; illegal
+    attribute names are rejected. `isDangerousUrl` blocks executable `data:`
+    MIME types (`data:image/svg+xml`, `data:text/javascript`, …) while keeping
+    safe image `data:`. SSR comments escape `-->`.
+  - The main package exports `escapeForAttr` / `escapeForText`. The JSX
+    `innerHTML` typings, which never worked at runtime, are removed.
+  - Tests: `tests/unit/runtime/control-flow.test.ts`, `insert.test.ts`,
+    `props.test.ts`, `ssr-dom-element-api.test.ts`,
+    `tests/unit/utils/escape.test.ts`, `tests/unit/compiler/*`.
+
 ## [3.0.6] - 2026-11-14
 
 ### Fixed
 
 - **Stop DEV registry and runtime memory leaks (non-breaking)**
-  - Anonymous signals under `VIEW_DEV` are no longer pinned forever in `core.registry` (`sig:<session>:<uid++>`). They are stored as WeakRef and dropped when their Owner is cleaned; HMR remounts no longer accumulate.
-  - The DevTools overlay no longer polls the whole Owner tree every second when closed. Polling and the misuse watcher run only while the panel is open and `refreshMs > 0`. New `handle.isPolling`.
-  - Anonymous `createStore` no longer writes `storeRegistry` in production/SSR (named stores still register).
+  - Anonymous signals under `VIEW_DEV` are no longer pinned forever in
+    `core.registry` (`sig:<session>:<uid++>`). They are stored as WeakRef and
+    dropped when their Owner is cleaned; HMR remounts no longer accumulate.
+  - The DevTools overlay no longer polls the whole Owner tree every second when
+    closed. Polling and the misuse watcher run only while the panel is open and
+    `refreshMs > 0`. New `handle.isPolling`.
+  - Anonymous `createStore` no longer writes `storeRegistry` in production/SSR
+    (named stores still register).
   - `trackedRoots` uses WeakRef so undisposed HMR roots can be collected.
-  - `mount` / `hydrate` / `mountWithRouter` dispose the previous tree before remounting on the same container.
-  - `createResource` aborts in-flight work and drops listeners on Owner cleanup. `lazy()` loaders are created with `runWithOwner(null, …)` so Suspense fallback teardown does not cancel them.
-  - The `lazy()` HMR registry holds WeakRefs so stale factories are not retained after hot reload.
-  - Tests: `tests/unit/devtools/registry-leak.test.ts`, `tests/unit/devtools/overlay.test.ts`, `tests/unit/integrations/resource-abort.test.ts`, `tests/unit/runtime/browser-advanced.test.ts`.
+  - `mount` / `hydrate` / `mountWithRouter` dispose the previous tree before
+    remounting on the same container.
+  - `createResource` aborts in-flight work and drops listeners on Owner cleanup.
+    `lazy()` loaders are created with `runWithOwner(null, …)` so Suspense
+    fallback teardown does not cancel them.
+  - The `lazy()` HMR registry holds WeakRefs so stale factories are not retained
+    after hot reload.
+  - Tests: `tests/unit/devtools/registry-leak.test.ts`,
+    `tests/unit/devtools/overlay.test.ts`,
+    `tests/unit/integrations/resource-abort.test.ts`,
+    `tests/unit/runtime/browser-advanced.test.ts`.
 
 ## [3.0.5] - 2026-11-12
 
 ### Fixed
 
 - **SSR now emits inline styles from the style bag (non-breaking)**
-  - `SsrElement.outerHTML` / `renderToString` serialize the `_style` bag
-    (object styles and `cssText`) as a `style="..."` attribute in the HTML.
-  - A non-empty bag wins over a leftover `style` attribute; an empty bag
-    keeps the attribute.
+  - `SsrElement.outerHTML` / `renderToString` serialize the `_style` bag (object
+    styles and `cssText`) as a `style="..."` attribute in the HTML.
+  - A non-empty bag wins over a leftover `style` attribute; an empty bag keeps
+    the attribute.
   - Fixes first-paint flash where heights such as `calc(100vh - 350px)` were
     missing until hydration.
   - Tests: `tests/unit/runtime/ssr-dom-element-api.test.ts`.
