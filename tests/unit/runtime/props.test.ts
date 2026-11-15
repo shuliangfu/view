@@ -179,4 +179,106 @@ describe("runtime/props", () => {
     setProperty(d, "open", true);
     expect((d as HTMLDetailsElement).open).toBe(true);
   });
+
+  it("安全：innerHTML / srcdoc 大小写变体应被拒绝", () => {
+    const el = document.createElement("div");
+    const iframe = document.createElement("iframe");
+    const warns: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warns.push(String(args[0] ?? ""));
+    };
+    try {
+      setProperty(el, "INNERHTML", "<script>alert(1)</script>");
+      expect(el.innerHTML).not.toContain("script");
+      setProperty(el, "innerhtml", "<b>x</b>");
+      expect(el.innerHTML).not.toContain("<b>");
+      setProperty(iframe, "SRCDOC", "<script>alert(1)</script>");
+      expect(iframe.getAttribute("srcdoc")).toBeNull();
+      expect(warns.length).toBeGreaterThan(0);
+    } finally {
+      console.warn = orig;
+    }
+  });
+
+  it("安全：小写 onclick 与非法属性名不得写入", () => {
+    const el = document.createElement("div");
+    const warns: string[] = [];
+    const orig = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warns.push(String(args[0] ?? ""));
+    };
+    try {
+      setProperty(el, "onclick", "alert(1)");
+      expect(el.getAttribute("onclick")).toBeNull();
+      expect(
+        (el as HTMLElement & { onclick?: unknown }).onclick == null ||
+          typeof (el as HTMLElement).onclick !== "string",
+      ).toBe(true);
+      setProperty(el, 'foo" onclick="alert(1)', "x");
+      expect(el.outerHTML).not.toContain("onclick");
+      expect(el.getAttribute("foo")).toBeNull();
+      const dialog = document.createElement("dialog");
+      setProperty(dialog, "open", true);
+      expect((dialog as HTMLDialogElement).open).toBe(true);
+    } finally {
+      console.warn = orig;
+    }
+  });
+
+  it("委托事件应沿路径冒泡到父级 onClick", async () => {
+    const parent = document.createElement("div");
+    const child = document.createElement("button");
+    parent.appendChild(child);
+    document.body.appendChild(parent);
+    const order: string[] = [];
+    setProperty(child, "onClick", (e: Event) => {
+      order.push("child");
+      expect((e as Event).currentTarget).toBe(child);
+    });
+    setProperty(parent, "onClick", (e: Event) => {
+      order.push("parent");
+      expect((e as Event).currentTarget).toBe(parent);
+    });
+    child.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(order).toEqual(["child", "parent"]);
+    parent.remove();
+  });
+
+  it("委托事件 stopPropagation 应阻止父级 handler", async () => {
+    const parent = document.createElement("div");
+    const child = document.createElement("button");
+    parent.appendChild(child);
+    document.body.appendChild(parent);
+    let parentFired = 0;
+    setProperty(child, "onClick", (e: Event) => {
+      e.stopPropagation();
+    });
+    setProperty(parent, "onClick", () => {
+      parentFired++;
+    });
+    child.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(parentFired).toBe(0);
+    parent.remove();
+  });
+
+  it("委托事件 stopImmediatePropagation 应阻止父级 handler", async () => {
+    const parent = document.createElement("div");
+    const child = document.createElement("button");
+    parent.appendChild(child);
+    document.body.appendChild(parent);
+    let parentFired = 0;
+    setProperty(child, "onClick", (e: Event) => {
+      e.stopImmediatePropagation();
+    });
+    setProperty(parent, "onClick", () => {
+      parentFired++;
+    });
+    child.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await Promise.resolve();
+    expect(parentFired).toBe(0);
+    parent.remove();
+  });
 }, { sanitizeOps: false, sanitizeResources: false });

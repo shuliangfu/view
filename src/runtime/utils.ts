@@ -102,7 +102,7 @@ export function clearEagerControlFlowWarns(): void {
   eagerControlFlowWarned.clear();
 }
 
-/** VIEW_DEV once-per-kind: For/Index without `key` rebuilds the whole list. */
+/** VIEW_DEV once-per-kind: For without `key` rebuilds; Index without `key` is index-stable. */
 const missingListKeyWarned = new Set<string>();
 
 /**
@@ -118,10 +118,12 @@ export function warnMissingListKey(
     if (typeof key === "function") return;
     if (missingListKeyWarned.has(kind)) return;
     missingListKeyWarned.add(kind);
-    console.warn(
-      `[@dreamer/view] <${kind}> without key={...} rebuilds the whole list on each change. ` +
-        `Pass key={(item) => item.id} (or a stable field) to reuse/reorder DOM rows.`,
-    );
+    const tip = kind === "Index"
+      ? `[@dreamer/view] <Index> without key={...} reuses rows by index (item changes do not remount). ` +
+        `Pass key={(item) => item.id} (or a stable field) to reuse/reorder DOM rows when items move.`
+      : `[@dreamer/view] <For> without key={...} rebuilds the whole list on each change. ` +
+        `Pass key={(item) => item.id} (or a stable field) to reuse/reorder DOM rows.`;
+    console.warn(tip);
   } catch {
     /* DEV tip must not break render */
   }

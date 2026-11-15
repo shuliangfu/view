@@ -24,7 +24,6 @@ function withSsrDoc<T>(
   }
 }
 
-
 /** Compact CSS in a style attribute so Deno/Node (no spaces) and Bun (spaces) match. */
 function compactStyle(html: string): string {
   return html.replace(/:\s+/g, ":").replace(/;\s+/g, ";");
@@ -103,9 +102,11 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
     expect(fromObject).toContain("min-height:200px");
     expect(fromObject).toContain(">x</div>");
 
-    const fromCssText = compactStyle(renderToString(() =>
-      jsx("div", { style: "width: 10px; height: 20px", children: "y" })
-    ));
+    const fromCssText = compactStyle(
+      renderToString(() =>
+        jsx("div", { style: "width: 10px; height: 20px", children: "y" })
+      ),
+    );
     expect(fromCssText).toContain("width:10px");
     expect(fromCssText).toContain("height:20px");
     expect(fromCssText).toContain(">y</div>");
@@ -293,6 +294,33 @@ describe("ssr-dom Element API (Bun/Deno SSR)", () => {
       expect(c.nodeName).toBe("#comment");
       expect(c.nodeType).toBe(8);
       expect((c as { outerHTML?: string }).outerHTML).toContain("mark");
+      const evil = doc.createComment("foo-->bar");
+      const html = (evil as { outerHTML?: string }).outerHTML ?? "";
+      expect(html).toContain("foo");
+      expect(html).not.toContain("-->bar");
+      expect(html.startsWith("<!--")).toBe(true);
+      expect(html.endsWith("-->")).toBe(true);
+    });
+  });
+
+  it("outerHTML / setAttribute 应拒绝危险属性名与 on* / srcdoc", () => {
+    withSsrDoc((doc) => {
+      const el = doc.createElement("div") as SsrElement;
+      el.setAttribute('foo" onclick="alert(1)', "x");
+      expect(el.getAttribute('foo" onclick="alert(1)')).toBeNull();
+      expect(el.outerHTML).not.toContain("onclick");
+      el.setAttribute("onclick", "alert(1)");
+      expect(el.getAttribute("onclick")).toBeNull();
+      expect(el.outerHTML).not.toContain("onclick");
+      el.setAttribute("srcdoc", "<script>alert(1)</script>");
+      expect(el.getAttribute("srcdoc")).toBeNull();
+      expect(el.outerHTML).not.toContain("srcdoc");
+      el.setAttribute("title", 'a" onmouseover="alert(1)');
+      expect(el.outerHTML).toContain("&quot;");
+      expect(el.outerHTML).not.toContain('title="a"');
+      const d = doc.createElement("details") as SsrElement;
+      d.setAttribute("open", "");
+      expect(d.outerHTML).toContain("open");
     });
   });
 

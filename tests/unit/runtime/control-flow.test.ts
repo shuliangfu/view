@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal, For, Match, Show, Switch } from "@dreamer/view";
+import { createSignal, For, Index, Match, Show, Switch } from "@dreamer/view";
 import { flushPendingSync } from "../../../src/scheduler/batch.ts";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import "../dom-setup.ts";
@@ -435,8 +435,8 @@ describe("runtime/control-flow", () => {
     const comments = Array.from(parent.childNodes).filter(
       (n) => n.nodeType === Node.COMMENT_NODE,
     ) as Comment[];
-    expect(comments.some((c) => c.data === "view:switch")).toBe(true);
-    expect(comments.some((c) => c.data === "/view:switch")).toBe(true);
+    expect(comments.length).toBeGreaterThanOrEqual(2);
+    expect(comments.every((c) => c.data === "")).toBe(true);
     expect(parent.textContent).toContain("A");
     setTab("b");
     await Promise.resolve();
@@ -475,5 +475,214 @@ describe("runtime/control-flow", () => {
     await Promise.resolve();
     expect(section.contains(buttons)).toBe(true);
     expect(section.textContent).toContain("buttons");
+  });
+
+  function renderListItem(text: string) {
+    const span = document.createElement("span");
+    span.className = "list-item";
+    span.textContent = text;
+    return span;
+  }
+
+  it("Switch: 同一 Match 仍命中时应跳过拆除/重插", async () => {
+    const [items, setItems] = createSignal([1]);
+    const parent = document.createElement("div");
+    let created = 0;
+    const fragment = Switch({
+      fallback: document.createTextNode("empty"),
+      children: [
+        jsx(Match, {
+          when: () => items().length > 0,
+          children: () => {
+            created++;
+            const span = document.createElement("span");
+            span.className = "sw-keep";
+            span.textContent = "has";
+            return span;
+          },
+        }),
+      ],
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    const kept = parent.querySelector(".sw-keep");
+    expect(kept).not.toBeNull();
+    expect(created).toBe(1);
+
+    setItems([1, 2]);
+    await Promise.resolve();
+    expect(parent.querySelector(".sw-keep")).toBe(kept);
+    expect(created).toBe(1);
+
+    setItems([]);
+    await Promise.resolve();
+    expect(parent.querySelector(".sw-keep")).toBeNull();
+    expect(parent.textContent).toContain("empty");
+
+    setItems([3]);
+    await Promise.resolve();
+    expect(parent.querySelector(".sw-keep")).not.toBeNull();
+    expect(created).toBe(2);
+  });
+
+  it("For: 更新与清空列表时不应删除插槽外的兄弟节点", async () => {
+    const [list, setList] = createSignal(["A", "B"]);
+    const parent = document.createElement("div");
+    const heading = document.createElement("h1");
+    heading.textContent = "title";
+    const footer = document.createElement("p");
+    footer.textContent = "footer";
+    parent.appendChild(heading);
+
+    const fragment = For({
+      each: list,
+      fallback: document.createTextNode("empty"),
+      children: (item: string) => renderListItem(item),
+    });
+    parent.appendChild(fragment);
+    parent.appendChild(footer);
+    await Promise.resolve();
+
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleABfooter");
+
+    setList(["A", "C"]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleACfooter");
+
+    setList([]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleemptyfooter");
+
+    setList(["D"]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleDfooter");
+  });
+
+  it("For + key: 清空列表时不应删除插槽外的兄弟节点", async () => {
+    const [list, setList] = createSignal([
+      { id: "a", text: "A" },
+      { id: "b", text: "B" },
+    ]);
+    const parent = document.createElement("div");
+    const heading = document.createElement("h1");
+    heading.textContent = "title";
+    const footer = document.createElement("p");
+    footer.textContent = "footer";
+    parent.appendChild(heading);
+
+    const fragment = For<{ id: string; text: string }>({
+      each: list,
+      key: (item) => item.id,
+      fallback: document.createTextNode("empty"),
+      children: (item) => renderListItem(item.text),
+    });
+    parent.appendChild(fragment);
+    parent.appendChild(footer);
+    await Promise.resolve();
+    flushPendingSync();
+
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.querySelectorAll(".list-item").length).toBe(2);
+    expect(parent.textContent).toBe("titleABfooter");
+
+    setList([]);
+    await Promise.resolve();
+    flushPendingSync();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.querySelectorAll(".list-item").length).toBe(0);
+    expect(parent.textContent).toBe("titleemptyfooter");
+
+    setList([{ id: "c", text: "C" }]);
+    await Promise.resolve();
+    flushPendingSync();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleCfooter");
+  });
+
+  it("Index: 应按索引复用行，仅长度变化时增删尾部", async () => {
+    const [list, setList] = createSignal(["A", "B"]);
+    const parent = document.createElement("div");
+    const fragment = Index({
+      each: list,
+      children: (item: string) => renderListItem(item),
+    });
+    parent.appendChild(fragment);
+    await Promise.resolve();
+    const spans = () => parent.querySelectorAll(".list-item");
+    const first = spans()[0];
+    const second = spans()[1];
+    expect(parent.textContent).toBe("AB");
+
+    // 仅第 1 项变化：第 0 行节点保持
+    setList(["A", "C"]);
+    await Promise.resolve();
+    expect(spans()[0]).toBe(first);
+    expect(parent.textContent).toBe("AC");
+
+    // 尾部追加：已有行保持
+    setList(["A", "C", "D"]);
+    await Promise.resolve();
+    expect(spans()[0]).toBe(first);
+    expect(spans().length).toBe(3);
+    expect(parent.textContent).toBe("ACD");
+
+    // 缩短：头部保持，尾部删除
+    setList(["A"]);
+    await Promise.resolve();
+    expect(spans()[0]).toBe(first);
+    expect(spans().length).toBe(1);
+    expect(parent.textContent).toBe("A");
+    expect(parent.contains(second)).toBe(false);
+  });
+
+  it("Index: 更新与清空列表时不应删除插槽外的兄弟节点", async () => {
+    const [list, setList] = createSignal(["A", "B"]);
+    const parent = document.createElement("div");
+    const heading = document.createElement("h1");
+    heading.textContent = "title";
+    const footer = document.createElement("p");
+    footer.textContent = "footer";
+    parent.appendChild(heading);
+
+    const fragment = Index({
+      each: list,
+      children: (item: string) => renderListItem(item),
+    });
+    parent.appendChild(fragment);
+    parent.appendChild(footer);
+    await Promise.resolve();
+
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleABfooter");
+
+    setList(["A", "C"]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleACfooter");
+
+    setList([]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titlefooter");
+
+    setList(["D"]);
+    await Promise.resolve();
+    expect(parent.contains(heading)).toBe(true);
+    expect(parent.contains(footer)).toBe(true);
+    expect(parent.textContent).toBe("titleDfooter");
   });
 }, { sanitizeOps: false, sanitizeResources: false });

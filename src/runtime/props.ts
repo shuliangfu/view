@@ -31,6 +31,10 @@
 import { createRenderEffect } from "../reactivity/effect.ts";
 import { batch } from "../scheduler/batch.ts";
 import {
+  isDeniedHtmlContentProp,
+  isForbiddenOnAttrName,
+  isJsxEventProp,
+  isSafeAttrName,
   sanitizeSrcset,
   sanitizeUrl,
   URL_ATTR_NAMES,
@@ -93,11 +97,19 @@ const lastStyleObjectKeys = new WeakMap<Element, string[]>();
  */
 function delegateEventWithBindingTarget(
   e: Event,
-  bindingEl: EventTarget,
+  getBindingEl: () => EventTarget,
+  state: { stopped: boolean },
 ): Event {
   return new Proxy(e, {
     get(target, prop, _receiver) {
-      if (prop === "currentTarget") return bindingEl;
+      if (prop === "currentTarget") return getBindingEl();
+      if (prop === "stopPropagation" || prop === "stopImmediatePropagation") {
+        return () => {
+          state.stopped = true;
+          const fn = target[prop].bind(target);
+          fn();
+        };
+      }
       const v = Reflect.get(target, prop, target);
       if (typeof v === "function") {
         return (v as (...a: unknown[]) => unknown).bind(target);
@@ -129,6 +141,19 @@ function delegateHandler(e: Event) {
       : null;
   };
 
+  let currentBinding: EventTarget | undefined;
+  const state = { stopped: false };
+  const ev = delegateEventWithBindingTarget(e, () => currentBinding!, state);
+
+  const invoke = (node: EventTarget): boolean => {
+    const handler = readHandler(node);
+    if (!handler) return false;
+    currentBinding = node;
+    // 不在此处包 batch：由 notify/schedule 合并刷新。
+    handler.call(node, ev);
+    return true;
+  };
+
   // 1) 标准路径：composedPath 从实际目标到根，与冒泡顺序一致，且能穿透 Shadow 等场景
   const path = typeof (e as Event & { composedPath?: () => EventTarget[] })
       .composedPath === "function"
@@ -138,28 +163,20 @@ function delegateHandler(e: Event) {
   if (path && path.length > 0) {
     for (let i = 0; i < path.length; i++) {
       const node = path[i];
-      const handler = readHandler(node);
-      if (handler) {
-        const ev = delegateEventWithBindingTarget(e, node);
-        // 不在此处包 batch：由 notify/schedule 合并刷新。
-        handler.call(node, ev);
-        return;
-      }
+      if (node) invoke(node);
+      // stopPropagation / stopImmediatePropagation 都会置 cancelBubble
+      if (state.stopped || e.cancelBubble) break;
     }
-    // 路径上无委托句柄：与旧行为一致，不再从 target 重复遍历（避免双触发）
+    // 路径上已走完（或被停止）：不再从 target 重复遍历（避免双触发）
     return;
   }
 
   // 2) 回退：无 composedPath 时沿用 target + parentNode 冒泡
-  let el = e.target as any;
+  let el = e.target as EventTarget | null;
   while (el) {
-    const handler = readHandler(el);
-    if (handler) {
-      const ev = delegateEventWithBindingTarget(e, el);
-      handler.call(el, ev);
-      return;
-    }
-    el = el.parentNode;
+    invoke(el);
+    if (state.stopped || e.cancelBubble) break;
+    el = (el as Node).parentNode;
   }
 }
 
@@ -265,7 +282,7 @@ export function resetEventDelegationForSSR(): void {
 /**
  * 为元素设置属性、事件或样式；函数值会包一层 `createRenderEffect` 做响应式绑定（`on*` 除外）。
  * @param el 目标元素（含 SVG）
- * @param name 属性名；`children`/`ref` 忽略；`innerHTML`/`outerHTML`/`srcdoc`/`srcDoc` 拒绝写入
+ * @param name 属性名；`children`/`ref` 忽略；`innerHTML`/`outerHTML`/`srcdoc`（大小写不敏感）拒绝写入
  * @param value 标量、对象 style、或 getter 函数
  * @returns `void`
  */
@@ -273,16 +290,11 @@ export function setProperty(el: any, name: string, value: any) {
   // 0. 忽略特殊属性 (children, ref 等由编译器或特定逻辑处理)
   if (name === "children" || name === "ref") return;
 
-  // 安全审计：拒绝经 props 写入的危险 HTML 面（XSS）。
-  // `srcdoc`／`srcDoc` 与 innerHTML 同级：iframe 内联文档可执行脚本。
+  // 安全审计：拒绝经 props 写入的危险 HTML 面（XSS，大小写不敏感）。
+  // `srcdoc` 与 innerHTML 同级：iframe 内联文档可执行脚本。
   // 为何 warn+return 而非抛错：保持与既有 innerHTML 行为一致，避免破坏性；
   // 确有信任 HTML 需求时请直接操作 DOM／编译期 template()。
-  if (
-    name === "innerHTML" ||
-    name === "outerHTML" ||
-    name === "srcdoc" ||
-    name === "srcDoc"
-  ) {
+  if (isDeniedHtmlContentProp(name)) {
     console.warn(
       `[Security] Direct setting of "${name}" through props is prohibited.`,
     );
@@ -291,12 +303,7 @@ export function setProperty(el: any, name: string, value: any) {
 
   // 1. 事件：仅 JSX 风格 `onX…`（第三字符大写），避免误伤 `open`/`once` 等 HTML 属性
   //    仅接受函数 handler，拒绝字符串（XSS）
-  if (
-    name.length > 2 &&
-    name.startsWith("on") &&
-    name.charCodeAt(2) >= 65 &&
-    name.charCodeAt(2) <= 90
-  ) {
+  if (isJsxEventProp(name)) {
     const eventName = name.slice(2).toLowerCase();
     const clearDelegated = () => {
       delete el[`__on${eventName}`];
@@ -335,6 +342,22 @@ export function setProperty(el: any, name: string, value: any) {
       document.addEventListener(eventName, delegateHandler);
       delegatedEvents.add(eventName);
     }
+    return;
+  }
+
+  // 其余 on*（如小写 onclick / onerror）不得写成 attribute 或 DOM property。
+  if (isForbiddenOnAttrName(name)) {
+    console.warn(
+      `[Security] Attribute "${name}" looks like an event handler and was ignored. Use onClick={fn} (camelCase, function).`,
+    );
+    return;
+  }
+
+  // 拒绝可注入的非法属性名（如 `foo" onclick="alert(1)`）。
+  if (!isSafeAttrName(name)) {
+    console.warn(
+      `[Security] Invalid attribute name "${name}" was ignored.`,
+    );
     return;
   }
 

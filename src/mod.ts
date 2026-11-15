@@ -58,19 +58,11 @@ export { createRef, getDocument, scheduleFunctionRef } from "./runtime/dom.ts";
 /** 判别 Signal、解包多层 Signal；供组件库使用，与 `insert` 对函数/Signal 的判定一致 */
 export { isSignal, readAccessor, unwrap } from "./runtime/utils.ts";
 export * from "./runtime/control-flow.ts";
-export {
-  ErrorBoundary,
-  For,
-  Index,
-  Match,
-  Portal,
-  Show,
-  Switch,
-} from "./runtime/control-flow.ts";
 export * from "./runtime/hmr.ts";
 export * from "./runtime/hydration.ts";
 export * from "./runtime/insert.ts";
 export { setAttribute, setProperty, spread } from "./runtime/props.ts";
+export { escapeForAttr, escapeForText } from "./utils/escape.ts";
 export * from "./runtime/suspense.ts";
 export * from "./runtime/template.ts";
 

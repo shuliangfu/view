@@ -300,4 +300,36 @@ describe("compiler/transformer", () => {
     // 且不应包含 walk 寻址逻辑
     expect(out).not.toContain("walk(");
   });
+
+  it("静态属性值应 escapeForAttr，避免引号逃逸", () => {
+    const out = compileSource(
+      `export const App = () => <div title={'a" onmouseover="alert(1)'}></div>;`,
+      "test.tsx",
+    );
+    expect(out).toContain("a&quot; onmouseover=&quot;alert(1)");
+    expect(out).not.toContain('title="a"');
+    const codePart = out.split("\n").slice(1).join("\n");
+    expect(codePart).not.toContain("setAttribute(");
+  });
+
+  it("open / once 应编译为属性而非事件", () => {
+    const dialog = compileSource(
+      `export const App = () => <dialog open></dialog>;`,
+      "test.tsx",
+    );
+    expect(dialog).toContain("open");
+    expect(dialog).not.toContain('addEventListener("en"');
+    expect(dialog).not.toContain('addEventListener("ce"');
+    const details = compileSource(
+      `export const App = () => <details open><summary>x</summary></details>;`,
+      "test.tsx",
+    );
+    expect(details).toContain("open");
+    const link = compileSource(
+      `export const App = () => <link once />;`,
+      "test.tsx",
+    );
+    expect(link).toContain("once");
+    expect(link).not.toContain('addEventListener("ce"');
+  });
 });

@@ -34,11 +34,29 @@ import {
   serializeStaticAttrValue,
   serializeToTemplate,
 } from "./analyzer.ts";
+import {
+  escapeForAttr,
+  escapeForText,
+  isForbiddenOnAttrName,
+  isJsxEventProp,
+} from "../utils/escape.ts";
 
 export interface TransformOptions {
   hydration?: boolean;
   generate?: "dom" | "ssr";
   hmr?: boolean;
+}
+
+function wrapEscapeCall(
+  factory: ts.NodeFactory,
+  helper: "escapeForAttr" | "escapeForText",
+  expr: ts.Expression,
+): ts.CallExpression {
+  return factory.createCallExpression(
+    factory.createIdentifier(helper),
+    undefined,
+    [expr],
+  );
 }
 
 /**
@@ -113,8 +131,8 @@ function rewriteToSSR(
         const name = ts.isIdentifier(attr.name)
           ? attr.name.text
           : (attr.name as ts.JsxNamespacedName).name.text;
-        // SSR 跳过事件
-        if (name.startsWith("on")) return;
+        // SSR 跳过事件；小写 onclick 等不得写成 attribute；open/once 保留
+        if (isJsxEventProp(name) || isForbiddenOnAttrName(name)) return;
 
         parts.push(` ${name === "className" ? "class" : name}="`);
         if (attr.initializer) {
@@ -127,13 +145,15 @@ function rewriteToSSR(
             } else {
               const visited = ts.visitNode(expr, visitor) as ts.Expression;
               if (visited && ts.isStringLiteral(visited)) {
-                parts.push(visited.text);
+                parts.push(escapeForAttr(visited.text));
               } else if (visited) {
-                parts.push(visited);
+                parts.push(wrapEscapeCall(factory, "escapeForAttr", visited));
               }
             }
           } else {
-            parts.push((attr.initializer as ts.StringLiteral).text);
+            parts.push(
+              escapeForAttr((attr.initializer as ts.StringLiteral).text),
+            );
           }
         }
         parts.push(`"`);
@@ -176,9 +196,9 @@ function rewriteToSSR(
                   visitor,
                 ) as ts.Expression;
                 if (visited && ts.isStringLiteral(visited)) {
-                  parts.push(visited.text);
+                  parts.push(escapeForText(visited.text));
                 } else if (visited) {
-                  parts.push(visited);
+                  parts.push(wrapEscapeCall(factory, "escapeForText", visited));
                 }
               }
             }
@@ -264,9 +284,9 @@ function rewriteToSSR(
               visitor,
             ) as ts.Expression;
             if (visitedExpr && ts.isStringLiteral(visitedExpr)) {
-              parts.push(visitedExpr.text);
+              parts.push(escapeForText(visitedExpr.text));
             } else if (visitedExpr) {
-              parts.push(visitedExpr);
+              parts.push(wrapEscapeCall(factory, "escapeForText", visitedExpr));
             }
           }
         }

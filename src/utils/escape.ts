@@ -64,8 +64,69 @@ export function escapeForAttrHtml(s: string): string {
   return out;
 }
 
+/** 合法 HTML/XML 属性名：禁止空格、引号等注入。 */
+const SAFE_ATTR_NAME = /^[A-Za-z_:][\w:.-]*$/;
+
 /**
- * 是否为危险 URL scheme（`javascript:` / `vbscript:` / `data:text/html` 等）。
+ * 是否可作为 attribute 名写入 DOM / 序列化进 HTML。
+ */
+export function isSafeAttrName(name: string): boolean {
+  return SAFE_ATTR_NAME.test(name);
+}
+
+/**
+ * 经 props 拒绝写入的危险 HTML 面（大小写不敏感）。
+ * `srcdoc` 与 innerHTML 同级：iframe 内联文档可执行脚本。
+ */
+export function isDeniedHtmlContentProp(name: string): boolean {
+  const lower = name.toLowerCase();
+  return lower === "innerhtml" || lower === "outerhtml" || lower === "srcdoc";
+}
+
+/**
+ * 真实 HTML 属性里恰好以 `on` 开头的名字；其余 `on*` 不得写成 attribute。
+ */
+const HTML_ON_PREFIX_ATTRS = new Set(["open", "once"]);
+
+/**
+ * JSX 事件 prop：`onX…`（第三字符大写），如 `onClick`。
+ */
+export function isJsxEventProp(name: string): boolean {
+  return (
+    name.length > 2 &&
+    name.startsWith("on") &&
+    name.charCodeAt(2) >= 65 &&
+    name.charCodeAt(2) <= 90
+  );
+}
+
+/**
+ * 不得作为 HTML attribute 写入的 `on*` 名（含小写 `onclick`）。
+ * `open` / `once` 是真实属性，排除在外；`onClick` 走事件绑定，也不应写成 attribute。
+ */
+export function isForbiddenOnAttrName(name: string): boolean {
+  const lower = name.toLowerCase();
+  if (!lower.startsWith("on")) return false;
+  return !HTML_ON_PREFIX_ATTRS.has(lower);
+}
+
+/**
+ * 转义注释数据，避免 `-->` / `--!>` 跳出注释。
+ * 无 `--` 时零分配返回原串。
+ */
+export function escapeCommentData(s: string): string {
+  if (!s.includes("--")) return s;
+  return s.replaceAll("--", "- -");
+}
+
+/**
+ * `data:` URL 中视为可执行或可嵌入活动内容的 MIME 子串。
+ * 安全的 `data:image/png` 等不含这些标记。
+ */
+const DANGEROUS_DATA_MIME = /javascript|ecmascript|html|xml|svg|script/;
+
+/**
+ * 是否为危险 URL scheme（`javascript:` / `vbscript:` / 可执行 `data:` 等）。
  * 剥离控制字符、零宽字符与空白后再判定，减轻混淆绕过。
  */
 export function isDangerousUrl(url: string): boolean {
@@ -91,9 +152,13 @@ export function isDangerousUrl(url: string): boolean {
   const lower = compact.toLowerCase();
   if (lower.startsWith("javascript:")) return true;
   if (lower.startsWith("vbscript:")) return true;
-  if (lower.startsWith("data:text/html")) return true;
-  // data: + HTML 变体（charset 等）：`data:text/html;base64,...` / `data:text/html;`
-  if (lower.startsWith("data:") && lower.includes("text/html")) return true;
+  if (lower.startsWith("data:")) {
+    const payload = lower.slice(5);
+    const comma = payload.indexOf(",");
+    const meta = comma === -1 ? payload : payload.slice(0, comma);
+    const mime = meta.split(";", 1)[0]!;
+    if (DANGEROUS_DATA_MIME.test(mime)) return true;
+  }
   return false;
 }
 

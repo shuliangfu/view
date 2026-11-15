@@ -310,12 +310,3 @@ export function startTransition(fn: () => void | Promise<void>): Promise<void> {
   const [_, start] = useTransition();
   return start(fn);
 }
-
-/**
- * 设置当前的观察者上下文。
- * @internal 封装 signal.ts 的设置，保持内部状态一致。
- */
-function _setCurrentObserverInternal(obs: Observer | null): Observer | null {
-  const prev = setCurrentObserver(obs);
-  return prev;
-}

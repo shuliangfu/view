@@ -71,7 +71,12 @@ export function compileSource(
   let runtimeImports = "";
 
   if (options.generate === "ssr") {
-    runtimeImports = `import { memo } from "${importPath}";\n`;
+    const ssrImports = ["memo"];
+    if (output.includes("escapeForAttr(")) ssrImports.push("escapeForAttr");
+    if (output.includes("escapeForText(")) ssrImports.push("escapeForText");
+    runtimeImports = `import { ${
+      ssrImports.join(", ")
+    } } from "${importPath}";\n`;
   } else {
     // DOM 模式：与 transformer 产出的标识符对齐（template / walk / insert / setAttribute / setProperty / spread / scheduleFunctionRef）
     const imports = [

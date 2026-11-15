@@ -110,5 +110,39 @@ describe("compiler/ssr-mode", () => {
       { generate: "ssr" },
     );
     expect(ssr).toContain("color()");
+    expect(ssr).toContain("escapeForAttr(color())");
+    expect(ssr).toContain("import { memo, escapeForAttr }");
+  });
+
+  it("SSR：动态文本应包 escapeForText；静态属性转义引号", () => {
+    const dyn = compileSource(
+      `export const App = () => <div>{name}</div>;`,
+      "t.tsx",
+      { generate: "ssr" },
+    );
+    expect(dyn).toContain("escapeForText(name)");
+    const xss = compileSource(
+      `export const App = () => <div title={'a" onmouseover="alert(1)'}></div>;`,
+      "t.tsx",
+      { generate: "ssr" },
+    );
+    expect(xss).toContain("&quot;");
+    expect(xss).not.toContain('title="a"');
+    expect(xss).not.toContain('title="a" onmouseover=');
+  });
+
+  it("SSR：open / once 应作为属性保留，不被当成事件丢掉", () => {
+    const ssr = compileSource(
+      `export const App = () => <dialog open><details open></details></dialog>;`,
+      "t.tsx",
+      { generate: "ssr" },
+    );
+    expect(ssr).toContain("open");
+    const link = compileSource(
+      `export const App = () => <link once />;`,
+      "t.tsx",
+      { generate: "ssr" },
+    );
+    expect(link).toContain("once");
   });
 }, { sanitizeOps: false, sanitizeResources: false });

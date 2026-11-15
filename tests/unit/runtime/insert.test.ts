@@ -98,7 +98,7 @@ describe("runtime/insert", () => {
     expect(elChildren[1]).toBe(b);
     const last = parent.lastChild;
     expect(last?.nodeType).toBe(Node.COMMENT_NODE);
-    expect((last as Comment).data).toBe("view:array-end");
+    expect((last as Comment).data).toBe("");
   });
 
   it("details 多子：首子须为 summary，不得出现 data-view-array-shell", async () => {
@@ -139,5 +139,31 @@ describe("runtime/insert", () => {
     expect(details.querySelector("[data-view-array-shell]")).toBeNull();
     expect(details.firstElementChild?.nodeName).toBe("SUMMARY");
     expect(details.firstElementChild?.textContent).toBe("B");
+  });
+
+  it("details 混合内容：数组插入不得删掉已有 summary", async () => {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "Title";
+    details.appendChild(summary);
+
+    const [items, setItems] = createSignal(["A", "B"]);
+    insert(details, () => {
+      return items().map((t) => {
+        const li = document.createElement("p");
+        li.textContent = t;
+        return li;
+      });
+    });
+    await Promise.resolve();
+    expect(details.contains(summary)).toBe(true);
+    expect(details.firstElementChild).toBe(summary);
+    expect(details.textContent).toBe("TitleAB");
+
+    setItems(["C"]);
+    await Promise.resolve();
+    expect(details.contains(summary)).toBe(true);
+    expect(details.firstElementChild).toBe(summary);
+    expect(details.textContent).toBe("TitleC");
   });
 }, { sanitizeOps: false, sanitizeResources: false });

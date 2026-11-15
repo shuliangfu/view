@@ -16,8 +16,12 @@
  */
 
 import {
+  escapeCommentData,
   escapeForAttr,
   escapeForText,
+  isDeniedHtmlContentProp,
+  isForbiddenOnAttrName,
+  isSafeAttrName,
   sanitizeSrcset,
   sanitizeUrl,
   URL_ATTR_NAMES,
@@ -427,7 +431,7 @@ export class SsrComment extends SsrNode {
   }
 
   get outerHTML(): string {
-    return `<!--${this.data}-->`;
+    return `<!--${escapeCommentData(this.data)}-->`;
   }
 
   cloneNode(_deep?: boolean): SsrComment {
@@ -903,6 +907,13 @@ export class SsrElement extends SsrNode {
    * 危险值：删除既有键并 return（不写入）。`href`／`src` 反射 setter 亦经此路径。
    */
   setAttribute(name: string, value: string): void {
+    if (
+      !isSafeAttrName(name) ||
+      isDeniedHtmlContentProp(name) ||
+      isForbiddenOnAttrName(name)
+    ) {
+      return;
+    }
     const n = name.toLowerCase();
     let v = value;
     if (URL_ATTR_NAMES.has(n)) {
@@ -940,6 +951,13 @@ export class SsrElement extends SsrNode {
    * 与 DOM Element.toggleAttribute 对齐（force 语义）。
    */
   toggleAttribute(name: string, force?: boolean): boolean {
+    if (
+      !isSafeAttrName(name) ||
+      isDeniedHtmlContentProp(name) ||
+      isForbiddenOnAttrName(name)
+    ) {
+      return false;
+    }
     const n = name.toLowerCase();
     const has = this._attrs.has(n);
     const shouldHave = force === undefined ? !has : !!force;
@@ -985,6 +1003,13 @@ export class SsrElement extends SsrNode {
     const css = styleBagToCssText(this._style);
     for (const [k, val] of this._attrs) {
       if (k === "style" && css) continue;
+      if (
+        !isSafeAttrName(k) ||
+        isDeniedHtmlContentProp(k) ||
+        isForbiddenOnAttrName(k)
+      ) {
+        continue;
+      }
       parts.push(` ${k}="${escapeForAttr(val)}"`);
     }
     if (css) {

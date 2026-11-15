@@ -3,10 +3,15 @@
  */
 import { describe, expect, it } from "@dreamer/test";
 import {
+  escapeCommentData,
   escapeForAttr,
   escapeForAttrHtml,
   escapeForText,
   isDangerousUrl,
+  isDeniedHtmlContentProp,
+  isForbiddenOnAttrName,
+  isJsxEventProp,
+  isSafeAttrName,
   sanitizeSrcset,
   sanitizeUrl,
 } from "../../../src/utils/escape.ts";
@@ -58,5 +63,53 @@ describe("utils/escape", () => {
     expect(sanitizeSrcset("/a.jpg 1x, /b.jpg 2x")).toContain("/a.jpg");
     expect(sanitizeSrcset("javascript:alert(1)")).toBe(null);
     expect(sanitizeSrcset("/ok.jpg 1x, javascript:alert(1) 2x")).toBe(null);
+  });
+
+  it("isDangerousUrl：拦截可执行 data: MIME，保留安全图片", () => {
+    expect(isDangerousUrl("data:image/svg+xml,<svg onload=alert(1)>")).toBe(
+      true,
+    );
+    expect(isDangerousUrl("data:image/svg+xml;base64,PHN2Zz4=")).toBe(true);
+    expect(isDangerousUrl("data:text/javascript,alert(1)")).toBe(true);
+    expect(isDangerousUrl("data:application/javascript,alert(1)")).toBe(true);
+    expect(isDangerousUrl("data:application/ecmascript,alert(1)")).toBe(true);
+    expect(isDangerousUrl("data:application/xhtml+xml,<html>")).toBe(true);
+    expect(isDangerousUrl("data:text/xml,<x>")).toBe(true);
+    expect(isDangerousUrl("data:image/png;base64,AAAA")).toBe(false);
+    expect(isDangerousUrl("data:image/jpeg;base64,AAAA")).toBe(false);
+    expect(isDangerousUrl("data:image/gif;base64,AAAA")).toBe(false);
+    expect(isDangerousUrl("data:image/webp;base64,AAAA")).toBe(false);
+    expect(sanitizeUrl("data:image/svg+xml,<svg></svg>")).toBe(null);
+    expect(sanitizeUrl("data:image/png;base64,AAAA")).toBe(
+      "data:image/png;base64,AAAA",
+    );
+  });
+
+  it("isSafeAttrName / 事件名规则", () => {
+    expect(isSafeAttrName("title")).toBe(true);
+    expect(isSafeAttrName("data-role")).toBe(true);
+    expect(isSafeAttrName("xlink:href")).toBe(true);
+    expect(isSafeAttrName('foo" onclick="alert(1)')).toBe(false);
+    expect(isSafeAttrName("foo bar")).toBe(false);
+    expect(isSafeAttrName("<script>")).toBe(false);
+    expect(isDeniedHtmlContentProp("innerHTML")).toBe(true);
+    expect(isDeniedHtmlContentProp("INNERHTML")).toBe(true);
+    expect(isDeniedHtmlContentProp("srcDoc")).toBe(true);
+    expect(isDeniedHtmlContentProp("title")).toBe(false);
+    expect(isJsxEventProp("onClick")).toBe(true);
+    expect(isJsxEventProp("onclick")).toBe(false);
+    expect(isJsxEventProp("open")).toBe(false);
+    expect(isForbiddenOnAttrName("onclick")).toBe(true);
+    expect(isForbiddenOnAttrName("onClick")).toBe(true);
+    expect(isForbiddenOnAttrName("open")).toBe(false);
+    expect(isForbiddenOnAttrName("once")).toBe(false);
+    expect(isForbiddenOnAttrName("title")).toBe(false);
+  });
+
+  it("escapeCommentData：打断注释结束符", () => {
+    const plain = "mark";
+    expect(escapeCommentData(plain)).toBe(plain);
+    expect(escapeCommentData("foo-->bar")).toBe("foo- ->bar");
+    expect(escapeCommentData("a--!>b")).toBe("a- -!>b");
   });
 });

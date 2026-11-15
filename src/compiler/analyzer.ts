@@ -23,7 +23,12 @@
  */
 
 import ts from "typescript";
-import { escapeForText } from "../utils/escape.ts";
+import {
+  escapeForAttr,
+  escapeForText,
+  isForbiddenOnAttrName,
+  isJsxEventProp,
+} from "../utils/escape.ts";
 
 export interface DynamicBinding {
   id: string; // 唯一 ID，用于水合
@@ -309,7 +314,7 @@ export function serializeStaticAttrValue(
   expr: ts.Expression,
 ): string | undefined {
   if (!isStaticExpression(expr)) return undefined;
-  return serializeStaticValue(expr);
+  return escapeForAttr(serializeStaticValue(expr));
 }
 
 /** 静态短路左侧：truthy / omit（null·false·undefined）/ zero / empty；不可判定为 null */
@@ -636,9 +641,13 @@ export function serializeToTemplate(
       opening.attributes.properties.forEach((attr) => {
         if (ts.isJsxAttribute(attr)) {
           const name = getJsxAttributeName(attr.name);
-          const isEvent = name.startsWith("on") && name.length > 2;
+          const isEvent = isJsxEventProp(name);
           const isRef = name === "ref";
           const isDirective = name.startsWith("use:");
+          // 小写 onclick 等不得写入模板；open/once 是真实 HTML 属性
+          if (!isEvent && isForbiddenOnAttrName(name)) {
+            return;
+          }
 
           if (
             attr.initializer && ts.isJsxExpression(attr.initializer) &&
@@ -648,8 +657,8 @@ export function serializeToTemplate(
             if (
               !isEvent && !isRef && !isDirective && isStaticExpression(expr)
             ) {
-              // 极致优化：静态对象/数组直接序列化进模板
-              const val = serializeStaticValue(expr);
+              // 极致优化：静态对象/数组直接序列化进模板（属性值必须 escape）
+              const val = escapeForAttr(serializeStaticValue(expr));
               if (name === "style") {
                 attrs += ` style="${val}"`;
               } else if (name === "className" || name === "class") {
@@ -671,7 +680,7 @@ export function serializeToTemplate(
               });
             }
           } else if (attr.initializer && ts.isStringLiteral(attr.initializer)) {
-            attrs += ` ${name}="${attr.initializer.text}"`;
+            attrs += ` ${name}="${escapeForAttr(attr.initializer.text)}"`;
           } else if (!attr.initializer) {
             attrs += ` ${name}`;
           }

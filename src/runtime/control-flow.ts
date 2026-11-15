@@ -17,7 +17,8 @@
  * - 错误边界集成
  *
  * **范围说明：**
- * - 传入 **`key`**（`For` / `Index`）时按稳定键 **复用 DOM、重排节点**；不传则保持「整表重建」语义（与旧版一致）。
+ * - 传入 **`key`**（`For` / `Index`）时按稳定键 **复用 DOM、重排节点**。
+ *   `For` 不传 `key` 时整表重建；`Index` 不传 `key` 时按**索引**复用行（项变化不拆行，仅长度变化时增删尾部）。
  * - 键控行使用**注释起止锚点**（无 `span` 壳），行内容为父级直接子节点，兼容 `space-y-*` / `:first-child`。
  * - 虚拟滚动等仍建议业务层或专用组件实现。
  * - **`Show`/`For`/`Index`/`Match`/`ErrorBoundary.resetKeys`** 的 `when`/`each`/`resetKeys` 支持 {@link MaybeAccessor}：
@@ -88,14 +89,17 @@ function normalizeEachList<T>(raw: T[] | Iterable<T> | null | undefined): T[] {
 }
 
 /**
- * 移除 `parent` 下 `marker` 之前的所有子节点（保留 `marker`）。
+ * 清除 `start` 与 `end` 之间的节点，保留起止锚点本身。
+ * 只清本控制流的区间，不会误删父级里列表/分支外的兄弟节点。
  */
-function removeChildrenBeforeMarker(parent: Node, marker: Node): void {
-  let child = parent.firstChild;
-  while (child && child !== marker) {
-    const next = child.nextSibling;
-    parent.removeChild(child);
-    child = next;
+function clearBetweenAnchors(start: Node, end: Node): void {
+  const parent = start.parentNode;
+  if (!parent) return;
+  let node: Node | null = start.nextSibling;
+  while (node && node !== end) {
+    const next: Node | null = node.nextSibling;
+    parent.removeChild(node);
+    node = next;
   }
 }
 
@@ -138,13 +142,10 @@ interface KeyedListRow<T> {
   moveBefore: (parent: Node, before: Node | null) => void;
 }
 
-/** 行首/尾注释 data，便于调试与测试定位 */
-const VIEW_FOR_START = "view:for";
-const VIEW_FOR_END = "/view:for";
-
-/** Switch 锚点注释 data（对齐 For keyed，无额外 span） */
-const VIEW_SWITCH_START = "view:switch";
-const VIEW_SWITCH_END = "/view:switch";
+/** 控制流起止锚点为空白注释；由闭包中的节点引用识别，不靠文案。 */
+function createAnchorComment(): Comment {
+  return document.createComment("");
+}
 
 /**
  * 将 `start` 到 `end`（含）的节点依次 `insertBefore(parent, before)`，保持相对顺序。
@@ -314,8 +315,8 @@ function createKeyedListRow<T>(
   initialItem: T,
   initialIndex: number,
 ): KeyedListRow<T> {
-  const start = document.createComment(VIEW_FOR_START);
-  const end = document.createComment(VIEW_FOR_END);
+  const start = createAnchorComment();
+  const end = createAnchorComment();
   // 离线装配：内容先插进 fragment，挂载时整段移入真实父节点
   const holder = document.createDocumentFragment();
   holder.appendChild(start);
@@ -583,15 +584,17 @@ function forLegacyList<T>(props: {
   children: (item: T, index: () => number) => JSXRenderable;
   fallback?: JSXRenderable;
 }): DocumentFragment {
-  const marker = document.createTextNode("");
+  const start = createAnchorComment();
+  const end = createAnchorComment();
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(marker);
+  fragment.appendChild(start);
+  fragment.appendChild(end);
 
   let currentDispose: (() => void) | null = null;
 
   createEffect(() => {
     const items = normalizeEachList(readAccessor(props.each));
-    const parent = marker.parentNode || fragment;
+    const parent = end.parentNode || fragment;
 
     if (currentDispose) {
       currentDispose();
@@ -601,16 +604,16 @@ function forLegacyList<T>(props: {
     createRoot((dispose) => {
       currentDispose = dispose;
 
-      removeChildrenBeforeMarker(parent, marker);
+      clearBetweenAnchors(start, end);
 
       if (items.length === 0 && props.fallback !== undefined) {
-        insert(parent, props.fallback, undefined, marker);
+        insert(parent, props.fallback, undefined, end);
       } else {
         for (let i = 0; i < items.length; i++) {
           const item = items[i] as T;
           const idx = i;
           const content = props.children(item, () => idx);
-          insert(parent, content, undefined, marker);
+          insert(parent, content, undefined, end);
         }
       }
     });
@@ -655,7 +658,6 @@ function forKeyedList<T>(props: {
       if (items.length === 0) {
         for (const row of rowMap.values()) row.dispose();
         rowMap.clear();
-        removeChildrenBeforeMarker(parent, marker);
         if (props.fallback !== undefined) {
           fallbackCurrent = insert(
             parent,
@@ -722,7 +724,9 @@ function forKeyedList<T>(props: {
 
 /**
  * Index 组件：基于索引的列表渲染。
- * 可选 **`key`** 时与 For 相同，按键复用行（适合元素会重排但需保留 DOM 的场景）。
+ * - 未传 **`key`**：按索引复用行（Solid `Index` 语义）。项在同一位置变化时只更新该行，不拆行；
+ *   仅列表长度变化时在尾部增删。行内 `onMount` 在仅项变化时不会重跑。
+ * - 传入 **`key`**：与 For 相同，按键复用并重排（适合元素会移动但需保留 DOM 的场景）。
  *
  * @template T 列表项类型
  * @param props.each {@link MaybeAccessor}：静态列表、getter 或 Signal getter
@@ -744,38 +748,63 @@ export function Index<T>(props: {
       key: props.key,
     });
   }
+  return forIndexList(props);
+}
 
-  const marker = document.createTextNode("");
+/**
+ * 无 `key` 的 Index：按索引稳定复用行，只在长度变化时增删尾部。
+ */
+function forIndexList<T>(props: {
+  each: MaybeAccessor<T[] | null | undefined>;
+  children: (item: T, index: () => number) => JSXRenderable;
+}): DocumentFragment {
+  const start = createAnchorComment();
+  const end = createAnchorComment();
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(marker);
+  fragment.appendChild(start);
+  fragment.appendChild(end);
 
-  let currentDispose: (() => void) | null = null;
+  const rows: KeyedListRow<T>[] = [];
+  let indexRootDispose: (() => void) | null = null;
 
-  createEffect(() => {
-    const items = normalizeEachList(readAccessor(props.each));
-    const parent = marker.parentNode || fragment;
+  createRoot((dispose) => {
+    indexRootDispose = dispose;
 
-    if (currentDispose) {
-      currentDispose();
-      currentDispose = null;
-    }
+    createEffect(() => {
+      const parent = end.parentNode || fragment;
+      const items = normalizeEachList(readAccessor(props.each));
+      const nextLen = items.length;
+      const prevLen = rows.length;
 
-    createRoot((dispose) => {
-      currentDispose = dispose;
-
-      removeChildrenBeforeMarker(parent, marker);
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i] as T;
-        const idx = i;
-        const content = props.children(item, () => idx);
-        insert(parent, content, undefined, marker);
+      if (nextLen < prevLen) {
+        for (let i = nextLen; i < prevLen; i++) {
+          rows[i]!.dispose();
+        }
+        rows.length = nextLen;
       }
+
+      for (let i = 0; i < nextLen; i++) {
+        const item = items[i] as T;
+        const existing = rows[i];
+        if (!existing) {
+          const created = createKeyedListRow(props, item, i);
+          rows[i] = created;
+          created.moveBefore(parent, end);
+        } else {
+          existing.setItem(item);
+        }
+      }
+    });
+
+    onCleanup(() => {
+      for (let i = 0; i < rows.length; i++) rows[i]!.dispose();
+      rows.length = 0;
     });
   });
 
   onCleanup(() => {
-    if (currentDispose) currentDispose();
+    indexRootDispose?.();
+    indexRootDispose = null;
   });
 
   return fragment;
@@ -821,29 +850,24 @@ export function Switch(props: {
   children: SwitchChild | readonly SwitchChild[];
   fallback?: InsertValue;
 }): DocumentFragment {
-  const start = document.createComment(VIEW_SWITCH_START);
-  const end = document.createComment(VIEW_SWITCH_END);
+  const start = createAnchorComment();
+  const end = createAnchorComment();
   const fragment = document.createDocumentFragment();
   fragment.appendChild(start);
   fragment.appendChild(end);
 
-  createEffect(() => {
-    // 未挂载时 parent 可能仍是 fragment；挂载后为真实父节点。两种都只清锚点之间。
-    const parent = end.parentNode || fragment;
-    // 为何不用「marker.previousSibling 一路删」：那会在无壳 span 时误删 section 里
-    // Switch 之前的按钮等兄弟（见单测「不应删除插槽外的兄弟节点」）。
-    let node: Node | null = start.nextSibling;
-    while (node && node !== end) {
-      const next: Node | null = node.nextSibling;
-      parent.removeChild(node);
-      node = next;
-    }
+  /** 上次选中的分支下标（或 fallback/none）及 children 引用；相同则跳过拆除/重插。
+   *  不用 Match 描述符身份：`jsx(Match)` 可能每次解包都新建描述符，但 children 引用仍稳定。 */
+  let lastIndex: number | "fallback" | "none" | undefined;
+  let lastSelected: InsertValue | undefined;
 
+  createEffect(() => {
     const parts = normalizeSwitchChildren(props.children);
     let selected: InsertValue | null = null;
+    let selectedIndex: number | "fallback" | "none" = "none";
 
-    for (const part of parts) {
-      const unwrapped = unwrapRenderableThunk(part);
+    for (let i = 0; i < parts.length; i++) {
+      const unwrapped = unwrapRenderableThunk(parts[i]);
       if (
         unwrapped &&
         typeof unwrapped === "object" &&
@@ -852,10 +876,37 @@ export function Switch(props: {
         const desc = unwrapped as ViewMatchDescriptor;
         if (desc.when()) {
           selected = desc.children;
+          selectedIndex = i;
           break;
         }
       }
     }
+
+    if (selected == null || selected === false) {
+      selectedIndex = props.fallback != null ? "fallback" : "none";
+    }
+
+    const nextSelected: InsertValue | null =
+      selected != null && selected !== false
+        ? selected
+        : (props.fallback != null ? props.fallback : null);
+
+    // 先读完所有需追踪的 when()，再决定是否跳过；同分支不拆除 DOM。
+    if (
+      lastIndex !== undefined &&
+      lastIndex === selectedIndex &&
+      Object.is(lastSelected, nextSelected)
+    ) {
+      return;
+    }
+    lastIndex = selectedIndex;
+    lastSelected = nextSelected;
+
+    // 未挂载时 parent 可能仍是 fragment；挂载后为真实父节点。两种都只清锚点之间。
+    const parent = end.parentNode || fragment;
+    // 只清 start..end 之间，避免误删 section 里 Switch 之前的按钮等兄弟
+    // （见单测「不应删除插槽外的兄弟节点」）。
+    clearBetweenAnchors(start, end);
 
     if (selected != null && selected !== false) {
       insert(parent, selected, null, end);

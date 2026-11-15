@@ -239,7 +239,7 @@ export namespace JSX {
     /** 与 `insert` 一致；下游组件常出现 `unknown`/空对象插槽，过窄的 `Children` 会在 TS 下误报 */
     // deno-lint-ignore no-explicit-any
     children?: any;
-    innerHTML?: MaybeAccessor<string>;
+    // innerHTML / outerHTML / srcdoc 不在类型中：运行时经 props 设置会被拒绝。
     innerText?: MaybeAccessor<string>;
     textContent?: MaybeAccessor<string>;
     [key: string]: any;
