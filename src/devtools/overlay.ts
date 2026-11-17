@@ -182,7 +182,11 @@ export interface MountDevtoolsOverlayOptions {
   owner?: Owner | null;
   /** Live refresh interval (ms) while the panel is **open**. Default `1000`. `0` = manual only. Closed overlay does not poll. */
   refreshMs?: number;
-  /** Wire misuse watcher into Warnings. Default `true`. */
+  /**
+   * Wire misuse watcher into Warnings and the float badge. Default `true`.
+   * Runs while the overlay is mounted, including when the panel is closed, so
+   * the indicator count is current without opening the panel.
+   */
   watchMisuse?: boolean;
   /** Mount parent. Default `document.body`. */
   parent?: HTMLElement;
@@ -1173,7 +1177,7 @@ export function mountDevtoolsOverlay(
       restartTimer();
       refresh();
     } else if (!open && wasOpen) {
-      stopMisuseWatch();
+      // Keep the misuse watcher running so the float badge stays current.
       restartTimer();
       clearInspectHighlight();
     } else {
@@ -2077,8 +2081,10 @@ export function mountDevtoolsOverlay(
     "aria-label",
     open ? ot("closeAria") : ot("openAria"),
   );
+  // Start the misuse watcher even when the panel is closed so the float
+  // warning badge can show immediately (opening the panel is not required).
+  startMisuseWatch();
   if (open) {
-    startMisuseWatch();
     refresh();
   }
   restartTimer();
@@ -2131,10 +2137,7 @@ export function mountDevtoolsOverlay(
         releaseHmrUi();
         releaseHmrUi = null;
       }
-      if (stopWatch) {
-        stopWatch();
-        stopWatch = null;
-      }
+      stopMisuseWatch();
       if (stopPathWatch) {
         stopPathWatch();
         stopPathWatch = null;

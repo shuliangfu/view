@@ -566,6 +566,23 @@ describe("devtools overlay (P2)", () => {
     expect(list).toMatch(/No nodes match|没有匹配/);
     handle.unmount();
   });
+
+  it("float warn badge shows on mount without opening the panel", () => {
+    createRootTracked(() => {
+      const sigs = Array.from({ length: 10 }, () => createSignal(0));
+      createEffect(() => {
+        for (const sig of sigs) sig();
+      });
+    });
+    const handle = mountDevtoolsOverlay({ refreshMs: 0 })!;
+    expect(handle.isOpen).toBe(false);
+    const pill = handle.root.shadowRoot!.querySelector(
+      "[data-el='float-warn-badge']",
+    ) as HTMLElement;
+    expect(pill.classList.contains("hidden")).toBe(false);
+    expect(Number(pill.textContent)).toBeGreaterThan(0);
+    handle.unmount();
+  });
 });
 
 describe("devtools overlay HMR bridge integration", () => {
