@@ -55,10 +55,60 @@ export function enterSSRDomScope(): void {
 
 /** 把当前请求 Cookie 写入 SSR `document.cookie`，以便组件首屏读取。 */
 function seedCurrentSsrDocumentCookies(): void {
-  const doc = (globalThis as unknown as { document?: SsrDocument }).document;
-  if (doc && typeof doc.seedCookieHeader === "function") {
+  const doc = (globalThis as unknown as {
+    document?: SsrDocument & { cookie?: string };
+  }).document;
+  if (!doc) return;
+  if (typeof doc.seedCookieHeader === "function") {
     doc.seedCookieHeader(getSsrCookieHeader());
+    return;
   }
+  // Bun 单测会预加载 happy-dom，此时借用已有 document，不能走 SsrDocument.seedCookieHeader。
+  if (typeof doc.cookie !== "string") return;
+  if (ssrDomRefCount === 1 && borrowedCookieSnapshot === null) {
+    borrowedCookieSnapshot = doc.cookie;
+  }
+  writeBorrowedDocumentCookies(doc, getSsrCookieHeader());
+}
+
+/** 借用已有 document 时，离开作用域后恢复进入前的 cookie，避免测试间泄漏。 */
+let borrowedCookieSnapshot: string | null = null;
+
+const COOKIE_EXPIRED = "Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+function parseCookieHeader(header: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  if (!header) return out;
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const name = trimmed.slice(0, eq).trim();
+    if (name) out.push([name, trimmed.slice(eq + 1).trim()]);
+  }
+  return out;
+}
+
+function writeBorrowedDocumentCookies(
+  doc: { cookie: string },
+  header: string,
+): void {
+  for (const [name] of parseCookieHeader(doc.cookie)) {
+    doc.cookie = `${name}=; ${COOKIE_EXPIRED}`;
+  }
+  for (const [name, value] of parseCookieHeader(header)) {
+    doc.cookie = `${name}=${value}`;
+  }
+}
+
+function restoreBorrowedDocumentCookies(): void {
+  if (borrowedCookieSnapshot === null) return;
+  const snapshot = borrowedCookieSnapshot;
+  borrowedCookieSnapshot = null;
+  const doc = (globalThis as unknown as { document?: { cookie?: string } })
+    .document;
+  if (!doc || typeof doc.cookie !== "string") return;
+  writeBorrowedDocumentCookies(doc as { cookie: string }, snapshot);
 }
 
 /**
@@ -74,7 +124,10 @@ export function leaveSSRDomScope(): void {
   if (installedSsrTeardown) {
     installedSsrTeardown();
     installedSsrTeardown = null;
+    borrowedCookieSnapshot = null;
+    return;
   }
+  restoreBorrowedDocumentCookies();
 }
 
 /** 异步 SSR 互斥链，避免 `await` 间隙被另一请求覆盖 `document` */
