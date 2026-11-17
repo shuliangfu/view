@@ -7,6 +7,19 @@
 
 ---
 
+## [3.1.2] - 2026-11-17
+
+### 新增
+
+- **SSR 可将请求 `Cookie` 头写入 `document.cookie`（非破坏）**
+  - 新增 `runWithSsrCookies` / `getSsrCookieHeader`（`@dreamer/view/ssr`）。
+  - 在 `renderToString` 安装 `document` 时把当前请求 Cookie 写入
+    `document.cookie`，组件首屏即可读取（例如 Alert 的 `closeKey`）。
+  - 用 `AsyncLocalStorage` 隔离并发请求；通过 `process.getBuiltinModule`
+    获取，避免静态导入 `node:async_hooks` 导致客户端打包失败。
+  - 借用已有 document（如 Bun 预加载 happy-dom）时同样写入，离开作用域后恢复。
+  - 单测：`tests/unit/runtime/ssr-request-cookie.test.ts`。
+
 ## [3.1.1] - 2026-11-17
 
 ### 修复

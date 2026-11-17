@@ -28,9 +28,9 @@
     "@dreamer/view/devtools/overlay": "../src/devtools/overlay.ts"
   },
   "dependencies": {
-    "@dreamer/image": "npm:@jsr/dreamer__image@^1.0.2",
-    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.1.0",
-    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.4.0",
+    "@dreamer/image": "npm:@jsr/dreamer__image@^1.1.0",
+    "@dreamer/plugins": "npm:@jsr/dreamer__plugins@^1.2.5",
+    "@dreamer/esbuild": "npm:@jsr/dreamer__esbuild@^1.5.3",
     "tailwindcss": "npm:tailwindcss@4.2.0"
   }
 }

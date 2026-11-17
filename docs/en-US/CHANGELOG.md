@@ -8,6 +8,22 @@ and this project adheres to
 
 ---
 
+## [3.1.2] - 2026-11-17
+
+### Added
+
+- **SSR can seed the request `Cookie` header into `document.cookie` (non-breaking)**
+  - New `runWithSsrCookies` / `getSsrCookieHeader` (`@dreamer/view/ssr`).
+  - `renderToString` writes the current request cookies onto `document.cookie`
+    when it installs `document`, so components can read them on first render
+    (for example Alert `closeKey`).
+  - Concurrent requests are isolated with `AsyncLocalStorage`, loaded via
+    `process.getBuiltinModule` so a static `node:async_hooks` import does not
+    break the client bundle.
+  - When SSR borrows an existing document (for example Bun preloading
+    happy-dom), cookies are still seeded and restored on leave.
+  - Test: `tests/unit/runtime/ssr-request-cookie.test.ts`.
+
 ## [3.1.1] - 2026-11-17
 
 ### Fixed

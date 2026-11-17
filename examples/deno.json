@@ -18,7 +18,7 @@
     "@dreamer/view/escape": "../src/utils/escape.ts",
     "@dreamer/view/optimize": "../src/optimize.ts",
     "@dreamer/view/ssr": "../src/runtime/server.ts",
-    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.1.0",
+    "@dreamer/plugins": "jsr:@dreamer/plugins@^1.2.5",
     "tailwindcss": "npm:tailwindcss@4.2.0",
     "@dreamer/view/reactivity": "../src/reactivity/mod.ts",
     "@dreamer/view/scheduler": "../src/scheduler/mod.ts",
