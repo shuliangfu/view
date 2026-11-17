@@ -15,10 +15,12 @@ import {
 } from "../integrations/router.ts";
 import { bumpSsrDomScopeDepth } from "./ssr-scope.ts";
 import { resetEventDelegationForSSR } from "./props.ts";
-import { installMinimalSsrGlobals } from "./ssr-dom.ts";
+import { installMinimalSsrGlobals, type SsrDocument } from "./ssr-dom.ts";
+import { getSsrCookieHeader } from "./ssr-request-cookie.ts";
 import { ssrPromises } from "./ssr-promises.ts";
 
 export { registerSSRPromise, ssrPromises } from "./ssr-promises.ts";
+export { getSsrCookieHeader, runWithSsrCookies } from "./ssr-request-cookie.ts";
 
 /**
  * 是否为服务端语义环境：无 `window` 或显式 `VIEW_SSR`。
@@ -43,15 +45,20 @@ function globalHasDocument(): boolean {
 export function enterSSRDomScope(): void {
   ssrDomRefCount++;
   bumpSsrDomScopeDepth(1);
-  if (globalHasDocument()) {
-    return;
+  if (!globalHasDocument() && ssrDomRefCount === 1) {
+    const { teardown } = installMinimalSsrGlobals();
+    installedSsrTeardown = teardown;
+    resetEventDelegationForSSR();
   }
-  if (ssrDomRefCount !== 1) {
-    return;
+  seedCurrentSsrDocumentCookies();
+}
+
+/** 把当前请求 Cookie 写入 SSR `document.cookie`，以便组件首屏读取。 */
+function seedCurrentSsrDocumentCookies(): void {
+  const doc = (globalThis as unknown as { document?: SsrDocument }).document;
+  if (doc && typeof doc.seedCookieHeader === "function") {
+    doc.seedCookieHeader(getSsrCookieHeader());
   }
-  const { teardown } = installMinimalSsrGlobals();
-  installedSsrTeardown = teardown;
-  resetEventDelegationForSSR();
 }
 
 /**

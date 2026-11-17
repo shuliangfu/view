@@ -1422,15 +1422,61 @@ export class SsrElement extends SsrNode {
 /**
  * 极简 `document`：工厂方法与空事件接口。
  */
+function decodeCookiePart(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export class SsrDocument {
   /** 根占位（部分代码会读 `document.documentElement`） */
   documentElement: SsrElement;
   /** 惰性 head/body，meta/router 可能用到 */
   private _head: SsrElement | null = null;
   private _body: SsrElement | null = null;
+  /** 请求 Cookie 快照，供组件在 SSR 期间读 `document.cookie` */
+  private _cookies = new Map<string, string>();
 
   constructor() {
     this.documentElement = new SsrElement(this, HTML_NS, "html");
+  }
+
+  /**
+   * 用请求 `Cookie` 头整段重置 cookie 袋（与浏览器 setter 不同：后者一次只写一对）。
+   * @param header - 原始 `Cookie` 头，可为空
+   */
+  seedCookieHeader(header: string): void {
+    this._cookies.clear();
+    if (!header) return;
+    for (const part of header.split(";")) {
+      const trimmed = part.trim();
+      const eq = trimmed.indexOf("=");
+      if (eq <= 0) continue;
+      const name = decodeCookiePart(trimmed.slice(0, eq).trim());
+      const value = decodeCookiePart(trimmed.slice(eq + 1).trim());
+      if (name) this._cookies.set(name, value);
+    }
+  }
+
+  get cookie(): string {
+    const parts: string[] = [];
+    for (const [k, v] of this._cookies) {
+      parts.push(`${k}=${v}`);
+    }
+    return parts.join("; ");
+  }
+
+  set cookie(val: string) {
+    const first = val.split(";")[0] ?? "";
+    const eq = first.indexOf("=");
+    if (eq < 0) return;
+    const name = decodeCookiePart(first.slice(0, eq).trim());
+    if (!name) return;
+    const value = decodeCookiePart(first.slice(eq + 1).trim());
+    if (value === "") this._cookies.delete(name);
+    else this._cookies.set(name, value);
   }
 
   get head(): SsrElement {
