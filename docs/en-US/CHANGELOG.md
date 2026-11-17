@@ -8,7 +8,19 @@ and this project adheres to
 
 ---
 
+## [3.1.1] - 2026-11-17
+
+### Fixed
+
+- **DevTools float warning badge shows without opening the panel (non-breaking)**
+  - The misuse watcher now starts when the overlay mounts and keeps running
+    while the panel is closed, so the indicator count appears as soon as
+    warnings exist. Opening and closing the panel is no longer required.
+  - The live tree refresh interval still runs only while the panel is open.
+  - Test: `tests/unit/devtools/overlay.test.ts`.
+
 ## [3.1.0] - 2026-11-15
+
 
 ### Added
 
