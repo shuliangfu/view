@@ -7,6 +7,7 @@ import { describe, expect, it } from "@dreamer/test";
 import { createSignal, setProperty } from "@dreamer/view";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { renderToString } from "@dreamer/view/ssr";
+import { resetEventDelegationForSSR } from "../../src/runtime/props.ts";
 
 describe("SSR：无预置 document 时自举极简 DOM", () => {
   it("renderToString 应输出含属性与文本的 HTML", () => {
@@ -33,32 +34,54 @@ describe("SSR：无预置 document 时自举极简 DOM", () => {
   });
 
   it("拆除临时 document 后，新 document 上的事件委托仍能触发", async () => {
-    renderToString(() =>
-      jsx("button", {
-        type: "button",
-        onClick: () => {},
-        children: "ssr",
-      })
-    );
-    expect(
-      typeof (globalThis as { document?: unknown }).document === "undefined",
-    ).toBe(true);
-
-    const { Window } = await import("happy-dom");
-    const win = new Window();
     const g = globalThis as Record<string, unknown>;
-    g.window = win;
-    g.document = win.document;
-    g.Event = win.Event;
-    g.MouseEvent = win.MouseEvent;
+    const prevDoc = Object.getOwnPropertyDescriptor(globalThis, "document");
+    const prevWin = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const prevEvent = g.Event;
+    const prevMouse = g.MouseEvent;
+    try {
+      Reflect.deleteProperty(globalThis, "document");
+      Reflect.deleteProperty(globalThis, "window");
+      renderToString(() =>
+        jsx("button", {
+          type: "button",
+          onClick: () => {},
+          children: "ssr",
+        })
+      );
+      expect(typeof g.document === "undefined").toBe(true);
 
-    let clicks = 0;
-    const btn = document.createElement("button");
-    document.body!.appendChild(btn);
-    setProperty(btn, "onClick", () => {
-      clicks++;
-    });
-    btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(clicks).toBe(1);
+      if (prevDoc) Object.defineProperty(globalThis, "document", prevDoc);
+      if (prevWin) Object.defineProperty(globalThis, "window", prevWin);
+      if (prevEvent !== undefined) g.Event = prevEvent;
+      if (prevMouse !== undefined) g.MouseEvent = prevMouse;
+      if (!prevDoc) {
+        const { Window } = await import("happy-dom");
+        const win = new Window();
+        g.window = win;
+        g.document = win.document;
+        g.Event = win.Event;
+        g.MouseEvent = win.MouseEvent;
+      }
+
+      let clicks = 0;
+      const btn = document.createElement("button");
+      document.body!.appendChild(btn);
+      setProperty(btn, "onClick", () => {
+        clicks++;
+      });
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(clicks).toBe(1);
+    } finally {
+      if (prevDoc) Object.defineProperty(globalThis, "document", prevDoc);
+      else Reflect.deleteProperty(globalThis, "document");
+      if (prevWin) Object.defineProperty(globalThis, "window", prevWin);
+      else Reflect.deleteProperty(globalThis, "window");
+      if (prevEvent === undefined) delete g.Event;
+      else g.Event = prevEvent;
+      if (prevMouse === undefined) delete g.MouseEvent;
+      else g.MouseEvent = prevMouse;
+      resetEventDelegationForSSR();
+    }
   });
 }, { sanitizeOps: false, sanitizeResources: false });

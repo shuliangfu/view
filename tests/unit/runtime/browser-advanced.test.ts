@@ -5,6 +5,7 @@ import { waitUntilComplete } from "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import { createEffect, createSignal, mount } from "@dreamer/view";
 import {
+  clearTrackedRoots,
   createRootTracked,
   getTrackedRoots,
   summarizeOwnerTree,
@@ -84,6 +85,7 @@ describe("runtime/browser (mount 细节)", () => {
     const prevFn = g.__VIEW_CREATE_ROOT_TRACKED__;
     g.VIEW_DEV = true;
     g.__VIEW_CREATE_ROOT_TRACKED__ = createRootTracked;
+    clearTrackedRoots();
     const container = document.createElement("div");
     document.body.appendChild(container);
     try {

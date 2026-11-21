@@ -184,12 +184,19 @@ describe("runtime/component-rerun-guard (P1)", () => {
 }, { sanitizeOps: false, sanitizeResources: false });
 
 describe("runtime/jsx-dev-rerun-note (P1)", () => {
-  const g = globalThis as { VIEW_DEV?: boolean };
+  type TrackedRootFactory = <T>(fn: (dispose: () => void) => T) => T;
+  const g = globalThis as {
+    VIEW_DEV?: boolean;
+    __VIEW_CREATE_ROOT_TRACKED__?: TrackedRootFactory;
+  };
   let prevDev: boolean | undefined;
+  let prevFactory: TrackedRootFactory | undefined;
 
   beforeEach(() => {
     prevDev = g.VIEW_DEV;
+    prevFactory = g.__VIEW_CREATE_ROOT_TRACKED__;
     g.VIEW_DEV = true;
+    delete g.__VIEW_CREATE_ROOT_TRACKED__;
     clearComponentSetupNotes();
     uninstallComponentSetupTracking();
   });
@@ -199,6 +206,8 @@ describe("runtime/jsx-dev-rerun-note (P1)", () => {
     uninstallComponentSetupTracking();
     if (prevDev === undefined) delete g.VIEW_DEV;
     else g.VIEW_DEV = prevDev;
+    if (prevFactory === undefined) delete g.__VIEW_CREATE_ROOT_TRACKED__;
+    else g.__VIEW_CREATE_ROOT_TRACKED__ = prevFactory;
   });
 
   it("installComponentSetupTracking is VIEW_DEV-gated", () => {
