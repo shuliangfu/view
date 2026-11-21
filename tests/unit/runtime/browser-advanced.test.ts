@@ -4,6 +4,11 @@
 import { waitUntilComplete } from "../dom-setup.ts";
 import { describe, expect, it } from "@dreamer/test";
 import { createEffect, createSignal, mount } from "@dreamer/view";
+import {
+  createRootTracked,
+  getTrackedRoots,
+  summarizeOwnerTree,
+} from "@dreamer/view/devtools";
 
 describe("runtime/browser (mount 细节)", () => {
   it("mount 前应清空容器子节点（含骨架屏占位）", async () => {
@@ -68,5 +73,40 @@ describe("runtime/browser (mount 细节)", () => {
     tick(1);
     await waitUntilComplete();
     expect(runs).toBe(1);
+  });
+
+  it("VIEW_DEV 下 mount 应登记 Owner 根，供开发工具总览与树使用", async () => {
+    const g = globalThis as {
+      VIEW_DEV?: boolean;
+      __VIEW_CREATE_ROOT_TRACKED__?: typeof createRootTracked;
+    };
+    const prevDev = g.VIEW_DEV;
+    const prevFn = g.__VIEW_CREATE_ROOT_TRACKED__;
+    g.VIEW_DEV = true;
+    g.__VIEW_CREATE_ROOT_TRACKED__ = createRootTracked;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    try {
+      const [text] = createSignal("hi");
+      const dispose = mount(() => {
+        const d = document.createElement("span");
+        createEffect(() => {
+          d.textContent = text();
+        });
+        return d;
+      }, container);
+      await waitUntilComplete();
+      const roots = getTrackedRoots();
+      expect(roots.length).toBe(1);
+      const summary = summarizeOwnerTree(roots[0]!);
+      expect(summary).not.toBeNull();
+      expect((summary?.nodes ?? 0) > 0).toBe(true);
+      dispose();
+      expect(getTrackedRoots().length).toBe(0);
+    } finally {
+      container.remove();
+      g.VIEW_DEV = prevDev;
+      g.__VIEW_CREATE_ROOT_TRACKED__ = prevFn;
+    }
   });
 }, { sanitizeOps: false, sanitizeResources: false });

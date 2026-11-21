@@ -47,8 +47,10 @@
 
 import {
   collectOwnerDomElements,
+  countRecordedOwnerElements,
   installOwnerDomTracking,
   isOwnerDomTracking,
+  pruneDetachedOwnerElements,
   recordOwnerElement,
   uninstallOwnerDomTracking,
 } from "./devtools/owner-dom.ts";
@@ -630,6 +632,7 @@ export function detectWideSubscriptions(
 export function noteRemount(key: string, now: number = Date.now()): void {
   const list = remountLog.get(key) ?? [];
   list.push(now);
+  if (list.length > 64) list.splice(0, list.length - 64);
   remountLog.set(key, list);
 }
 
@@ -950,6 +953,7 @@ export function enableOversubscribeWarnings(
       }
     }
     for (const root of roots) {
+      pruneDetachedOwnerElements(root);
       detectWideSubscriptions(root, {
         ...opts,
         emit: true,
@@ -990,8 +994,10 @@ export function disableOversubscribeWarnings(): void {
 
 export {
   collectOwnerDomElements,
+  countRecordedOwnerElements,
   installOwnerDomTracking,
   isOwnerDomTracking,
+  pruneDetachedOwnerElements,
   recordOwnerElement,
   uninstallOwnerDomTracking,
 };

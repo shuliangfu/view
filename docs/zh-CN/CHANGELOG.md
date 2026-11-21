@@ -7,6 +7,28 @@
 
 ---
 
+## [3.1.3] - 2026-11-21
+
+### 修复
+
+- **拆除临时 SSR document 后清空事件委托表（非破坏）**
+  - `leaveSSRDomScope` 在卸载本模块安装的临时 document 后调用
+    `resetEventDelegationForSSR()`，避免后续新 document 因委托表仍记着已拆
+    监听而跳过重新绑定。
+  - 单测：`tests/unit/ssr-bootstrap.test.ts`。
+
+- **VIEW_DEV 下 `mount` / `hydrate` 自动登记 Owner 根（非破坏）**
+  - 开发工具 overlay 加载时注册 `createRootTracked` 工厂；`mount` / `hydrate` 在
+    `VIEW_DEV` 下走该工厂，树和响应式总览能看到根，警告可点进树。
+  - 单测：`tests/unit/runtime/browser-advanced.test.ts`。
+
+- **开发工具信号列表改为虚拟列表，并清理几处泄漏（非破坏）**
+  - 信号 tab 用固定占位 + 可视窗口，避免长列表卡顿和滚动被外层面板抢走。
+  - 卸载时清除 HMR 轮询定时器和未结束的拖拽监听；刷新与误用监视会剔除已脱离 的
+    Owner DOM 记录；`remountLog` 最多保留 64 条。
+  - 单测：`tests/unit/devtools/overlay.test.ts`、
+    `tests/unit/devtools/inspect-highlight.test.ts`。
+
 ## [3.1.2] - 2026-11-17
 
 ### 新增
@@ -31,7 +53,6 @@
   - 单测：`tests/unit/devtools/overlay.test.ts`。
 
 ## [3.1.0] - 2026-11-15
-
 
 ### 新增
 

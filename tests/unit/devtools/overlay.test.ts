@@ -486,6 +486,44 @@ describe("devtools overlay (P2)", () => {
     expect(text.toLowerCase()).toMatch(/no sources match|no registry/);
   });
 
+  it("Signals virtual list paints a new window on scroll", () => {
+    createRootTracked(() => {
+      for (let i = 0; i < 80; i++) {
+        createSignal(i, `sig-item-${String(i).padStart(3, "0")}`);
+      }
+    });
+    const handle = mountDevtoolsOverlay({ refreshMs: 0, watchMisuse: false })!;
+    handle.setTab("signals");
+    const shadow = handle.root.shadowRoot!;
+    const list = shadow.querySelector("[data-el='sig-list']") as HTMLElement;
+    expect(list).not.toBeNull();
+    let scrollTop = 0;
+    Object.defineProperty(list, "clientHeight", {
+      configurable: true,
+      get: () => 200,
+    });
+    Object.defineProperty(list, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = v;
+      },
+    });
+    handle.refresh();
+    expect(list.querySelectorAll("[data-sig]").length).toBeLessThan(80);
+    expect(list.textContent).toContain("sig-item-000");
+    expect(list.textContent?.includes("sig-item-050")).toBe(false);
+    list.scrollTop = 56 * 40;
+    list.dispatchEvent(new Event("scroll"));
+    expect(list.textContent).toContain("sig-item-040");
+    expect(list.textContent?.includes("sig-item-000")).toBe(false);
+    list.scrollTop = 0;
+    list.dispatchEvent(new Event("scroll"));
+    expect(list.textContent).toContain("sig-item-000");
+    expect(list.textContent?.includes("sig-item-050")).toBe(false);
+    handle.unmount();
+  });
+
   it("open / Esc close / Ctrl+Shift+D toggle", () => {
     createRootTracked(() => {
       const a = createSignal(1);

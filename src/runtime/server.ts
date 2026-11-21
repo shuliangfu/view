@@ -125,6 +125,8 @@ export function leaveSSRDomScope(): void {
     installedSsrTeardown();
     installedSsrTeardown = null;
     borrowedCookieSnapshot = null;
+    // 委托表仍记着已拆 document 上的监听；不清理则后续新 document 不会重新绑定。
+    resetEventDelegationForSSR();
     return;
   }
   restoreBorrowedDocumentCookies();

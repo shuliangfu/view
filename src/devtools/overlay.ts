@@ -24,6 +24,7 @@ import type { Owner } from "../reactivity/owner.ts";
 import {
   clearTimeline,
   collectOwnerDomElements,
+  createRootTracked,
   detectOversubscribe,
   detectOwnerRemountChurn,
   disableOversubscribeWarnings,
@@ -39,12 +40,20 @@ import {
   isViewDev,
   type OversubscribeWarning,
   type OwnerTreeSummary,
+  pruneDetachedOwnerElements,
   snapshotComponentSetups,
   snapshotRegistrySources,
   snapshotTimeline,
   summarizeOwnerTree,
   uninstallDevtoolsRuntimeHooks,
 } from "../devtools.ts";
+
+const __overlayGlobals = globalThis as {
+  __VIEW_CREATE_ROOT_TRACKED__?: <T>(fn: (dispose: () => void) => T) => T;
+};
+if (typeof __overlayGlobals.__VIEW_CREATE_ROOT_TRACKED__ !== "function") {
+  __overlayGlobals.__VIEW_CREATE_ROOT_TRACKED__ = createRootTracked;
+}
 import {
   getOverlayLocale,
   ot,
@@ -378,6 +387,7 @@ const CSS = /* css */ `
   scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent;
 }
 .pane.active { display: flex; }
+.pane[data-pane="signals"] { overflow: hidden; }
 
 .section {
   border-radius: 11px; border: 1px solid rgba(255,255,255,0.07);
@@ -493,6 +503,39 @@ const CSS = /* css */ `
   border-color: rgba(96,165,250,0.55); background: rgba(59,130,246,0.16);
 }
 .sig-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; min-height: 0; flex: 1; }
+.sig-layout [data-el="sig-list"] {
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  gap: 0;
+}
+.sig-layout [data-el="sig-list"] .sig-virt-space {
+  display: block;
+  position: relative;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  pointer-events: none;
+  list-style: none;
+  background: none;
+}
+.sig-layout [data-el="sig-list"] .sig-virt-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: auto;
+}
+.sig-layout [data-el="sig-list"] .sig-virt-window > .row {
+  box-sizing: border-box;
+  height: 52px;
+  flex: none;
+}
 .sig-detail-pane, .updates-pane { min-width: 0; }
 .time-meta { flex-shrink: 0; color: rgba(236,236,241,0.4); font-size: 10px; font-variant-numeric: tabular-nums; }
 
@@ -1194,6 +1237,14 @@ export function mountDevtoolsOverlay(
       n.classList.toggle("active", (n as HTMLElement).dataset.pane === tab);
     });
     persist();
+    if (tab === "signals") {
+      const paint = () => paintSignalWindow();
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(paint);
+      } else {
+        paint();
+      }
+    }
   };
 
   const renderDetail = () => {
@@ -1335,6 +1386,106 @@ export function mountDevtoolsOverlay(
     `;
   };
 
+  const SIG_ROW_H = 52;
+  const SIG_GAP = 4;
+  const SIG_STRIDE = SIG_ROW_H + SIG_GAP;
+  const SIG_OVERSCAN = 8;
+  let signalItems: ReturnType<typeof snapshotRegistrySources> = [];
+  let signalSourceCount = 0;
+  let sigWindowStart = -1;
+  let sigWindowEnd = -1;
+  let sigPaintQueued = false;
+
+  const signalRowHtml = (
+    s: ReturnType<typeof snapshotRegistrySources>[number],
+  ) =>
+    `<li class="row buttonish${
+      selectedSignalId === s.id ? " selected" : ""
+    }" data-sig="${escapeHtml(s.id)}" role="button">
+              <span class="row-main">
+                <span class="row-k" title="${escapeHtml(s.id)}">${
+      escapeHtml(s.label)
+    }</span>
+                <span class="row-preview">${escapeHtml(s.preview)}</span>
+              </span>
+              <span class="row-v">${otHtml("obs", { n: s.observers })}</span>
+            </li>`;
+
+  const ensureSigScaffold = (list: HTMLElement, totalHeight: number) => {
+    let space = list.querySelector("[data-el='sig-space']") as
+      | HTMLElement
+      | null;
+    let win = list.querySelector("[data-el='sig-window']") as
+      | HTMLElement
+      | null;
+    if (!space || !win) {
+      list.innerHTML =
+        `<li class="sig-virt-space" data-el="sig-space" aria-hidden="true">
+          <ul class="sig-virt-window" data-el="sig-window"></ul>
+        </li>`;
+      space = list.querySelector("[data-el='sig-space']") as HTMLElement;
+      win = list.querySelector("[data-el='sig-window']") as HTMLElement;
+      sigWindowStart = -1;
+      sigWindowEnd = -1;
+    }
+    const h = `${totalHeight}px`;
+    if (space.style.height !== h) space.style.height = h;
+    return { space, win };
+  };
+
+  const paintSignalWindow = (force = false) => {
+    const list = el("[data-el='sig-list']") as HTMLElement | null;
+    if (!list) return;
+    const filtered = signalItems;
+    if (!filtered.length) {
+      sigWindowStart = -1;
+      sigWindowEnd = -1;
+      list.innerHTML = `<p class="empty">${
+        signalSourceCount ? ot("noSourcesMatch") : ot("noSourcesYet")
+      }</p>`;
+      return;
+    }
+    const totalHeight = filtered.length * SIG_STRIDE;
+    const { win } = ensureSigScaffold(list, totalHeight);
+    const scrollTop = list.scrollTop;
+    const vh = list.clientHeight || 1;
+    const start = Math.max(
+      0,
+      Math.floor(scrollTop / SIG_STRIDE) - SIG_OVERSCAN,
+    );
+    const end = Math.min(
+      filtered.length,
+      Math.ceil((scrollTop + vh) / SIG_STRIDE) + SIG_OVERSCAN,
+    );
+    if (
+      !force &&
+      start === sigWindowStart &&
+      end === sigWindowEnd
+    ) {
+      return;
+    }
+    sigWindowStart = start;
+    sigWindowEnd = end;
+    win.style.top = `${start * SIG_STRIDE}px`;
+    let html = "";
+    for (let i = start; i < end; i++) html += signalRowHtml(filtered[i]!);
+    win.innerHTML = html;
+  };
+
+  const onSigScroll = () => {
+    if (sigPaintQueued) return;
+    sigPaintQueued = true;
+    const run = () => {
+      sigPaintQueued = false;
+      paintSignalWindow();
+    };
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(run);
+    } else {
+      run();
+    }
+  };
+
   const renderSignals = () => {
     const sources = snapshotRegistrySources()
       .slice()
@@ -1351,30 +1502,9 @@ export function mountDevtoolsOverlay(
       : sources;
     const countEl = el("[data-el='sig-count']");
     if (countEl) countEl.textContent = String(sources.length);
-    const list = el("[data-el='sig-list']");
-    if (list) {
-      if (!filtered.length) {
-        list.innerHTML = `<p class="empty">${
-          sources.length ? ot("noSourcesMatch") : ot("noSourcesYet")
-        }</p>`;
-      } else {
-        list.innerHTML = filtered
-          .map((s) =>
-            `<li class="row buttonish${
-              selectedSignalId === s.id ? " selected" : ""
-            }" data-sig="${escapeHtml(s.id)}" role="button">
-              <span class="row-main">
-                <span class="row-k" title="${escapeHtml(s.id)}">${
-              escapeHtml(s.label)
-            }</span>
-                <span class="row-preview">${escapeHtml(s.preview)}</span>
-              </span>
-              <span class="row-v">${otHtml("obs", { n: s.observers })}</span>
-            </li>`
-          )
-          .join("");
-      }
-    }
+    signalSourceCount = sources.length;
+    signalItems = filtered;
+    paintSignalWindow(true);
     renderSignalDetail(sources);
 
     const overview = el("[data-el='overview-sources']");
@@ -1725,6 +1855,9 @@ export function mountDevtoolsOverlay(
     syncOverlayLocaleFromPage();
     if (getOverlayLocale() !== before) applyChromeI18n();
     rebuildForest();
+    for (const { root } of collectRoots(primaryOwner)) {
+      pruneDetachedOwnerElements(root);
+    }
     scanWarnings();
     renderOverview();
     renderTree();
@@ -1848,6 +1981,9 @@ export function mountDevtoolsOverlay(
     renderSignals();
     if (id) setTab("signals");
   };
+  el("[data-el='sig-list']")?.addEventListener("scroll", onSigScroll, {
+    passive: true,
+  });
   el("[data-el='sig-list']")?.addEventListener("click", (ev) => {
     const row = (ev.target as HTMLElement | null)?.closest("[data-sig]") as
       | HTMLElement
@@ -1965,6 +2101,7 @@ export function mountDevtoolsOverlay(
   }
 
   // Drag (header + indicator) with corner snap on release near edges
+  const dragReleases: Array<() => void> = [];
   const bindDrag = (handleEl: HTMLElement) => {
     let sx = 0;
     let sy = 0;
@@ -1979,12 +2116,18 @@ export function mountDevtoolsOverlay(
       if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
       wrap.style.transform = `translate(${ox + dx}px, ${oy + dy}px)`;
     };
-    const onUp = (ev: PointerEvent) => {
+    const releaseDrag = () => {
       if (!dragging) return;
       dragging = false;
-      handleEl.releasePointerCapture?.(ev.pointerId);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+    };
+    dragReleases.push(releaseDrag);
+
+    const onUp = (ev: PointerEvent) => {
+      if (!dragging) return;
+      handleEl.releasePointerCapture?.(ev.pointerId);
+      releaseDrag();
       // snap to nearest corner if close to viewport edge
       const rect = wrap.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
@@ -2055,15 +2198,21 @@ export function mountDevtoolsOverlay(
   document.addEventListener("keydown", onKey, true);
 
   // Claim HMR capsule ASAP; poll briefly if the server client is still booting.
+  let hmrPollStop: ReturnType<typeof setTimeout> | null = null;
   if (!attachHmrBridge()) {
     hmrPoll = setInterval(() => {
       if (attachHmrBridge() && hmrPoll != null) {
         clearInterval(hmrPoll);
         hmrPoll = null;
+        if (hmrPollStop != null) {
+          clearTimeout(hmrPollStop);
+          hmrPollStop = null;
+        }
       }
     }, 200);
     // Stop polling after ~10s — leave "waiting" UI if no bridge.
-    setTimeout(() => {
+    hmrPollStop = setTimeout(() => {
+      hmrPollStop = null;
       if (hmrPoll != null) {
         clearInterval(hmrPoll);
         hmrPoll = null;
@@ -2129,6 +2278,12 @@ export function mountDevtoolsOverlay(
         clearInterval(hmrPoll);
         hmrPoll = null;
       }
+      if (hmrPollStop != null) {
+        clearTimeout(hmrPollStop);
+        hmrPollStop = null;
+      }
+      for (const release of dragReleases) release();
+      dragReleases.length = 0;
       if (unsubHmr) {
         unsubHmr();
         unsubHmr = null;

@@ -15,6 +15,22 @@
 
 import { createRoot } from "../reactivity/owner.ts";
 import { insert } from "./insert.ts";
+
+type TrackedRootFactory = <T>(fn: (dispose: () => void) => T) => T;
+
+/** DEV：若已注册 createRootTracked（overlay / auto-mount），挂载时自动登记 Owner 根。 */
+function runInRoot<T>(fn: (dispose: () => void) => T): T {
+  const g = globalThis as {
+    VIEW_DEV?: boolean;
+    __VIEW_CREATE_ROOT_TRACKED__?: TrackedRootFactory;
+  };
+  if (
+    g.VIEW_DEV === true && typeof g.__VIEW_CREATE_ROOT_TRACKED__ === "function"
+  ) {
+    return g.__VIEW_CREATE_ROOT_TRACKED__(fn);
+  }
+  return createRoot(fn);
+}
 import {
   getHydrationMismatches,
   type HydrateOptions,
@@ -77,7 +93,7 @@ function adoptContainerDispose(
 
 export function mount(fn: () => any, container: Node): () => void {
   return adoptContainerDispose(container, () =>
-    createRoot((dispose) => {
+    runInRoot((dispose) => {
       clearContainerChildren(container);
       uncloakContainer(container);
 
@@ -92,8 +108,7 @@ export function mount(fn: () => any, container: Node): () => void {
         dispose();
         clearContainerChildren(container);
       };
-    }),
-  );
+    }));
 }
 
 /**
@@ -131,45 +146,44 @@ export function hydrate(
   bindingsOrOptions: [number[], string][] | HydrateOptions = [],
 ): () => void {
   return adoptContainerDispose(container, () =>
-    createRoot((dispose) => {
-    stopHydration();
-
-    const { bindings, options } = resolveHydrateBindings(bindingsOrOptions);
-    const mode = resolveMismatchMode(options);
-
-    try {
-      internalHydrate(container, bindings, options);
-    } catch (err) {
-      // assert 模式：结束水合上下文后抛出
+    runInRoot((dispose) => {
       stopHydration();
-      throw err;
-    }
 
-    const mismatches = getHydrationMismatches();
-    if (mode === "remount" && mismatches.length > 0) {
-      // 放弃绑定表与 SSR DOM，退回 CSR 挂载语义
-      stopHydration();
-      if (options.warnMismatch !== false) {
-        console.warn(
-          `[@dreamer/view] hydration remount: ${mismatches.length} mismatch(es), falling back to CSR mount`,
-        );
+      const { bindings, options } = resolveHydrateBindings(bindingsOrOptions);
+      const mode = resolveMismatchMode(options);
+
+      try {
+        internalHydrate(container, bindings, options);
+      } catch (err) {
+        // assert 模式：结束水合上下文后抛出
+        stopHydration();
+        throw err;
       }
-      clearContainerChildren(container);
+
+      const mismatches = getHydrationMismatches();
+      if (mode === "remount" && mismatches.length > 0) {
+        // 放弃绑定表与 SSR DOM，退回 CSR 挂载语义
+        stopHydration();
+        if (options.warnMismatch !== false) {
+          console.warn(
+            `[@dreamer/view] hydration remount: ${mismatches.length} mismatch(es), falling back to CSR mount`,
+          );
+        }
+        clearContainerChildren(container);
+        uncloakContainer(container);
+        const content = fn();
+        insert(container, content);
+        return () => {
+          dispose();
+          clearContainerChildren(container);
+        };
+      }
+
       uncloakContainer(container);
       const content = fn();
       insert(container, content);
-      return () => {
-        dispose();
-        clearContainerChildren(container);
-      };
-    }
 
-    uncloakContainer(container);
-    const content = fn();
-    insert(container, content);
-
-    // continue／assert 成功路径：保留容器内 SSR 节点；仅 dispose Owner
-    return dispose;
-  }),
-  );
+      // continue／assert 成功路径：保留容器内 SSR 节点；仅 dispose Owner
+      return dispose;
+    }));
 }

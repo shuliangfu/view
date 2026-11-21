@@ -8,11 +8,39 @@ and this project adheres to
 
 ---
 
+## [3.1.3] - 2026-11-21
+
+### Fixed
+
+- **Clear event delegation after tearing down a temporary SSR document
+  (non-breaking)**
+  - `leaveSSRDomScope` now calls `resetEventDelegationForSSR()` after removing a
+    temporary document installed by this module, so a later document rebinds
+    listeners instead of skipping them because the delegation table still
+    records the torn-down one.
+  - Test: `tests/unit/ssr-bootstrap.test.ts`.
+
+- **`mount` / `hydrate` register Owner roots under `VIEW_DEV` (non-breaking)**
+  - Loading the DevTools overlay installs the `createRootTracked` factory;
+    `mount` / `hydrate` use it when `VIEW_DEV` is on, so the tree and overview
+    show roots and warnings can jump into the tree.
+  - Test: `tests/unit/runtime/browser-advanced.test.ts`.
+
+- **Virtualize the DevTools signals list and close a few leaks (non-breaking)**
+  - The signals tab uses a stable spacer plus a visible window, so long lists
+    stay smooth and the outer pane does not steal scroll.
+  - Unmount clears the HMR poll timer and in-flight drag listeners; refresh and
+    the misuse watcher prune detached Owner DOM records; `remountLog` keeps at
+    most 64 entries.
+  - Tests: `tests/unit/devtools/overlay.test.ts`,
+    `tests/unit/devtools/inspect-highlight.test.ts`.
+
 ## [3.1.2] - 2026-11-17
 
 ### Added
 
-- **SSR can seed the request `Cookie` header into `document.cookie` (non-breaking)**
+- **SSR can seed the request `Cookie` header into `document.cookie`
+  (non-breaking)**
   - New `runWithSsrCookies` / `getSsrCookieHeader` (`@dreamer/view/ssr`).
   - `renderToString` writes the current request cookies onto `document.cookie`
     when it installs `document`, so components can read them on first render
@@ -28,7 +56,8 @@ and this project adheres to
 
 ### Fixed
 
-- **DevTools float warning badge shows without opening the panel (non-breaking)**
+- **DevTools float warning badge shows without opening the panel
+  (non-breaking)**
   - The misuse watcher now starts when the overlay mounts and keeps running
     while the panel is closed, so the indicator count appears as soon as
     warnings exist. Opening and closing the panel is no longer required.
@@ -36,7 +65,6 @@ and this project adheres to
   - Test: `tests/unit/devtools/overlay.test.ts`.
 
 ## [3.1.0] - 2026-11-15
-
 
 ### Added
 

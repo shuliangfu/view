@@ -115,6 +115,28 @@ export interface CollectOwnerDomOptions {
  * Connected DOM elements to outline for `owner`.
  * Default: this Owner plus descendants, collapsed to outermost nodes.
  */
+/** Drop disconnected nodes recorded on `owner` and its descendants. */
+export function pruneDetachedOwnerElements(
+  owner: Owner | null | undefined,
+): void {
+  if (!owner) return;
+  const walk = (node: Owner) => {
+    liveDirect(node);
+    const kids = node.children;
+    if (!kids) return;
+    for (let i = 0; i < kids.length; i++) walk(kids[i]!);
+  };
+  walk(owner);
+}
+
+/** Raw recorded-node count for one Owner (tests / leak checks). */
+export function countRecordedOwnerElements(
+  owner: Owner | null | undefined,
+): number {
+  if (!owner) return 0;
+  return ownerElements.get(owner)?.size ?? 0;
+}
+
 export function collectOwnerDomElements(
   owner: Owner | null | undefined,
   options?: CollectOwnerDomOptions,

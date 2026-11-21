@@ -8,6 +8,7 @@ import { insert } from "@dreamer/view/csr";
 import {
   clearTrackedRoots,
   collectOwnerDomElements,
+  countRecordedOwnerElements,
   createRootTracked,
   getOwnerByPath,
   getTrackedRoots,
@@ -15,6 +16,7 @@ import {
   inspectOwnerIndexed,
   installOwnerDomTracking,
   isOwnerDomTracking,
+  pruneDetachedOwnerElements,
   recordOwnerElement,
   uninstallOwnerDomTracking,
 } from "@dreamer/view/devtools";
@@ -143,6 +145,24 @@ describe("devtools owner DOM map", () => {
     outer.remove();
     side.remove();
     expect(collectOwnerDomElements(parent)).toEqual([]);
+  });
+
+  it("pruneDetachedOwnerElements drops disconnected nodes without inspecting", () => {
+    const owner = createOwner();
+    const live = document.createElement("div");
+    const gone = document.createElement("span");
+    document.body.appendChild(live);
+    recordOwnerElement(owner, live);
+    recordOwnerElement(owner, gone);
+    expect(countRecordedOwnerElements(owner)).toBe(2);
+    pruneDetachedOwnerElements(owner);
+    expect(countRecordedOwnerElements(owner)).toBe(1);
+    expect(collectOwnerDomElements(owner, { directOnly: true })).toEqual([
+      live,
+    ]);
+    live.remove();
+    pruneDetachedOwnerElements(owner);
+    expect(countRecordedOwnerElements(owner)).toBe(0);
   });
 
   it("does not record when VIEW_DEV is off, and install is a no-op", () => {

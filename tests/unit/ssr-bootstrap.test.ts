@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "@dreamer/test";
-import { createSignal } from "@dreamer/view";
+import { createSignal, setProperty } from "@dreamer/view";
 import { jsx } from "@dreamer/view/jsx-runtime";
 import { renderToString } from "@dreamer/view/ssr";
 
@@ -30,5 +30,35 @@ describe("SSR：无预置 document 时自举极简 DOM", () => {
     );
     expect(html).toContain('id="dyn"');
     expect(html).toContain("1");
+  });
+
+  it("拆除临时 document 后，新 document 上的事件委托仍能触发", async () => {
+    renderToString(() =>
+      jsx("button", {
+        type: "button",
+        onClick: () => {},
+        children: "ssr",
+      })
+    );
+    expect(
+      typeof (globalThis as { document?: unknown }).document === "undefined",
+    ).toBe(true);
+
+    const { Window } = await import("happy-dom");
+    const win = new Window();
+    const g = globalThis as Record<string, unknown>;
+    g.window = win;
+    g.document = win.document;
+    g.Event = win.Event;
+    g.MouseEvent = win.MouseEvent;
+
+    let clicks = 0;
+    const btn = document.createElement("button");
+    document.body!.appendChild(btn);
+    setProperty(btn, "onClick", () => {
+      clicks++;
+    });
+    btn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(clicks).toBe(1);
   });
 }, { sanitizeOps: false, sanitizeResources: false });
